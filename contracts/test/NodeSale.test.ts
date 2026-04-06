@@ -1,0 +1,663 @@
+import { expect } from "chai";
+import { ethers } from "hardhat";
+import { loadFixture, time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
+
+// Helper: deadline 1 hour from now
+function futureDeadline(): number {
+  return Math.floor(Date.now() / 1000) + 3600;
+}
+
+// Helper: very large maxPricePerNode (effectively unlimited)
+const MAX_PRICE = ethers.MaxUint256;
+
+describe("NodeSale", function () {
+  async function deployFixture() {
+    const [owner, treasury, buyer, buyer2, other] = await ethers.getSigners();
+
+    // Deploy mock USDC (6 decimals)
+    const MockERC20 = await ethers.getContractFactory("MockERC20");
+    const usdc = await MockERC20.deploy("USD Coin", "USDC", 6);
+    await usdc.waitForDeployment();
+
+    // Deploy mock USDT
+    const usdt = await MockERC20.deploy("Tether USD", "USDT", 6);
+    await usdt.waitForDeployment();
+
+    // Deploy a non-accepted token
+    const badToken = await MockERC20.deploy("Bad Token", "BAD", 18);
+    await badToken.waitForDeployment();
+
+    // Deploy OperonNode
+    const OperonNode = await ethers.getContractFactory("OperonNode");
+    const nodeContract = await OperonNode.deploy();
+    await nodeContract.waitForDeployment();
+
+    // Deploy NodeSale
+    const NodeSale = await ethers.getContractFactory("NodeSale");
+    const sale = await NodeSale.deploy(treasury.address);
+    await sale.waitForDeployment();
+
+    // Configure
+    await nodeContract.setMinter(await sale.getAddress());
+    await sale.setNodeContract(await nodeContract.getAddress());
+    await sale.setAcceptedToken(await usdc.getAddress(), true);
+    await sale.setAcceptedToken(await usdt.getAddress(), true);
+
+    // Set up tier 0: price 500_000000 (500 USDC, 6 decimals), supply 100
+    const tierPrice = 500_000000n;
+    await sale.setTier(0, tierPrice, 100, true);
+
+    // Set up tier 1: price 525_000000, supply 50
+    await sale.setTier(1, 525_000000n, 50, true);
+
+    // Mint USDC to buyers
+    await usdc.mint(buyer.address, 1_000_000_000000n); // 1M USDC
+    await usdc.mint(buyer2.address, 1_000_000_000000n);
+
+    // Mint USDT to buyer
+    await usdt.mint(buyer.address, 1_000_000_000000n);
+
+    return { owner, treasury, buyer, buyer2, other, usdc, usdt, badToken, nodeContract, sale, tierPrice };
+  }
+
+  describe("Deployment", function () {
+    it("should set owner and treasury correctly", async function () {
+      const { owner, treasury, sale } = await loadFixture(deployFixture);
+      expect(await sale.owner()).to.equal(owner.address);
+      expect(await sale.treasury()).to.equal(treasury.address);
+    });
+
+    it("should revert if treasury is zero address", async function () {
+      const NodeSale = await ethers.getContractFactory("NodeSale");
+      await expect(NodeSale.deploy(ethers.ZeroAddress)).to.be.revertedWith(
+        "NodeSale: treasury is zero address"
+      );
+    });
+
+    it("should have default discount of 15%", async function () {
+      const { sale } = await loadFixture(deployFixture);
+      expect(await sale.defaultDiscountBps()).to.equal(1500);
+    });
+  });
+
+  describe("Happy path purchase", function () {
+    it("should allow a buyer to purchase a node with USDC", async function () {
+      const { buyer, treasury, usdc, nodeContract, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // Approve
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+
+      // Purchase
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice)
+      )
+        .to.emit(sale, "NodePurchased")
+        .withArgs(buyer.address, 0, 1, ethers.ZeroHash, tierPrice, await usdc.getAddress());
+
+      // Verify node was minted
+      expect(await nodeContract.balanceOf(buyer.address)).to.equal(1);
+      expect(await nodeContract.ownerOf(1)).to.equal(buyer.address);
+
+      // Verify tier info stored on node
+      const [tier, price, date] = await nodeContract.getNodeInfo(1);
+      expect(tier).to.equal(0);
+      expect(price).to.equal(tierPrice);
+
+      // Verify payment went to treasury
+      expect(await usdc.balanceOf(treasury.address)).to.equal(tierPrice);
+
+      // Verify tier sold count
+      const tierData = await sale.tiers(0);
+      expect(tierData.sold).to.equal(1);
+    });
+
+    it("should allow purchase with USDT", async function () {
+      const { buyer, usdt, nodeContract, sale, tierPrice } = await loadFixture(deployFixture);
+
+      await usdt.connect(buyer).approve(await sale.getAddress(), tierPrice);
+      await sale.connect(buyer).purchase(0, 1, await usdt.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+
+      expect(await nodeContract.balanceOf(buyer.address)).to.equal(1);
+    });
+  });
+
+  describe("Referral code discount", function () {
+    it("should apply 15% default discount for valid referral code", async function () {
+      const { buyer, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("ALPHA15"));
+      await sale.addReferralCode(codeHash, 0); // 0 means use default (15%)
+
+      const discountedPrice = tierPrice - (tierPrice * 1500n / 10000n); // 15% off
+      await usdc.connect(buyer).approve(await sale.getAddress(), discountedPrice);
+
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), codeHash, futureDeadline(), tierPrice)
+      )
+        .to.emit(sale, "NodePurchased")
+        .withArgs(buyer.address, 0, 1, codeHash, discountedPrice, await usdc.getAddress());
+
+      expect(await usdc.balanceOf(treasury.address)).to.equal(discountedPrice);
+    });
+
+    it("should apply custom discount per code", async function () {
+      const { buyer, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("VIP20"));
+      await sale.addReferralCode(codeHash, 2000); // 20%
+
+      const discountedPrice = tierPrice - (tierPrice * 2000n / 10000n);
+      await usdc.connect(buyer).approve(await sale.getAddress(), discountedPrice);
+
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), codeHash, futureDeadline(), tierPrice);
+      expect(await usdc.balanceOf(treasury.address)).to.equal(discountedPrice);
+    });
+
+    it("should not apply discount for invalid code", async function () {
+      const { buyer, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      const invalidHash = ethers.keccak256(ethers.toUtf8Bytes("INVALID"));
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), invalidHash, futureDeadline(), tierPrice);
+      // Full price charged
+      expect(await usdc.balanceOf(treasury.address)).to.equal(tierPrice);
+    });
+
+    it("validateCode should return correct info", async function () {
+      const { sale } = await loadFixture(deployFixture);
+
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("CODE1"));
+      await sale.addReferralCode(codeHash, 1000);
+
+      const [valid, discount] = await sale.validateCode(codeHash);
+      expect(valid).to.be.true;
+      expect(discount).to.equal(1000);
+
+      // Default discount
+      const codeHash2 = ethers.keccak256(ethers.toUtf8Bytes("CODE2"));
+      await sale.addReferralCode(codeHash2, 0);
+      const [valid2, discount2] = await sale.validateCode(codeHash2);
+      expect(valid2).to.be.true;
+      expect(discount2).to.equal(1500); // defaultDiscountBps
+
+      // Invalid code
+      const badHash = ethers.keccak256(ethers.toUtf8Bytes("BAD"));
+      const [valid3] = await sale.validateCode(badHash);
+      expect(valid3).to.be.false;
+    });
+
+    it("should batch add referral codes", async function () {
+      const { sale } = await loadFixture(deployFixture);
+
+      const hashes = [
+        ethers.keccak256(ethers.toUtf8Bytes("BATCH1")),
+        ethers.keccak256(ethers.toUtf8Bytes("BATCH2")),
+        ethers.keccak256(ethers.toUtf8Bytes("BATCH3")),
+      ];
+      await sale.addReferralCodes(hashes, 1200);
+
+      for (const h of hashes) {
+        const [valid, discount] = await sale.validateCode(h);
+        expect(valid).to.be.true;
+        expect(discount).to.equal(1200);
+      }
+    });
+  });
+
+  describe("Tier sold out", function () {
+    it("should revert when tier supply is exhausted", async function () {
+      const { buyer, buyer2, usdc, sale } = await loadFixture(deployFixture);
+
+      // Set small tier: supply 2
+      await sale.setTier(9, 100_000000n, 2, true);
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), 200_000000n);
+      await sale.connect(buyer).purchase(9, 2, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), 100_000000n);
+
+      // Next purchase should fail
+      await usdc.connect(buyer2).approve(await sale.getAddress(), 100_000000n);
+      await expect(
+        sale.connect(buyer2).purchase(9, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), 100_000000n)
+      ).to.be.revertedWith("NodeSale: tier sold out");
+    });
+  });
+
+  describe("Wallet limit", function () {
+    it("should enforce per-wallet limit", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      await sale.setMaxPerWallet(0, 2);
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice * 3n);
+
+      // Buy 2 -- OK
+      await sale.connect(buyer).purchase(0, 2, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+
+      // Buy 1 more -- exceeds limit
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice)
+      ).to.be.revertedWith("NodeSale: exceeds wallet limit");
+    });
+
+    it("should allow unlimited when maxPerWallet is 0", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // maxPerWallet defaults to 0 (unlimited)
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice * 10n);
+      await sale.connect(buyer).purchase(0, 10, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+
+      expect(await sale.purchaseCount(buyer.address, 0)).to.equal(10);
+    });
+  });
+
+  describe("Paused sale", function () {
+    it("should revert purchases when paused", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      await sale.pause();
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice)
+      ).to.be.revertedWithCustomError(sale, "EnforcedPause");
+    });
+
+    it("should allow purchases after unpause", async function () {
+      const { buyer, usdc, nodeContract, sale, tierPrice } = await loadFixture(deployFixture);
+
+      await sale.pause();
+      await sale.unpause();
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+
+      expect(await nodeContract.balanceOf(buyer.address)).to.equal(1);
+    });
+  });
+
+  describe("Wrong token", function () {
+    it("should revert if token is not accepted", async function () {
+      const { buyer, badToken, sale } = await loadFixture(deployFixture);
+
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await badToken.getAddress(), ethers.ZeroHash, futureDeadline(), MAX_PRICE)
+      ).to.be.revertedWith("NodeSale: token not accepted");
+    });
+  });
+
+  describe("Insufficient balance / allowance", function () {
+    it("should revert if buyer has insufficient balance", async function () {
+      const { other, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // other has 0 USDC
+      await usdc.connect(other).approve(await sale.getAddress(), tierPrice);
+      await expect(
+        sale.connect(other).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice)
+      ).to.be.revertedWith("ERC20: insufficient balance");
+    });
+
+    it("should revert if buyer has insufficient allowance", async function () {
+      const { buyer, usdc, sale } = await loadFixture(deployFixture);
+
+      // No approval
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), MAX_PRICE)
+      ).to.be.revertedWith("ERC20: insufficient allowance");
+    });
+  });
+
+  describe("Batch purchase", function () {
+    it("should mint multiple nodes in one transaction", async function () {
+      const { buyer, usdc, nodeContract, sale, tierPrice } = await loadFixture(deployFixture);
+
+      const quantity = 5n;
+      const totalCost = tierPrice * quantity;
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), totalCost);
+      await sale.connect(buyer).purchase(0, Number(quantity), await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+
+      expect(await nodeContract.balanceOf(buyer.address)).to.equal(quantity);
+      // Token IDs should be 1-5
+      for (let i = 1; i <= Number(quantity); i++) {
+        expect(await nodeContract.ownerOf(i)).to.equal(buyer.address);
+      }
+    });
+  });
+
+  describe("Tier boundary (buy last node)", function () {
+    it("should allow buying the last available node in a tier", async function () {
+      const { buyer, buyer2, usdc, sale, nodeContract } = await loadFixture(deployFixture);
+
+      // Tier with supply of 3
+      await sale.setTier(5, 100_000000n, 3, true);
+
+      // Buy 2
+      await usdc.connect(buyer).approve(await sale.getAddress(), 200_000000n);
+      await sale.connect(buyer).purchase(5, 2, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), 100_000000n);
+
+      // Buy last 1
+      await usdc.connect(buyer2).approve(await sale.getAddress(), 100_000000n);
+      await sale.connect(buyer2).purchase(5, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), 100_000000n);
+
+      const tierData = await sale.tiers(5);
+      expect(tierData.sold).to.equal(3);
+      expect(tierData.supply).to.equal(3);
+
+      // Next one should fail
+      await usdc.connect(buyer).approve(await sale.getAddress(), 100_000000n);
+      await expect(
+        sale.connect(buyer).purchase(5, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), 100_000000n)
+      ).to.be.revertedWith("NodeSale: tier sold out");
+    });
+  });
+
+  describe("Transfer lock", function () {
+    it("should prevent transfers when lock is active", async function () {
+      const { buyer, other, usdc, nodeContract, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // Purchase a node
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+
+      // Set transfer lock to far future
+      const futureTime = (await time.latest()) + 365 * 24 * 3600;
+      await nodeContract.setTransferLockExpiry(futureTime);
+
+      // Try to transfer -- should fail
+      await expect(
+        nodeContract.connect(buyer).transferFrom(buyer.address, other.address, 1)
+      ).to.be.revertedWith("OperonNode: transfers are locked");
+    });
+
+    it("should allow transfers after lock expires", async function () {
+      const { buyer, other, usdc, nodeContract, sale, tierPrice } = await loadFixture(deployFixture);
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+
+      // Set lock to 1 hour from now
+      const lockTime = (await time.latest()) + 3600;
+      await nodeContract.setTransferLockExpiry(lockTime);
+
+      // Fast forward past lock
+      await time.increaseTo(lockTime + 1);
+
+      // Transfer should succeed
+      await nodeContract.connect(buyer).transferFrom(buyer.address, other.address, 1);
+      expect(await nodeContract.ownerOf(1)).to.equal(other.address);
+    });
+
+    it("should allow minting even when transfers are locked", async function () {
+      const { buyer, usdc, nodeContract, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // Set lock to far future
+      const futureTime = (await time.latest()) + 365 * 24 * 3600;
+      await nodeContract.setTransferLockExpiry(futureTime);
+
+      // Minting should still work
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+
+      expect(await nodeContract.balanceOf(buyer.address)).to.equal(1);
+    });
+  });
+
+  describe("Admin functions", function () {
+    it("should only allow owner to set tier", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+
+      await expect(
+        sale.connect(other).setTier(0, 100, 100, true)
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+
+    it("should only allow owner to pause", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+
+      await expect(
+        sale.connect(other).pause()
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+
+    it("should only allow owner to set treasury", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+
+      await expect(
+        sale.connect(other).setTreasury(other.address)
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+
+    it("should allow owner to update tier active status", async function () {
+      const { sale } = await loadFixture(deployFixture);
+
+      await sale.setTierActive(0, false);
+      const tier = await sale.tiers(0);
+      expect(tier.active).to.be.false;
+    });
+
+    it("should revert purchase on inactive tier", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      await sale.setTierActive(0, false);
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice)
+      ).to.be.revertedWith("NodeSale: tier not active");
+    });
+
+    it("should allow owner to withdraw stuck funds", async function () {
+      const { owner, other, usdc, sale } = await loadFixture(deployFixture);
+
+      // Send some tokens directly to the sale contract
+      await usdc.mint(await sale.getAddress(), 1000n);
+
+      await sale.withdrawFunds(await usdc.getAddress(), other.address);
+      expect(await usdc.balanceOf(other.address)).to.equal(1000n);
+    });
+
+    it("should preserve sold count when updating tier", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // Buy 1 node in tier 0
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+
+      // Update tier 0 price
+      await sale.setTier(0, 600_000000n, 200, true);
+
+      const tier = await sale.tiers(0);
+      expect(tier.sold).to.equal(1); // preserved
+      expect(tier.price).to.equal(600_000000n);
+      expect(tier.supply).to.equal(200);
+    });
+
+    it("should only allow minter to mint on OperonNode", async function () {
+      const { other, nodeContract } = await loadFixture(deployFixture);
+
+      await expect(
+        nodeContract.connect(other).mint(other.address, 0, 100)
+      ).to.be.revertedWith("OperonNode: caller is not the minter");
+    });
+
+    it("should reject zero quantity", async function () {
+      const { buyer, usdc, sale } = await loadFixture(deployFixture);
+
+      await expect(
+        sale.connect(buyer).purchase(0, 0, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), MAX_PRICE)
+      ).to.be.revertedWith("NodeSale: invalid quantity");
+    });
+
+    it("should allow owner to setMaxBatchSize", async function () {
+      const { sale } = await loadFixture(deployFixture);
+
+      expect(await sale.maxBatchSize()).to.equal(100);
+      await sale.setMaxBatchSize(50);
+      expect(await sale.maxBatchSize()).to.equal(50);
+    });
+
+    it("should only allow owner to setMaxBatchSize", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+
+      await expect(
+        sale.connect(other).setMaxBatchSize(50)
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+
+    it("should allow owner to setTierPaused", async function () {
+      const { sale } = await loadFixture(deployFixture);
+
+      await expect(sale.setTierPaused(0, true))
+        .to.emit(sale, "TierPausedToggled")
+        .withArgs(0, true);
+
+      expect(await sale.tierPaused(0)).to.be.true;
+
+      await expect(sale.setTierPaused(0, false))
+        .to.emit(sale, "TierPausedToggled")
+        .withArgs(0, false);
+
+      expect(await sale.tierPaused(0)).to.be.false;
+    });
+
+    it("should only allow owner to setTierPaused", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+
+      await expect(
+        sale.connect(other).setTierPaused(0, true)
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+  });
+
+  describe("Deadline and maxPricePerNode guards", function () {
+    it("should revert if deadline has passed", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+
+      const pastDeadline = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, pastDeadline, tierPrice)
+      ).to.be.revertedWith("NodeSale: tx expired");
+    });
+
+    it("should revert if price exceeds maxPricePerNode", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+
+      // Set maxPricePerNode below tier price
+      const lowMaxPrice = tierPrice - 1n;
+
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), lowMaxPrice)
+      ).to.be.revertedWith("NodeSale: price slippage");
+    });
+  });
+
+  describe("Contract caller guard", function () {
+    it("should revert if caller is a contract", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // Deploy MockPurchaser
+      const MockPurchaser = await ethers.getContractFactory("MockPurchaser");
+      const purchaser = await MockPurchaser.deploy();
+      await purchaser.waitForDeployment();
+
+      // Fund the contract with USDC
+      const purchaserAddr = await purchaser.getAddress();
+      await usdc.mint(purchaserAddr, tierPrice);
+
+      await expect(
+        purchaser.tryPurchase(
+          await sale.getAddress(),
+          0,
+          1,
+          await usdc.getAddress(),
+          ethers.ZeroHash,
+          futureDeadline(),
+          tierPrice,
+          tierPrice
+        )
+      ).to.be.revertedWith("NodeSale: no contract purchases");
+    });
+  });
+
+  describe("maxBatchSize enforcement", function () {
+    it("should enforce maxBatchSize", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // Set maxBatchSize to 5
+      await sale.setMaxBatchSize(5);
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice * 6n);
+
+      // Buying 6 should fail
+      await expect(
+        sale.connect(buyer).purchase(0, 6, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice)
+      ).to.be.revertedWith("NodeSale: invalid quantity");
+
+      // Buying 5 should succeed
+      await sale.connect(buyer).purchase(0, 5, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+    });
+  });
+
+  describe("Per-tier pause", function () {
+    it("should respect per-tier pause", async function () {
+      const { buyer, usdc, sale, tierPrice, nodeContract } = await loadFixture(deployFixture);
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice * 3n);
+
+      // Pause tier 0
+      await sale.setTierPaused(0, true);
+
+      // Purchase on paused tier should fail
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice)
+      ).to.be.revertedWith("NodeSale: tier paused");
+
+      // Unpause tier 0
+      await sale.setTierPaused(0, false);
+
+      // Now purchase should succeed
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+      expect(await nodeContract.balanceOf(buyer.address)).to.equal(1);
+    });
+  });
+
+  describe("Discount rounding edge case", function () {
+    it("should handle discount rounding edge case", async function () {
+      const { buyer, treasury, usdc, sale } = await loadFixture(deployFixture);
+
+      // Set a tier with an odd price (333_333333 = ~333.333333 USDC)
+      const oddPrice = 333_333333n;
+      await sale.setTier(7, oddPrice, 100, true);
+
+      // Add a code with 1500 bps (15%) discount
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("ODD"));
+      await sale.addReferralCode(codeHash, 1500);
+
+      // Expected: 333_333333 - (333_333333 * 1500 / 10000) = 333_333333 - 49_999999 = 283_333334
+      // Solidity integer division: 333_333333 * 1500 = 499_999_999_500, / 10000 = 49_999_999 (truncated)
+      const discountAmount = oddPrice * 1500n / 10000n; // 49_999_999n
+      const expectedPrice = oddPrice - discountAmount; // 283_333_334n
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), expectedPrice);
+      await sale.connect(buyer).purchase(7, 1, await usdc.getAddress(), codeHash, futureDeadline(), oddPrice);
+
+      expect(await usdc.balanceOf(treasury.address)).to.equal(expectedPrice);
+    });
+  });
+
+  describe("OperonNode - getNodeInfo", function () {
+    it("should revert for non-existent token", async function () {
+      const { nodeContract } = await loadFixture(deployFixture);
+
+      await expect(nodeContract.getNodeInfo(999)).to.be.revertedWith(
+        "OperonNode: token does not exist"
+      );
+    });
+  });
+});

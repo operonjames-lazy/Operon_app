@@ -1,0 +1,112 @@
+'use client';
+
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { getSupabaseBrowser } from '@/lib/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+
+/**
+ * Subscribes to Supabase Realtime for instant tier-sellout notifications.
+ * Falls back to TanStack Query's 10s polling if Realtime disconnects.
+ */
+
+interface TierChangeEvent {
+  tier: number;
+  sold: number;
+  supply: number;
+  isActive: boolean;
+  message: string;
+}
+
+export function useTierRealtime() {
+  const queryClient = useQueryClient();
+  const [lastEvent, setLastEvent] = useState<TierChangeEvent | null>(null);
+  const [connected, setConnected] = useState(false);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
+  const dismissEvent = useCallback(() => setLastEvent(null), []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
+
+    let cancelled = false;
+
+    try {
+      const supabase = getSupabaseBrowser();
+
+      // Build channel with all listeners BEFORE subscribing
+      const channel = supabase.channel('sale-realtime');
+
+      // Listen for tier updates
+      channel.on(
+        'postgres_changes' as never,
+        { event: 'UPDATE', schema: 'public', table: 'sale_tiers' },
+        (payload: { new: Record<string, unknown>; old: Record<string, unknown> }) => {
+          if (cancelled) return;
+          const row = payload.new as {
+            tier: number;
+            total_sold: number;
+            total_supply: number;
+            is_active: boolean;
+          };
+
+          if (row.total_sold >= row.total_supply && payload.old?.is_active) {
+            setLastEvent({
+              tier: row.tier,
+              sold: row.total_sold,
+              supply: row.total_supply,
+              isActive: false,
+              message: `Tier ${row.tier} is sold out!`,
+            });
+          }
+
+          if (row.is_active && !payload.old?.is_active) {
+            setLastEvent({
+              tier: row.tier,
+              sold: row.total_sold,
+              supply: row.total_supply,
+              isActive: true,
+              message: `Tier ${row.tier} is now active`,
+            });
+          }
+
+          queryClient.invalidateQueries({ queryKey: ['sale'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        }
+      );
+
+      // Listen for sale config changes
+      channel.on(
+        'postgres_changes' as never,
+        { event: 'UPDATE', schema: 'public', table: 'sale_config' },
+        () => {
+          if (cancelled) return;
+          queryClient.invalidateQueries({ queryKey: ['sale'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        }
+      );
+
+      // NOW subscribe (after all .on() calls)
+      channel.subscribe((status: string) => {
+        if (cancelled) return;
+        setConnected(status === 'SUBSCRIBED');
+      });
+
+      channelRef.current = channel;
+    } catch (err) {
+      console.error('Realtime subscription failed:', err);
+      setConnected(false);
+    }
+
+    return () => {
+      cancelled = true;
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        channelRef.current = null;
+      }
+    };
+  }, [queryClient]);
+
+  return { lastEvent, dismissEvent, connected };
+}
