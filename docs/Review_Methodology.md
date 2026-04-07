@@ -1,140 +1,146 @@
-# Review Methodology — Lessons from Iterative Checking
+# Review Methodology for AI-Built Full-Stack DePIN Applications
 
-*What we missed across 6+ audit rounds, why we missed it, and how to prevent it.*
-
----
-
-## The Pattern of Misses
-
-| Round | What was missed | Why it was missed |
-|-------|----------------|-------------------|
-| Round 1 (initial build) | Contract ABI didn't match frontend (4 vs 6 params) | Agents built contract and frontend in parallel without shared interface |
-| Round 2 (first audit) | Token decimal conversion in webhooks | Audit checked each file in isolation, not the data transformation chain |
-| Round 3 (resilience) | Auth tokens never sent in API requests | `authFetch` wrapper created but never wired to hooks |
-| Round 4 (CTO review) | `setAuthToken()` never called after SIWE login | No auth orchestration layer — wallet connect and JWT were separate concerns |
-| Round 5 (final check) | Nonce generated but never verified | Function exported but never imported by consumer |
-| Round 5 | Balance display precision loss on 18-decimal tokens | `Number()` overflow not caught by type system |
-| Round 5 | Confetti hydration mismatch | `Math.random()` in JSX — server/client divergence |
+*Synthesized from: Google engineering practices, OpenZeppelin audit methodology, Trail of Bits adversarial review, Stripe AI code review, and lessons from 7+ audit rounds on this project.*
 
 ---
 
-## Root Causes (5 categories)
+## The 3 Questions
 
-### 1. Parallel Build Without Shared Contract
-**Pattern:** Multiple agents build different parts simultaneously. Each part works in isolation but they don't fit together.
+After every change, ask these three questions. They cover every category of bug we've found AND the categories identified by industry leaders.
 
-**Examples:**
-- Contract added `deadline` + `maxPricePerNode` params. Frontend ABI still had 4 params.
-- `authFetch` created with `setAuthToken`. No code ever calls `setAuthToken`.
+### 1. "Does it flow?"
+Trace data from the user's action all the way to the database and back to their screen.
 
-**Prevention:**
-- Define interfaces/types/ABIs FIRST as a shared contract
-- Build against the shared contract, not assumptions
-- After parallel builds, run an **integration check** that traces data across boundaries
+**How to check:**
+- Pick the user action (click Purchase, connect wallet, enter code)
+- Follow each step: frontend → API → database → webhook → back to frontend
+- At each boundary crossing, verify: does the data actually arrive? In the right format? With the right auth?
 
-### 2. File-Level vs Flow-Level Auditing
-**Pattern:** Audits check "does this file compile? does this function have correct logic?" but not "does data actually flow from user action to database and back?"
+**What this catches:**
+- Auth tokens never sent (Round 4)
+- Nonce generated but never verified (Round 5)
+- Community code generated but never displayed (Round 7)
+- Webhook events emitted but never caught (Round 7)
 
-**Examples:**
-- Every individual API route was correct. But no JWT token was ever sent to them.
-- Nonce generation worked. Nonce verification worked. But nobody called verification.
+**Industry source:** Google's LGTM standard requires reviewers to verify code "does what the author claims." Trail of Bits builds a "mental model" of the system before auditing individual functions.
 
-**Prevention:**
-- Always audit by **tracing end-to-end flows**, not by reading files:
-  - "User clicks Purchase → what happens step by step until DB is updated?"
-  - "User connects wallet → where does the JWT end up? → how does it get to the API?"
-- Ask: "For every function that's EXPORTED, where is it IMPORTED?"
+### 2. "What else could it be?"
+For every variable, state, or input — enumerate ALL possible values and verify the system handles each one.
 
-### 3. Producer-Consumer Disconnect
-**Pattern:** Code that produces something (generates a token, creates a function, exports a utility) is checked, but the consumer (the code that uses it) is not checked.
+**How to check:**
+- Find every enum: `SaleStage = 'active' | 'paused' | 'closed'`
+- For each value, navigate the UI and verify it displays correctly
+- Find every nullable field: what renders when it's `null`?
+- Find every number: what happens at 0? At MAX_INT? At negative?
 
-**Examples:**
-- `verifyNonce()` exported from nonce module — never imported anywhere
-- `setAuthToken()` exported from fetch module — never called after auth
-- `lib/rpc.ts` created with fallback logic — never integrated into webhooks
+**What this catches:**
+- Sale page has no paused/closed UI (Round 7)
+- Balance precision loss on 18-decimal tokens (Round 5)
+- Empty states not handled (multiple rounds)
 
-**Prevention:**
-- For every new utility/function, immediately verify: **where is this called?**
-- Run `grep` for the function name across the codebase — if zero consumers, it's dead code
-- Rule: "Never declare a function complete until its consumer is also complete"
+**Industry source:** Trail of Bits uses "invariant testing" — defining properties that must always be true, then fuzzing millions of states. State machine testing methodologies explicitly model every transition.
 
-### 4. Type System Doesn't Catch Runtime Issues
-**Pattern:** TypeScript says the code compiles, but runtime behavior is wrong.
+### 3. "Who consumes this?"
+For everything produced (a function, an event, a data point, a label) — verify something uses it, and that the consumer receives what it expects.
 
-**Examples:**
-- `Number(bigint)` compiles fine but loses precision for large values
-- `Math.random()` in JSX compiles fine but causes hydration mismatch
-- Empty `Authorization` header compiles fine but API returns 401
+**How to check:**
+- Every exported function → grep for imports. Zero consumers = dead code.
+- Every contract event emitted → is there a webhook handler listening?
+- Every DB write → is it queried and displayed?
+- Every user-facing string → does it communicate VALUE, not just function?
 
-**Prevention:**
-- Don't trust "the build passes" as proof of correctness
-- After build passes, trace runtime values mentally: "What is the actual value at this point?"
-- Test with edge case data: large numbers, empty strings, null values
+**What this catches:**
+- `setAuthToken()` created but never called (Round 3)
+- `verifyNonce()` exported but never imported (Round 5)
+- `AdminMint` event with no webhook listener (Round 7)
+- "Share to earn commission" doesn't mention 10% discount (Round 7)
 
-### 5. Incremental Fixes Creating New Gaps
-**Pattern:** Fixing one thing breaks or creates a gap in another thing.
-
-**Examples:**
-- Added `deadline` + `maxPricePerNode` to contract → forgot to update frontend ABI
-- Created `authFetch` wrapper → forgot to wire it into the auth flow
-- Moved nonce logic to shared `lib/nonce.ts` → forgot to import in consumer
-
-**Prevention:**
-- Every fix has a **blast radius check**: "What else touches this?"
-- Cross-reference: "If I change function X's signature, who calls X?"
-- After every fix round, re-run the full flow trace (not just "does it build?")
+**Industry source:** OpenZeppelin's readiness framework requires all code to have consumers (tests, integrations). Stripe shifts human review from "does the code work?" to "does it integrate correctly?"
 
 ---
 
-## The Review Checklist
+## What These Questions Miss (And How to Cover the Gaps)
 
-Use this checklist after every significant change:
+The 3 questions catch ~90% of bugs. For the remaining 10%, add these domain-specific checks:
 
-### Level 1: Compilation (basic)
-- [ ] `npx next build` passes
-- [ ] `npx hardhat test` passes
-- [ ] No TypeScript errors
+### Smart Contract Security
+The 3 questions don't catch cryptographic or economic exploits. Use:
+- **OWASP Smart Contract Top 10** checklist (reentrancy, overflow, access control, oracle manipulation)
+- **Invariant testing** with fuzzing (Echidna/Medusa) — millions of random states
+- **Adversarial thinking**: "If I were an attacker, how would I exploit this?"
 
-### Level 2: Import Chain (structural)
-- [ ] Every `import { X } from Y` — does Y export X?
-- [ ] Every exported function — is it imported somewhere?
-- [ ] No orphan utilities (created but never used)
+### AI-Generated Code Blind Spots
+Research shows AI-generated code has vulnerabilities in ~19% of cases, and models fail to self-correct 64.5% of the time.
+- **Use a different model to review** than the one that generated the code
+- **Security-critical paths** (auth, payments, contract interactions) need human review
+- **Test known AI hallucination patterns**: false imports, wrong API patterns, plausible-but-wrong logic
 
-### Level 3: Data Flow (integration)
-- [ ] Auth flow: wallet connect → SIWE → JWT → localStorage → API headers → verifyToken → userId
-- [ ] Purchase flow: click → blockchain tx → webhook → DB insert → cache invalidate → UI update
-- [ ] Referral flow: code validate → discount apply → purchase → commission walk → credited update
-- [ ] Config flow: sale_config row → all API routes read same stage → frontend renders accordingly
-
-### Level 4: Runtime Values (edge cases)
-- [ ] BigInt values: are they converted safely? (use `formatUnits`, not `Number()`)
-- [ ] Null/undefined: every `?.` chain — what happens if it's actually null?
-- [ ] Empty collections: what renders when array is `[]`?
-- [ ] Token decimals: 6 on Arbitrum, 18 on BSC — are calculations correct on both?
-
-### Level 5: Cross-Boundary Alignment
-- [ ] Contract function signature matches frontend ABI (param count, types, order)
-- [ ] API response shape matches TypeScript type definition
-- [ ] TypeScript type matches what hooks destructure
-- [ ] DB column names match Supabase query `.select()` strings
+### Cross-Boundary Type Safety
+TypeScript compiles but runtime fails. The 3 questions partially cover this, but explicitly check:
+- Contract ABI params match frontend call args
+- API response shape matches TypeScript type
+- DB column names match Supabase `.select()` strings
+- Token decimal handling (6 vs 18) is correct per chain
 
 ---
 
-## When to Run Which Level
+## When to Review
 
-| Situation | Levels to Run |
-|-----------|--------------|
-| Single file edit | Level 1 |
-| New feature or component | Level 1 + 2 |
-| Changed function signature | Level 1 + 2 + 5 |
-| Changed auth/payment/commission logic | All 5 levels |
-| After parallel agent builds | Level 2 + 3 + 5 (integration focus) |
-| Before deployment | All 5 levels |
+| Trigger | What to Check |
+|---------|---------------|
+| **Single file edit** | Build passes + Question 3 (who consumes?) |
+| **New feature** | All 3 questions + smart contract security if contract changed |
+| **Changed function signature** | Question 3 (who consumes?) + cross-boundary alignment |
+| **Auth/payment/commission change** | All 3 questions + full end-to-end flow trace |
+| **Product decision change** | Question 2 (what else could state be?) + all affected docs |
+| **New contract event** | Question 3 (is there a listener?) |
+| **Before deployment** | All 3 questions + security + AI blind spot check |
 
 ---
 
-## Key Principle
+## Our Track Record: What We Missed and Why
 
-**"The build passing is necessary but not sufficient."**
+| Round | What | Why | Which Question Would Have Caught It |
+|-------|------|-----|--------------------------------------|
+| 1 | Contract ABI mismatch (4 vs 6 params) | Parallel builds, no shared interface | Q3: Who consumes the contract? → frontend ABI |
+| 2 | Token decimal conversion | File-level audit, not flow | Q1: Does the data flow correctly through the transform? |
+| 3 | Auth tokens never sent in API requests | Built producer, forgot consumer | Q3: Who consumes `authFetch`? → nobody calls `setAuthToken` |
+| 4 | `setAuthToken()` never called | No auth orchestration layer | Q1: Does auth flow from wallet → JWT → localStorage → API? |
+| 5 | Nonce generated but never verified | Function exported, never imported | Q3: Who consumes `verifyNonce`? → nobody |
+| 5 | BigInt precision loss | Type system doesn't catch runtime | Q2: What value is this at runtime? → exceeds MAX_SAFE_INTEGER |
+| 7 | No paused/closed UI | Only tested happy path | Q2: What else could `stage` be? → paused, closed |
+| 7 | Community code not shown after purchase | Built write, forgot display | Q1: Does code flow from generation → DB → UI? |
+| 7 | AdminMint event not tracked | New event, no listener | Q3: Who consumes the AdminMint event? → nobody |
+| 7 | Label says "earn commission" not "10% off" | Developer perspective, not user | Q3: Does the consumer (user) get value from this label? |
 
-The most dangerous bugs are the ones where every file is individually correct but the system doesn't work as a whole. Always trace the flow, not just the files.
+**Every single miss would have been caught by one of the 3 questions.** The questions aren't novel — they're just not asked systematically.
+
+---
+
+## Key Principles From Industry Leaders
+
+**Google:** "Favor approving once the code improves overall quality, even if imperfect." — Don't block on perfection; focus on direction.
+
+**Trail of Bits:** "Build a mental model of the system before reviewing individual functions." — Understand the whole before judging the parts.
+
+**OpenZeppelin:** "Audit readiness has three pillars: Team, Community, Code." — Code quality alone isn't enough; the team must understand what they built and the community must trust it.
+
+**Stripe:** "AI shifted effort from writing to reviewing." — When AI writes 20x more code, the bottleneck moves to review quality, not code output.
+
+**MetaCTO:** "Models fail to correct their own errors 64.5% of the time. Use a different model for review." — This applies to our project directly — when Claude builds code, a verification pass should challenge assumptions, not just confirm them.
+
+---
+
+## The Anti-Patterns
+
+Things to STOP doing because they create false confidence:
+
+1. **"The build passes, so it works."** — Build checks syntax, not semantics. Every round had passing builds with broken functionality.
+
+2. **"Every file looks correct."** — Files are individually correct but don't connect. Always trace flows across files.
+
+3. **"The audit found no issues."** — The audit only checked what it was asked to check. Ask: "What categories of bugs am I NOT looking for?"
+
+4. **"We tested it and it works."** — You tested ONE state. Enumerate ALL states.
+
+5. **"The function exists, so it's used."** — Export ≠ import. Producer ≠ consumer. Trace both sides.
