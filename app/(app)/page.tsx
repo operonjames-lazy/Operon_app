@@ -11,14 +11,7 @@ import { useDashboard } from '@/hooks/useDashboard';
 import { useSaleStatus } from '@/hooks/useSaleStatus';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Link from 'next/link';
-
-function formatUsd(cents: number): string {
-  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-}
-
-function formatNumber(n: number): string {
-  return n.toLocaleString('en-US');
-}
+import { formatUsd, formatNum } from '@/lib/format';
 
 export default function HomePage() {
   const { isConnected } = useAccount();
@@ -117,17 +110,17 @@ export default function HomePage() {
 
           <ProgressBar
             value={tierProgress}
-            label={`${formatNumber(sale?.tierRemaining || 0)} ${t('home.remaining')}`}
+            label={`${formatNum(sale?.tierRemaining || 0)} ${t('home.remaining')}`}
             showPercentage
             color="green"
           />
 
           <div className="flex items-center justify-between text-sm text-t3">
             <span>
-              {formatNumber(sale?.totalSold || 0)} / {formatNumber(sale?.totalSupply || 0)} {t('home.totalNodes')}
+              {formatNum(sale?.totalSold || 0)} / {formatNum(sale?.totalSupply || 0)} {t('home.totalNodes')}
             </span>
             <span>
-              {formatNumber(sale?.whitelistRemaining || 0)} {t('home.whitelistRemaining')}
+              {formatNum(sale?.whitelistRemaining || 0)} {t('home.whitelistRemaining')}
             </span>
           </div>
 

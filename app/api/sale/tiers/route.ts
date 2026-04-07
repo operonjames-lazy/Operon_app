@@ -28,6 +28,8 @@ export async function GET() {
         remaining: t.total_supply - t.total_sold,
         active: t.is_active,
       })),
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
     });
   } catch {
     return Response.json(

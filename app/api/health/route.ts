@@ -51,6 +51,6 @@ export async function GET() {
 
   return Response.json(
     { status: allHealthy ? 'healthy' : 'degraded', checks, timestamp: new Date().toISOString() },
-    { status: allHealthy ? 200 : 503 }
+    { status: allHealthy ? 200 : 503, headers: { 'Cache-Control': 'no-store' } }
   );
 }

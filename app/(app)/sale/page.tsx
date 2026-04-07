@@ -15,6 +15,7 @@ import { useSaleStatus } from '@/hooks/useSaleStatus';
 import { useTierRealtime } from '@/hooks/useTierRealtime';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { STABLECOIN_ADDRESSES, SALE_CONTRACT_ADDRESSES, TOKEN_DECIMALS } from '@/lib/wagmi/contracts';
+import { formatUsd, formatUsdShort, formatNum } from '@/lib/format';
 import type { Chain, PaymentToken } from '@/types/api';
 
 const ERC20_ABI = [
@@ -26,21 +27,6 @@ const ERC20_ABI = [
 const SALE_ABI = [
   { name: 'purchase', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'tierId', type: 'uint256' }, { name: 'quantity', type: 'uint256' }, { name: 'token', type: 'address' }, { name: 'codeHash', type: 'bytes32' }, { name: 'deadline', type: 'uint256' }, { name: 'maxPricePerNode', type: 'uint256' }], outputs: [] },
 ] as const;
-
-/** Format cents as USD — e.g. 44625 → "$446.25" */
-function formatUsd(cents: number): string {
-  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-/** Format cents as whole dollars for hero display — e.g. 44625 → "$446" */
-function formatUsdShort(cents: number): string {
-  return `$${Math.floor(cents / 100).toLocaleString('en-US')}`;
-}
-
-/** Format number with commas — e.g. 1250 → "1,250" */
-function formatNum(n: number): string {
-  return n.toLocaleString('en-US');
-}
 
 type PurchaseStep = 'idle' | 'approving' | 'approved' | 'purchasing' | 'success' | 'error';
 

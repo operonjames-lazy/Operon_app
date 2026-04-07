@@ -62,6 +62,8 @@ export async function GET() {
         active: t.is_active,
         remaining: t.total_supply - t.total_sold,
       })),
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30' },
     });
   } catch {
     return Response.json(

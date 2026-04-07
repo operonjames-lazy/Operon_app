@@ -9,10 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNodes } from '@/hooks/useNodes';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Link from 'next/link';
-
-function formatUsd(cents: number): string {
-  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-}
+import { formatUsd } from '@/lib/format';
 
 export default function NodesPage() {
   const { isConnected } = useAccount();

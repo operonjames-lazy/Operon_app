@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { ethers } from 'ethers';
 import { processReferralAttribution } from '@/lib/commission';
+import { logger } from '@/lib/logger';
 
 const NODE_PURCHASED_EVENT = 'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)';
 
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest) {
 
       results[chain] = { eventsFound, gapsFilled };
     } catch (error) {
-      console.error(`Reconciliation failed for ${chain}:`, error);
+      logger.error('Reconciliation failed', { route: 'cron/reconcile', chain, error: String(error) });
       results[chain] = { eventsFound, gapsFilled };
     }
   }
@@ -163,7 +164,7 @@ export async function GET(request: NextRequest) {
       }
     }
   } catch (retryQueueError) {
-    console.error('Failed events retry failed:', retryQueueError);
+    logger.error('Failed events retry failed', { route: 'cron/reconcile', error: String(retryQueueError) });
   }
 
   return Response.json({ ok: true, results });

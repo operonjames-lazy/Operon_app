@@ -5,6 +5,7 @@
  */
 
 import { createServerSupabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 // Commission rates by partner tier and level (in basis points, 1200 = 12%)
 const COMMISSION_RATES: Record<string, number[]> = {
@@ -67,7 +68,7 @@ export interface PurchaseEvent {
 export async function processReferralAttribution(purchase: PurchaseEvent) {
   // Validate buyer wallet format
   if (!/^0x[a-fA-F0-9]{40}$/i.test(purchase.buyerWallet)) {
-    console.error(`Invalid buyer wallet format: ${purchase.buyerWallet}`);
+    logger.error('Invalid buyer wallet format', { wallet: purchase.buyerWallet });
     return;
   }
 
@@ -122,7 +123,7 @@ export async function processReferralAttribution(purchase: PurchaseEvent) {
 
     // If buyer IS the code owner, skip commission (self-referral)
     if (codeOwner) {
-      console.warn(`Self-referral detected: buyer ${buyer.id} used their own code`);
+      logger.warn('Self-referral detected', { buyerId: buyer.id });
       return;
     }
   }
@@ -193,7 +194,7 @@ async function buildReferralChain(
 
   for (let level = 1; level <= maxDepth; level++) {
     if (visited.has(currentUserId)) {
-      console.error(`Circular referral detected at user ${currentUserId}`);
+      logger.error('Circular referral detected', { userId: currentUserId });
       break;
     }
     visited.add(currentUserId);
@@ -206,7 +207,7 @@ async function buildReferralChain(
 
     if (!referral) break;
     if (referral.referrer_id === userId) {
-      console.error(`Self-referral detected for user ${userId}`);
+      logger.error('Self-referral detected in chain walk', { userId });
       break;
     }
 

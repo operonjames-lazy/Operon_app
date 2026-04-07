@@ -14,10 +14,7 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { API_ROUTES } from '@/lib/api/routes';
 import type { ActivityResponse, PayoutsResponse } from '@/types/api';
-
-function formatUsd(cents: number): string {
-  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-}
+import { formatUsd } from '@/lib/format';
 
 export default function ReferralsPage() {
   const { isConnected } = useAccount();

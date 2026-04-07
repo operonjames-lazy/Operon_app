@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     const { data: tierTotals } = await supabase
       .from('sale_tiers')
       .select('total_sold');
-    const actualTotalSold = tierTotals?.reduce((sum, t) => sum + t.total_sold, 0) || 1;
+    const actualTotalSold = tierTotals?.reduce((sum: number, t: { total_sold: number }) => sum + t.total_sold, 0) || 1;
     const referralPoolDaily = referredNodes
       ? ((referredNodes || 0) / actualTotalSold) * TOTAL_DAILY_POOL
       : 0;
