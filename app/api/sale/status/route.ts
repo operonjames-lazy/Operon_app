@@ -14,10 +14,13 @@ export async function GET() {
       return Response.json({ code: 'NOT_FOUND', message: 'Sale config not found' }, { status: 500 });
     }
 
-    const { data: tiers } = await supabase
+    // tier_max defaults to 40 if column not found (schema cache issue)
+    const maxTier = config.tier_max ?? config.public_tier_max ?? 40;
+
+    const { data: tiers, error: tierError } = await supabase
       .from('sale_tiers')
       .select('*')
-      .lte('tier', config.tier_max)
+      .lte('tier', maxTier)
       .order('tier', { ascending: true });
 
     if (!tiers || tiers.length === 0) {
