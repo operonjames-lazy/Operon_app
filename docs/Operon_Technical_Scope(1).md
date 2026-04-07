@@ -1,11 +1,11 @@
 # Operon Dashboard — Technical Scope of Work
 
 *Based on current UI reference (v1.0)*
-*5 phases from whitelist launch to mature platform*
+*5 phases from sale launch to mature platform*
 
 ---
 
-## Phase 1: Whitelist Sale Launch
+## Phase 1: Sale Launch
 
 *Everything the current UI shows. The minimum viable product that earns revenue.*
 
@@ -96,14 +96,13 @@ Response: {
   payout_wallet: string,
   payout_chain: string,
   sale: {
-    stage: 'whitelist' | 'public' | 'closed',
+    stage: 'active' | 'paused' | 'closed',
     current_tier: number,
     current_price: number,
     discount_price: number | null,
     tier_remaining: number,
     total_remaining: number,
-    total_supply: number,
-    public_sale_date: string | null
+    total_supply: number
   }
 }
 ```
@@ -126,7 +125,7 @@ Response: {
 
 **What the UI shows:**
 - Hero pricing: current tier, discounted price (46px), original price struck through
-- Tier visualization bar (5 segments for whitelist, 40 for public)
+- Tier visualization bar (40 segments, current tier highlighted)
 - Referral code confirmation with discount badge
 - Chain selector (BNB Chain / Arbitrum)
 - Quantity selector (1-10 per wallet)
@@ -134,7 +133,7 @@ Response: {
 - Summary: price × qty, gas estimate, total
 - Two-step purchase: Approve → Purchase
 - Wallet address with switch option
-- Remaining count per tier and total whitelist
+- Remaining count per tier and total remaining
 
 **Smart contracts required:**
 
@@ -245,7 +244,6 @@ Body: { tx_hash: string, chain: string }
 | Wallet limit reached | "You've reached the maximum of 10 nodes for this tier." | Disable quantity increase |
 | Sale paused | "Sale is temporarily paused. Check back shortly." | Poll every 30s, auto-resume |
 | Code invalid | "This referral code is not valid." | Clear code field, show input |
-| Code not found in whitelist | "This code doesn't have whitelist access." | During whitelist only |
 | Transaction reverted | "Transaction failed: [decoded reason]. No funds were charged." | Show retry button |
 | RPC timeout | "Network is congested. Retrying..." | 3 retries with backoff, then "Try again later" |
 | Approval already exists | Skip approve step, go straight to purchase | Check allowance on page load |
@@ -422,7 +420,6 @@ commission_payouts (
   token VARCHAR(10),
   chain VARCHAR(10),
   tx_hash VARCHAR(66),
-  merkle_root VARCHAR(66),
   period_start DATE,
   period_end DATE,
   status VARCHAR(20) DEFAULT 'pending', -- pending, processing, sent, confirmed
@@ -543,12 +540,11 @@ On each NodePurchased event:
 
 ---
 
-## Phase 2: Public Sale
+## Phase 2: Scaling
 
-*Opens to everyone. Community referral codes activate. All 40 tiers.*
+*Higher traffic volume. All 40 tiers visible.*
 
 ### New features:
-- **Community referral codes** — auto-generated for every node buyer. Wallet-based or generated code. 10% buyer discount, basic commission (L1: 10%, L2: 3%, L3: 2%, L4: 1%, L5: 1%).
 - **All 40 tiers** visible on Sale page (scrollable tier bar, tier selector dropdown for mobile)
 - **Per-wallet limits** enforced at smart contract level (Tier 1-3: limits, Tier 4+: unlimited)
 - **Real-time tier transitions** — when a tier sells out during the sale, the frontend auto-advances to the next tier. WebSocket or polling with 5s interval.
@@ -580,18 +576,18 @@ On each NodePurchased event:
 - **Node delegation interface** — assign node licenses to NaaS providers or self-run. UI: select nodes → choose operator → confirm delegation tx.
 - **NaaS provider directory** — list of approved operators with uptime stats, commission rates.
 - **Multi-wallet linking** — add additional wallets to aggregate node holdings across wallets.
-- **Commission payouts begin** — biweekly direct USDC transfer. Partner sees payout status: pending → processing → sent → confirmed. Tx hash linked to explorer.
+- **Commission payouts begin** — biweekly direct USDC batch transfer. Partner sees payout status: pending → processing → sent → confirmed. Tx hash linked to explorer.
 - **Rewards estimator enhanced** — more accurate projections based on final sell-out numbers, burn mechanism results.
 
 ### Smart contract additions:
 - **Delegation contract** — allows NFT holder to authorize an operator address without transferring the NFT
-- **batch transfer script** — for biweekly commission payouts. Admin publishes Merkle root, partners claim against proof.
-- **Burn mechanism** — if not all 100K nodes sold, burn unsold allocation and redistribute emission proportionally
+- **Batch transfer script** — for biweekly commission payouts. Admin executes direct USDC batch transfer to partner wallets.
+- **Burn mechanism** — if not all 100K nodes sold, post-TGE governance votes on whether to burn unsold allocation or resume sale
 
 ### Backend additions:
 - KYC status tracking (pending, verified, rejected, expired)
 - Delegation state indexer — listen for delegation events, update node status
-- Merkle tree generator — biweekly job that calculates all commission owed, generates tree, publishes root
+- Batch payout calculator — biweekly job that calculates all commission owed, generates transfer list for admin execution
 - Secondary market price tracker — optional, for showing floor price of node NFTs
 
 ### New API endpoints:
@@ -601,7 +597,7 @@ GET  /api/kyc/status — returns verification status
 POST /api/nodes/delegate — initiate delegation
 GET  /api/nodes/operators — list NaaS providers
 POST /api/wallets/link — link additional wallet
-GET  /api/payouts/claim-proof — Merkle proof for payout claiming
+GET  /api/payouts/status — payout status and history
 ```
 
 ---

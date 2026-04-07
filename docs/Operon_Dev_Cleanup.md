@@ -21,7 +21,7 @@ CREATE TABLE sale_tiers (
   updated_at    TIMESTAMPTZ DEFAULT now()
 );
 
--- Seed whitelist tiers
+-- Seed Tiers 1-5 (public allocation — 1,250 per tier, admin allocation handled via adminMint())
 INSERT INTO sale_tiers (tier, price_usd, total_supply, is_active) VALUES
   (1, 50000, 1250, TRUE),
   (2, 52500, 1250, FALSE),
@@ -400,7 +400,6 @@ export const ERROR_MESSAGES = {
     WALLET_LIMIT: 'Maximum {limit} nodes per wallet for this tier.',
     SALE_PAUSED: 'Sale is temporarily paused. Check back shortly.',
     CODE_INVALID: 'This referral code is not valid.',
-    CODE_NO_WHITELIST: 'This code does not have whitelist access.',
     TX_REVERTED: 'Transaction failed: {reason}. No funds were charged.',
     TX_TIMEOUT: 'Network is congested. Retrying...',
     APPROVAL_REJECTED: 'Approval cancelled. Try again.',
@@ -414,7 +413,6 @@ export const ERROR_MESSAGES = {
     WALLET_LIMIT: '此層級每個錢包最多 {limit} 個節點。',
     SALE_PAUSED: '銷售暫時停止，請稍後再試。',
     CODE_INVALID: '此推薦碼無效。',
-    CODE_NO_WHITELIST: '此推薦碼不具白名單資格。',
     TX_REVERTED: '交易失敗：{reason}。未扣除任何資金。',
     TX_TIMEOUT: '網路擁塞，正在重試⋯',
     APPROVAL_REJECTED: '授權已取消，請重試。',
@@ -428,7 +426,6 @@ export const ERROR_MESSAGES = {
     WALLET_LIMIT: '此层级每个钱包最多 {limit} 个节点。',
     SALE_PAUSED: '销售暂时停止，请稍后再试。',
     CODE_INVALID: '此推荐码无效。',
-    CODE_NO_WHITELIST: '此推荐码不具白名单资格。',
     TX_REVERTED: '交易失败：{reason}。未扣除任何资金。',
     TX_TIMEOUT: '网络拥塞，正在重试…',
     APPROVAL_REJECTED: '授权已取消，请重试。',

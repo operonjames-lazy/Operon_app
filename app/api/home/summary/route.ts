@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServerSupabase();
 
-    // Get user info
+    // Get user info (include referral_code for community codes)
     const { data: user } = await supabase
       .from('users')
-      .select('id, primary_wallet, is_epp, payout_chain')
+      .select('id, primary_wallet, is_epp, payout_chain, referral_code')
       .eq('id', userId)
       .single();
 
@@ -71,29 +71,21 @@ export async function GET(request: NextRequest) {
     const totalSold = allTiers?.reduce((sum, t) => sum + t.total_sold, 0) || 0;
     const totalSupply = allTiers?.reduce((sum, t) => sum + t.total_supply, 0) || 0;
 
-    // Emission calculation (Year 1: 40% of 63B / 365 ≈ 69.04 per node per day)
+    // Emission calculation (Year 1: 40% of 63B / 365 ~ 69.04 per node per day)
     const baseDaily = 69.04;
     const estDailyEmission = nodesOwned * baseDaily;
-
-    // Determine sale stage
-    const WHITELIST_TIER_COUNT = 5;
-    const whitelistTiers = allTiers?.slice(0, WHITELIST_TIER_COUNT) || [];
-    const whitelistRemaining = whitelistTiers.reduce(
-      (sum, t) => sum + (t.total_supply - t.total_sold), 0
-    );
-    const whitelistSupply = whitelistTiers.reduce((sum, t) => sum + t.total_supply, 0);
 
     return Response.json({
       nodesOwned,
       totalInvested,
       estDailyEmission,
       referralCount: referralCount || 0,
-      referralCode: partner?.referral_code || null,
+      referralCode: partner?.referral_code || user?.referral_code || null,
       payoutWallet: partner?.payout_wallet || user.primary_wallet,
       payoutChain: partner?.payout_chain || user.payout_chain || 'arbitrum',
       isEpp: user.is_epp,
       sale: {
-        stage: (saleConfig?.stage || 'whitelist') as 'whitelist' | 'public' | 'closed',
+        stage: saleConfig?.stage || 'active',
         currentTier: activeTier?.tier || 1,
         currentPrice: activeTier?.price_usd || 50000,
         discountBps: user.is_epp && partner?.status === 'active'
@@ -104,8 +96,6 @@ export async function GET(request: NextRequest) {
           : null,
         tierRemaining: activeTier ? activeTier.total_supply - activeTier.total_sold : 0,
         tierSupply: activeTier?.total_supply || 0,
-        whitelistRemaining,
-        whitelistSupply,
         totalSold,
         totalSupply,
         publicSaleDate: null,

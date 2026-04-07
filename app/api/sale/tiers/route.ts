@@ -6,17 +6,13 @@ export async function GET() {
 
     const { data: config } = await supabase
       .from('sale_config')
-      .select('stage, whitelist_tier_max, public_tier_max')
+      .select('tier_max')
       .single();
-
-    const maxTier = config?.stage === 'whitelist'
-      ? (config?.whitelist_tier_max ?? 5)
-      : (config?.public_tier_max ?? 40);
 
     const { data: tiers } = await supabase
       .from('sale_tiers')
       .select('*')
-      .lte('tier', maxTier)
+      .lte('tier', config?.tier_max ?? 40)
       .order('tier', { ascending: true });
 
     return Response.json({

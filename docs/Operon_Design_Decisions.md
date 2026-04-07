@@ -7,30 +7,26 @@
 ## DD-001: Phase-Aware Sale Configuration (2026-04-03)
 
 ### Decision
-Use a single-row `sale_config` database table to control the sale phase (whitelist → public → closed) and all phase-specific parameters, instead of environment variables or code deployments.
+Use a single-row `sale_config` database table to control the sale stage (active | paused | closed) and all stage-specific parameters, instead of environment variables or code deployments.
 
 ### Why
 - **Instant switching** — admin updates one DB row, all connected clients see the change within seconds via Supabase Realtime. No Vercel redeploy needed.
 - **Auditable** — the `updated_at` timestamp + `admin_audit_log` table tracks who changed what and when.
 - **Single source of truth** — API routes, cron jobs, and webhooks all read the same row.
-- **Supports scheduled transitions** — set `public_sale_date` and a future cron can auto-switch.
 
 ### How it works
 ```
 sale_config (singleton table, id=1)
-├── stage: 'whitelist' | 'public' | 'closed'
-├── whitelist_tier_max: 5          (tiers shown during whitelist)
-├── public_tier_max: 40            (tiers shown during public sale)
+├── stage: 'active' | 'paused' | 'closed'
+├── tier_max: 40                   (total tiers available)
 ├── community_discount_bps: 1000   (10% for community codes)
 ├── epp_discount_bps: 1500         (15% for EPP codes)
-├── require_code_whitelist: true    (whitelist requires EPP code to buy)
-├── public_sale_date: timestamp     (when public sale opens)
 └── realtime_enabled: true
 ```
 
-**To switch from whitelist → public:**
+**To pause the sale:**
 ```sql
-UPDATE sale_config SET stage = 'public', require_code_whitelist = false;
+UPDATE sale_config SET stage = 'paused';
 ```
 All clients update within seconds.
 

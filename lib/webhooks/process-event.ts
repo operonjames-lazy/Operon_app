@@ -138,4 +138,39 @@ export async function processPurchaseEvent(event: ParsedPurchaseEvent) {
   } catch (err) {
     logger.error('Tier increment failed', { txHash: event.txHash, error: String(err) });
   }
+
+  // Generate community referral code for buyer (if they don't have one)
+  try {
+    const { data: buyer } = await supabase
+      .from('users')
+      .select('referral_code')
+      .eq('primary_wallet', event.buyerWallet.toLowerCase())
+      .single();
+
+    if (buyer && !buyer.referral_code) {
+      const CODE_CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+      let code = 'OPRN-';
+      for (let i = 0; i < 4; i++) {
+        code += CODE_CHARSET[Math.floor(Math.random() * CODE_CHARSET.length)];
+      }
+
+      // Insert with unique constraint catch (retry on collision)
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { error } = await supabase
+          .from('users')
+          .update({ referral_code: code })
+          .eq('primary_wallet', event.buyerWallet.toLowerCase())
+          .is('referral_code', null); // Only update if still null
+
+        if (!error) break;
+        // Regenerate on unique constraint violation
+        code = 'OPRN-';
+        for (let i = 0; i < 4; i++) {
+          code += CODE_CHARSET[Math.floor(Math.random() * CODE_CHARSET.length)];
+        }
+      }
+    }
+  } catch (codeErr) {
+    logger.warn('Community code generation failed', { buyerWallet: event.buyerWallet, error: String(codeErr) });
+  }
 }

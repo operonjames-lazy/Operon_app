@@ -259,11 +259,6 @@ export default function SalePage() {
     );
   }
 
-  const isWhitelist = sale?.stage === 'whitelist';
-  const requiresCode = sale?.requireCode && isWhitelist;
-
-  const whitelistSold = sale?.whitelistSupply ? sale.whitelistSupply - (sale.whitelistRemaining || 0) : 0;
-
   return (
     <div className="space-y-5 max-w-2xl mx-auto animate-fade-in">
       {/* Real-time tier notification */}
@@ -318,10 +313,10 @@ export default function SalePage() {
 
       {/* ═══ HERO PRICING — matches HTML reference ═══ */}
       <div className="text-center py-3">
-        {isWhitelist && (
+        {sale?.stage === 'active' && (
           <div className="flex items-center justify-center gap-1.5 mb-3">
             <span className="h-[7px] w-[7px] rounded-full bg-green animate-pulse-dot" />
-            <span className="font-mono text-xs tracking-[0.08em] text-green uppercase font-medium">{t('sale.whitelistLive')}</span>
+            <span className="font-mono text-xs tracking-[0.08em] text-green uppercase font-medium">{t('sale.saleLive')}</span>
           </div>
         )}
         <div className="text-sm text-t2 font-medium">{t('home.currentTier')}</div>
@@ -366,21 +361,9 @@ export default function SalePage() {
             })}
           </div>
           <div className="flex justify-between font-mono text-[10px] text-t3 mb-5">
-            <span>{formatNum(whitelistSold)} / {formatNum(sale.whitelistSupply || 0)} whitelist</span>
-            {discountBps > 0 && <span>All prices with {discountBps / 100}% EPP discount</span>}
+            <span>{formatNum(sale?.totalSold || 0)} / {formatNum(sale?.totalSupply || 0)} sold</span>
+            {discountBps > 0 && <span>All prices with {discountBps / 100}% discount</span>}
           </div>
-        </div>
-      )}
-
-      {/* Whitelist notice (prominent, above buy box) */}
-      {requiresCode && !codeValid && (
-        <div className="rounded-lg border border-amber/30 bg-amber/5 px-4 py-3 text-center">
-          <p className="text-sm text-amber font-medium">
-            {t('sale.whitelistRequired')}
-          </p>
-          <p className="text-xs text-t3 mt-1">
-            {t('sale.whitelistRequiredSub')}
-          </p>
         </div>
       )}
 

@@ -46,7 +46,7 @@ Roles are additive, not exclusive. A single user can be all three:
 | **Visitor** | Connects wallet or creates account | Sale tab, public info |
 | **Node buyer** | Purchases ≥1 node | Nodes tab, Rewards tab, auto-generated referral code |
 | **Community referrer** | Any node buyer (automatic) | Referrals tab (basic view: code, count, earnings) |
-| **Elite Partner** | Invited + onboarded via EPP page | Referrals tab (full view), Programme tab, Resources tab, whitelist selling |
+| **Elite Partner** | Invited + onboarded via EPP page | Referrals tab (full view), Programme tab, Resources tab, referral selling with 15% discount |
 
 The dashboard checks:
 - Does this wallet hold Operon Node NFTs? → Show Nodes tab with inventory
@@ -89,8 +89,7 @@ Mobile: 5 bottom tabs (Overview, Sale, Nodes, Rewards, Referrals) + hamburger fo
 ### Announcement banner
 
 Persistent top banner across all pages. Dismissible but reappears for new announcements. Used for:
-- "Whitelist sale is live"
-- "Public sale opens [date]"
+- "Genesis Node Sale is live"
 - "Tier 2 is 80% sold"
 - "Biweekly payout processed — check Referrals"
 - "KYC now required for reward claiming"
@@ -107,7 +106,7 @@ The at-a-glance page. Shows different content based on role and stage.
 **For a new visitor (no nodes, no referrals):**
 - Welcome message
 - "Get started" card linking to Sale tab
-- Current sale status (whitelist or public, current tier)
+- Current sale status (current tier, remaining in tier, total remaining)
 - If referral code in URL: "You're getting 15% off with code OPRN-K7VM" confirmation banner
 
 **For a node holder:**
@@ -118,8 +117,6 @@ The at-a-glance page. Shows different content based on role and stage.
 
 **For an Elite Partner:**
 - Everything above plus:
-- Countdown timer (to public sale during whitelist, or to TGE during public)
-- Whitelist pool status (shared pool remaining)
 - Tier progress bar (credited amount → next tier)
 - Network size (total referrals across all levels)
 - Commission breakdown summary
@@ -164,9 +161,9 @@ The at-a-glance page. Shows different content based on role and stage.
 
 **Purchase flow (7 steps, 2 transactions):**
 
-1. **Referral code** — auto-filled from URL param, or user types one in. Validated against backend. Shows discount amount if valid. Shows "Invalid code" if not. Field is optional during public sale (no discount), but required during whitelist (no access without EPP code).
+1. **Referral code** — auto-filled from URL param, or user types one in. Validated against backend. Shows discount amount if valid (EPP = 15%, Community = 10%). Shows "Invalid code" if not. Field is optional — no code means full price purchase.
 
-2. **Tier display** — visual bar showing all tiers. Current active tier highlighted. Sold-out tiers greyed. Remaining count shown. During whitelist: only Tiers 1-5 visible. During public: all 40.
+2. **Tier display** — visual bar showing all tiers. Current active tier highlighted. Sold-out tiers greyed. Remaining count shown. Shows: current tier, remaining in tier, total remaining.
 
 3. **Chain selection** — BNB Chain or Arbitrum. Shows available payment tokens for selected chain. Shows wallet balance for each token.
 
@@ -192,8 +189,8 @@ Share it — your buyers get 10% off, you earn commission.
 
 **Edge cases the Sale page handles:**
 - Tier sells out during browsing → auto-advance to next tier, show notification
-- Sale not yet open (visitor without EPP code during whitelist) → countdown + "Enter a referral code for early access"
-- Sale completed (all 100K sold) → "Sold out" state with secondary market links (OpenSea, etc.)
+- Sale paused → "Sale is temporarily paused. Check back shortly."
+- Sale completed (all sold out or closed) → "Sold out" state with secondary market links (OpenSea, etc.)
 - Wallet not connected → "Connect wallet to purchase" with wallet selector
 - Wrong chain → "Switch to [Arbitrum/BNB Chain] to continue" with chain-switch prompt
 - Insufficient balance → "You need X more USDC" with bridge/swap link
@@ -294,9 +291,7 @@ Date        | Source          | Amount      | Status    | Tx
 - "Upgrade to Elite Partner" info (if EPP is still accepting partners)
 
 **Full EPP view (everything above plus):**
-- "Your buyers get 15% off + whitelist access" (EPP rates)
-- Countdown timer to public sale (during whitelist)
-- Whitelist pool status with tier-by-tier remaining count and discounted pricing
+- "Your buyers get 15% off" (EPP rates)
 - Stats expanded: Credited amount, Commission, Network size, Current tier
 - Tier progress bar: "Affiliate → Partner: $2,340 / $5,000"
 - Network breakdown (L1 through L5+ counts)
@@ -315,7 +310,7 @@ Date        | Source          | Amount      | Status    | Tx
 Commission Summary
 
 Unpaid:     $1,240.00
-Next payout: April 15, 2026 (biweekly Merkle root)
+Next payout: April 15, 2026 (biweekly batch transfer)
 
 Level   | Sales  | Commission
 L1      | $4,250 | $510.00 (12%)
@@ -384,19 +379,19 @@ This period: $2,800 / $3,750 (74.7% — half stipend zone)
 
 ## 4. Stage-by-Stage Feature Availability
 
-| Feature | Whitelist | Public Sale | Post-Sale Pre-TGE | Post-TGE |
+| Feature | Active Sale | Paused | Closed (Pre-TGE) | Post-TGE |
 |---|---|---|---|---|
 | Overview | ✓ | ✓ | ✓ | ✓ |
-| Sale (buy nodes) | ✓ (EPP codes only) | ✓ (everyone) | ✗ (sold out) | ✗ (secondary market link) |
+| Sale (buy nodes) | ✓ (everyone) | ✗ (paused notice) | ✗ (sold out) | ✗ (secondary market link) |
 | Nodes (inventory) | ✓ | ✓ | ✓ | ✓ |
 | Rewards (estimates) | ✓ (projections) | ✓ (projections) | ✓ (projections) | ✓ (live claiming) |
-| Referrals (basic) | ✗ (no community ref yet) | ✓ | ✓ | ✓ |
+| Referrals (basic) | ✓ (from first purchase) | ✓ | ✓ | ✓ |
 | Referrals (EPP full) | ✓ | ✓ | ✓ | ✓ |
 | Programme (EPP) | ✓ | ✓ | ✓ | ✓ |
 | Resources | ✓ | ✓ | ✓ | ✓ |
 | Delegation | ✗ | ✗ | ✓ | ✓ |
 | Staking | ✗ | ✗ | ✗ | ✓ |
-| KYC | ✗ | Optional | Recommended | Required for claims |
+| KYC | Optional | Optional | Recommended | Required for claims |
 | Node Ops (uptime) | ✗ | ✗ | ✗ | ✓ |
 
 ---
@@ -431,10 +426,9 @@ PUT  /api/account/settings   — Update preferences
 
 ### Sale
 ```
-GET  /api/sale/status         — Current tier, remaining, prices, sale stage
+GET  /api/sale/status         — Current tier, remaining, prices, sale stage (active/paused/closed)
 GET  /api/sale/tiers          — All tier data with remaining counts
 POST /api/sale/validate-code  — Validate referral code, return discount info
-GET  /api/sale/whitelist      — Whitelist pool status (EPP codes only)
 POST /api/sale/record         — Record purchase after on-chain confirmation (webhook or polling)
 ```
 
@@ -467,7 +461,6 @@ GET  /api/referrals/payouts   — Payout history with tx hashes
 GET  /api/epp/programme       — Tier table, milestones, weights (EPP auth required)
 GET  /api/epp/progress        — Credited amount, tier progress, stipend status
 GET  /api/epp/milestones      — Milestone progress with completion %
-GET  /api/epp/whitelist       — Whitelist pool status for partner view
 ```
 
 ### Announcements
@@ -602,21 +595,21 @@ Every section needs a meaningful empty state that guides the user to the next ac
 
 ## 12. Build Priority
 
-### Phase 1 — Whitelist sale launch (build first)
+### Phase 1 — Sale launch (build first)
 - [ ] Auth (wallet connect + email/password)
-- [ ] Sale page with tier display, referral code, chain selector, purchase flow
-- [ ] Overview page (EPP partner view with countdown, whitelist status, stats)
+- [ ] Sale page with tier display, referral code (optional), chain selector, purchase flow
+- [ ] Overview page (EPP partner view with stats)
 - [ ] Referrals page (EPP full view with network count, activity, commission)
+- [ ] Community referral codes (auto-generated for every buyer from day one)
+- [ ] Referrals basic view (for non-EPP users)
 - [ ] Programme page (tier table, milestones, weights, stipend)
 - [ ] Resources page (downloads, social, compliance)
 - [ ] Settings (basic: wallets, language, payout chain)
 - [ ] Announcement banner
 - [ ] Mobile responsive + bottom tabs
-- [ ] Smart contract: sale contract on BSC + Arbitrum (whitelist check, referral code, discount logic)
+- [ ] Smart contract: sale contract on BSC + Arbitrum (referral code, discount logic)
 
-### Phase 2 — Public sale (add before public sale opens)
-- [ ] Community referral codes (auto-generated for every buyer)
-- [ ] Referrals basic view (for non-EPP users)
+### Phase 2 — Scaling (add for higher traffic)
 - [ ] Per-wallet tier limits
 - [ ] Sale page: all 40 tiers
 - [ ] Nodes tab with NFT inventory

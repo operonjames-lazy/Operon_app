@@ -55,14 +55,15 @@ async function main() {
   const tierConfigs = tierPricesUsd.map((price, i) => ({
     id: i,
     price: BigInt(Math.round(price * 100)) * BigInt(10 ** (TOKEN_DECIMALS - 2)), // Convert USD to token units
-    supply: i === 0 ? 1250 : 1250, // Match the spec: 1250 per whitelist tier
+    publicSupply: 1250,   // public allocation
+    adminSupply: 1250,    // admin/whitelist allocation
     active: i === 0, // Only tier 0 active initially
   }));
 
   for (const tier of tierConfigs) {
-    const tx = await nodeSale.setTier(tier.id, tier.price, tier.supply, tier.active);
+    const tx = await nodeSale.setTier(tier.id, tier.price, tier.publicSupply, tier.adminSupply, tier.active);
     await tx.wait();
-    console.log(`Tier ${tier.id} set: price=${tier.price} supply=${tier.supply} active=${tier.active}`);
+    console.log(`Tier ${tier.id} set: price=${tier.price} publicSupply=${tier.publicSupply} adminSupply=${tier.adminSupply} active=${tier.active}`);
   }
 
   console.log("\n--- Deployment Summary ---");

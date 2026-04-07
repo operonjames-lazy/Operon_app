@@ -43,12 +43,12 @@ describe("NodeSale", function () {
     await sale.setAcceptedToken(await usdc.getAddress(), true);
     await sale.setAcceptedToken(await usdt.getAddress(), true);
 
-    // Set up tier 0: price 500_000000 (500 USDC, 6 decimals), supply 100
+    // Set up tier 0: price 500_000000 (500 USDC, 6 decimals), publicSupply 100, adminSupply 50
     const tierPrice = 500_000000n;
-    await sale.setTier(0, tierPrice, 100, true);
+    await sale.setTier(0, tierPrice, 100, 50, true);
 
-    // Set up tier 1: price 525_000000, supply 50
-    await sale.setTier(1, 525_000000n, 50, true);
+    // Set up tier 1: price 525_000000, publicSupply 50, adminSupply 25
+    await sale.setTier(1, 525_000000n, 50, 25, true);
 
     // Mint USDC to buyers
     await usdc.mint(buyer.address, 1_000_000_000000n); // 1M USDC
@@ -108,7 +108,7 @@ describe("NodeSale", function () {
 
       // Verify tier sold count
       const tierData = await sale.tiers(0);
-      expect(tierData.sold).to.equal(1);
+      expect(tierData.publicSold).to.equal(1);
     });
 
     it("should allow purchase with USDT", async function () {
@@ -209,8 +209,8 @@ describe("NodeSale", function () {
     it("should revert when tier supply is exhausted", async function () {
       const { buyer, buyer2, usdc, sale } = await loadFixture(deployFixture);
 
-      // Set small tier: supply 2
-      await sale.setTier(9, 100_000000n, 2, true);
+      // Set small tier: publicSupply 2, adminSupply 0
+      await sale.setTier(9, 100_000000n, 2, 0, true);
 
       await usdc.connect(buyer).approve(await sale.getAddress(), 200_000000n);
       await sale.connect(buyer).purchase(9, 2, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), 100_000000n);
@@ -329,8 +329,8 @@ describe("NodeSale", function () {
     it("should allow buying the last available node in a tier", async function () {
       const { buyer, buyer2, usdc, sale, nodeContract } = await loadFixture(deployFixture);
 
-      // Tier with supply of 3
-      await sale.setTier(5, 100_000000n, 3, true);
+      // Tier with publicSupply of 3
+      await sale.setTier(5, 100_000000n, 3, 0, true);
 
       // Buy 2
       await usdc.connect(buyer).approve(await sale.getAddress(), 200_000000n);
@@ -341,8 +341,8 @@ describe("NodeSale", function () {
       await sale.connect(buyer2).purchase(5, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), 100_000000n);
 
       const tierData = await sale.tiers(5);
-      expect(tierData.sold).to.equal(3);
-      expect(tierData.supply).to.equal(3);
+      expect(tierData.publicSold).to.equal(3);
+      expect(tierData.publicSupply).to.equal(3);
 
       // Next one should fail
       await usdc.connect(buyer).approve(await sale.getAddress(), 100_000000n);
@@ -408,7 +408,7 @@ describe("NodeSale", function () {
       const { other, sale } = await loadFixture(deployFixture);
 
       await expect(
-        sale.connect(other).setTier(0, 100, 100, true)
+        sale.connect(other).setTier(0, 100, 100, 50, true)
       ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
     });
 
@@ -465,12 +465,12 @@ describe("NodeSale", function () {
       await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
 
       // Update tier 0 price
-      await sale.setTier(0, 600_000000n, 200, true);
+      await sale.setTier(0, 600_000000n, 200, 100, true);
 
       const tier = await sale.tiers(0);
-      expect(tier.sold).to.equal(1); // preserved
+      expect(tier.publicSold).to.equal(1); // preserved
       expect(tier.price).to.equal(600_000000n);
-      expect(tier.supply).to.equal(200);
+      expect(tier.publicSupply).to.equal(200);
     });
 
     it("should only allow minter to mint on OperonNode", async function () {
@@ -633,7 +633,7 @@ describe("NodeSale", function () {
 
       // Set a tier with an odd price (333_333333 = ~333.333333 USDC)
       const oddPrice = 333_333333n;
-      await sale.setTier(7, oddPrice, 100, true);
+      await sale.setTier(7, oddPrice, 100, 0, true);
 
       // Add a code with 1500 bps (15%) discount
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("ODD"));
@@ -648,6 +648,84 @@ describe("NodeSale", function () {
       await sale.connect(buyer).purchase(7, 1, await usdc.getAddress(), codeHash, futureDeadline(), oddPrice);
 
       expect(await usdc.balanceOf(treasury.address)).to.equal(expectedPrice);
+    });
+  });
+
+  describe("AdminMint", function () {
+    it("should allow owner to adminMint nodes", async function () {
+      const { owner, other, nodeContract, sale } = await loadFixture(deployFixture);
+
+      await sale.adminMint(other.address, 0, 3);
+
+      expect(await nodeContract.balanceOf(other.address)).to.equal(3);
+
+      const tierData = await sale.tiers(0);
+      expect(tierData.adminSold).to.equal(3);
+    });
+
+    it("should not allow adminMint beyond adminSupply", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+
+      // Tier 0 has adminSupply of 50
+      await expect(
+        sale.adminMint(other.address, 0, 51)
+      ).to.be.revertedWith("NodeSale: admin allocation exceeded");
+    });
+
+    it("should not allow non-owner to adminMint", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+
+      await expect(
+        sale.connect(other).adminMint(other.address, 0, 1)
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+
+    it("should not allow adminMint to zero address", async function () {
+      const { sale } = await loadFixture(deployFixture);
+
+      await expect(
+        sale.adminMint(ethers.ZeroAddress, 0, 1)
+      ).to.be.revertedWith("NodeSale: zero address");
+    });
+
+    it("adminMint should not affect publicSold", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+
+      await sale.adminMint(other.address, 0, 5);
+
+      const tierData = await sale.tiers(0);
+      expect(tierData.publicSold).to.equal(0);
+      expect(tierData.adminSold).to.equal(5);
+    });
+
+    it("purchase should not affect adminSold", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice * 3n);
+      await sale.connect(buyer).purchase(0, 3, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice);
+
+      const tierData = await sale.tiers(0);
+      expect(tierData.adminSold).to.equal(0);
+      expect(tierData.publicSold).to.equal(3);
+    });
+
+    it("should emit AdminMint event with correct values", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+
+      await expect(sale.adminMint(other.address, 0, 2))
+        .to.emit(sale, "AdminMint")
+        .withArgs(other.address, 0, 2, 2, 50);
+    });
+
+    it("adminMint should work even when tier is not active", async function () {
+      const { other, nodeContract, sale } = await loadFixture(deployFixture);
+
+      // Deactivate tier 0
+      await sale.setTierActive(0, false);
+
+      // Admin mint should still work because adminSupply > 0
+      await sale.adminMint(other.address, 0, 1);
+      expect(await nodeContract.balanceOf(other.address)).to.equal(1);
     });
   });
 

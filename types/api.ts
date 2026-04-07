@@ -1,6 +1,6 @@
 // ─── Enums / Literal Unions ───────────────────────────────────────────────
 
-export type SaleStage = 'whitelist' | 'public' | 'closed';
+export type SaleStage = 'active' | 'paused' | 'closed';
 export type Chain = 'arbitrum' | 'bsc';
 export type PaymentToken = 'USDC' | 'USDT';
 export type PartnerTier =
@@ -48,12 +48,9 @@ export interface SaleStatus {
   discountPrice: number | null; // USD cents
   tierRemaining: number;
   tierSupply: number;
-  whitelistRemaining: number;
-  whitelistSupply: number;
   totalSold: number;
   totalSupply: number;
   publicSaleDate: string | null;
-  requireCode?: boolean;
   tiers?: SaleTier[];
 }
 

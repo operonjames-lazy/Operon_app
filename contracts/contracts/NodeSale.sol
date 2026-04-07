@@ -11,8 +11,10 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
     // --- Structs ---
     struct Tier {
         uint256 price;
-        uint256 supply;
-        uint256 sold;
+        uint256 publicSupply;
+        uint256 adminSupply;
+        uint256 publicSold;
+        uint256 adminSold;
         bool active;
     }
 
@@ -40,7 +42,8 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 totalPaid,
         address token
     );
-    event TierUpdated(uint256 indexed tierId, uint256 price, uint256 supply, bool active);
+    event AdminMint(address indexed to, uint256 indexed tierId, uint256 quantity, uint256 adminSold, uint256 adminSupply);
+    event TierUpdated(uint256 indexed tierId, uint256 price, uint256 publicSupply, uint256 adminSupply, bool active);
     event TierPausedToggled(uint256 indexed tierId, bool paused);
     event TierActiveUpdated(uint256 indexed tierId, bool active);
     event MaxPerWalletUpdated(uint256 indexed tierId, uint256 max);
@@ -74,7 +77,7 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
 
         Tier storage tier = tiers[tierId];
         require(tier.active, "NodeSale: tier not active");
-        require(tier.sold + quantity <= tier.supply, "NodeSale: tier sold out");
+        require(tier.publicSold + quantity <= tier.publicSupply, "NodeSale: tier sold out");
 
         // Check wallet limit
         uint256 walletMax = maxPerWallet[tierId];
@@ -102,7 +105,7 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
         );
 
         // Update state (CEI: state changes before external call)
-        tier.sold += quantity;
+        tier.publicSold += quantity;
         purchaseCount[msg.sender][tierId] += quantity;
 
         // Mint nodes (external call last)
@@ -121,14 +124,35 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
     }
 
     // --- Admin Functions ---
-    function setTier(uint256 tierId, uint256 price, uint256 supply, bool active) external onlyOwner {
-        tiers[tierId] = Tier({
-            price: price,
-            supply: supply,
-            sold: tiers[tierId].sold, // preserve sold count
-            active: active
-        });
-        emit TierUpdated(tierId, price, supply, active);
+    function adminMint(address to, uint256 tierId, uint256 quantity) external onlyOwner nonReentrant {
+        require(to != address(0), "NodeSale: zero address");
+        require(quantity > 0, "NodeSale: quantity must be > 0");
+
+        Tier storage tier = tiers[tierId];
+        require(tier.active || tier.adminSupply > 0, "NodeSale: tier not configured");
+        require(tier.adminSold + quantity <= tier.adminSupply, "NodeSale: admin allocation exceeded");
+
+        // Effects before interactions (CEI)
+        tier.adminSold += quantity;
+
+        // Mint nodes (no payment required)
+        nodeContract.batchMint(to, tierId, tier.price, quantity);
+
+        emit AdminMint(to, tierId, quantity, tier.adminSold, tier.adminSupply);
+    }
+
+    function setTier(uint256 tierId, uint256 price, uint256 publicSupply, uint256 adminSupply, bool active) external onlyOwner {
+        Tier storage tier = tiers[tierId];
+        // Preserve sold counts
+        uint256 prevPublicSold = tier.publicSold;
+        uint256 prevAdminSold = tier.adminSold;
+        tier.price = price;
+        tier.publicSupply = publicSupply;
+        tier.adminSupply = adminSupply;
+        tier.publicSold = prevPublicSold;
+        tier.adminSold = prevAdminSold;
+        tier.active = active;
+        emit TierUpdated(tierId, price, publicSupply, adminSupply, active);
     }
 
     function setTierActive(uint256 tierId, bool active) external onlyOwner {

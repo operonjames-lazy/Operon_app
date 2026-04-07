@@ -83,7 +83,7 @@ export default function HomePage() {
                   Tier {sale?.currentTier || 1}
                 </span>
                 <Badge variant="green">
-                  {sale?.stage === 'whitelist' ? t('home.whitelist') : t('home.public')}
+                  {sale?.stage === 'active' ? t('home.active') : sale?.stage === 'paused' ? t('home.paused') : t('home.closed')}
                 </Badge>
               </div>
             </div>
@@ -118,9 +118,6 @@ export default function HomePage() {
           <div className="flex items-center justify-between text-sm text-t3">
             <span>
               {formatNum(sale?.totalSold || 0)} / {formatNum(sale?.totalSupply || 0)} {t('home.totalNodes')}
-            </span>
-            <span>
-              {formatNum(sale?.whitelistRemaining || 0)} {t('home.whitelistRemaining')}
             </span>
           </div>
 

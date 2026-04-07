@@ -169,8 +169,10 @@ Before choosing our stack, here's what the successful node sale projects use and
 | 1C.12 | API: GET `/api/dashboard/summary` (aggregated home page data) | Backend | 1C.1 | 4h |
 | 1C.13 | API: GET `/api/nodes/mine` (on-chain NFT read + cached metadata) | Backend | 1C.6 | 4h |
 | 1C.14 | API: GET `/api/referrals/summary`, `/activity`, `/payouts` | Backend | 1C.7 | 6h |
+| 1C.15 | Community referral codes — auto-generate for every node buyer | Backend | 1C.6 | 6h |
+| 1C.16 | Basic Referrals view for non-EPP users (code, count, earnings) | Frontend | 1C.15 | 6h |
 
-**Deliverable:** Backend processes purchase events in real-time. Referral attribution and commission calculation working. All APIs serving real data.
+**Deliverable:** Backend processes purchase events in real-time. Referral attribution and commission calculation working. Community referral codes generated for every buyer from day one. All APIs serving real data.
 
 ---
 
@@ -204,16 +206,13 @@ Before choosing our stack, here's what the successful node sale projects use and
 
 | # | Task | Owner | Est. |
 |---|---|---|---|
-| 2.1 | Community referral codes — auto-generate for every node buyer | Backend | 6h |
-| 2.2 | Basic Referrals view for non-EPP users (code, count, earnings) | Frontend | 6h |
-| 2.3 | Expand tier visualization to all 40 tiers (scrollable/dropdown) | Frontend | 4h |
-| 2.4 | Per-wallet tier limits in smart contract (Tier 1-3: limited) | Contract | 4h |
-| 2.5 | Real-time tier transitions (WebSocket or Supabase Realtime) | Full-stack | 8h |
-| 2.6 | Public sale countdown + transition logic | Frontend | 3h |
-| 2.7 | Backup RPC failover (Alchemy → QuickNode → public) | Backend | 4h |
-| 2.8 | Database read replicas for peak load | DevOps | 4h |
-| 2.9 | Korean + Vietnamese translations | Content | 6h |
-| 2.10 | Load test: 10,000 concurrent users | QA | 4h |
+| 2.1 | Expand tier visualization to all 40 tiers (scrollable/dropdown) | Frontend | 4h |
+| 2.2 | Per-wallet tier limits in smart contract (Tier 1-3: limited) | Contract | 4h |
+| 2.3 | Real-time tier transitions (WebSocket or Supabase Realtime) | Full-stack | 8h |
+| 2.4 | Backup RPC failover (Alchemy → QuickNode → public) | Backend | 4h |
+| 2.5 | Database read replicas for peak load | DevOps | 4h |
+| 2.6 | Korean + Vietnamese translations | Content | 6h |
+| 2.7 | Load test: 10,000 concurrent users | QA | 4h |
 
 ---
 
@@ -230,7 +229,7 @@ Before choosing our stack, here's what the successful node sale projects use and
 | 3.7 | Delegation UI (select nodes → choose operator) | Frontend | 8h |
 | 3.8 | NaaS provider directory | Full-stack | 6h |
 | 3.9 | Multi-wallet linking | Full-stack | 8h |
-| 3.10 | Burn mechanism for unsold nodes | Contract | 6h |
+| 3.10 | Burn mechanism for unsold nodes (governance decides, not automatic) | Contract | 6h |
 | 3.11 | Enhanced emission estimates (post-burn, final numbers) | Frontend | 4h |
 
 ---

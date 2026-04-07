@@ -14,15 +14,10 @@ export async function GET() {
       return Response.json({ code: 'NOT_FOUND', message: 'Sale config not found' }, { status: 500 });
     }
 
-    // Determine which tiers to show based on current stage
-    const maxTier = config.stage === 'whitelist'
-      ? config.whitelist_tier_max
-      : config.public_tier_max;
-
     const { data: tiers } = await supabase
       .from('sale_tiers')
       .select('*')
-      .lte('tier', maxTier)
+      .lte('tier', config.tier_max)
       .order('tier', { ascending: true });
 
     if (!tiers || tiers.length === 0) {
@@ -33,13 +28,6 @@ export async function GET() {
     const totalSold = tiers.reduce((sum, t) => sum + t.total_sold, 0);
     const totalSupply = tiers.reduce((sum, t) => sum + t.total_supply, 0);
 
-    // Whitelist pool stats (always tiers 1-5)
-    const whitelistTiers = tiers.filter(t => t.tier <= config.whitelist_tier_max);
-    const whitelistRemaining = whitelistTiers.reduce(
-      (sum, t) => sum + Math.max(0, t.total_supply - t.total_sold), 0
-    );
-    const whitelistSupply = whitelistTiers.reduce((sum, t) => sum + t.total_supply, 0);
-
     return Response.json({
       stage: config.stage,
       currentTier: activeTier?.tier || 1,
@@ -48,12 +36,9 @@ export async function GET() {
       discountPrice: null,
       tierRemaining: activeTier ? activeTier.total_supply - activeTier.total_sold : 0,
       tierSupply: activeTier?.total_supply || 0,
-      whitelistRemaining,
-      whitelistSupply,
       totalSold,
       totalSupply,
       publicSaleDate: config.public_sale_date,
-      requireCode: config.require_code_whitelist && config.stage === 'whitelist',
       tiers: tiers.map(t => ({
         tier: t.tier,
         price: t.price_usd,

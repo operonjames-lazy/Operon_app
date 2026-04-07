@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerSupabase();
 
-    // Read sale config for phase-aware discount rates
+    // Read sale config for discount rates
     const { data: config } = await supabase
       .from('sale_config')
-      .select('stage, community_discount_bps, epp_discount_bps, require_code_whitelist')
+      .select('community_discount_bps, epp_discount_bps')
       .single();
 
     // 1. Check EPP partner codes first
@@ -47,30 +47,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 2. During public sale, also check community referral codes
-    if (config?.stage === 'public') {
-      const { data: communityUser } = await supabase
-        .from('users')
-        .select('referral_code')
-        .eq('referral_code', normalizedCode)
-        .single();
+    // 2. Check community referral codes (always, regardless of stage)
+    const { data: communityUser } = await supabase
+      .from('users')
+      .select('referral_code')
+      .eq('referral_code', normalizedCode)
+      .single();
 
-      if (communityUser) {
-        return Response.json({
-          valid: true,
-          discountBps: config?.community_discount_bps ?? 1000,
-          codeType: 'community',
-        });
-      }
-    }
-
-    // 3. During whitelist, reject non-EPP codes
-    if (config?.stage === 'whitelist' && config?.require_code_whitelist) {
+    if (communityUser) {
       return Response.json({
-        valid: false,
-        discountBps: 0,
-        codeType: null,
-        reason: 'whitelist_only',
+        valid: true,
+        discountBps: config?.community_discount_bps ?? 1000,
+        codeType: 'community',
       });
     }
 
