@@ -7,15 +7,20 @@ export async function GET() {
     // Read sale configuration (single-row table)
     const { data: config } = await supabase
       .from('sale_config')
-      .select('*')
+      .select('stage, community_discount_bps, epp_discount_bps, public_sale_date')
       .single();
 
-    if (!config) {
-      return Response.json({ code: 'NOT_FOUND', message: 'Sale config not found' }, { status: 500 });
+    // tier_max: query separately to handle column rename gracefully
+    let maxTier = 40;
+    try {
+      const { data: tierConfig } = await supabase
+        .from('sale_config')
+        .select('tier_max')
+        .single();
+      if (tierConfig?.tier_max) maxTier = tierConfig.tier_max;
+    } catch {
+      // Column may not exist yet (pre-migration) — use default
     }
-
-    // tier_max defaults to 40 if column not found (schema cache issue)
-    const maxTier = config.tier_max ?? config.public_tier_max ?? 40;
 
     const { data: tiers, error: tierError } = await supabase
       .from('sale_tiers')
