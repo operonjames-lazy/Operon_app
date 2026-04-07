@@ -22,6 +22,10 @@ export async function GET() {
       // Column may not exist yet (pre-migration) — use default
     }
 
+    if (!config) {
+      return Response.json({ code: 'NOT_FOUND', message: 'Sale config not found' }, { status: 500 });
+    }
+
     const { data: tiers, error: tierError } = await supabase
       .from('sale_tiers')
       .select('*')
