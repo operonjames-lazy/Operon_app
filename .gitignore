@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Generated EPP invite CSVs — capability tokens, do not commit
+scripts/epp-invites-*.csv
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

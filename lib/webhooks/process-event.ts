@@ -21,9 +21,35 @@ export interface ParsedPurchaseEvent {
   buyerWallet: string;
   tier: number;
   quantity: number;
-  totalPaidUsd: number;
+  totalPaidUsd: number; // cents — integer, converted via BigInt
+  token: 'USDC' | 'USDT';
   codeHash: string;
   blockNumber: number;
+}
+
+/**
+ * Convert a raw on-chain token amount (in the token's smallest unit) to USD cents,
+ * using BigInt the entire way. Stablecoins (USDC, USDT) are assumed 1 token = 1 USD.
+ *
+ *   cents = raw * 100 / 10^decimals
+ *
+ * Truncates fractional cents, which is consistent with how our commission math
+ * rounds down everywhere else.
+ */
+export function tokenAmountToCents(rawAmount: bigint, decimals: number): number {
+  if (decimals < 2) {
+    // Stablecoins don't realistically have <2 decimals. Reject so we never
+    // silently divide by a weird scale.
+    throw new Error(`Unsupported token decimals: ${decimals}`);
+  }
+  // raw * 100 / 10^decimals  ==  raw / 10^(decimals-2)
+  const divisor = BigInt(10) ** BigInt(decimals - 2);
+  const cents = rawAmount / divisor;
+  // Cap at Number.MAX_SAFE_INTEGER (9.007e15 cents = $90 trillion)
+  if (cents > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error(`Token amount exceeds safe integer range: ${cents.toString()}`);
+  }
+  return Number(cents);
 }
 
 export function parseNodePurchasedLog(
@@ -32,102 +58,174 @@ export function parseNodePurchasedLog(
 ): ParsedPurchaseEvent | null {
   const iface = new ethers.Interface([NODE_PURCHASED_EVENT]);
 
+  let parsed;
   try {
-    const parsed = iface.parseLog({ topics: log.topics, data: log.data });
-    if (parsed?.name !== 'NodePurchased') return null;
-
-    // Validate buyer address
-    if (!/^0x[a-fA-F0-9]{40}$/.test(parsed.args.buyer)) {
-      logger.error('Invalid buyer address in event', { buyer: parsed.args.buyer });
-      return null;
-    }
-
-    // Validate tier
-    const tier = Number(parsed.args.tier);
-    if (tier < 1 || tier > 40) {
-      logger.error('Invalid tier in event', { tier });
-      return null;
-    }
-
-    // Validate quantity
-    const quantity = Number(parsed.args.quantity);
-    if (quantity < 1 || quantity > 100) {
-      logger.error('Invalid quantity in event', { quantity });
-      return null;
-    }
-
-    // Convert token amount to USD cents
-    const tokenName = getTokenName(chain, parsed.args.token);
-    const tokenDecimals = tokenName ? TOKEN_DECIMALS[chain]?.[tokenName] : 6;
-    const totalPaidUsd = Math.floor(Number(ethers.formatUnits(parsed.args.totalPaid, tokenDecimals)) * 100);
-
-    return {
-      txHash: '', // Set by caller (different per webhook format)
-      chain,
-      buyerWallet: parsed.args.buyer,
-      tier,
-      quantity,
-      totalPaidUsd,
-      codeHash: parsed.args.codeHash,
-      blockNumber: 0, // Set by caller
-    };
+    parsed = iface.parseLog({ topics: log.topics, data: log.data });
   } catch {
     return null;
   }
+  if (parsed?.name !== 'NodePurchased') return null;
+
+  // Validate buyer address
+  if (!/^0x[a-fA-F0-9]{40}$/.test(parsed.args.buyer)) {
+    logger.error('Invalid buyer address in event', { buyer: parsed.args.buyer });
+    return null;
+  }
+
+  // Validate tier
+  const tier = Number(parsed.args.tier);
+  if (tier < 1 || tier > 40) {
+    logger.error('Invalid tier in event', { tier });
+    return null;
+  }
+
+  // Validate quantity
+  const quantity = Number(parsed.args.quantity);
+  if (quantity < 1 || quantity > 100) {
+    logger.error('Invalid quantity in event', { quantity });
+    return null;
+  }
+
+  // Resolve token — reject unknown token addresses outright. The caller
+  // should push this to failed_events for manual review.
+  const tokenName = getTokenName(chain, parsed.args.token);
+  if (!tokenName) {
+    logger.error('Unknown token address in purchase event', {
+      chain,
+      tokenAddress: parsed.args.token,
+      txHash: '(set by caller)',
+    });
+    return null;
+  }
+
+  const tokenDecimals = TOKEN_DECIMALS[chain]?.[tokenName];
+  if (tokenDecimals === undefined) {
+    logger.error('Missing decimals config for token', { chain, tokenName });
+    return null;
+  }
+
+  let totalPaidUsd: number;
+  try {
+    totalPaidUsd = tokenAmountToCents(BigInt(parsed.args.totalPaid.toString()), tokenDecimals);
+  } catch (err) {
+    logger.error('Token amount conversion failed', { chain, tokenName, error: String(err) });
+    return null;
+  }
+
+  return {
+    txHash: '', // Set by caller (different per webhook format)
+    chain,
+    buyerWallet: parsed.args.buyer,
+    tier,
+    quantity,
+    totalPaidUsd,
+    token: tokenName,
+    codeHash: parsed.args.codeHash,
+    blockNumber: 0, // Set by caller
+  };
 }
 
-export async function verifyOnChain(txHash: string, chain: 'arbitrum' | 'bsc', saleContractAddress: string): Promise<boolean> {
-  try {
-    const rpcUrl = chain === 'arbitrum' ? process.env.ARBITRUM_RPC_URL : process.env.BSC_RPC_URL;
-    if (!rpcUrl) return true; // Skip if no RPC configured
+export type VerifyResult = 'ok' | 'failed' | 'unreachable';
 
+/**
+ * Re-verify a webhook-reported event against the chain via RPC.
+ *
+ * Fails CLOSED — if RPC is unreachable or times out, we return 'unreachable'
+ * and the caller must queue the event as pending_verification instead of
+ * processing it. Previously this fell back to 'ok' on timeout, which was a
+ * real security hole (a forged webhook could slip through during RPC slowness).
+ */
+export async function verifyOnChain(
+  txHash: string,
+  chain: 'arbitrum' | 'bsc',
+  saleContractAddress: string
+): Promise<VerifyResult> {
+  const rpcUrl = chain === 'arbitrum' ? process.env.ARBITRUM_RPC_URL : process.env.BSC_RPC_URL;
+  if (!rpcUrl) {
+    logger.error('No RPC URL configured for chain', { chain });
+    return 'unreachable';
+  }
+
+  try {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const receipt = await Promise.race([
       provider.getTransactionReceipt(txHash),
       new Promise<null>((_, reject) => setTimeout(() => reject(new Error('RPC timeout')), 15000)),
     ]);
 
-    if (!receipt || receipt.status !== 1) {
-      logger.error('Transaction not found or failed on-chain', { txHash, chain });
-      return false;
+    if (!receipt) {
+      logger.warn('Transaction receipt not yet available', { txHash, chain });
+      return 'unreachable';
     }
-
+    if (receipt.status !== 1) {
+      logger.error('Transaction reverted on-chain', { txHash, chain });
+      return 'failed';
+    }
     const matchingLog = receipt.logs.find(log => log.address.toLowerCase() === saleContractAddress);
     if (!matchingLog) {
-      logger.error('No matching log in transaction', { txHash, chain });
-      return false;
+      logger.error('No matching sale-contract log in transaction', { txHash, chain });
+      return 'failed';
     }
-
-    return true;
+    return 'ok';
   } catch (err) {
-    logger.warn('On-chain verification failed, continuing', { txHash, chain, error: String(err) });
-    return true; // Still process — reconciliation cron catches gaps
+    logger.warn('On-chain verification unreachable — queueing as pending_verification', {
+      txHash,
+      chain,
+      error: String(err),
+    });
+    return 'unreachable';
   }
 }
 
+/**
+ * Queue an event for later on-chain verification. Used when the webhook
+ * signature checked out but RPC re-verification couldn't confirm yet.
+ * The reconciliation cron will pick these up and retry.
+ */
+export async function queuePendingVerification(event: ParsedPurchaseEvent): Promise<void> {
+  const supabase = createServerSupabase();
+  await supabase.from('failed_events').insert({
+    tx_hash: event.txHash,
+    chain: event.chain,
+    event_data: event,
+    error_message: 'On-chain re-verification unreachable at webhook time',
+    status: 'pending',
+    kind: 'pending_verification',
+    next_retry_at: new Date(Date.now() + 60 * 1000).toISOString(),
+  });
+}
+
+/**
+ * Main webhook event processing path. Called AFTER the event has been
+ * verified on-chain. Delegates commission math to the atomic Postgres RPC,
+ * then bumps tier-sold counters.
+ */
 export async function processPurchaseEvent(event: ParsedPurchaseEvent) {
   const supabase = createServerSupabase();
 
-  // Process referral attribution
+  // 1. Commission processing — single atomic RPC
   try {
     await processReferralAttribution(event);
   } catch (err) {
     logger.error('Commission processing failed', { txHash: event.txHash, error: String(err) });
-    // Queue for retry
+    // Queue for retry (this is a different failure mode from pending_verification)
     try {
       await supabase.from('failed_events').insert({
         tx_hash: event.txHash,
         chain: event.chain,
         event_data: event,
         error_message: String(err),
+        status: 'pending',
+        kind: 'process_error',
         next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       });
     } catch (queueErr) {
       logger.error('Failed to queue retry', { txHash: event.txHash, error: String(queueErr) });
     }
+    return;
   }
 
-  // Update tier counts (idempotent)
+  // 2. Tier counter (separate idempotent RPC; already safe to call on dupes)
   try {
     await supabase.rpc('increment_tier_sold', {
       p_tx_hash: event.txHash,
@@ -139,38 +237,7 @@ export async function processPurchaseEvent(event: ParsedPurchaseEvent) {
     logger.error('Tier increment failed', { txHash: event.txHash, error: String(err) });
   }
 
-  // Generate community referral code for buyer (if they don't have one)
-  try {
-    const { data: buyer } = await supabase
-      .from('users')
-      .select('referral_code')
-      .eq('primary_wallet', event.buyerWallet.toLowerCase())
-      .single();
-
-    if (buyer && !buyer.referral_code) {
-      const CODE_CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-      let code = 'OPRN-';
-      for (let i = 0; i < 4; i++) {
-        code += CODE_CHARSET[Math.floor(Math.random() * CODE_CHARSET.length)];
-      }
-
-      // Insert with unique constraint catch (retry on collision)
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const { error } = await supabase
-          .from('users')
-          .update({ referral_code: code })
-          .eq('primary_wallet', event.buyerWallet.toLowerCase())
-          .is('referral_code', null); // Only update if still null
-
-        if (!error) break;
-        // Regenerate on unique constraint violation
-        code = 'OPRN-';
-        for (let i = 0; i < 4; i++) {
-          code += CODE_CHARSET[Math.floor(Math.random() * CODE_CHARSET.length)];
-        }
-      }
-    }
-  } catch (codeErr) {
-    logger.warn('Community code generation failed', { buyerWallet: event.buyerWallet, error: String(codeErr) });
-  }
+  // NOTE: Personal referral code generation used to happen here. It now
+  // happens at signup (POST /api/auth/wallet) so every connected wallet
+  // gets one regardless of whether they ever purchase. Removed from this path.
 }

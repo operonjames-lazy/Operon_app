@@ -107,6 +107,7 @@ export interface OwnedNode {
 export interface ReferralSummary {
   partner: PartnerProfile | null;
   code: string | null;
+  codeType: 'epp' | 'community' | null;
   creditedAmount: number; // USD cents
   totalCommission: number; // USD cents
   unpaidCommission: number; // USD cents
@@ -204,6 +205,7 @@ export interface AuthResponse {
     displayName: string | null;
     language: string;
     isEpp: boolean;
+    referralCode: string | null;
     partner: {
       referral_code: string;
       tier: string;

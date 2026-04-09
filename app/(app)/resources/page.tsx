@@ -4,23 +4,47 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
+// ═══════════════════════════════════════════════════════════════════════
+// TODO(james): URLs still owed for the items marked `#` below. UI is
+// intentionally kept as-is so layout is final — only the hrefs need
+// filling in. Before mainnet launch, replace every `#` with a real URL:
+//
+//   DOWNLOADS
+//     - pitchManual      → PDF of partner pitch deck / training manual
+//     - brandAssets      → zip of logo / brand kit (Operon_Brand_*.zip)
+//     - termsConditions  → EPP T&Cs PDF (v1.0)
+//
+//   LINKS
+//     - whitepaper       → /whitepaper.pdf or https://operon.network/whitepaper
+//     - faq              → https://operon.network/faq (page doesn't exist yet)
+//     - medium           → https://medium.com/@operon (or whatever the handle is)
+//
+//   COMMUNITY
+//     - Telegram         → https://t.me/operon (or whatever the group link is)
+//     - Discord          → https://discord.gg/... (or remove if no Discord)
+//     - X (Twitter)      → https://x.com/operon (verify handle)
+//
+// website link is already real: https://operon.network
+// bridge links at the bottom are already real (Arbitrum + Celer).
+// ═══════════════════════════════════════════════════════════════════════
+
 const DOWNLOADS = [
-  { key: 'pitchManual', icon: '📄', href: '#' },
-  { key: 'brandAssets', icon: '🎨', href: '#' },
-  { key: 'termsConditions', icon: '📋', href: '#' },
+  { key: 'pitchManual', icon: '📄', href: '#' }, // TODO: owed
+  { key: 'brandAssets', icon: '🎨', href: '#' }, // TODO: owed
+  { key: 'termsConditions', icon: '📋', href: '#' }, // TODO: owed
 ];
 
 const LINKS = [
   { key: 'website', href: 'https://operon.network', icon: '🌐' },
-  { key: 'whitepaper', href: '#', icon: '📖' },
-  { key: 'faq', href: '#', icon: '❓' },
-  { key: 'medium', href: '#', icon: '✍️' },
+  { key: 'whitepaper', href: '#', icon: '📖' }, // TODO: owed
+  { key: 'faq', href: '#', icon: '❓' }, // TODO: owed
+  { key: 'medium', href: '#', icon: '✍️' }, // TODO: owed
 ];
 
 const COMMUNITY = [
-  { name: 'Telegram', href: '#', icon: '💬' },
-  { name: 'Discord', href: '#', icon: '🎮' },
-  { name: 'X (Twitter)', href: '#', icon: '🐦' },
+  { name: 'Telegram', href: '#', icon: '💬' }, // TODO: owed
+  { name: 'Discord', href: '#', icon: '🎮' }, // TODO: owed
+  { name: 'X (Twitter)', href: '#', icon: '🐦' }, // TODO: owed
 ];
 
 export default function ResourcesPage() {

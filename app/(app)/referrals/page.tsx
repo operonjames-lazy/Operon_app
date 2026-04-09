@@ -7,10 +7,8 @@ import { CodeBar } from '@/components/ui/code-bar';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Badge } from '@/components/ui/badge';
 import { FeedItem } from '@/components/ui/feed-item';
-import { Button } from '@/components/ui/button';
 import { useReferralSummary } from '@/hooks/useReferrals';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { API_ROUTES } from '@/lib/api/routes';
 import type { ActivityResponse, PayoutsResponse } from '@/types/api';
@@ -252,26 +250,12 @@ export default function ReferralsPage() {
         </Card>
       )}
 
-      {/* Community Referral Programme (non-EPP with code) */}
+      {/* Community Referral Programme (non-EPP) */}
       {!isEpp && summary?.code && (
         <Card title="Community Referral Programme">
           <div className="space-y-3 text-sm">
             <p className="text-t2">Your buyers get <span className="text-green font-medium">10% off</span>. You earn commission on every sale.</p>
-            <div className="text-xs text-t3 space-y-1">
-              <p>L1 Direct: 10% · L2: 3% · L3: 2% · L4: 1% · L5: 1%</p>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Prompt to purchase for non-EPP without code */}
-      {!isEpp && !summary?.code && (
-        <Card>
-          <div className="text-center py-4 space-y-2">
-            <p className="text-t2 text-sm">Purchase a node to get your referral code</p>
-            <Link href="/sale">
-              <Button variant="primary" size="sm">Go to Sale</Button>
-            </Link>
+            <p className="text-xs text-t3">Share your code or link above. Self-referral (using your own code from the same wallet) will invalidate referral rewards.</p>
           </div>
         </Card>
       )}

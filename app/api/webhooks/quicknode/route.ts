@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent } from '@/lib/webhooks/process-event';
+import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent, queuePendingVerification } from '@/lib/webhooks/process-event';
 import { logger } from '@/lib/logger';
 
 function verifyQuickNodeSignature(body: string, signature: string | null): boolean {
@@ -45,7 +45,13 @@ export async function POST(request: NextRequest) {
         event.blockNumber = receipt.blockNumber;
 
         const verified = await verifyOnChain(event.txHash, 'bsc', saleContractAddress);
-        if (!verified) continue;
+        if (verified === 'failed') {
+          continue;
+        }
+        if (verified === 'unreachable') {
+          await queuePendingVerification(event);
+          continue;
+        }
 
         await processPurchaseEvent(event);
       }

@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, useChainId, useSwitchChain, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { parseUnits, encodePacked, keccak256, formatUnits } from 'viem';
 import { arbitrum, bsc } from 'wagmi/chains';
+import { useAccountModal } from '@rainbow-me/rainbowkit';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +37,7 @@ export default function SalePage() {
   const { switchChain } = useSwitchChain();
   const queryClient = useQueryClient();
   const { data: sale, isLoading } = useSaleStatus();
+  const { openAccountModal } = useAccountModal();
   const { lastEvent, dismissEvent, connected } = useTierRealtime();
   const { t } = useTranslation();
 
@@ -396,6 +398,9 @@ export default function SalePage() {
           )}
         </div>
 
+        {/* Self-referral disclaimer — always visible */}
+        <p className="text-[10px] text-t4 leading-snug mb-3">{t('sale.selfReferralWarning')}</p>
+
         {/* Chain */}
         <div className="text-[11px] text-t4 mb-1">{t('sale.chain')}</div>
         <ChainSelector value={selectedChain} onChange={(chain) => { setSelectedChain(chain); setStep('idle'); }} />
@@ -519,7 +524,13 @@ export default function SalePage() {
       {address && (
         <div className="flex justify-between text-[10px] text-t4">
           <span>Wallet: <span className="font-mono text-t2">{address.slice(0, 6)}...{address.slice(-4)}</span></span>
-          <button className="text-ice hover:underline cursor-pointer text-[10px] min-h-[44px]">{t('sale.switchWallet')}</button>
+          <button
+            onClick={() => openAccountModal?.()}
+            disabled={!openAccountModal}
+            className="text-ice hover:underline cursor-pointer text-[10px] min-h-[44px] disabled:opacity-50"
+          >
+            {t('sale.switchWallet')}
+          </button>
         </div>
       )}
 

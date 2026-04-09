@@ -8,10 +8,26 @@ import { NextRequest } from 'next/server';
 
 let _ratelimitInstances: Record<string, { limit: (key: string) => Promise<{ success: boolean }> }> = {};
 
+/**
+ * Returns `null` ONLY when Upstash isn't configured AND we're running in
+ * dev mode. In production (NODE_ENV === 'production') we fail closed: the
+ * caller will see a rate-limit instance that rejects every request via the
+ * sentinel below, so a misconfigured prod deployment can't silently disable
+ * rate limiting.
+ */
+const FAIL_CLOSED_SENTINEL = {
+  limit: async () => ({ success: false }),
+};
+
 async function getRatelimit(prefix: string, maxRequests: number) {
   if (_ratelimitInstances[prefix]) return _ratelimitInstances[prefix];
 
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    if (process.env.NODE_ENV === 'production') {
+      // Fail closed. Log loudly.
+      console.error('[rate-limit] Upstash env not configured in production — failing closed');
+      return FAIL_CLOSED_SENTINEL;
+    }
     return null; // Skip rate limiting in dev
   }
 

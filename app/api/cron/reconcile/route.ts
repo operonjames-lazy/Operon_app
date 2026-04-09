@@ -2,6 +2,9 @@ import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { ethers } from 'ethers';
 import { processReferralAttribution } from '@/lib/commission';
+import { tokenAmountToCents, verifyOnChain, type ParsedPurchaseEvent } from '@/lib/webhooks/process-event';
+import { getTokenName } from '@/lib/webhooks/process-event';
+import { TOKEN_DECIMALS } from '@/lib/wagmi/contracts';
 import { logger } from '@/lib/logger';
 
 const NODE_PURCHASED_EVENT = 'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)';
@@ -56,7 +59,6 @@ export async function GET(request: NextRequest) {
       const latestBlock = await provider.getBlockNumber();
       const fromBlock = latestBlock - LOOKBACK_BLOCKS[chain];
 
-      // Query all NodePurchased events in range
       const events = await saleContract.queryFilter(
         saleContract.filters.NodePurchased(),
         fromBlock,
@@ -69,41 +71,59 @@ export async function GET(request: NextRequest) {
         if (!('args' in event)) continue;
         const txHash = event.transactionHash;
 
-        // Check if we already have this purchase
+        // Check if we already have this purchase — if so, skip.
+        // (The RPC is idempotent, but we can save a roundtrip.)
         const { data: existing } = await supabase
           .from('purchases')
           .select('id')
           .eq('tx_hash', txHash)
-          .single();
+          .maybeSingle();
 
-        if (!existing) {
-          // Missing — process it now
-          gapsFilled++;
+        if (existing) continue;
+        gapsFilled++;
 
-          const purchaseEvent = {
-            txHash,
-            chain,
-            buyerWallet: event.args.buyer,
-            tier: Number(event.args.tier),
-            quantity: Number(event.args.quantity),
-            totalPaidUsd: Number(event.args.totalPaid),
-            codeHash: event.args.codeHash,
-            blockNumber: event.blockNumber,
-          };
+        // Convert raw token amount → USD cents via BigInt. Previously this
+        // passed `Number(event.args.totalPaid)` straight through, which was
+        // completely wrong — no decimal conversion at all.
+        const tokenName = getTokenName(chain, event.args.token);
+        if (!tokenName) {
+          logger.error('Unknown token in reconciled event', { chain, txHash, token: event.args.token });
+          continue;
+        }
+        const decimals = TOKEN_DECIMALS[chain as 'arbitrum' | 'bsc']?.[tokenName];
+        let totalPaidUsd: number;
+        try {
+          totalPaidUsd = tokenAmountToCents(BigInt(event.args.totalPaid.toString()), decimals);
+        } catch (err) {
+          logger.error('Amount conversion failed in reconcile', { txHash, error: String(err) });
+          continue;
+        }
 
+        const purchaseEvent: ParsedPurchaseEvent = {
+          txHash,
+          chain,
+          buyerWallet: event.args.buyer,
+          tier: Number(event.args.tier),
+          quantity: Number(event.args.quantity),
+          totalPaidUsd,
+          token: tokenName,
+          codeHash: event.args.codeHash,
+          blockNumber: event.blockNumber,
+        };
+
+        try {
           await processReferralAttribution(purchaseEvent);
-
-          // Update tier counts (idempotent)
           await supabase.rpc('increment_tier_sold', {
             p_tx_hash: purchaseEvent.txHash,
             p_chain: purchaseEvent.chain,
             p_tier: purchaseEvent.tier,
             p_quantity: purchaseEvent.quantity,
           });
+        } catch (err) {
+          logger.error('Reconcile gap-fill failed', { txHash, error: String(err) });
         }
       }
 
-      // Log reconciliation run
       await supabase.from('reconciliation_log').insert({
         chain,
         from_block: fromBlock,
@@ -121,7 +141,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Retry failed events
+  // ═══ Retry failed_events ═══
+  // Two kinds of failures to handle differently:
+  //  - kind='pending_verification' → re-run verifyOnChain; process only if 'ok'
+  //  - kind='process_error'        → re-run processReferralAttribution (RPC is idempotent)
   try {
     const { data: failedEvents } = await supabase
       .from('failed_events')
@@ -129,37 +152,62 @@ export async function GET(request: NextRequest) {
       .eq('status', 'pending')
       .lte('next_retry_at', new Date().toISOString())
       .lt('retry_count', 5)
-      .limit(10);
+      .limit(20);
 
-    for (const event of failedEvents || []) {
+    for (const fe of failedEvents || []) {
+      const kind: string = fe.kind || 'process_error';
+      const eventData = fe.event_data as ParsedPurchaseEvent;
+
       try {
-        await processReferralAttribution(event.event_data);
+        if (kind === 'pending_verification') {
+          const saleContract = CHAIN_CONFIG[fe.chain]?.saleContract?.toLowerCase();
+          if (!saleContract) throw new Error('No sale contract configured for chain');
+
+          const verified = await verifyOnChain(fe.tx_hash, fe.chain as 'arbitrum' | 'bsc', saleContract);
+          if (verified === 'failed') {
+            await supabase.from('failed_events')
+              .update({ status: 'abandoned', error_message: 'On-chain verification rejected', updated_at: new Date().toISOString() })
+              .eq('id', fe.id);
+            continue;
+          }
+          if (verified === 'unreachable') {
+            // still can't confirm; bump retry
+            throw new Error('still unreachable');
+          }
+          // verified === 'ok' → fall through to processing
+        }
+
+        await processReferralAttribution(eventData);
+        await supabase.rpc('increment_tier_sold', {
+          p_tx_hash: eventData.txHash,
+          p_chain: eventData.chain,
+          p_tier: eventData.tier,
+          p_quantity: eventData.quantity,
+        });
         await supabase.from('failed_events')
           .update({ status: 'resolved', updated_at: new Date().toISOString() })
-          .eq('id', event.id);
+          .eq('id', fe.id);
       } catch (retryError) {
+        const nextRetryCount = fe.retry_count + 1;
         await supabase.from('failed_events')
           .update({
-            retry_count: event.retry_count + 1,
-            next_retry_at: new Date(Date.now() + (event.retry_count + 1) * 5 * 60 * 1000).toISOString(),
+            retry_count: nextRetryCount,
+            next_retry_at: new Date(Date.now() + nextRetryCount * 5 * 60 * 1000).toISOString(),
             error_message: String(retryError),
-            status: event.retry_count >= 4 ? 'abandoned' : 'pending',
+            status: nextRetryCount >= 5 ? 'abandoned' : 'pending',
             updated_at: new Date().toISOString(),
           })
-          .eq('id', event.id);
+          .eq('id', fe.id);
 
-        // Alert admin when event is abandoned
-        if (event.retry_count >= 4) {
-          if (process.env.TG_BOT_TOKEN && process.env.TG_ADMIN_CHAT_ID) {
-            fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: process.env.TG_ADMIN_CHAT_ID,
-                text: `⚠️ ABANDONED EVENT\n\nTx: ${event.tx_hash}\nChain: ${event.chain}\nError: ${String(retryError)}\nRetries: ${event.retry_count + 1}`,
-              }),
-            }).catch(() => {});
-          }
+        if (nextRetryCount >= 5 && process.env.TG_BOT_TOKEN && process.env.TG_ADMIN_CHAT_ID) {
+          fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: process.env.TG_ADMIN_CHAT_ID,
+              text: `⚠️ ABANDONED EVENT (${kind})\n\nTx: ${fe.tx_hash}\nChain: ${fe.chain}\nError: ${String(retryError)}`,
+            }),
+          }).catch(() => {});
         }
       }
     }

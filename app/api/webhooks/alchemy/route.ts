@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent } from '@/lib/webhooks/process-event';
+import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent, queuePendingVerification } from '@/lib/webhooks/process-event';
 import { logger } from '@/lib/logger';
 
 function verifyAlchemySignature(body: string, signature: string | null): boolean {
@@ -44,7 +44,16 @@ export async function POST(request: NextRequest) {
       event.blockNumber = parseInt(activity.log.blockNumber, 16);
 
       const verified = await verifyOnChain(event.txHash, 'arbitrum', saleContractAddress);
-      if (!verified) continue;
+      if (verified === 'failed') {
+        // Forged or reverted — drop it.
+        continue;
+      }
+      if (verified === 'unreachable') {
+        // Couldn't confirm right now. Queue for the reconciliation cron to
+        // re-verify later. Do NOT credit commissions in the meantime.
+        await queuePendingVerification(event);
+        continue;
+      }
 
       await processPurchaseEvent(event);
     }

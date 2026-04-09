@@ -17,10 +17,24 @@ export async function GET(request: NextRequest) {
       .from('epp_partners')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    // Get referral code (EPP or community)
-    const code = partner?.referral_code || null;
+    // Resolve referral code: EPP partner code takes precedence; otherwise
+    // fall back to the personal community code generated at signup
+    // (users.referral_code, format OPR-XXXXXX).
+    let code: string | null = partner?.referral_code || null;
+    let codeType: 'epp' | 'community' | null = code ? 'epp' : null;
+    if (!code) {
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('referral_code')
+        .eq('id', userId)
+        .maybeSingle();
+      if (userRow?.referral_code) {
+        code = userRow.referral_code;
+        codeType = 'community';
+      }
+    }
 
     // Get total commission earned
     const { data: commissions } = await supabase
@@ -110,6 +124,7 @@ export async function GET(request: NextRequest) {
           }
         : null,
       code,
+      codeType,
       creditedAmount,
       totalCommission,
       unpaidCommission,
