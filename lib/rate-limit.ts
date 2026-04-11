@@ -58,7 +58,7 @@ export async function rateLimit(
   if (!success) {
     return Response.json(
       { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' },
-      { status: 429 }
+      { status: 429, headers: { 'Retry-After': '60' } }
     );
   }
 

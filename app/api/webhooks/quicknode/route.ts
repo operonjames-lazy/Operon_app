@@ -15,7 +15,10 @@ function verifyQuickNodeSignature(body: string, signature: string | null): boole
   const hmac = crypto.createHmac('sha256', process.env.QUICKNODE_WEBHOOK_SECRET);
   hmac.update(body);
   const digest = hmac.digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+  const sigBuf = Buffer.from(signature);
+  const digBuf = Buffer.from(digest);
+  if (sigBuf.length !== digBuf.length) return false;
+  return crypto.timingSafeEqual(sigBuf, digBuf);
 }
 
 export async function POST(request: NextRequest) {

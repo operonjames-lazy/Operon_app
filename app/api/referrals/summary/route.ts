@@ -101,6 +101,7 @@ export async function GET(request: NextRequest) {
     const milestones = MILESTONES.map(([threshold, bonus]) => ({
       threshold,
       bonus,
+      // Display-only float — progress bar percentage, not used in commission math
       progress: Math.min(1, creditedAmount / threshold),
       achieved: creditedAmount >= threshold,
     }));
