@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
+import { useQueryClient } from '@tanstack/react-query';
 import { SiweMessage } from 'siwe';
 import { setAuthToken, clearAuthToken, getAuthToken } from '@/lib/api/fetch';
 import { useReferralCodeStore } from '@/stores/referral-code';
@@ -23,6 +24,7 @@ import { useReferralCodeStore } from '@/stores/referral-code';
 export function useAuth() {
   const { address, isConnected, chainId } = useAccount();
   const { signMessageAsync } = useSignMessage();
+  const queryClient = useQueryClient();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -45,14 +47,16 @@ export function useAuth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, address]);
 
-  // Clear auth on disconnect
+  // Clear auth + cached data on disconnect (prevents data bleed to next wallet)
   useEffect(() => {
     if (!isConnected) {
       clearAuthToken();
+      queryClient.clear();
+      try { localStorage.removeItem('operon_pending_tx'); } catch {}
       setIsAuthenticated(false);
       setAuthError(null);
     }
-  }, [isConnected]);
+  }, [isConnected, queryClient]);
 
   const authenticate = useCallback(async () => {
     if (!address || !chainId) return;

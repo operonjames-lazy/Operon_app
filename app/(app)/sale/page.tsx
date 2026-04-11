@@ -85,7 +85,7 @@ export default function SalePage() {
   // Show toast when code from URL validates successfully
   useEffect(() => {
     if (codeFromUrl && codeValid === true) {
-      setCodeToast(`Referral code applied — ${discountBps / 100}% discount active!`);
+      setCodeToast(t('sale.codeAppliedToast', { discount: discountBps / 100 }));
       const timer = setTimeout(() => setCodeToast(''), 5000);
       return () => clearTimeout(timer);
     }
@@ -99,12 +99,15 @@ export default function SalePage() {
   const saleAddress = SALE_CONTRACT_ADDRESSES[selectedChain];
   const decimals = TOKEN_DECIMALS[selectedChain]?.[paymentToken] ?? 6;
 
-  // Calculate price
+  // Calculate price — integer math matching the contract's order of operations:
+  // contract computes: totalPrice = price*qty - (price*qty * discount / 10000)
   const pricePerNode = sale?.currentPrice || 50000; // cents
+  const baseTotalCents = pricePerNode * quantity;
+  const discountCents = discountBps > 0 ? Math.floor(baseTotalCents * discountBps / 10000) : 0;
+  const totalCents = baseTotalCents - discountCents;
   const discountedPrice = discountBps > 0
-    ? Math.floor(pricePerNode * (1 - discountBps / 10000))
+    ? Math.floor(pricePerNode - (pricePerNode * discountBps / 10000))
     : pricePerNode;
-  const totalCents = discountedPrice * quantity;
   const totalTokenAmount = parseUnits(
     (totalCents / 100).toString(),
     decimals
@@ -219,7 +222,7 @@ export default function SalePage() {
   useEffect(() => {
     if ((step === 'purchasing' || step === 'approving') && !address) {
       setStep('error');
-      setErrorMsg('Wallet disconnected. Please reconnect and check your transaction history.');
+      setErrorMsg(t('sale.walletDisconnected'));
     }
   }, [address, step]);
 
@@ -347,11 +350,11 @@ export default function SalePage() {
             ))}
           </div>
           <div className="text-4xl relative">&#127881;</div>
-          <h2 className="text-xl font-bold text-t1 relative">Purchase Complete!</h2>
-          <p className="text-t2 relative">You now own {quantity} Operon Node{quantity > 1 ? 's' : ''} (Tier {sale?.currentTier || 1})</p>
+          <h2 className="text-xl font-bold text-t1 relative">{t('sale.purchaseComplete')}</h2>
+          <p className="text-t2 relative">{t('sale.youNowOwn', { count: quantity, tier: sale?.currentTier || 1 })}</p>
           <div className="flex gap-3 justify-center mt-4 relative">
-            <Button variant="primary" onClick={() => window.location.href = '/nodes'}>View My Nodes</Button>
-            <Button variant="secondary" onClick={() => { setStep('idle'); setQuantity(1); }}>Buy More</Button>
+            <Button variant="primary" onClick={() => window.location.href = '/nodes'}>{t('sale.viewNodes')}</Button>
+            <Button variant="secondary" onClick={() => { setStep('idle'); setQuantity(1); }}>{t('sale.buyMore')}</Button>
           </div>
         </div>
       )}
@@ -452,7 +455,7 @@ export default function SalePage() {
         <div className="bg-card-hover border border-border rounded-lg p-3 my-3">
           <div className="flex justify-between mb-1.5">
             <span className="text-[11px] text-t4">{t('sale.quantity')}</span>
-            <span className="text-[10px] text-t4">Max 10/wallet</span>
+            <span className="text-[10px] text-t4">{t('sale.maxPerWallet')}</span>
           </div>
           <QuantitySelector value={quantity} onChange={setQuantity} min={1} max={10} />
           {quantity > 1 && (
@@ -512,17 +515,17 @@ export default function SalePage() {
 
         {/* Action Buttons */}
         {!isConnected ? (
-          <p className="text-center text-t3 text-sm py-2">Connect wallet to purchase</p>
+          <p className="text-center text-t3 text-sm py-2">{t('sale.connectToBuy')}</p>
         ) : !sale?.tierRemaining ? (
           <Button variant="primary" size="lg" className="w-full" disabled>{t('sale.tierSoldOut')}</Button>
         ) : !isCorrectChain ? (
           <Button variant="primary" size="lg" className="w-full" onClick={() => switchChain({ chainId: targetChainId })}>
-            Switch to {selectedChain === 'arbitrum' ? 'Arbitrum' : 'BNB Chain'}
+            {t('sale.switchTo', { chain: selectedChain === 'arbitrum' ? 'Arbitrum' : 'BNB Chain' })}
           </Button>
         ) : !hasSufficientBalance ? (
           <div className="space-y-2">
             <Button variant="primary" size="lg" className="w-full" disabled>
-              Insufficient {paymentToken} balance
+              {t('sale.insufficientToken', { token: paymentToken })}
             </Button>
             <p className="text-[10px] text-t4 text-center">
               Need {paymentToken}?{' '}
@@ -536,7 +539,7 @@ export default function SalePage() {
           <>
             {!hasAllowance && step !== 'approved' && (
               <Button variant="primary" size="lg" className="w-full" loading={step === 'approving' || approveLoading} onClick={handleApprove}>
-                {step === 'approving' || approveLoading ? 'Approving...' : `Approve ${paymentToken}`}
+                {step === 'approving' || approveLoading ? t('sale.approving') : t('sale.approveToken', { token: paymentToken })}
               </Button>
             )}
             <Button
@@ -544,7 +547,7 @@ export default function SalePage() {
               disabled={(!hasAllowance && step !== 'approved') || step === 'purchasing'}
               loading={step === 'purchasing' || purchaseLoading} onClick={handlePurchase}
             >
-              {step === 'purchasing' || purchaseLoading ? 'Confirming...' : `Purchase ${quantity} Node${quantity > 1 ? 's' : ''}`}
+              {step === 'purchasing' || purchaseLoading ? t('sale.confirming') : t('sale.purchaseNodes', { qty: quantity })}
             </Button>
           </>
         )}
@@ -559,7 +562,7 @@ export default function SalePage() {
         {errorMsg && <p className="text-red text-[11px] text-center mt-2">{errorMsg}</p>}
 
         <div className="text-[10px] text-t4 text-center mt-3">
-          {quantity} × ERC-721 NFT on {selectedChain === 'arbitrum' ? 'Arbitrum' : 'BNB Chain'} · 63,000 $OPRN base emission per node
+          {t('sale.nodeInfo', { qty: quantity, chain: selectedChain === 'arbitrum' ? 'Arbitrum' : 'BNB Chain' })}
         </div>
       </div>
 

@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate format: OPRN-XXXX
+    // Validate format: OPRN-XXXX (EPP partner) or OPR-XXXXXX (community)
     const normalizedCode = code.toUpperCase();
-    if (!/^OPRN-[A-Z0-9]{4}$/.test(normalizedCode)) {
+    if (!/^OPRN-[A-Z0-9]{4}$/.test(normalizedCode) && !/^OPR-[A-Z0-9]{6}$/.test(normalizedCode)) {
       return Response.json({ valid: false, discountBps: 0, codeType: null });
     }
 

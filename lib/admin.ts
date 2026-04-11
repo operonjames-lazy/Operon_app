@@ -90,9 +90,11 @@ export async function logAdminAction(params: {
  */
 const CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export function generateInviteCode(): string {
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
   let code = 'EPP-';
   for (let i = 0; i < 4; i++) {
-    code += CHARSET[Math.floor(Math.random() * CHARSET.length)];
+    code += CHARSET[bytes[i] % CHARSET.length];
   }
   return code;
 }

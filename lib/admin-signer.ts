@@ -58,7 +58,7 @@ export function getAdminSaleContract(
     const provider = new ethers.JsonRpcProvider(cfg.rpcUrl);
     const signer = new ethers.Wallet(key, provider);
     return new ethers.Contract(cfg.saleContract, PAUSABLE_ABI, signer);
-  } catch (err) {
-    return { error: 'signer_init_failed', detail: String(err) };
+  } catch {
+    return { error: 'signer_init_failed' };
   }
 }

@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
+
+export const maxDuration = 60;
 import { ethers } from 'ethers';
 import { processReferralAttribution } from '@/lib/commission';
 import { tokenAmountToCents, verifyOnChain, type ParsedPurchaseEvent } from '@/lib/webhooks/process-event';
@@ -230,7 +232,9 @@ export async function GET(request: NextRequest) {
               chat_id: process.env.TG_ADMIN_CHAT_ID,
               text: `⚠️ ABANDONED EVENT (${kind})\n\nTx: ${fe.tx_hash}\nChain: ${fe.chain}\nError: ${String(retryError)}`,
             }),
-          }).catch(() => {});
+          }).catch((tgErr) => {
+            logger.error('Telegram alert failed for abandoned event', { txHash: fe.tx_hash, error: String(tgErr) });
+          });
         }
       }
     }

@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const totalCents = rows.reduce((s, r) => s + Number(r.commission_usd ?? 0), 0);
+  const totalCents = rows.reduce((s, r) => s + (parseInt(String(r.commission_usd ?? 0), 10) || 0), 0);
   const recipientId = rows[0].referrer_id;
 
   try {

@@ -12,9 +12,11 @@ import { logger } from '@/lib/logger';
 const CODE_CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 function generatePersonalCode(): string {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
   let code = 'OPR-';
   for (let i = 0; i < 6; i++) {
-    code += CODE_CHARSET[Math.floor(Math.random() * CODE_CHARSET.length)];
+    code += CODE_CHARSET[bytes[i] % CODE_CHARSET.length];
   }
   return code;
 }
@@ -127,9 +129,11 @@ async function maybeAttachReferrer(
 
 const EPP_CODE_CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function generateEppReferralCode(): string {
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
   let code = 'OPRN-';
   for (let i = 0; i < 4; i++) {
-    code += EPP_CODE_CHARSET[Math.floor(Math.random() * EPP_CODE_CHARSET.length)];
+    code += EPP_CODE_CHARSET[bytes[i] % EPP_CODE_CHARSET.length];
   }
   return code;
 }
@@ -274,8 +278,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify SIWE signature
-    const { data: siweData } = await siweMessage.verify({ signature });
+    // Verify SIWE signature and domain (EIP-4361 defense-in-depth)
+    const expectedDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || request.headers.get('host') || '';
+    const { data: siweData } = await siweMessage.verify({ signature, domain: expectedDomain });
 
     // Verify the recovered address matches
     if (siweData.address.toLowerCase() !== address.toLowerCase()) {
