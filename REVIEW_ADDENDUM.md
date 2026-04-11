@@ -281,3 +281,49 @@ Project-specific review checks for the global `/review` skill.
 **Why:** Promising enforcement we can't deliver is a trust failure.
 **Check:** Admin tooling supports the stated enforcement. The disclaimer text does not overpromise.
 **Severity:** Required.
+
+---
+
+## Checks added from 2026-04-12 full codebase audit
+
+### S-P8. `CRON_SECRET` existence guard before string interpolation
+**What:** `app/api/cron/reconcile/route.ts` must check `if (!process.env.CRON_SECRET)` and return 503 before constructing `Bearer ${process.env.CRON_SECRET}`. Without this, undefined produces `"Bearer undefined"` which any attacker can match.
+**Why:** Auth bypass on a money-path endpoint (triggers commission processing, retries failed events).
+**Check:** Verify the guard exists before the `timingSafeEqual` comparison.
+**Severity:** Blocking.
+
+### D-P8. Frontend discount math uses integer arithmetic matching the contract
+**What:** Sale page discount calculation must use `totalCents - Math.floor(totalCents * discountBps / 10000)`, NOT `Math.floor(pricePerNode * (1 - discountBps / 10000)) * quantity`. The contract applies discount to `price*qty` total, not per-unit.
+**Why:** Float vs integer divergence causes frontend to approve slightly wrong token amounts for edge-case prices. Previously, `maxPricePerNode` was also computed from the discounted price, causing every discounted purchase to revert.
+**Check:** Verify `totalTokenAmount` derivation matches `NodeSale.sol` lines 96-99. Verify `maxPrice` uses base (undiscounted) price.
+**Severity:** Blocking.
+
+### A-P6. `validate-code` regex accepts both EPP and community code formats
+**What:** The regex in `/api/sale/validate-code` must accept `OPRN-XXXX` (EPP partner codes) AND `OPR-XXXXXX` (community personal codes generated at signup).
+**Why:** Community codes were silently rejected, making the community discount programme non-functional.
+**Check:** Verify both formats reach the database lookup queries.
+**Severity:** Required.
+
+### R-P5. Cron lookback covers the gap between runs
+**What:** `app/api/cron/reconcile/route.ts` must use `reconciliation_log.to_block` as the starting point for each chain, not a fixed lookback constant. The fixed constant only works if the cron interval matches the lookback window.
+**Why:** Changing the cron schedule from 5-minute to daily without updating the 100-block lookback rendered the safety net non-functional.
+**Check:** Verify `fromBlock` is derived from the last successful run's `to_block`.
+**Severity:** Blocking.
+
+### C-P7. Pending tx recovery scoped to current wallet
+**What:** `operon_pending_tx` in localStorage must include the wallet `address` and only show the recovery banner when the stored address matches the currently connected wallet.
+**Why:** Without scoping, user B sees user A's pending transaction after a wallet switch.
+**Check:** Verify `address` is stored in the persisted object and compared on recovery.
+**Severity:** Required.
+
+### C-P8. TanStack Query cache cleared on wallet disconnect
+**What:** `useAuth` disconnect handler must call `queryClient.clear()` alongside `clearAuthToken()`.
+**Why:** Without clearing, the next wallet to connect briefly sees the previous wallet's nodes, commissions, and referral data.
+**Check:** Verify `queryClient.clear()` is in the disconnect effect.
+**Severity:** Required.
+
+### O-P6. All backend RPC usage goes through `lib/rpc.ts`
+**What:** No backend file should construct `new ethers.JsonRpcProvider()` directly. All RPC access uses `getProvider()` from `lib/rpc.ts`, which provides fallback chains and consistent timeouts.
+**Why:** Direct construction bypasses fallback, uses inconsistent timeouts, and creates duplicate chain config objects that drift.
+**Check:** Grep for `new ethers.JsonRpcProvider` outside of `lib/rpc.ts`. Any hit is a violation.
+**Severity:** Required.
