@@ -4,7 +4,9 @@ import { logger } from '@/lib/logger';
 
 function verifyQuickNodeSignature(body: string, signature: string | null): boolean {
   if (!process.env.QUICKNODE_WEBHOOK_SECRET) {
-    logger.warn('QuickNode secret not configured — skipping signature verification', { route: 'webhook/quicknode' });
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('QUICKNODE_WEBHOOK_SECRET not configured in production — rejecting all webhooks', { route: 'webhook/quicknode' });
+    }
     return process.env.NODE_ENV === 'development';
   }
   if (!signature) {

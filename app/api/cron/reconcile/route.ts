@@ -7,6 +7,7 @@ import { processReferralAttribution } from '@/lib/commission';
 import { tokenAmountToCents, verifyOnChain, type ParsedPurchaseEvent } from '@/lib/webhooks/process-event';
 import { getTokenName } from '@/lib/webhooks/process-event';
 import { TOKEN_DECIMALS } from '@/lib/wagmi/contracts';
+import { getProvider, getSaleContract } from '@/lib/rpc';
 import { logger } from '@/lib/logger';
 
 const NODE_PURCHASED_EVENT = 'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)';
@@ -23,16 +24,7 @@ const MAX_BLOCK_RANGE: Record<string, number> = {
   bsc: 10000,
 };
 
-const CHAIN_CONFIG: Record<string, { rpcUrl: string; saleContract: string }> = {
-  arbitrum: {
-    rpcUrl: process.env.ARBITRUM_RPC_URL || 'https://arb1.arbitrum.io/rpc',
-    saleContract: process.env.SALE_CONTRACT_ARBITRUM || '',
-  },
-  bsc: {
-    rpcUrl: process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org',
-    saleContract: process.env.SALE_CONTRACT_BSC || '',
-  },
-};
+const CHAINS: Array<'arbitrum' | 'bsc'> = ['arbitrum', 'bsc'];
 
 export async function GET(request: NextRequest) {
   // Verify cron secret (Vercel cron jobs include this header)
@@ -53,17 +45,18 @@ export async function GET(request: NextRequest) {
   const supabase = createServerSupabase();
   const results: Record<string, { eventsFound: number; gapsFilled: number }> = {};
 
-  for (const [chain, config] of Object.entries(CHAIN_CONFIG)) {
-    if (!config.saleContract) continue;
+  for (const chain of CHAINS) {
+    const saleAddr = getSaleContract(chain);
+    if (!saleAddr) continue;
 
     const startTime = Date.now();
     let eventsFound = 0;
     let gapsFilled = 0;
 
     try {
-      const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+      const provider = await getProvider(chain);
       const saleContract = new ethers.Contract(
-        config.saleContract,
+        saleAddr,
         [NODE_PURCHASED_EVENT],
         provider
       );
@@ -92,19 +85,20 @@ export async function GET(request: NextRequest) {
 
       eventsFound = events.length;
 
+      // Batch existence check — one query instead of N sequential lookups
+      const eventTxHashes = events
+        .filter((e): e is typeof e & { transactionHash: string } => 'args' in e)
+        .map(e => e.transactionHash);
+      const { data: existingPurchases } = eventTxHashes.length > 0
+        ? await supabase.from('purchases').select('tx_hash').in('tx_hash', eventTxHashes)
+        : { data: [] };
+      const knownTxHashes = new Set((existingPurchases || []).map(p => p.tx_hash));
+
       for (const event of events) {
         if (!('args' in event)) continue;
         const txHash = event.transactionHash;
 
-        // Check if we already have this purchase — if so, skip.
-        // (The RPC is idempotent, but we can save a roundtrip.)
-        const { data: existing } = await supabase
-          .from('purchases')
-          .select('id')
-          .eq('tx_hash', txHash)
-          .maybeSingle();
-
-        if (existing) continue;
+        if (knownTxHashes.has(txHash)) continue;
         gapsFilled++;
 
         // Convert raw token amount → USD cents via BigInt. Previously this
@@ -185,10 +179,10 @@ export async function GET(request: NextRequest) {
 
       try {
         if (kind === 'pending_verification') {
-          const saleContract = CHAIN_CONFIG[fe.chain]?.saleContract?.toLowerCase();
-          if (!saleContract) throw new Error('No sale contract configured for chain');
+          const saleAddr = getSaleContract(fe.chain as 'arbitrum' | 'bsc');
+          if (!saleAddr) throw new Error('No sale contract configured for chain');
 
-          const verified = await verifyOnChain(fe.tx_hash, fe.chain as 'arbitrum' | 'bsc', saleContract);
+          const verified = await verifyOnChain(fe.tx_hash, fe.chain as 'arbitrum' | 'bsc', saleAddr);
           if (verified === 'failed') {
             await supabase.from('failed_events')
               .update({ status: 'abandoned', error_message: 'On-chain verification rejected', updated_at: new Date().toISOString() })

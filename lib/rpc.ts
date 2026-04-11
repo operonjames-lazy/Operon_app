@@ -1,19 +1,16 @@
 import { ethers } from 'ethers';
 
 /**
- * RPC provider factory with ordered fallback chain.
- * Tries primary → fallback → public RPC in order.
- * Each call has a 15-second timeout.
+ * Centralized RPC provider factory and chain config.
  *
- * DESIGN DECISION (DD-008):
- * Backend RPC calls (webhook verification, reconciliation) use this factory
- * instead of direct ethers.JsonRpcProvider construction. This ensures:
+ * All backend code that needs an ethers provider should use getProvider()
+ * instead of constructing ethers.JsonRpcProvider directly. This ensures:
  * 1. Automatic failover if primary RPC is down
  * 2. Consistent timeout handling (prevents serverless function hangs)
- * 3. Centralized RPC config for both chains
+ * 3. Single source of truth for RPC URLs and sale contract addresses
  */
 
-const RPC_TIMEOUT = 15_000; // 15 seconds
+const RPC_TIMEOUT = 10_000; // 10 seconds (fits within Vercel function limits)
 
 const CHAIN_RPCS: Record<string, string[]> = {
   arbitrum: [
@@ -27,6 +24,14 @@ const CHAIN_RPCS: Record<string, string[]> = {
     'https://bsc-dataseed.binance.org',
   ].filter(Boolean) as string[],
 };
+
+/** Sale contract addresses (backend-side env vars, lowercased). */
+export function getSaleContract(chain: 'arbitrum' | 'bsc'): string {
+  const addr = chain === 'arbitrum'
+    ? process.env.SALE_CONTRACT_ARBITRUM
+    : process.env.SALE_CONTRACT_BSC;
+  return (addr || '').toLowerCase();
+}
 
 /**
  * Get an ethers provider for the given chain, with fallback.

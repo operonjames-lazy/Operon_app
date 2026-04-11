@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   const results: Array<{ chain: AdminChain; status: string; txHash?: string; error?: string }> = [];
 
   for (const chain of chains) {
-    const contract = getAdminSaleContract(chain);
+    const contract = await getAdminSaleContract(chain);
     if (!('unpause' in contract)) {
       results.push({ chain, status: 'error', error: (contract as { error: string }).error });
       continue;

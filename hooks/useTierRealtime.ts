@@ -57,7 +57,7 @@ export function useTierRealtime() {
               sold: row.total_sold,
               supply: row.total_supply,
               isActive: false,
-              message: `Tier ${row.tier} is sold out!`,
+              message: '', // formatted by consumer via t()
             });
           }
 
@@ -67,7 +67,7 @@ export function useTierRealtime() {
               sold: row.total_sold,
               supply: row.total_supply,
               isActive: true,
-              message: `Tier ${row.tier} is now active`,
+              message: '', // formatted by consumer via t()
             });
           }
 

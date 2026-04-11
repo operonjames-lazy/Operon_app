@@ -31,6 +31,12 @@ const SALE_ABI = [
 
 type PurchaseStep = 'idle' | 'approving' | 'approved' | 'purchasing' | 'success' | 'error';
 
+const isTestnet = process.env.NEXT_PUBLIC_NETWORK_MODE === 'testnet';
+function getExplorerTxUrl(chain: 'arbitrum' | 'bsc'): string {
+  if (chain === 'arbitrum') return isTestnet ? 'https://sepolia.arbiscan.io/tx/' : 'https://arbiscan.io/tx/';
+  return isTestnet ? 'https://testnet.bscscan.com/tx/' : 'https://bscscan.com/tx/';
+}
+
 export default function SalePage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -55,21 +61,21 @@ export default function SalePage() {
   const [codeFromUrl, setCodeFromUrl] = useState(false);
   const [codeToast, setCodeToast] = useState('');
 
-  // Recover pending transaction from localStorage
+  // Recover pending transaction from localStorage (scoped to current wallet)
   useEffect(() => {
     try {
       const saved = localStorage.getItem('operon_pending_tx');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Only recover if less than 1 hour old
-        if (Date.now() - parsed.timestamp < 3600000) {
+        if (Date.now() - parsed.timestamp < 3600000
+            && (!parsed.address || parsed.address === address?.toLowerCase())) {
           setPendingRecovery(parsed);
-        } else {
+        } else if (Date.now() - parsed.timestamp >= 3600000) {
           localStorage.removeItem('operon_pending_tx');
         }
       }
     } catch {}
-  }, []);
+  }, [address]);
 
   // Read referral code from URL
   useEffect(() => {
@@ -203,7 +209,7 @@ export default function SalePage() {
     }
   }, [purchaseSuccess, queryClient]);
 
-  // Persist pending transaction in localStorage
+  // Persist pending transaction in localStorage (scoped to wallet)
   useEffect(() => {
     if (purchaseHash) {
       try {
@@ -212,11 +218,12 @@ export default function SalePage() {
           chain: selectedChain,
           tier: sale?.currentTier,
           quantity,
+          address: address?.toLowerCase(),
           timestamp: Date.now(),
         }));
       } catch {}
     }
-  }, [purchaseHash, selectedChain, sale?.currentTier, quantity]);
+  }, [purchaseHash, selectedChain, sale?.currentTier, quantity, address]);
 
   // Handle wallet disconnect during purchase
   useEffect(() => {
@@ -300,7 +307,7 @@ export default function SalePage() {
         <div className="h-80 bg-card rounded-lg" />
         {loadingSlow && (
           <p className="text-center text-sm text-amber mt-4">
-            Network slow — please check your connection
+            {t('sale.networkSlow')}
           </p>
         )}
       </div>
@@ -312,7 +319,7 @@ export default function SalePage() {
       {/* Real-time tier notification */}
       {lastEvent && (
         <div className="flex items-center justify-between rounded-lg border border-amber/30 bg-amber/5 px-4 py-3 animate-fade-in">
-          <span className="text-sm text-amber">{lastEvent.message}</span>
+          <span className="text-sm text-amber">{lastEvent.isActive ? t('sale.tierNowActive', { tier: lastEvent.tier }) : t('sale.tierSoldOutN', { tier: lastEvent.tier })}</span>
           <button onClick={dismissEvent} className="text-t3 hover:text-t1 text-xs cursor-pointer">{t('btn.dismiss')}</button>
         </div>
       )}
@@ -322,10 +329,10 @@ export default function SalePage() {
         <div className="flex items-center justify-between rounded-lg border border-amber/30 bg-amber/5 px-4 py-3">
           <div>
             <p className="text-sm text-amber font-medium">{t('sale.pendingTx')}</p>
-            <p className="text-xs text-t3">{pendingRecovery.quantity} node(s) on {pendingRecovery.chain === 'arbitrum' ? 'Arbitrum' : 'BNB Chain'}</p>
+            <p className="text-xs text-t3">{t('sale.nodesOnChain', { chain: pendingRecovery.chain === 'arbitrum' ? 'Arbitrum' : 'BNB Chain' }).replace('node(s)', `${pendingRecovery.quantity} node(s)`)}</p>
           </div>
           <div className="flex gap-2">
-            <a href={`${pendingRecovery.chain === 'arbitrum' ? 'https://sepolia.arbiscan.io/tx/' : 'https://testnet.bscscan.com/tx/'}${pendingRecovery.hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-ice hover:underline">{t('sale.viewExplorer')}</a>
+            <a href={`${getExplorerTxUrl(pendingRecovery.chain as 'arbitrum' | 'bsc')}${pendingRecovery.hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-ice hover:underline">{t('sale.viewExplorer')}</a>
             <button onClick={() => { setPendingRecovery(null); try { localStorage.removeItem('operon_pending_tx'); } catch {} }} className="text-xs text-t3 hover:text-t1 cursor-pointer">{t('btn.dismiss')}</button>
           </div>
         </div>

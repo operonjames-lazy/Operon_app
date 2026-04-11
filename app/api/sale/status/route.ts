@@ -1,7 +1,11 @@
+import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rate-limit';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const rateLimited = await rateLimit(request, 'sale-status', 60);
+    if (rateLimited) return rateLimited;
     const supabase = createServerSupabase();
 
     // Read sale config

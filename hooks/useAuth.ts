@@ -31,11 +31,20 @@ export function useAuth() {
   const pendingReferralCode = useReferralCodeStore((s) => s.pendingCode);
   const clearPendingReferralCode = useReferralCodeStore((s) => s.clearPendingCode);
 
-  // Check if we already have a valid token on mount
+  // Check if we already have a valid (non-expired) token on mount
   useEffect(() => {
     const existing = getAuthToken();
     if (existing && isConnected) {
-      setIsAuthenticated(true);
+      try {
+        const payload = JSON.parse(atob(existing.split('.')[1]));
+        if (payload.exp && payload.exp * 1000 > Date.now()) {
+          setIsAuthenticated(true);
+        } else {
+          clearAuthToken();
+        }
+      } catch {
+        clearAuthToken();
+      }
     }
   }, [isConnected]);
 

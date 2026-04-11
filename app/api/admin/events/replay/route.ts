@@ -1,27 +1,13 @@
 import { NextRequest } from 'next/server';
-import { ethers } from 'ethers';
 import { createServerSupabase } from '@/lib/supabase';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
 import { processReferralAttribution } from '@/lib/commission';
 import {
   parseNodePurchasedLog,
-  tokenAmountToCents,
-  getTokenName,
   type ParsedPurchaseEvent,
 } from '@/lib/webhooks/process-event';
-import { TOKEN_DECIMALS } from '@/lib/wagmi/contracts';
+import { getProvider, getSaleContract } from '@/lib/rpc';
 import { logger } from '@/lib/logger';
-
-const CHAIN_CONFIG: Record<string, { rpcUrl: string; saleContract: string }> = {
-  arbitrum: {
-    rpcUrl: process.env.ARBITRUM_RPC_URL || '',
-    saleContract: (process.env.SALE_CONTRACT_ARBITRUM || '').toLowerCase(),
-  },
-  bsc: {
-    rpcUrl: process.env.BSC_RPC_URL || '',
-    saleContract: (process.env.SALE_CONTRACT_BSC || '').toLowerCase(),
-  },
-};
 
 /**
  * POST /api/admin/events/replay
@@ -49,19 +35,19 @@ export async function POST(request: NextRequest) {
   if (!body.txHash || !/^0x[a-f0-9]{64}$/i.test(body.txHash)) {
     return Response.json({ error: 'invalid_tx_hash', field: 'txHash' }, { status: 400 });
   }
-  if (!body.chain || !(body.chain in CHAIN_CONFIG)) {
+  if (!body.chain || (body.chain !== 'arbitrum' && body.chain !== 'bsc')) {
     return Response.json({ error: 'invalid_chain', field: 'chain' }, { status: 400 });
   }
 
   const chain = body.chain as 'arbitrum' | 'bsc';
-  const config = CHAIN_CONFIG[chain];
-  if (!config.rpcUrl || !config.saleContract) {
+  const saleAddr = getSaleContract(chain);
+  if (!saleAddr) {
     return Response.json({ error: 'chain_not_configured' }, { status: 500 });
   }
 
-  const provider = new ethers.JsonRpcProvider(config.rpcUrl);
   let receipt;
   try {
+    const provider = await getProvider(chain);
     receipt = await provider.getTransactionReceipt(body.txHash);
   } catch (err) {
     logger.error('replay: rpc error', { error: String(err) });
@@ -74,7 +60,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'tx_reverted' }, { status: 409 });
   }
 
-  const matching = receipt.logs.find((l) => l.address.toLowerCase() === config.saleContract);
+  const matching = receipt.logs.find((l) => l.address.toLowerCase() === saleAddr);
   if (!matching) {
     return Response.json({ error: 'no_sale_log_in_tx' }, { status: 409 });
   }

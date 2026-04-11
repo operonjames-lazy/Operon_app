@@ -4,7 +4,9 @@ import { logger } from '@/lib/logger';
 
 function verifyAlchemySignature(body: string, signature: string | null): boolean {
   if (!process.env.ALCHEMY_WEBHOOK_SIGNING_KEY) {
-    logger.warn('Alchemy signing key not configured — skipping signature verification', { route: 'webhook/alchemy' });
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('ALCHEMY_WEBHOOK_SIGNING_KEY not configured in production — rejecting all webhooks', { route: 'webhook/alchemy' });
+    }
     return process.env.NODE_ENV === 'development';
   }
   if (!signature) {

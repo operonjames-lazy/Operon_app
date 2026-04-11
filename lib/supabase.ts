@@ -13,12 +13,16 @@ function getServiceKey(): string {
 }
 
 /**
- * Server-side Supabase client factory.
+ * Server-side Supabase client (singleton per cold start).
  * Uses the service role key — NEVER expose to browser.
  * Authorization is enforced at the API route layer via verifyToken().
+ * Safe as singleton in serverless — each instance is single-tenant.
  */
+let _serverClient: SupabaseClient | null = null;
 export function createServerSupabase(): SupabaseClient {
-  return createClient(getUrl(), getServiceKey());
+  if (_serverClient) return _serverClient;
+  _serverClient = createClient(getUrl(), getServiceKey());
+  return _serverClient;
 }
 
 /**

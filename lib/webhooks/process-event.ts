@@ -140,18 +140,10 @@ export async function verifyOnChain(
   chain: 'arbitrum' | 'bsc',
   saleContractAddress: string
 ): Promise<VerifyResult> {
-  const rpcUrl = chain === 'arbitrum' ? process.env.ARBITRUM_RPC_URL : process.env.BSC_RPC_URL;
-  if (!rpcUrl) {
-    logger.error('No RPC URL configured for chain', { chain });
-    return 'unreachable';
-  }
-
   try {
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
-    const receipt = await Promise.race([
-      provider.getTransactionReceipt(txHash),
-      new Promise<null>((_, reject) => setTimeout(() => reject(new Error('RPC timeout')), 15000)),
-    ]);
+    const { getProvider, withTimeout } = await import('@/lib/rpc');
+    const provider = await getProvider(chain);
+    const receipt = await withTimeout(provider.getTransactionReceipt(txHash), 10_000);
 
     if (!receipt) {
       logger.warn('Transaction receipt not yet available', { txHash, chain });
