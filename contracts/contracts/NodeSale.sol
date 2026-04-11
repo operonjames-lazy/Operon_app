@@ -72,7 +72,6 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
     ) external nonReentrant whenNotPaused {
         require(block.timestamp <= deadline, "NodeSale: tx expired");
         require(tiers[tierId].price <= maxPricePerNode, "NodeSale: price slippage");
-        require(msg.sender == tx.origin, "NodeSale: no contract purchases");
         require(quantity > 0 && quantity <= maxBatchSize, "NodeSale: invalid quantity");
         require(acceptedTokens[token], "NodeSale: token not accepted");
         require(!tierPaused[tierId], "NodeSale: tier paused");

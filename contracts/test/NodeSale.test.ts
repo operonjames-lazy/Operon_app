@@ -593,31 +593,30 @@ describe("NodeSale", function () {
     });
   });
 
-  describe("Contract caller guard", function () {
-    it("should revert if caller is a contract", async function () {
-      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+  describe("Smart contract wallet support", function () {
+    it("should allow purchases from contract wallets (Gnosis Safe, ERC-4337)", async function () {
+      const { buyer, usdc, nodeContract, sale, tierPrice } = await loadFixture(deployFixture);
 
-      // Deploy MockPurchaser
+      // Deploy MockPurchaser (simulates a smart contract wallet)
       const MockPurchaser = await ethers.getContractFactory("MockPurchaser");
       const purchaser = await MockPurchaser.deploy();
       await purchaser.waitForDeployment();
 
-      // Fund the contract with USDC
       const purchaserAddr = await purchaser.getAddress();
       await usdc.mint(purchaserAddr, tierPrice);
 
-      await expect(
-        purchaser.tryPurchase(
-          await sale.getAddress(),
-          0,
-          1,
-          await usdc.getAddress(),
-          ethers.ZeroHash,
-          futureDeadline(),
-          tierPrice,
-          tierPrice
-        )
-      ).to.be.revertedWith("NodeSale: no contract purchases");
+      await purchaser.tryPurchase(
+        await sale.getAddress(),
+        0,
+        1,
+        await usdc.getAddress(),
+        ethers.ZeroHash,
+        futureDeadline(),
+        tierPrice,
+        tierPrice
+      );
+
+      expect(await nodeContract.balanceOf(purchaserAddr)).to.equal(1);
     });
   });
 
