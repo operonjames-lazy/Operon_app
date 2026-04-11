@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { SignJWT } from 'jose';
 import { SiweMessage } from 'siwe';
@@ -368,8 +368,8 @@ export async function POST(request: NextRequest) {
       .setExpirationTime('24h')
       .sign(getSecret());
 
-    return Response.json({
-      token,
+    const isProduction = process.env.NODE_ENV === 'production';
+    const response = NextResponse.json({
       user: {
         id: user!.id,
         wallet: user!.primary_wallet,
@@ -380,6 +380,25 @@ export async function POST(request: NextRequest) {
         partner: eppPartner,
       },
     });
+
+    // Set httpOnly session cookie (not accessible to JS — prevents XSS token theft)
+    response.cookies.set('operon_session', token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 24 * 60 * 60,
+    });
+    // Set readable flag cookie (JS can check this to know a session exists)
+    response.cookies.set('operon_auth', '1', {
+      httpOnly: false,
+      secure: isProduction,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 24 * 60 * 60,
+    });
+
+    return response;
   } catch (err) {
     logger.error('Auth wallet route failed', { error: String(err) });
     return Response.json(

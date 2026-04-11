@@ -209,7 +209,7 @@ export default function EppOnboardPage() {
     if (!resultCode) return;
     const text = what === 'code' ? resultCode : referralLink;
     navigator.clipboard.writeText(text).then(() => {
-      setToastMsg(what === 'code' ? 'Code copied' : 'Link copied');
+      setToastMsg(what === 'code' ? t.toastCodeCopied : t.toastLinkCopied);
     });
   }
   function share() {

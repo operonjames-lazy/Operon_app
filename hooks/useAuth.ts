@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 import { useQueryClient } from '@tanstack/react-query';
 import { SiweMessage } from 'siwe';
-import { setAuthToken, clearAuthToken, getAuthToken } from '@/lib/api/fetch';
+import { isAuthenticated as checkCookie, clearSession } from '@/lib/api/fetch';
 import { useReferralCodeStore } from '@/stores/referral-code';
 
 /**
@@ -15,42 +15,31 @@ import { useReferralCodeStore } from '@/stores/referral-code';
  * 1. User connects wallet via RainbowKit → useAccount detects address
  * 2. This hook fetches a nonce from /api/auth/nonce
  * 3. Prompts user to sign a SIWE message (via MetaMask)
- * 4. Sends signed message to /api/auth/wallet → receives JWT
- * 5. Stores JWT in localStorage via setAuthToken()
- * 6. All subsequent authFetch() calls include the Bearer token
- * 7. On disconnect, clears token
+ * 4. Sends signed message to /api/auth/wallet → server sets httpOnly cookie
+ * 5. All subsequent fetch() calls send the cookie automatically
+ * 6. On disconnect, calls /api/auth/logout to clear cookies
  */
 
 export function useAuth() {
   const { address, isConnected, chainId } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const queryClient = useQueryClient();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const pendingReferralCode = useReferralCodeStore((s) => s.pendingCode);
   const clearPendingReferralCode = useReferralCodeStore((s) => s.clearPendingCode);
 
-  // Check if we already have a valid (non-expired) token on mount
+  // Check if we already have a valid session cookie on mount
   useEffect(() => {
-    const existing = getAuthToken();
-    if (existing && isConnected) {
-      try {
-        const payload = JSON.parse(atob(existing.split('.')[1]));
-        if (payload.exp && payload.exp * 1000 > Date.now()) {
-          setIsAuthenticated(true);
-        } else {
-          clearAuthToken();
-        }
-      } catch {
-        clearAuthToken();
-      }
+    if (checkCookie() && isConnected) {
+      setIsAuthed(true);
     }
   }, [isConnected]);
 
-  // Authenticate when wallet connects (and we don't have a token)
+  // Authenticate when wallet connects (and we don't have a session)
   useEffect(() => {
-    if (isConnected && address && !isAuthenticated && !isAuthenticating) {
+    if (isConnected && address && !isAuthed && !isAuthenticating) {
       authenticate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,10 +48,10 @@ export function useAuth() {
   // Clear auth + cached data on disconnect (prevents data bleed to next wallet)
   useEffect(() => {
     if (!isConnected) {
-      clearAuthToken();
+      clearSession();
       queryClient.clear();
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
-      setIsAuthenticated(false);
+      setIsAuthed(false);
       setAuthError(null);
     }
   }, [isConnected, queryClient]);
@@ -94,9 +83,7 @@ export function useAuth() {
       // 3. Sign message
       const signature = await signMessageAsync({ message: messageStr });
 
-      // 4. Send to backend, including any pending referral code captured
-      //    from `?ref=` earlier in the session. The backend only honors it
-      //    on first signup; on subsequent logins it's silently ignored.
+      // 4. Send to backend — server sets httpOnly cookie in response
       const authRes = await fetch('/api/auth/wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,12 +100,9 @@ export function useAuth() {
         throw new Error(err.message || 'Authentication failed');
       }
 
-      const { token } = await authRes.json();
-
-      // 5. Store JWT and consume the pending referral code (one-shot)
-      setAuthToken(token);
+      // 5. Cookie is set by the server response — consume the referral code
       clearPendingReferralCode();
-      setIsAuthenticated(true);
+      setIsAuthed(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Authentication failed';
       // User rejected signature is not an error — they can retry
@@ -134,7 +118,7 @@ export function useAuth() {
   }, [address, chainId, signMessageAsync, pendingReferralCode, clearPendingReferralCode]);
 
   return {
-    isAuthenticated,
+    isAuthenticated: isAuthed,
     isAuthenticating,
     authError,
     authenticate, // manual retry

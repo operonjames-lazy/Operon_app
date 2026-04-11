@@ -18,11 +18,23 @@ export function getSecret(): Uint8Array {
   return _jwtSecret;
 }
 
-export async function verifyToken(request: NextRequest): Promise<string | null> {
+/**
+ * Extract JWT from httpOnly cookie (primary) or Authorization header (fallback).
+ * Cookie is set by /api/auth/wallet; header is supported for API clients.
+ */
+function extractToken(request: NextRequest): string | null {
+  // 1. httpOnly cookie (browser sessions)
+  const cookie = request.cookies.get('operon_session')?.value;
+  if (cookie) return cookie;
+  // 2. Authorization header (API clients, backward compat)
   const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
+  if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7);
+  return null;
+}
 
-  const token = authHeader.slice(7);
+export async function verifyToken(request: NextRequest): Promise<string | null> {
+  const token = extractToken(request);
+  if (!token) return null;
 
   try {
     const { payload } = await jwtVerify(token, getSecret());
@@ -33,10 +45,8 @@ export async function verifyToken(request: NextRequest): Promise<string | null> 
 }
 
 export async function verifyTokenPayload(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-
-  const token = authHeader.slice(7);
+  const token = extractToken(request);
+  if (!token) return null;
 
   try {
     const { payload } = await jwtVerify(token, getSecret());

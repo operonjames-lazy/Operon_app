@@ -84,6 +84,10 @@ export interface EppLangPack {
   // T&C accordion sections
   sec: EppSec[];
 
+  // Toasts
+  toastCodeCopied: string;
+  toastLinkCopied: string;
+
   // Errors
   errInviteInvalid: string;
   errInviteUsed: string;
@@ -168,6 +172,8 @@ const en: EppLangPack = {
     { n: '9', t: 'Changes to These Terms', b: 'These Terms (and the Schedule of Rates incorporated by reference) may be amended from time to time with prior notice as set out above. Continued participation in the Programme after the effective date of any amendment constitutes acceptance of the amended Terms.' },
   ],
 
+  toastCodeCopied: 'Code copied',
+  toastLinkCopied: 'Link copied',
   errInviteInvalid: 'This invitation link is not valid. Please check the link and try again.',
   errInviteUsed: 'This invitation has already been used.',
   errInviteExpired: 'This invitation has expired. Please contact your point of contact at Operon.',
@@ -251,6 +257,8 @@ const tc: EppLangPack = {
     { n: '9', t: '條款變更', b: '本條款（及併入引用的費率表）可不時依上述通知期限進行修訂。修訂生效日後繼續參與計畫即視為接受修訂後之條款。' },
   ],
 
+  toastCodeCopied: '已複製代碼',
+  toastLinkCopied: '已複製連結',
   errInviteInvalid: '此邀請連結無效，請檢查後再試。',
   errInviteUsed: '此邀請已被使用。',
   errInviteExpired: '此邀請已過期，請聯繫您在 Operon 的對接人員。',
@@ -334,6 +342,8 @@ const sc: EppLangPack = {
     { n: '9', t: '条款变更', b: '本条款（及并入引用的费率表）可不时依上述通知期限进行修订。修订生效日后继续参与计划即视为接受修订后之条款。' },
   ],
 
+  toastCodeCopied: '已复制代码',
+  toastLinkCopied: '已复制链接',
   errInviteInvalid: '此邀请链接无效，请检查后再试。',
   errInviteUsed: '此邀请已被使用。',
   errInviteExpired: '此邀请已过期，请联系您在 Operon 的对接人员。',
@@ -417,6 +427,8 @@ const ko: EppLangPack = {
     { n: '9', t: '약관 변경', b: '본 약관(및 인용으로 포함된 수수료율표)은 위에 명시된 사전 통지에 따라 수시로 개정될 수 있습니다. 개정 발효일 이후 프로그램에 계속 참여하는 것은 개정된 약관에 동의하는 것으로 간주됩니다.' },
   ],
 
+  toastCodeCopied: '코드가 복사되었습니다',
+  toastLinkCopied: '링크가 복사되었습니다',
   errInviteInvalid: '이 초대 링크는 유효하지 않습니다. 링크를 확인하고 다시 시도하세요.',
   errInviteUsed: '이 초대는 이미 사용되었습니다.',
   errInviteExpired: '이 초대는 만료되었습니다. Operon 담당자에게 문의하세요.',
@@ -500,6 +512,8 @@ const vi: EppLangPack = {
     { n: '9', t: 'Thay Đổi Điều Khoản', b: 'Các Điều Khoản này (và Bảng Phí được tham chiếu) có thể được sửa đổi theo thời gian với thông báo trước như nêu trên. Việc tiếp tục tham gia Chương trình sau ngày sửa đổi có hiệu lực được coi là chấp nhận các Điều Khoản đã sửa đổi.' },
   ],
 
+  toastCodeCopied: 'Đã sao chép mã',
+  toastLinkCopied: 'Đã sao chép liên kết',
   errInviteInvalid: 'Liên kết lời mời này không hợp lệ. Vui lòng kiểm tra liên kết và thử lại.',
   errInviteUsed: 'Lời mời này đã được sử dụng.',
   errInviteExpired: 'Lời mời này đã hết hạn. Vui lòng liên hệ với người liên lạc của bạn tại Operon.',
@@ -587,6 +601,8 @@ const th: EppLangPack = {
     { n: '9', t: 'การเปลี่ยนแปลงข้อกำหนด', b: 'ข้อกำหนดเหล่านี้ (และตารางอัตราที่อ้างถึง) อาจมีการแก้ไขเป็นครั้งคราวโดยแจ้งล่วงหน้าตามที่ระบุข้างต้น การเข้าร่วมโครงการต่อเนื่องหลังวันที่การแก้ไขมีผลบังคับใช้ ถือเป็นการยอมรับข้อกำหนดที่แก้ไขแล้ว' },
   ],
 
+  toastCodeCopied: 'คัดลอกรหัสแล้ว',
+  toastLinkCopied: 'คัดลอกลิงก์แล้ว',
   errInviteInvalid: 'ลิงก์คำเชิญนี้ไม่ถูกต้อง กรุณาตรวจสอบลิงก์และลองใหม่อีกครั้ง',
   errInviteUsed: 'คำเชิญนี้ถูกใช้งานไปแล้ว',
   errInviteExpired: 'คำเชิญนี้หมดอายุแล้ว กรุณาติดต่อผู้ประสานงานของท่านที่ Operon',
