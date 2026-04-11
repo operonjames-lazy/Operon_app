@@ -107,3 +107,101 @@ Items owed by operator / next pending decisions (all tracked in DECISIONS.md):
 - Same D-pending list as the previous entry (Resources URLs, Vercel env vars, smoke test, Thai legal review, invite expiry, stale rate table, delete dead route, Gnosis Safe migration)
 
 ---
+
+## 2026-04-12 — Full codebase audit + all fixes
+
+### Completed
+
+**Full codebase audit (review methodology applied):**
+- 6 thinking passes + 4 parallel review subagents (security, correctness, scale/ops, client) across all source files, smart contracts, migrations, and frontend
+- Found 8 blocking, 16 required, 14 advisory issues — all fixed across 9 commits
+- Smart contract comparison against XAI, Aethir, CARV, Sophon node sale contracts
+
+**Blocking fixes (commit `1607e62`):**
+- maxPricePerNode slippage: frontend was sending discounted price, contract checks base price before discount → every discounted purchase reverted on-chain
+- Deleted unauthenticated `/api/epp/create` (zero auth, zero rate limiting, brute-forceable invite codes)
+- CRON_SECRET=undefined bypass: `"Bearer undefined"` was matchable when env var unset
+- Nonce TOCTOU race: replaced `redis.get` + `redis.del` with atomic `redis.del` (single command)
+- In-memory nonce store: added production fail-closed guard (mirrors rate-limit pattern)
+- Admin invite generation: reordered to audit BEFORE mutation
+- Cron lookback: uses last reconciled block from DB instead of fixed 100-block window
+- writeContract errors: destructured error/isError from both wagmi hooks, surfaces wallet rejections and on-chain reverts to user
+
+**Required fixes (commit `3c56972`):**
+- validate-code regex now accepts both `OPRN-XXXX` (EPP) and `OPR-XXXXXX` (community) formats
+- Frontend discount math uses integer arithmetic matching contract order of operations
+- SIWE domain validation against expected origin (EIP-4361)
+- Migration 011: `purchases.amount_usd` → BIGINT, `epp_partners.invite_id` UNIQUE constraint
+- `crypto.getRandomValues()` replaces `Math.random()` for all code generation
+- admin-signer error no longer leaks private key via `String(err)`
+- `parseInt` replaces `Number()` on BIGINT commission values in mark-paid
+- Telegram alert failures logged instead of swallowed
+- `maxDuration=60` on reconcile route
+- ~15 hardcoded English strings on sale page replaced with `t()` calls
+- TanStack Query cache cleared on wallet disconnect (prevents data bleed)
+
+**Smart contract hardening (commits `666804d`, `4ef5b56`):**
+- Added `removeReferralCode()` — owner can revoke discount codes on-chain (previously permanent)
+- Fixed CEI violation: state updates moved before `transferFrom` external call
+- Added `MaxBatchSizeUpdated` and `ReferralCodeRemoved` events
+- Removed `tx.origin == msg.sender` check — smart contract wallets (Gnosis Safe, ERC-4337) can now purchase
+- Updated MockPurchaser to implement IERC721Receiver; 53 tests passing
+
+**Scale/ops improvements (commit `cbad5e3`):**
+- Consolidated all RPC usage through `lib/rpc.ts` `getProvider()` with fallback chain (4 files were creating providers directly)
+- Centralized sale contract addresses via `getSaleContract()`
+- RPC timeout reduced from 15s to 10s (fits Vercel function limits)
+- Expired JWT check on mount (decode + check `exp` before setting authenticated)
+- Pending tx recovery scoped to current wallet address
+- Block explorer URLs switch testnet/mainnet based on `NEXT_PUBLIC_NETWORK_MODE`
+- useTierRealtime notifications formatted via `t()` in consumer, not hardcoded in hook
+- Singleton server Supabase client (reused per cold start)
+- Logger gains AsyncLocalStorage-based requestId propagation
+- Batch existence check in reconcile loop (1 query instead of N)
+- Rate limiting added to `/api/sale/status` (60 req/min/IP)
+- Webhook handlers log error-level when signing keys missing in production
+
+**JWT → httpOnly cookie migration (commit `cf993a6`):**
+- `/api/auth/wallet` sets `operon_session` (httpOnly) and `operon_auth` (readable flag) cookies
+- New `/api/auth/logout` endpoint clears both cookies
+- `lib/auth.ts` reads JWT from cookie first, falls back to Authorization header
+- `lib/api/fetch.ts` rewritten: `isAuthenticated()` checks cookie flag, `clearSession()` calls logout
+- `useAuth.ts` rewritten for cookie flow — no more localStorage token storage
+
+**Sentry integration (commit `cf993a6`):**
+- Installed `@sentry/nextjs`
+- Client, server, and edge configs created
+- `instrumentation.ts` hook for Next.js 16
+- Gated on `NEXT_PUBLIC_SENTRY_DSN` — no-op when DSN not set
+
+**EPP i18n toasts (commit `cf993a6`):**
+- `toastCodeCopied` and `toastLinkCopied` added to EppLangPack interface + all 6 languages
+
+**Review methodology updates (commit `b9d9cfd` + global skill):**
+- SKILL.md: Pass 1 expanded with type/format/arithmetic mismatch sub-patterns; Pass 2 gains env var interpolation check; Pass 5 gains test realism check; 4 new Common Gaps patterns
+- categories/security.md: S-101 (env var undefined in auth string interpolation)
+- categories/ops.md: O-114 (deprecated code must be deleted or access-gated)
+- categories/data.md: D-73 (partial column type upgrades in migrations)
+- REVIEW_ADDENDUM.md: 7 new project-specific checks (S-P8, D-P8, A-P6, R-P5, C-P7, C-P8, O-P6)
+- review-log.md: first real entry documenting 12 "NO CHECK CAUGHT" gaps
+
+### Resolved D-pending items
+- ~~Delete deprecated `/api/epp/create`~~ — done (commit `1607e62`)
+
+### In Progress
+- None
+
+### Blocked
+- None
+
+### Next Session
+- **Redeploy contracts** to testnet — NodeSale changes require fresh deploy + reconfigure (setMinter, setAcceptedToken, setTier, setMaxPerWallet)
+- **Set env vars** on Vercel: `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_APP_DOMAIN`, confirm Upstash Redis configured
+- **Smoke test cookie auth flow** — localStorage→httpOnly migration needs real browser verification
+- **D-pending: Resources page URLs** — 9 content URLs still owed
+- **D-pending: Rotated secrets** — `JWT_SECRET`, `CRON_SECRET` for mainnet
+- **D-pending: Gnosis Safe** — contract ownership migration before mainnet (D06)
+- **D-pending: Thai legal review** of EPP T&Cs
+- **D-pending: Stale rate table** on referrals page (lines 240-262)
+
+---
