@@ -9,9 +9,16 @@ import { logger } from '@/lib/logger';
 
 const NODE_PURCHASED_EVENT = 'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)';
 
-const LOOKBACK_BLOCKS: Record<string, number> = {
-  arbitrum: 100, // ~5 minutes
-  bsc: 100,      // ~5 minutes
+// Default lookback for first run only (no prior reconciliation_log entry).
+// Subsequent runs use the last reconciled block from the DB.
+const DEFAULT_LOOKBACK: Record<string, number> = {
+  arbitrum: 2000,
+  bsc: 2000,
+};
+// Safety cap to avoid RPC timeouts on large ranges
+const MAX_BLOCK_RANGE: Record<string, number> = {
+  arbitrum: 10000,
+  bsc: 10000,
 };
 
 const CHAIN_CONFIG: Record<string, { rpcUrl: string; saleContract: string }> = {
@@ -27,6 +34,9 @@ const CHAIN_CONFIG: Record<string, { rpcUrl: string; saleContract: string }> = {
 
 export async function GET(request: NextRequest) {
   // Verify cron secret (Vercel cron jobs include this header)
+  if (!process.env.CRON_SECRET) {
+    return Response.json({ error: 'cron_not_configured' }, { status: 503 });
+  }
   const authHeader = request.headers.get('authorization') || '';
   const expected = `Bearer ${process.env.CRON_SECRET}`;
   const crypto = require('crypto');
@@ -57,7 +67,20 @@ export async function GET(request: NextRequest) {
       );
 
       const latestBlock = await provider.getBlockNumber();
-      const fromBlock = latestBlock - LOOKBACK_BLOCKS[chain];
+
+      // Pick up where the last run left off (handles daily cron gap).
+      // Falls back to DEFAULT_LOOKBACK on first-ever run.
+      const { data: lastRun } = await supabase
+        .from('reconciliation_log')
+        .select('to_block')
+        .eq('chain', chain)
+        .order('run_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const fromBlock = lastRun?.to_block
+        ? Math.max(lastRun.to_block + 1, latestBlock - MAX_BLOCK_RANGE[chain])
+        : latestBlock - DEFAULT_LOOKBACK[chain];
 
       const events = await saleContract.queryFilter(
         saleContract.filters.NodePurchased(),

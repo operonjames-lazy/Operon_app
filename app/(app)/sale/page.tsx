@@ -137,12 +137,53 @@ export default function SalePage() {
   const hasSufficientBalance = balance !== undefined && balance >= totalTokenAmount;
 
   // Approve transaction
-  const { writeContract: approve, data: approveHash } = useWriteContract();
-  const { isLoading: approveLoading, isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
+  const { writeContract: approve, data: approveHash, error: approveWriteError } = useWriteContract();
+  const { isLoading: approveLoading, isSuccess: approveSuccess, isError: approveReceiptError } = useWaitForTransactionReceipt({ hash: approveHash });
 
   // Purchase transaction
-  const { writeContract: purchase, data: purchaseHash } = useWriteContract();
-  const { isLoading: purchaseLoading, isSuccess: purchaseSuccess } = useWaitForTransactionReceipt({ hash: purchaseHash });
+  const { writeContract: purchase, data: purchaseHash, error: purchaseWriteError } = useWriteContract();
+  const { isLoading: purchaseLoading, isSuccess: purchaseSuccess, isError: purchaseReceiptError } = useWaitForTransactionReceipt({ hash: purchaseHash });
+
+  // Handle write errors (wallet rejection, contract revert)
+  useEffect(() => {
+    if (approveWriteError) {
+      const msg = approveWriteError.message || '';
+      if (!msg.includes('User rejected') && !msg.includes('user rejected')) {
+        setStep('error');
+        setErrorMsg(t('sale.approvalFailed') || 'Approval failed. Please try again.');
+      } else {
+        setStep('idle');
+      }
+    }
+  }, [approveWriteError, t]);
+
+  useEffect(() => {
+    if (purchaseWriteError) {
+      const msg = purchaseWriteError.message || '';
+      if (!msg.includes('User rejected') && !msg.includes('user rejected')) {
+        setStep('error');
+        setErrorMsg(t('sale.purchaseFailed') || 'Purchase failed. Please try again.');
+      } else {
+        setStep('idle');
+      }
+    }
+  }, [purchaseWriteError, t]);
+
+  // Handle on-chain transaction revert
+  useEffect(() => {
+    if (approveReceiptError) {
+      setStep('error');
+      setErrorMsg(t('sale.approvalFailed') || 'Approval transaction reverted.');
+    }
+  }, [approveReceiptError, t]);
+
+  useEffect(() => {
+    if (purchaseReceiptError) {
+      setStep('error');
+      setErrorMsg(t('sale.purchaseFailed') || 'Purchase transaction reverted.');
+      try { localStorage.removeItem('operon_pending_tx'); } catch {}
+    }
+  }, [purchaseReceiptError, t]);
 
   useEffect(() => {
     if (approveSuccess) setStep('approved');
@@ -231,7 +272,9 @@ export default function SalePage() {
     if (!saleAddress) return;
     setStep('purchasing');
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
-    const maxPrice = quantity > 0 ? totalTokenAmount / BigInt(quantity) : totalTokenAmount;
+    // maxPricePerNode must be the BASE (undiscounted) price — the contract's
+    // slippage check runs BEFORE applying the discount on-chain.
+    const maxPrice = parseUnits((pricePerNode / 100).toString(), decimals);
     purchase({
       address: saleAddress as `0x${string}`,
       abi: SALE_ABI,

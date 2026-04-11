@@ -24,6 +24,18 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'invalid_count', field: 'count' }, { status: 400 });
   }
 
+  // Audit BEFORE mutation — if audit fails, abort without generating codes.
+  try {
+    await logAdminAction({
+      adminWallet: admin.wallet,
+      action: 'epp_invites_requested',
+      details: { count },
+    });
+  } catch (err) {
+    logger.error('Failed to write admin audit log', { error: String(err) });
+    return Response.json({ error: 'audit_failed' }, { status: 500 });
+  }
+
   const supabase = createServerSupabase();
   const generated: string[] = [];
 
@@ -48,17 +60,6 @@ export async function POST(request: NextRequest) {
     if (!inserted) {
       return Response.json({ error: 'collision_limit' }, { status: 500 });
     }
-  }
-
-  try {
-    await logAdminAction({
-      adminWallet: admin.wallet,
-      action: 'epp_invites_generated',
-      details: { count, codes: generated },
-    });
-  } catch (err) {
-    logger.error('Failed to write admin audit log', { error: String(err) });
-    return Response.json({ error: 'audit_failed' }, { status: 500 });
   }
 
   const csv = 'invite_code\n' + generated.join('\n') + '\n';
