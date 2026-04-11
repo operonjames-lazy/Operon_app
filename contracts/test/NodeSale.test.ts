@@ -187,6 +187,42 @@ describe("NodeSale", function () {
       expect(valid3).to.be.false;
     });
 
+    it("should allow owner to remove a referral code", async function () {
+      const { buyer, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("REMOVE_ME"));
+      await sale.addReferralCode(codeHash, 0);
+
+      // Verify code is valid
+      const [valid] = await sale.validateCode(codeHash);
+      expect(valid).to.be.true;
+
+      // Remove the code
+      await expect(sale.removeReferralCode(codeHash))
+        .to.emit(sale, "ReferralCodeRemoved")
+        .withArgs(codeHash);
+
+      // Verify code is no longer valid
+      const [valid2] = await sale.validateCode(codeHash);
+      expect(valid2).to.be.false;
+
+      // Purchase with removed code should charge full price
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), codeHash, futureDeadline(), tierPrice);
+      expect(await usdc.balanceOf(treasury.address)).to.equal(tierPrice);
+    });
+
+    it("should only allow owner to remove a referral code", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("CODE"));
+      await sale.addReferralCode(codeHash, 0);
+
+      await expect(
+        sale.connect(other).removeReferralCode(codeHash)
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+
     it("should batch add referral codes", async function () {
       const { sale } = await loadFixture(deployFixture);
 

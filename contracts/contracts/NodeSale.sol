@@ -52,6 +52,8 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event NodeContractUpdated(address indexed oldContract, address indexed newContract);
     event FundsWithdrawn(address indexed token, address indexed to, uint256 amount);
+    event ReferralCodeRemoved(bytes32 indexed codeHash);
+    event MaxBatchSizeUpdated(uint256 oldSize, uint256 newSize);
 
     // --- Constructor ---
     constructor(address _treasury) Ownable(msg.sender) {
@@ -98,15 +100,15 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
             totalPrice = totalPrice - (totalPrice * discount / 10000);
         }
 
+        // Update state BEFORE external calls (CEI pattern)
+        tier.publicSold += quantity;
+        purchaseCount[msg.sender][tierId] += quantity;
+
         // Transfer payment to treasury
         require(
             IERC20(token).transferFrom(msg.sender, treasury, totalPrice),
             "NodeSale: payment transfer failed"
         );
-
-        // Update state (CEI: state changes before external call)
-        tier.publicSold += quantity;
-        purchaseCount[msg.sender][tierId] += quantity;
 
         // Mint nodes (external call last)
         nodeContract.batchMint(msg.sender, tierId, tier.price, quantity);
@@ -171,6 +173,12 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
         emit ReferralCodeAdded(codeHash, discountBps);
     }
 
+    function removeReferralCode(bytes32 codeHash) external onlyOwner {
+        validCodes[codeHash] = false;
+        codeDiscountBps[codeHash] = 0;
+        emit ReferralCodeRemoved(codeHash);
+    }
+
     function addReferralCodes(bytes32[] calldata codeHashes, uint16 discountBps) external onlyOwner {
         for (uint256 i = 0; i < codeHashes.length; i++) {
             validCodes[codeHashes[i]] = true;
@@ -207,7 +215,9 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
     }
 
     function setMaxBatchSize(uint256 _maxBatchSize) external onlyOwner {
+        uint256 old = maxBatchSize;
         maxBatchSize = _maxBatchSize;
+        emit MaxBatchSizeUpdated(old, _maxBatchSize);
     }
 
     function setTierPaused(uint256 tierId, bool _paused) external onlyOwner {
