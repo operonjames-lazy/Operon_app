@@ -109,18 +109,23 @@ All 6 languages are translated (EN, TC, SC, KO, VI, TH). Thai is real prose, not
 
 ### Commission Waterfall
 
-**9 levels deep**, rates determined by each upline's **own EPP tier** at the time of the purchase:
+Rates depend on each upline's classification at the time of the purchase. **Community** (any wallet with an `OPR-XXXXXX` code, which is every signin) earns 5 levels deep. **EPP partners** earn up to 9 levels depending on their tier.
 
-| Tier | L1 | L2 | L3 | L4 | L5 | L6 | L7 | L8 | L9 |
-|---|---|---|---|---|---|---|---|---|---|
-| Affiliate | 12% | 7% | 4.5% | 3% | — | — | — | — | — |
-| Partner | 12% | 7% | 4.5% | 3% | 2% | — | — | — | — |
-| Senior | 12% | 7% | 4.5% | 3% | 2% | 1.5% | — | — | — |
-| Regional | 12% | 7% | 4.5% | 3% | 2% | 1.5% | 1% | — | — |
-| Market | 12% | 7% | 4.5% | 3% | 2% | 1.5% | 1% | 0.75% | — |
-| Founding | 12% | 7% | 4.5% | 3% | 2% | 1.5% | 1% | 0.75% | 0.5% |
+| Tier | L1 | L2 | L3 | L4 | L5 | L6 | L7 | L8 | L9 | Max |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **Community** | **10%** | **3%** | **2%** | **1%** | **1%** | — | — | — | — | **17%** |
+| Affiliate (EPP) | 12% | 7% | 4.5% | 3% | 1% | — | — | — | — | 27.5% |
+| Partner (EPP) | 12% | 7% | 4.5% | 3% | 2% | — | — | — | — | 28.5% |
+| Senior (EPP) | 12% | 7% | 4.5% | 3% | 2% | 1.5% | — | — | — | 30% |
+| Regional (EPP) | 12% | 7% | 4.5% | 3% | 2% | 1.5% | 1% | — | — | 31% |
+| Market (EPP) | 12% | 7% | 4.5% | 3% | 2% | 1.5% | 1% | 0.75% | — | 31.75% |
+| Founding (EPP) | 12% | 7% | 4.5% | 3% | 2% | 1.5% | 1% | 0.75% | 0.5% | 32.25% |
 
-**Referral and purchase activity are decoupled** — an EPP partner who has never bought a node still earns full commission on their downline's purchases. Level 10+ uplines get nothing (hard cap).
+**Every EPP tier is strictly ≥ community at every level.** An EPP partner never earns less than a community referrer at the same chain position — this is why affiliate has an explicit L5=1% entry (added in migration 012).
+
+**Community referrers do not progress through tiers, do not accumulate `credited_amount`, and do not earn milestone bonuses.** Only EPP partners participate in the tier ladder, auto-promotion, and milestones.
+
+**Referral and purchase activity are decoupled** — an EPP partner (or community referrer) who has never bought a node still earns full commission on their downline's purchases. Level 10+ uplines get nothing (hard cap).
 
 **Self-referral is blocked** by same-wallet equality check at signup time. Detected post-facto self-referral invalidates referral rewards. See `ALGORITHMS.md` for chain-walk semantics.
 

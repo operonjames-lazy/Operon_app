@@ -235,7 +235,7 @@ export default function ReferralsPage() {
                     </tr>
                   </thead>
                   <tbody className="text-t2">
-                    <tr><td className="py-1">Affiliate</td><td>12%</td><td>7%</td><td>4.5%</td><td>3%</td><td>—</td></tr>
+                    <tr><td className="py-1">Affiliate</td><td>12%</td><td>7%</td><td>4.5%</td><td>3%</td><td>1%</td></tr>
                     <tr><td className="py-1">Partner</td><td>12%</td><td>7%</td><td>4.5%</td><td>3%</td><td>2%</td></tr>
                     <tr><td className="py-1">Senior</td><td>12%</td><td>7%</td><td>4.5%</td><td>3%</td><td>2%+</td></tr>
                   </tbody>
@@ -254,7 +254,22 @@ export default function ReferralsPage() {
       {!isEpp && summary?.code && (
         <Card title="Community Referral Programme">
           <div className="space-y-3 text-sm">
-            <p className="text-t2">Your buyers get <span className="text-green font-medium">10% off</span>. You earn commission on every sale.</p>
+            <p className="text-t2">Your buyers get <span className="text-green font-medium">10% off</span>. You earn commission on every sale up to 5 levels deep.</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs min-w-[320px]">
+                <thead>
+                  <tr className="text-t3">
+                    <th className="text-left pb-1 whitespace-nowrap">Level</th>
+                    <th className="pb-1">L1</th><th className="pb-1">L2</th>
+                    <th className="pb-1">L3</th><th className="pb-1">L4</th>
+                    <th className="pb-1">L5</th><th className="pb-1">Max</th>
+                  </tr>
+                </thead>
+                <tbody className="text-t2">
+                  <tr><td className="py-1">You earn</td><td>10%</td><td>3%</td><td>2%</td><td>1%</td><td>1%</td><td>17%</td></tr>
+                </tbody>
+              </table>
+            </div>
             <p className="text-xs text-t3">Share your code or link above. Self-referral (using your own code from the same wallet) will invalidate referral rewards.</p>
           </div>
         </Card>

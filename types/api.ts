@@ -10,6 +10,10 @@ export type PartnerTier =
   | 'regional'
   | 'market'
   | 'founding';
+// `referral_purchases.referrer_tier` can also hold 'community' for community
+// referrers (users with an OPR- code but no epp_partners row). Distinct from
+// PartnerTier because 'community' is not a tier anyone can progress through.
+export type ReferrerTier = PartnerTier | 'community';
 export type Language = 'en' | 'tc' | 'sc' | 'ko' | 'vi' | 'th';
 export type NodeStatus = 'active' | 'delegated' | 'locked';
 export type PayoutStatus =

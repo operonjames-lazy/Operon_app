@@ -1,0 +1,603 @@
+# TESTING_GUIDE.md — Operon Phase 1
+
+**Who this is for:** Anyone helping us test the Operon app before real money goes live. You need a computer, a browser, and about half a day total (roughly 2 hours of setup, then 1–2 hours of clicking through tests).
+
+**What you're doing:** Installing the Operon app on your own laptop, setting up crypto wallets on two practice blockchains (Arbitrum Sepolia and BSC Testnet), then testing the crucial money paths: buying a node, using a referral link, seeing the discount, and checking that commissions land on the correct wallet. Everything else is already covered by automated tests. You are only testing things that need a human with eyes and a wallet.
+
+**Why this matters:** When this goes live, people will be paying real money on two different blockchains. A silent failure on launch day — wrong commission, premature "Successful" message, missing discount — is close to impossible to fix after the fact. Your job is to break this stuff now.
+
+**You will not need to understand code.** You will copy and paste commands. If something fails, message the operator — do not improvise.
+
+---
+
+## Part 1 — Install the tools you need
+
+Five things. Skip any you already have.
+
+### 1.1 Node.js (version 22 LTS or later)
+
+1. Go to **nodejs.org** → download the **LTS** version → install.
+2. Open a terminal and verify:
+   ```
+   node --version
+   ```
+   On Windows, use **Git Bash** (installed with Git in 1.3). Not PowerShell, not CMD — many commands in this guide will not work in those.
+
+### 1.2 pnpm
+
+```
+npm install -g pnpm
+```
+Verify: `pnpm --version` should be 9 or higher.
+
+### 1.3 Git (and Git Bash on Windows)
+
+Download from **git-scm.com/downloads**. On Windows the installer also puts **Git Bash** on your Start menu — use that for every command in this guide.
+
+### 1.4 MetaMask browser extension
+
+1. **metamask.io** → Download → install.
+2. Pin the extension to your browser toolbar (puzzle piece icon → pin).
+3. Create a new wallet. Write the 12-word recovery phrase on paper. Set a password.
+
+### 1.5 A code editor (optional)
+
+You will edit one config file. Any editor works. If you need one, grab **VS Code** from **code.visualstudio.com**.
+
+---
+
+## Part 2 — Set up your wallets
+
+You need **three wallets** in MetaMask:
+
+- **Deployer** — deploys the smart contracts. Also your admin wallet.
+- **Wallet A** — top of the referral chain.
+- **Wallet B** — referred by Wallet A.
+
+### 2.1 Create three MetaMask accounts
+
+MetaMask icon → account circle (top-right) → **Add a new account** → name it **Deployer**. Repeat twice more for **Wallet A** and **Wallet B**.
+
+### 2.2 Add Arbitrum Sepolia to MetaMask
+
+Network dropdown → **Add a custom network**:
+
+- **Name:** Arbitrum Sepolia
+- **RPC URL:** `https://sepolia-rollup.arbitrum.io/rpc`
+- **Chain ID:** `421614`
+- **Currency:** ETH
+- **Explorer:** `https://sepolia.arbiscan.io`
+
+### 2.3 Add BSC Testnet to MetaMask
+
+- **Name:** BSC Testnet
+- **RPC URL:** `https://data-seed-prebsc-1-s1.binance.org:8545`
+- **Chain ID:** `97`
+- **Currency:** tBNB
+- **Explorer:** `https://testnet.bscscan.com`
+
+### 2.4 Fund all three wallets on both chains
+
+Each wallet needs a small amount of the native coin on each chain to pay network fees.
+
+**Arbitrum Sepolia faucet:** `https://www.alchemy.com/faucets/arbitrum-sepolia` (or ask the operator for a backup). Switch MetaMask to Arbitrum Sepolia, copy each wallet address in turn, request funds from the faucet for all three.
+
+**BSC Testnet faucet:** `https://testnet.bnbchain.org/faucet-smart`. Switch MetaMask to BSC Testnet. Request funds for all three wallets.
+
+After this, all three accounts should show small ETH balances on Arbitrum and small tBNB balances on BSC.
+
+### 2.5 Export the Deployer's private key
+
+1. MetaMask → Deployer account → three-dot menu → **Account details** → **Show private key**.
+2. Copy it (starts with `0x`). Paste it into a temporary text file — you will need it in Part 3.
+3. **Delete that file when you are done with this guide.** The Deployer wallet is for testing only — never put real funds in it.
+
+---
+
+## Part 3 — Deploy the Operon app
+
+This is the one-time setup. Follow it exactly. If anything fails, copy the error and ask the operator — do not improvise.
+
+### 3.1 Get the code
+
+```
+git clone <url-from-operator>
+cd operon-dashboard
+pnpm install
+cd contracts && pnpm install && cd ..
+```
+
+The two `pnpm install` steps take a few minutes each.
+
+### 3.2 Create a free Supabase project
+
+Supabase is the database the app uses.
+
+1. **supabase.com** → sign up → **New project**.
+2. Name: anything. Database password: generate and save it. Region: closest to you.
+3. Wait ~1 minute for provisioning.
+4. Left sidebar → gear icon (**Project Settings**) → **API**. Save these three values — you need them in step 3.6:
+   - **Project URL** → `SUPABASE_URL`
+   - **anon public** key → `SUPABASE_ANON_KEY`
+   - **service_role** key → `SUPABASE_SERVICE_KEY`
+5. **Project Settings → Database → Connection string → URI tab**. Copy the string. Replace `[YOUR-PASSWORD]` with the database password from step 2. This is your `SUPABASE_DB_URL`.
+
+### 3.3 Deploy the smart contracts on Arbitrum Sepolia
+
+From the `contracts` folder:
+
+```
+cd contracts
+export DEPLOYER_PRIVATE_KEY=<paste the 0x... key from Part 2.5>
+export ARBITRUM_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+export BSC_TESTNET_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545
+```
+
+**Deploy a mock USDC token:**
+```
+npx hardhat run scripts/deploy-mock-usdc.ts --network arbitrumSepolia
+```
+Save the printed address as `USDC_ARB`.
+
+**Deploy the main contracts:**
+```
+export USDC_ADDRESS=<USDC_ARB>
+export TOKEN_DECIMALS=6
+export TREASURY_ADDRESS=<the Deployer wallet address>
+npx hardhat run scripts/deploy.ts --network arbitrumSepolia
+```
+Save the two printed addresses as `SALE_ARB` and `NODE_ARB`.
+
+### 3.4 Deploy the smart contracts on BSC Testnet
+
+Same again, but 18 decimals instead of 6.
+
+```
+npx hardhat run scripts/deploy-mock-usdc.ts --network bscTestnet
+```
+Save as `USDT_BSC`.
+
+```
+export USDC_ADDRESS=<USDT_BSC>
+export TOKEN_DECIMALS=18
+npx hardhat run scripts/deploy.ts --network bscTestnet
+```
+Save as `SALE_BSC` and `NODE_BSC`.
+
+**You should now have six addresses:** `USDC_ARB`, `SALE_ARB`, `NODE_ARB`, `USDT_BSC`, `SALE_BSC`, `NODE_BSC`.
+
+### 3.5 Mint practice stablecoins
+
+Still in `contracts`, open the Hardhat console for Arbitrum:
+```
+npx hardhat console --network arbitrumSepolia
+```
+Paste these, replacing the addresses. One command per line:
+```
+const usdc = await ethers.getContractAt("MockERC20", "<USDC_ARB>")
+await usdc.mint("<Deployer address>", "10000000000")
+await usdc.mint("<Wallet A address>", "10000000000")
+await usdc.mint("<Wallet B address>", "10000000000")
+```
+That gives each wallet 10,000 practice USDC (6 decimals). Type `.exit`.
+
+Now BSC — **note the extra zeros because BSC uses 18 decimals**:
+```
+npx hardhat console --network bscTestnet
+const usdt = await ethers.getContractAt("MockERC20", "<USDT_BSC>")
+await usdt.mint("<Deployer address>", "10000000000000000000000")
+await usdt.mint("<Wallet A address>", "10000000000000000000000")
+await usdt.mint("<Wallet B address>", "10000000000000000000000")
+```
+Type `.exit`, then:
+```
+cd ..
+```
+
+### 3.6 Create the frontend config file
+
+In the project root (not `contracts`), create a file called exactly **`.env.local`** (note the leading dot). Paste this, filling in your values:
+
+```
+NEXT_PUBLIC_NETWORK_MODE=testnet
+
+NEXT_PUBLIC_SUPABASE_URL=<from 3.2>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<from 3.2>
+SUPABASE_SERVICE_KEY=<from 3.2>
+SUPABASE_DB_URL=<from 3.2>
+
+JWT_SECRET=<see below>
+
+NEXT_PUBLIC_SALE_CONTRACT_ARB=<SALE_ARB>
+NEXT_PUBLIC_NODE_CONTRACT_ARB=<NODE_ARB>
+NEXT_PUBLIC_TESTNET_USDC_ARB=<USDC_ARB>
+
+NEXT_PUBLIC_SALE_CONTRACT_BSC=<SALE_BSC>
+NEXT_PUBLIC_NODE_CONTRACT_BSC=<NODE_BSC>
+NEXT_PUBLIC_TESTNET_USDT_BSC=<USDT_BSC>
+
+ADMIN_WALLETS=<Deployer address, all lowercase>
+ADMIN_PRIVATE_KEY=<Deployer private key from 2.5>
+```
+
+Generate `JWT_SECRET`:
+```
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+Paste the output into the `JWT_SECRET=` line.
+
+**Double-check:** `ADMIN_WALLETS` must be **all lowercase**. MetaMask shows mixed case — convert it.
+
+### 3.7 Apply the database migrations
+
+Easiest way is Supabase's SQL editor, not the terminal.
+
+1. Open your Supabase project in the browser.
+2. Left sidebar → **SQL Editor** → **New query**.
+3. In your file manager, open the folder `operon-dashboard/supabase/migrations`. You will see files named `001_initial_schema.sql`, `002_seed_data.sql`, etc.
+4. Open `001_initial_schema.sql` in a text editor. Select all. Copy. Paste into the Supabase SQL Editor. Click **Run**.
+5. Wait for **Success**.
+6. Clear the editor. Repeat for each remaining file **in numerical order**: 002, 003, 004, 005, 006, 008, 009, 010, 011, 012. **There is no 007 — skip it.**
+
+If any file errors, stop and message the operator.
+
+Note: `002_seed_data.sql` pre-seeds a handful of EPP invite codes into the database. You can use those in Test 5 without generating new ones.
+
+### 3.8 Run the site
+
+From the project root:
+```
+pnpm dev
+```
+After 20–30 seconds you will see `Local: http://localhost:3000`. Open that URL in your browser. You should see the Operon homepage. Ignore any terminal warnings about Sentry or PostHog.
+
+**Leave this terminal running** for the whole test session. Closing it stops the site.
+
+### 3.9 Import the practice tokens into MetaMask
+
+MetaMask does not show the practice USDC / USDT balances until you tell it which tokens to track.
+
+**On Arbitrum Sepolia**, for each of the three wallets:
+1. Switch MetaMask to Arbitrum Sepolia and select the wallet.
+2. Scroll down in MetaMask → **Import tokens** → paste `USDC_ARB` → **Import**.
+3. You should see ~10,000 USDC.
+
+**On BSC Testnet**, for each of the three wallets:
+1. Switch to BSC Testnet and select the wallet.
+2. Import tokens → paste `USDT_BSC` → **Import**.
+3. You should see ~10,000 USDT.
+
+---
+
+## Part 4 — Checklist before you start testing
+
+- [ ] Site running at `http://localhost:3000`
+- [ ] MetaMask has three accounts: Deployer, Wallet A, Wallet B
+- [ ] MetaMask has Arbitrum Sepolia and BSC Testnet networks added
+- [ ] All three wallets have some ETH on Arbitrum and some tBNB on BSC
+- [ ] All three wallets show ~10,000 USDC on Arbitrum and ~10,000 USDT on BSC
+- [ ] You have the six contract addresses written down somewhere
+- [ ] All migrations were run including 012 (the latest) — if you stopped early you will hit bugs
+
+---
+
+## Part 5 — Red flags — stop and report immediately
+
+If you see any of these, stop, screenshot, and message the operator. These are the launch-day disasters.
+
+1. **"Purchase successful" appears before MetaMask confirms the transaction** — or worse, when the transaction failed or was never submitted.
+2. **MetaMask approval popup shows the wrong amount.** Look at the **human-readable amount** MetaMask displays near the top (formatted like `95 USDC` or `95 USDT`). It should roughly match the price on the Sale page. **RED FLAG** if:
+   - It says **Unlimited**
+   - MetaMask warns "this site is requesting unlimited access"
+   - The human-readable amount is clearly many times larger than the price
+   - *(BSC note: because USDT uses 18 decimals, the raw number underneath the formatted amount is long — e.g. `95000000000000000000` for $95. That is normal. Trust the formatted amount, not the raw digits.)*
+3. **You paid and there's no NFT on the My Nodes page** after waiting two minutes.
+4. **A referral commission lands on the wrong wallet**, on your own wallet when you used your own code, or the amount is clearly wrong (zero, negative, or many times larger than expected).
+5. **The price on the Sale page does not match what MetaMask asks you to pay.**
+6. **After a successful purchase, your USDC/USDT balance did not go down by the price shown**, or went down by a wildly different amount.
+7. **Raw code text on the screen** — `sale.buyButton`, `{{discount}}`, `[object Object]`, `undefined`.
+8. **You switched to a non-English language and still see English** in a button, heading, or menu.
+9. **An Arbitrum purchase shows up as a BSC NFT or vice versa**, or commission amounts on BSC differ from Arbitrum by many orders of magnitude (this is almost always a decimals bug).
+10. **You paid and nothing happened** — no NFT, no error, no pending state, no success.
+
+---
+
+## Part 6 — Tests
+
+Six tests. Run them in order — earlier tests set up state for later ones. Each test has a **Goal**, **Steps**, and **Pass/Fail checks** marked with ☐.
+
+The tests only cover things a human with a browser and a wallet can verify. Contract logic, backend math, rate limiting, authorization, and signature verification are already covered by automated tests — do not bother manually testing those.
+
+**Useful tip — the Sale page has a Chain Selector.** To switch between Arbitrum and BSC while testing, use the **in-app Chain Selector** on the Sale page, not MetaMask's network dropdown. If your wallet is on the wrong network, the site will show a "Switch to X" button — click it and approve in MetaMask. This is the smoother flow.
+
+---
+
+### Test 1 — Sign in and get a referral code
+
+**Goal:** A new wallet can connect, sign, and receive its own `OPR-XXXXXX` referral code.
+
+**Setup:** MetaMask on Arbitrum Sepolia, Wallet A selected.
+
+**Steps:**
+
+1. Open an Incognito window (Ctrl+Shift+N).
+2. Go to `http://localhost:3000`.
+3. Click **Connect Wallet** → **MetaMask** → **Connect**.
+4. MetaMask pops up a second time asking you to **Sign** a message. Click **Sign**.
+5. Click **Referrals** in the menu.
+
+**Checks:**
+
+- ☐ A code starting with `OPR-` and 6 characters is shown. Write it down — you need it in Test 2.
+- ☐ Your Wallet A address is visible on the page.
+- ☐ **Fail if:** no code, blank code, wrong format, or wrong wallet address shown.
+
+---
+
+### Test 2 — Referral link and discount
+
+**Goal:** Visiting with `?ref=OPR-XXXXXX` in the URL attaches the correct referrer and shows a 10% discount on the Sale page. Self-referral is rejected.
+
+**Steps:**
+
+1. New Incognito window.
+2. Go to `http://localhost:3000/?ref=<the code from Test 1>`.
+3. Click **Connect Wallet** → **MetaMask** → pick **Wallet B** → **Connect** → **Sign**.
+4. Click **Sale** in the menu.
+
+**Checks:**
+
+- ☐ The Sale page shows a **10% discount** applied (line-through on the original price, green "10% off" badge).
+- ☐ Wallet A's code appears in the referral code badge at the top of the buy box (e.g. `OPR-ABC123 ✓`).
+- ☐ **Fail if:** no discount, wrong percentage, no referrer shown, or a different code shown.
+
+**Now try one thing to break it — self-referral:**
+
+1. Sign out Wallet B. New Incognito window.
+2. Go to `http://localhost:3000/?ref=<Wallet A's own code>`.
+3. Sign in with **Wallet A** — the wallet that owns that code.
+4. Go to the Sale page.
+
+- ☐ Expect: no discount. You cannot refer yourself.
+- ☐ **Fail if:** a 10% discount is applied, or Wallet A ends up as its own referrer on the Referrals page.
+
+---
+
+### Test 3 — Buy a node, receive referral credit (run twice)
+
+**Goal:** The core money path — approve, purchase, get the NFT, referrer gets their commission. Run once on Arbitrum with USDC (quantity 1), then once on BSC with USDT (quantity 3). These are the two places real money will move at launch. The decimals difference between the chains and the quantity multiplication are the two most common sources of silent bugs.
+
+---
+
+#### Pass 1 — Arbitrum Sepolia + USDC + quantity 1
+
+**Setup:** Sign in as Wallet B (referred by Wallet A from Test 2). Go to the Sale page. Use the **in-app Chain Selector** to pick **Arbitrum**. If MetaMask is on a different network, click the "Switch to Arbitrum" button and approve in MetaMask.
+
+Confirm the referrer and 10% discount are still shown.
+
+**Before clicking anything, write down Wallet B's current USDC balance** — you can see it on the payment-token button next to "USDC — $10,000.00" or similar. Call this `balance_before`.
+
+**Steps:**
+
+1. Pick **quantity: 1**.
+2. Pick **USDC** as the token.
+3. **Write down the total price shown on the Sale page.** Example: `$95.00`.
+4. Click **Approve**.
+5. **Look carefully at the MetaMask approval popup.** Near the top, MetaMask shows a human-readable amount like `95 USDC`. It should roughly match the price from step 3.
+   - ☐ **STOP AND REPORT** (Red Flag #2) if: it says **Unlimited**, warns about "unlimited access," or shows an amount clearly larger than the price.
+6. Click **Confirm** in MetaMask. Wait for the approve transaction to confirm.
+7. Click **Purchase** on the website.
+8. MetaMask pops up again. Click **Confirm**.
+9. **Watch the website while MetaMask is still processing.** The site should show a spinner or "Confirming" state. Only **after** MetaMask shows the transaction as confirmed should it flip to the Purchase Complete modal.
+   - ☐ **STOP AND REPORT** (Red Flag #1) if: the website says "Successful" before MetaMask confirms.
+
+**Pass or fail checks:**
+
+- ☐ Go to **My Nodes**. One NFT is listed, owned by Wallet B, on Arbitrum.
+- ☐ Go back to the Sale page and check the USDC balance shown on the payment-token button — call this `balance_after`. **`balance_before - balance_after` should roughly equal the price** you wrote down in step 3. A few cents of rounding is fine. **RED FLAG #6** if the balance barely dropped, or dropped by many times the price.
+- ☐ Go to **Referrals** (still as Wallet B). The purchase appears in your activity.
+- ☐ Sign out. Sign in with **Wallet A**. Go to **Referrals**.
+- ☐ Wallet B's purchase appears in your activity feed.
+- ☐ A commission amount is shown on Wallet A. **Expected: approximately $8.55** (L1 community rate is 10%, applied to the post-discount price of ~$85.50). A few cents of rounding is fine. Anything between **$8 and $10** is acceptable; outside that range, note the actual number and report.
+- ☐ **Fail if:** no NFT, no referral entry on Wallet A, commission is zero (the chain walk is broken), negative, or many times larger than the purchase price.
+
+---
+
+#### Pass 2 — BSC Testnet + USDT + quantity 3
+
+**Setup:** Still signed in as Wallet B. On the Sale page, use the **in-app Chain Selector** to switch to **BNB Chain**. If MetaMask is still on Arbitrum, the site will show a "Switch to BNB Chain" button — click it, approve the network switch in MetaMask.
+
+Confirm the referrer and 10% discount are still shown after the chain change — this is a check that referral state survives chain switches.
+
+Write down Wallet B's current **USDT** balance as `balance_before`.
+
+**Steps:**
+
+1. Pick **quantity: 3** (this test deliberately buys multiple to verify multiplication).
+2. Pick **USDT** as the token.
+3. **Write down the total price shown.** It should be roughly 3× the per-node price minus the 10% discount. Example: `$256.50` for 3 nodes at $95 each with 10% off. The Sale page also shows the per-node price underneath the quantity selector — sanity-check it.
+4. Click **Approve**.
+5. MetaMask approval popup:
+   - ☐ The **formatted** amount near the top should read roughly `256.50 USDT` or similar — matching the total price.
+   - ☐ **Reminder:** because USDT on BSC uses 18 decimals, the raw number in the transaction data is long (e.g. `256500000000000000000`). That is normal. Trust the formatted amount.
+   - ☐ **STOP AND REPORT** (Red Flag #2) if it says **Unlimited** or the formatted amount is wildly wrong.
+6. Confirm approve. Wait. Click **Purchase**. Confirm. Watch for premature success.
+
+**Pass or fail checks:**
+
+- ☐ **My Nodes** now shows **four NFTs** — one from Pass 1 (Arbitrum) and **three** from Pass 2 (BSC).
+- ☐ Each NFT is clearly labelled with its chain.
+- ☐ **Balance check:** USDT `balance_before - balance_after` ≈ total price from step 3 (e.g. ~$256.50). **RED FLAG #6** if not.
+- ☐ Sign in as Wallet A → **Referrals**. You see **both** Wallet B events — one Arbitrum single node, one BSC triple. Two separate commission entries.
+- ☐ The commission for the BSC triple should be roughly 3× the commission for the Arbitrum single. **Expected: approximately $25.65** (10% of ~$256.50 post-discount). Anything between **$24 and $28** is acceptable.
+- ☐ **If the BSC commission is off by 10^12 or is in a completely different order of magnitude, that is a decimals bug.** Red Flag #9.
+- ☐ **Fail if:** 3 nodes did not appear on My Nodes, the BSC purchase shows as Arbitrum, chains are mislabelled, or the BSC commission is wildly off from 3× the Arbitrum one.
+
+---
+
+**One adversarial check — self-referral on purchase:**
+
+1. Sign in as Wallet A. Go to the Sale page.
+2. In the referral code input at the top of the buy box, type Wallet A's own `OPR-XXXXXX` code.
+3. See what the field does — either it is rejected as invalid, or it accepts but applies no discount.
+4. Try to go through with a purchase anyway.
+
+- ☐ Expect: Wallet A's own code does **not** apply a discount. If the purchase goes through, Wallet A has **no commission credit on its own purchase** visible on the Referrals page.
+- ☐ **Fail (Red Flag #4) if:** Wallet A ends up with commission on its own purchase.
+
+---
+
+### Test 4 — Recovery after closed browser
+
+**Goal:** If the tester closes the browser in the middle of a purchase, the site does not end up in a fake "Successful" state.
+
+**Setup:** Sign in as Wallet A on Arbitrum. Sale page.
+
+**Steps:**
+
+1. Start a purchase: pick quantity 1, click Approve → Confirm in MetaMask → wait for approval → click Purchase.
+2. MetaMask opens asking you to confirm the purchase. **Do not click Confirm.** Instead, **close the entire browser window**.
+3. Wait 10 seconds. Reopen the browser, go to `http://localhost:3000`, sign in as Wallet A.
+
+**Checks:**
+
+- ☐ Go to My Nodes. Either no new NFT (the purchase was never submitted) or the recovered pending state at the top of the Sale page.
+- ☐ The Sale page should not be stuck on an eternal spinner.
+- ☐ **Fail (Red Flag #1) if:** the site says "Successful" for a purchase that never happened.
+
+---
+
+### Test 5 — EPP onboarding and partner purchase
+
+**Goal:** The Elite Partner onboarding wizard walks end-to-end and creates a partner. **After creation, a purchase using the partner's `OPRN-XXXX` code shows a 15% discount (not 10%) and produces a different commission amount from a community referrer.**
+
+**Setup — you need an EPP invite code.** Two ways:
+
+**Option A — use a pre-seeded invite (easiest).** Migration `002_seed_data.sql` inserted several `EPP-XXXX` invite codes into the database when you ran it in Part 3.7. Open your Supabase project → **Table Editor** → `epp_invites` table → find a row where `status = 'pending'` and copy its `invite_code` value. That is your fresh invite.
+
+**Option B — generate new invites via the admin API.** Open a **new terminal window** (leave `pnpm dev` running in the other) and run:
+```
+curl -X POST http://localhost:3000/api/admin/epp/invites \
+  -H "Content-Type: application/json" \
+  -H "Cookie: operon_session=<paste your admin session cookie>" \
+  -d '{"count": 5}'
+```
+To get the `operon_session` cookie: sign in with your **Deployer** wallet on the site (remember it is the admin wallet), then in the browser press **F12** → **Application** tab → **Cookies** → `http://localhost:3000` → find `operon_session` and copy the value.
+
+---
+
+#### Happy-path wizard
+
+1. Open a new Incognito window.
+2. Go to `http://localhost:3000/epp/onboard?inv=<your EPP code>`.
+3. **Step 1 — Welcome letter.** Read and click Next.
+4. **Step 2 — Terms.** Scroll to the bottom (9 sections). Tick **I agree**. Click Next.
+5. **Step 3 — Wallet and form.** Fill the form. Click Connect Wallet → pick a **fresh wallet that has never been used as a partner** (create a new "Wallet D" if needed). Sign the message.
+6. **Step 4 — Confirmation.** A success screen with a new partner code starting with `OPRN-`.
+
+**Checks:**
+
+- ☐ Confirmation screen shows the new partner code (`OPRN-XXXX` format).
+- ☐ The Referrals page (still signed in as the new partner) shows the partner card with an "Elite Partner" badge and the partner code.
+- ☐ **Fail if:** wizard crashes, partner code missing, or confirmation screen blank.
+
+**Write down the new `OPRN-XXXX` code — the next step needs it.**
+
+---
+
+#### Partner discount and commission test
+
+Now we verify the partner's code gives a **15%** discount (not 10%) and produces a partner-tier commission.
+
+1. Sign out the new partner. Open a new Incognito window.
+2. Go to `http://localhost:3000/?ref=<the OPRN-XXXX code you just got>`.
+3. Sign in with a wallet that has never been used before — you can use the Deployer wallet (it has USDC and USDT on both chains from Part 3.5), or create a Wallet E in MetaMask and top it up.
+4. Go to the Sale page on Arbitrum.
+
+**Checks:**
+
+- ☐ **The discount shown is 15%**, not 10%. The crossed-out original price should show 15% off, and the badge or summary should read "15% off".
+- ☐ The partner's `OPRN-XXXX` code appears in the referral code badge.
+- ☐ **Fail if:** the discount is 10% (that is the community rate, not the partner rate), or no discount appears at all.
+
+Now buy one node:
+
+5. Quantity 1, USDC, Approve → confirm → Purchase → confirm. Wait for success.
+
+**Checks after purchase:**
+
+- ☐ Sign in as the new EPP partner (Wallet D or whichever wallet you onboarded). Go to Referrals.
+- ☐ The purchase appears under the partner's activity, with a commission credited.
+- ☐ The commission amount should be visibly **different** from the commission Wallet A received for Wallet B's purchase in Test 3 Pass 1 — partners earn at a different rate than community referrers. If they are identical, the partner tier logic is not kicking in.
+- ☐ **Fail if:** no commission, or the commission is exactly the same as the community referrer rate.
+
+---
+
+#### Break attempts
+
+**a) Already-used invite.** Take the invite code you already walked through. Reload the same onboarding URL.
+- ☐ Expect: "this invite has already been used" message.
+
+**b) Invalid invite.** Go to `http://localhost:3000/epp/onboard?inv=EPP-NOPE`.
+- ☐ Expect: "invalid invite" message.
+
+**c) Expired invite.** Go to your Supabase project → Table Editor → `epp_invites` → find an unused row → edit `expires_at` to yesterday's date → save. Visit `http://localhost:3000/epp/onboard?inv=<that code>`.
+- ☐ Expect: "expired" message.
+
+**d) Skip terms.** Fresh invite. Step 2: do not tick the agree box. Try to click Next.
+- ☐ Expect: cannot advance.
+
+---
+
+### Test 6 — Languages
+
+**Goal:** Every language renders real text, not placeholder keys. No English leaking.
+
+**Steps:** Use the language chip at the top of the page. Switch to each language in turn (**Traditional Chinese, Simplified Chinese, Korean, Vietnamese, Thai**) and visit these pages:
+
+- Sale page
+- Referrals page
+- EPP onboarding Welcome Letter
+- EPP onboarding terms
+
+**For each language and each page:**
+
+- ☐ All visible text is in the expected language. No English words in buttons, menus, or headings.
+- ☐ No raw code like `sale.buyButton`, `{{discount}}`, or `undefined`.
+- ☐ Buttons and headings do not overflow their container (Thai and Korean are often longer than English — watch for clipped text).
+- ☐ **Fail (Red Flag #7 or #8) if:** any of the above.
+
+**Also:**
+
+- ☐ Switch to Thai, reload the page — still Thai.
+
+---
+
+## Part 7 — How to report a problem
+
+For each issue, send the operator:
+
+1. **Which test and step.** Example: "Test 3 Pass 2 step 5 — approval amount on BSC."
+2. **Which chain** — Arbitrum Sepolia or BSC Testnet.
+3. **What you did** — click by click.
+4. **What you expected.**
+5. **What actually happened** — exact error if there was one.
+6. **Screenshot or short screen recording** if the problem is visual.
+7. **How bad:**
+   - **Blocker** — anything that matches a Red Flag in Part 5.
+   - **Serious** — broken but no money at risk.
+   - **Minor** — cosmetic or typo.
+8. **Reproducible?** — "every time," "sometimes," or "once."
+
+If it matches a Red Flag, put **RED FLAG #X** at the top of your message.
+
+Also helpful: wallet address, transaction hash, approximate time, browser, OS.
+
+---
+
+## Part 8 — Known stuff — do not report
+
+- The **Resources** page has placeholder links. That is fine.
+- The **Thai terms** have not had final legal review. The text is there for functional testing only.
+- The **Referrals page tier table** shows a fixed reference table, not a personalised row. That is deliberate.
+- The app has **no admin UI** — admin actions happen through API endpoints only. That is also deliberate for Phase 1.

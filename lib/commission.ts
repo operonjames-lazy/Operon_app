@@ -2,10 +2,11 @@
  * Commission calculation entrypoint.
  *
  * All state-changing logic lives in the Postgres function
- * `process_purchase_and_commissions` (see migration 010). Keeping the math in
- * SQL gives us a single transaction boundary for the entire purchase:
- * buyer upsert → purchase insert → 9-level chain walk → commission inserts →
- * credited-amount updates → tier auto-promotion → milestone audit.
+ * `process_purchase_and_commissions` (defined in migration 010, latest
+ * `CREATE OR REPLACE` in migration 012). Keeping the math in SQL gives us a
+ * single transaction boundary for the entire purchase: buyer upsert →
+ * purchase insert → 9-level chain walk → commission inserts (EPP + community)
+ * → credited-amount updates → tier auto-promotion → milestone audit.
  *
  * This file is now a thin TS wrapper. It exists so webhook handlers, the
  * reconciliation cron, and the admin replay endpoint all call the same code
@@ -15,17 +16,23 @@
 import { createServerSupabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
-// Commission rates by partner tier and level (in basis points, 1200 = 12%).
+// Commission rates by EPP partner tier and level (in basis points, 1200 = 12%).
 // Kept here purely for reference / UI display. The authoritative copy lives
-// in migration 010 and is what actually runs.
+// in migration 012 and is what actually runs.
 export const COMMISSION_RATES: Record<string, number[]> = {
-  affiliate: [1200, 700, 450, 300],
+  affiliate: [1200, 700, 450, 300, 100],
   partner:   [1200, 700, 450, 300, 200],
   senior:    [1200, 700, 450, 300, 200, 150],
   regional:  [1200, 700, 450, 300, 200, 150, 100],
   market:    [1200, 700, 450, 300, 200, 150, 100, 75],
   founding:  [1200, 700, 450, 300, 200, 150, 100, 75, 50],
 };
+
+// Community referrers (users with `users.referral_code` but no `epp_partners`
+// row) earn a flat 5-level table. They do not participate in tier progression,
+// credited_amount tracking, or milestones. Kept separate from COMMISSION_RATES
+// because 'community' is not an EPP tier.
+export const COMMUNITY_COMMISSION_RATES: number[] = [1000, 300, 200, 100, 100];
 
 // Credited-amount weights by level (in basis points, 10000 = 100%)
 export const CREDITED_WEIGHTS: Record<number, number> = {

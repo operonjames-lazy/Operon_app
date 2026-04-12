@@ -4,7 +4,7 @@ Formulas, thresholds, rate tables, and scoring rules. The numeric rules that mus
 
 **When to consult:** When writing or modifying any code that calculates commissions, tier promotions, discounts, emissions, staking rewards, or anything else numeric. Before changing a rate, always search this file first to understand the knock-on effects.
 
-**When to update:** Every time a constant changes. The authoritative values live in code (`lib/commission.ts` TS constants + migration `010_commission_rpc.sql` PL/pgSQL function). This file is the human-readable reference. When you change the code, update this file in the same session — otherwise future-you will forget one side and the two will drift.
+**When to update:** Every time a constant changes. The authoritative values live in code (`lib/commission.ts` TS constants + the latest RPC migration — currently `012_community_commission.sql`, which `CREATE OR REPLACE`s the function from migration 010). This file is the human-readable reference. When you change the code, update this file in the same session — otherwise future-you will forget one side and the two will drift.
 
 ---
 
@@ -12,11 +12,12 @@ Formulas, thresholds, rate tables, and scoring rules. The numeric rules that mus
 
 ### Rate table
 
-Rates are in **basis points** (1200 = 12%). Each upline's rate depends on their own EPP tier at the time of the purchase (not at the time the downline joined).
+Rates are in **basis points** (1200 = 12%). Each upline's rate depends on their own tier at the time of the purchase (not at the time the downline joined).
 
 | Tier | L1 | L2 | L3 | L4 | L5 | L6 | L7 | L8 | L9 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| affiliate | 1200 | 700 | 450 | 300 | — | — | — | — | — |
+| community | 1000 | 300 | 200 | 100 | 100 | — | — | — | — |
+| affiliate | 1200 | 700 | 450 | 300 | 100 | — | — | — | — |
 | partner | 1200 | 700 | 450 | 300 | 200 | — | — | — | — |
 | senior | 1200 | 700 | 450 | 300 | 200 | 150 | — | — | — |
 | regional | 1200 | 700 | 450 | 300 | 200 | 150 | 100 | — | — |
@@ -25,7 +26,9 @@ Rates are in **basis points** (1200 = 12%). Each upline's rate depends on their 
 
 A dash (`—`) means that tier does not earn at that depth (commission is forfeit; does not redistribute elsewhere).
 
-**Source of truth:** `lib/commission.ts` `COMMISSION_RATES` constant AND `supabase/migrations/010_commission_rpc.sql` `v_rates := CASE v_partner_tier ... END`. Both must be updated in the same migration + code change. See D10.
+**`community` is not an EPP tier.** It is the virtual tier applied to any upline that has a `users.referral_code` (every wallet that has signed in) but no row in `epp_partners`. Community referrers do NOT participate in tier progression, `credited_amount` tracking, or milestones — their commission rows land with `credited_weight=0` and `credited_amount=0`, and `referral_purchases.referrer_tier='community'`. The EPP tiers (affiliate → founding) are strictly ≥ community at every level, which is the invariant that justifies the affiliate L5=100 bps entry (without it, affiliate would earn 0% at L5 while community earns 1%).
+
+**Source of truth:** `lib/commission.ts` `COMMISSION_RATES` (EPP) + `COMMUNITY_COMMISSION_RATES` AND the latest RPC migration (`012_community_commission.sql`, which replaces 010). Both must be updated in the same migration + code change. See D10.
 
 ### Computation
 
@@ -43,30 +46,27 @@ Where `amount_usd` is the purchase's post-discount amount in USD cents, and `com
 4. Stop at 9 levels (level 10+ uplines earn nothing; not redistributed)
 5. Stop earlier if the chain terminates (someone at level `L` has no referrer in `referrals`)
 6. Stop earlier if a cycle is detected (visited array tracked in the recursive CTE)
-7. Skip (but continue walking past) any upline that is not in `epp_partners` — they earn nothing because only EPP partners have rates, BUT the chain keeps going. Wait: **this is the one point where I need to be careful.** Re-read the product rule:
+7. For each upline along the walk, classify and credit:
+   - If the upline has a row in `epp_partners` → use their **EPP tier's** rate table. Participate in tier promotion, credited_amount tracking, and milestones.
+   - Else if the upline has a `users.referral_code` → use the **community** rate table (5 levels max, no tracking).
+   - Else (no referral code at all) → skip, no earning.
 
-> "Referral and purchase activity are decoupled" — an EPP partner who has never bought a node still earns full commission. But what about community-referrer-only uplines? They are in `users` but NOT in `epp_partners`, so they have no rate table.
-
-**Current behaviour:** non-EPP uplines are **silently skipped** (CONTINUE in the RPC loop). The chain keeps walking past them — if A → B → C → D and only A and D are EPP partners, D earns L1 (D is buyer's direct referrer? no wait), actually re-read. The loop is `FOR v_link IN chain LOOP` where `chain` walks upward from the buyer. Each `v_link` has a `level` derived from the recursive CTE's depth counter. If B and C are non-EPP, they're looked up in `epp_partners`, the lookup returns NULL, the loop body CONTINUEs, and the next iteration processes the next level. The `level` number keeps incrementing based on CTE depth, NOT based on qualifying uplines.
-
-So: in A ← B ← C ← D ← buyer (where ← means "is referred by"), if only A (level 4) is EPP, A earns at the **level 4** rate of their tier, not at level 1.
-
-**This is the "skip non-buyers, keep walking" semantics chosen in the product spec.** Levels are indexed by chain position, not by qualifying-upline position.
+**Levels are indexed by chain position, not by qualifying-upline position.** A non-earning upline (someone with no referral code) still consumes a level slot: if A is at CTE-depth 4 and B and C at depths 2 and 3 have no code, A earns at the **level 4** rate of their tier, not level 2.
 
 ### Example
 
-Buyer K, chain K ← J ← I ← H ← G ← ... Upline tiers:
+Buyer K, chain K ← J ← I ← H ← G ← F. Upline tiers:
 
-| Position | Wallet | EPP? | Tier | Earns at |
+| Position | Wallet | Classification | Tier | Earns at |
 |---|---|---|---|---|
-| Level 1 | J | Yes | senior | L1 @ 12% |
-| Level 2 | I | No (community only) | — | nothing |
-| Level 3 | H | Yes | partner | L3 @ 4.5% |
-| Level 4 | G | Yes | founding | L4 @ 3% |
-| Level 5 | F | Yes | affiliate | L5 — affiliate has no L5 entry → nothing |
+| Level 1 | J | EPP partner | senior | L1 @ 12% |
+| Level 2 | I | Community (OPR- code only) | community | L2 @ 3% |
+| Level 3 | H | EPP partner | partner | L3 @ 4.5% |
+| Level 4 | G | EPP partner | founding | L4 @ 3% |
+| Level 5 | F | EPP partner | affiliate | L5 @ 1% (affiliate's new L5) |
 | Level 6+ | ... | — | — | up to L9 then stop |
 
-A non-EPP upline does NOT consume a level slot in the sense of "compressing" — they consume a slot in the sense of "the L+1 upline is now at level L+2, not L+1".
+Every level along the chain earns something as long as the upline has at least a community code. Only a user with no `users.referral_code` at all (effectively impossible post-Phase 1 since every signup gets one) would consume a slot without earning.
 
 ---
 
@@ -74,7 +74,7 @@ A non-EPP upline does NOT consume a level slot in the sense of "compressing" —
 
 ### Credited weight table
 
-Per level, in basis points (10000 = 100%). This is the fraction of each qualifying purchase that counts toward the upline's `credited_amount`.
+Per level, in basis points (10000 = 100%). This is the fraction of each qualifying purchase that counts toward the upline's `credited_amount`. **EPP partners only** — community referrers do not track credited_amount.
 
 | Level | Weight (bps) | Fraction |
 |---:|---:|---:|
@@ -91,6 +91,8 @@ Per level, in basis points (10000 = 100%). This is the fraction of each qualifyi
 ```
 credited_amount_delta = floor(amount_usd * credited_weight / 10000)
 ```
+
+Community commission rows write `credited_weight=0` and `credited_amount=0` — they are recorded for auditability but do not flow into any cumulative partner state.
 
 ### Tier thresholds
 
@@ -112,7 +114,7 @@ Cumulative `credited_amount` required to reach each tier, in USD cents.
 - **Race-safe.** The RPC holds a row lock (`SELECT FOR UPDATE`) on the partner row for the duration of the transaction. Two concurrent purchases promoting the same partner serialise correctly.
 - **Audit.** Every auto-promotion writes a row to `admin_audit_log` with `action='tier_auto_promote'` and `details={ from, to, credited_amount }`.
 
-**Source of truth:** `lib/commission.ts` `TIER_THRESHOLDS` and `TIER_ORDER` AND migration 010 `v_tier_order` array + promotion `CASE` block.
+**Source of truth:** `lib/commission.ts` `TIER_THRESHOLDS` and `TIER_ORDER` AND the latest RPC migration (`012_community_commission.sql`) `v_tier_order` array + promotion `CASE` block. Community referrers are never promoted and never demoted.
 
 ---
 
@@ -139,7 +141,7 @@ IF prev_credited < threshold AND new_credited >= threshold
 
 **Settlement:** milestones are logged, not paid, by the commission RPC. Operator processes them during the biweekly settlement cycle and marks payouts via `/api/admin/payouts/mark-paid`.
 
-**Source of truth:** `lib/commission.ts` `MILESTONES` AND migration 010 `v_milestones` array.
+**Source of truth:** `lib/commission.ts` `MILESTONES` AND the latest RPC migration (`012_community_commission.sql`) `v_milestones` array. Milestones apply to EPP partners only — community referrers do not cross thresholds.
 
 ---
 
@@ -160,7 +162,7 @@ referrals
 
 ### Walk implementation
 
-A PL/pgSQL recursive CTE in migration 010:
+A PL/pgSQL recursive CTE in the commission RPC (latest: migration 012):
 
 ```sql
 WITH RECURSIVE chain AS (
@@ -192,6 +194,8 @@ ORDER BY level
 9 CTE iterations worst case. Single Postgres transaction, single query. O(depth) where depth ≤ 9, so effectively O(1).
 
 The older TypeScript implementation did 9 sequential queries from `lib/commission.ts`; that's been replaced by the RPC. Do not reintroduce.
+
+**Note on the "silently skip non-EPP" behaviour:** migration 010 used to skip any upline not in `epp_partners`, which silently broke community commissions. Migration 012 replaced that with an explicit community-path branch. If you're reading the function body in 010 directly, you are reading a superseded version — always check the latest migration that redefines `process_purchase_and_commissions`.
 
 ---
 
@@ -297,12 +301,15 @@ When updating any numeric constant, search this file and update BOTH the code an
 
 | Constant | TS location | SQL location | This doc section |
 |---|---|---|---|
-| Commission rates per tier | `lib/commission.ts` `COMMISSION_RATES` | `migrations/010_commission_rpc.sql` `v_rates CASE` | §1 |
-| Credited weights per level | `lib/commission.ts` `CREDITED_WEIGHTS` | `migrations/010_commission_rpc.sql` `v_weights` | §2 |
-| Tier thresholds | `lib/commission.ts` `TIER_THRESHOLDS` | `migrations/010_commission_rpc.sql` `CASE v_new_credited` | §2 |
-| Tier order | `lib/commission.ts` `TIER_ORDER` | `migrations/010_commission_rpc.sql` `v_tier_order` | §2 |
-| Milestones | `lib/commission.ts` `MILESTONES` | `migrations/010_commission_rpc.sql` `v_milestones` | §3 |
+| EPP commission rates per tier | `lib/commission.ts` `COMMISSION_RATES` | `migrations/012_community_commission.sql` `v_rates CASE` | §1 |
+| Community commission rates | `lib/commission.ts` `COMMUNITY_COMMISSION_RATES` | `migrations/012_community_commission.sql` `v_community_rates` | §1 |
+| Credited weights per level | `lib/commission.ts` `CREDITED_WEIGHTS` | `migrations/012_community_commission.sql` `v_weights` | §2 |
+| Tier thresholds | `lib/commission.ts` `TIER_THRESHOLDS` | `migrations/012_community_commission.sql` `CASE v_new_credited` | §2 |
+| Tier order | `lib/commission.ts` `TIER_ORDER` | `migrations/012_community_commission.sql` `v_tier_order` | §2 |
+| Milestones | `lib/commission.ts` `MILESTONES` | `migrations/012_community_commission.sql` `v_milestones` | §3 |
 | Discount bps | `supabase/migrations/005_sale_config.sql` (`community_discount_bps`, `epp_discount_bps`) | same table, read at runtime by `/api/sale/validate-code` | PRODUCT.md |
 | Token decimals | `lib/wagmi/contracts.ts` `TOKEN_DECIMALS` | — (converted in `tokenAmountToCents`) | ARCHITECTURE.md |
+
+**SQL location** always refers to the most recent migration that `CREATE OR REPLACE`s the function or redefines the constant. Older migration files are preserved for history but not authoritative.
 
 Changing any row above requires updating every column on that row in a single commit.
