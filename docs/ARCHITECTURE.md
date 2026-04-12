@@ -105,7 +105,7 @@ operon-dashboard/
 
 ## Database Schema (Supabase Postgres)
 
-Authoritative SQL lives in `supabase/migrations/001_initial_schema.sql` through `010_commission_rpc.sql`. Summary:
+Authoritative SQL lives in `supabase/migrations/001_initial_schema.sql` through `012_community_commission.sql`. Summary:
 
 ### Users & Auth
 
@@ -382,18 +382,20 @@ Referrer is **immutable after first signup**. A second signin ignores the `refer
                                  │
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  6. process_purchase_and_commissions(...)  [migration 010]           │
+│  6. process_purchase_and_commissions(...)  [migrations 010 → 012]    │
 │     Single Postgres transaction:                                     │
 │     a. Upsert buyer in users                                         │
 │     b. INSERT INTO purchases (ON CONFLICT tx_hash DO NOTHING)        │
 │     c. Recursive CTE walks referrals chain upward, 9 levels max      │
-│     d. FOR each qualifying upline:                                   │
+│     d. FOR each upline:                                              │
 │        · SELECT FOR UPDATE epp_partners                              │
-│        · Compute commission + credited amount (BigInt-safe integer)  │
+│        · If EPP partner: compute commission at tier rate, update     │
+│          credited_amount, tier auto-promote, milestone audit         │
+│        · If not EPP but users.referral_code set: credit at flat      │
+│          community rate [10,3,2,1,1], 5 levels max,                  │
+│          referrer_tier='community', credited_weight=0                │
+│        · If neither: skip                                            │
 │        · INSERT INTO referral_purchases (UNIQUE(tx,level))           │
-│        · UPDATE credited_amount                                      │
-│        · Tier auto-promote (promote-only, race-safe via row lock)    │
-│        · INSERT milestone rows into admin_audit_log when crossed     │
 │     Returns: { status: 'ok' | 'duplicate', purchase_id, count }      │
 └─────────────────────────────────────────────────────────────────────┘
                                  │
@@ -469,7 +471,7 @@ These are load-bearing. Breaking any of them corrupts data or leaks money in way
 
 9. **Migrations that have been applied to any environment are immutable.** Edit = new migration file.
 
-10. **Commission rate tables are duplicated** — the TypeScript constants in `lib/commission.ts` must match the `CASE v_partner_tier` block in migration `010_commission_rpc.sql`. Any change must update both. See D10.
+10. **Commission rate tables are duplicated** — the TypeScript constants in `lib/commission.ts` (`COMMISSION_RATES` + `COMMUNITY_COMMISSION_RATES`) must match the `CASE v_partner_tier` block and `v_community_rates` constant in the latest commission migration (currently `012_community_commission.sql`, which `CREATE OR REPLACE`s the function from `010`). Any change must update both sides in the same commit. See D10.
 
 11. **Personal `OPR-XXXXXX` codes are generated at signup**, not at purchase time (CLAUDE.md rule 8). Every connected wallet gets one.
 
