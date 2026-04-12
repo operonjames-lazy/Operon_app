@@ -205,3 +205,61 @@ Items owed by operator / next pending decisions (all tracked in DECISIONS.md):
 - **D-pending: Stale rate table** on referrals page (lines 240-262)
 
 ---
+
+## 2026-04-12 (session 2) — Commission fix: community earning + user-testing handoff
+
+### Completed
+
+**Testing guide rewrite (docs/TESTING_GUIDE.md):**
+- Iterated multiple times from user feedback. Final shape is self-deployable: testers clone the codebase, deploy contracts to Arbitrum Sepolia + BSC Testnet themselves, run migrations via Supabase SQL Editor, start `pnpm dev`, and execute 6 click-by-click tests against their own local stack. No shared test environment.
+- Scope trimmed to UI-observable flows only. Removed admin-UI tests (no admin UI exists in Phase 1), forged-HMAC webhook tests (requires curl + secrets), RPC tampering tests (dev-only), and busywork tests (back button, mobile view, copy-paste URL). These are all either automated (53 hardhat tests + tsc) or not human-observable.
+- Crucial flows only: sign-in + OPR- code generation, referral link + discount, buy a node on Arbitrum + BSC (with quantity 3 on BSC to catch decimals/multiplication bugs), closed-browser recovery, EPP onboarding + partner 15% discount vs community 10%, languages spot check.
+- Each check has a specific numeric expectation (e.g. L1 community commission on $95 purchase ≈ $8.55) so testers can verify quantitatively instead of eyeballing.
+
+**Commission RPC fix — the blocking bug (commit `5da8d39`):**
+- Found via code audit during testing-guide review: `process_purchase_and_commissions` in migration 010 only credited uplines with an `epp_partners` row. Community referrers (wallets with a `users.referral_code` from `ensurePersonalCode` but no partner onboarding) silently earned zero. This violated the core product rule "if someone buys with your referral code, you earn commission."
+- Traced the bug by reading the recursive CTE and `FOR v_link IN chain LOOP`: when the `SELECT FROM epp_partners` returned NULL, the loop hit `CONTINUE` and the community upline got no row in `referral_purchases`.
+- Also found: affiliate tier stopped at L4 `[1200, 700, 450, 300]` while community per the spec is `[1000, 300, 200, 100, 100]`. At L5, affiliate earned 0% and community earned 1% — an affiliate partner was WORSE than a community referrer at L5. Broke the invariant "every EPP tier is strictly ≥ community at every level."
+- Fix planned and approved before implementation. Three options considered: (1) auto-create an `epp_partners` row at affiliate tier for every signup, (2) add a community path directly in the RPC, (3) add an `is_community` flag. Went with option 2 — cleanest separation, no UI badge pollution, no back-fill required, no new column.
+- Migration `012_community_commission.sql` `CREATE OR REPLACE`s the RPC with the community fallback branch: when an upline is not in `epp_partners` but has `users.referral_code`, credit at flat `[1000, 300, 200, 100, 100]` bps with `referrer_tier='community'`, `credited_weight=0`, `credited_amount=0` (community does not progress through tiers or earn milestones). Also adds affiliate L5=100 bps.
+- Mirrors updated in lock-step per rule 14 (atomic commit): `lib/commission.ts` (+ new `COMMUNITY_COMMISSION_RATES`), `types/api.ts` (new `ReferrerTier = PartnerTier | 'community'`), `app/(app)/referrals/page.tsx` (Programme Reference affiliate L5 cell + Community Referral Programme card rate table), `docs/ALGORITHMS.md`, `docs/PRODUCT.md`.
+
+**End-to-end verification:**
+- `scripts/smoke-test-commission.mjs` — direct RPC call against dev Supabase inside `BEGIN/ROLLBACK`. Sets up a synthetic A→B→C chain (A affiliate EPP, B community, C buyer) and a fake $95 purchase. Asserts L1=community rate=1000 commission=$9.50 credited=0 + L2=affiliate rate=700 commission=$6.65 credited=$23.75. Passes.
+- Migration 012 applied to dev Supabase.
+- `npx tsc --noEmit` clean.
+- `cd contracts && npx hardhat test` — 53 passing (no regression; DB-side change, zero contract impact).
+
+**Architecture sync (commit `f54b760`):**
+- `docs/ARCHITECTURE.md` Database Schema intro, commission flow diagram step 6, and Critical Invariants #10 updated to reference migration 012 and describe the EPP-vs-community branching.
+
+**User testing package:**
+- Delivered to `C:\Users\james\Downloads\FOR USER TESTING\` — 1.6 MB, `node_modules` / `.next` / `.git` / `.env.local` all excluded.
+- Includes `TESTING_GUIDE.md` at top level for discoverability.
+- Includes `TESTING_GUIDE_zh.md` — Simplified Chinese translation via translation skill. Validated clean (no passive voice abuse, no 的 chains, CJK characters only), prose-audited in a separate agent invocation, punctuation swept to full-width Chinese (`，（）：`). Manually fixed one line-226 style issue and half-width colons before digit lists.
+- Test 4 multi-level referral UI test was removed because the SQL smoke test covers the chain walk more reliably than asking testers to coordinate three wallets.
+
+### Resolved D-pending items
+- ~~**Stale rate table** on referrals page~~ — fixed in commit `5da8d39` (affiliate L5 `—` → `1%`, Community Referral Programme card added with 10-3-2-1-1 table for non-EPP users)
+- ~~**Commission RPC integration test**~~ — `scripts/smoke-test-commission.mjs` runs against dev Supabase end-to-end in `BEGIN/ROLLBACK`, executes real RPC, asserts both community L1 and EPP L2 rows land
+
+### In Progress
+- None
+
+### Blocked
+- None
+
+### Next Session
+- **Push commits** to origin — `5da8d39`, `f54b760`, and this session's `docs: end-of-session update` are local only
+- **Tester feedback** — `FOR USER TESTING` package handed off this session, reports will come back
+- **D-pending: Redeploy contracts** to testnet (carried from prior session)
+- **D-pending: Vercel env vars** (carried from prior session)
+- **D-pending: Cookie auth browser smoke test** (carried from prior session)
+- **D-pending: Resources page URLs** — 9 content URLs still owed
+- **D-pending: Rotated secrets** — `JWT_SECRET`, `CRON_SECRET` for mainnet
+- **D-pending: Gnosis Safe** — contract ownership migration before mainnet (D06)
+- **D-pending: Thai legal review** of EPP T&Cs
+- **D-pending: Delete `/api/epp/create`** deprecated route
+- **D-pending: EPP invite expiry policy**
+
+---

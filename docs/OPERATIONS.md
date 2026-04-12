@@ -150,7 +150,9 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 | `006_resilience.sql` | `failed_events`, `tier_increments`, BIGINT upgrades, CHECK constraints, idempotent `increment_tier_sold` |
 | `008_product_changes.sql` | Remove whitelist stage; add `users.referral_code` |
 | `009_admin_and_hardening.sql` | `referral_purchases.paid_at/payout_tx/paid_from_wallet`; `failed_events.kind`; `epp_invites.created_by`; audit log indexes |
-| `010_commission_rpc.sql` | Atomic `process_purchase_and_commissions` Postgres function |
+| `010_commission_rpc.sql` | Atomic `process_purchase_and_commissions` Postgres function (superseded by 012) |
+| `011_review_fixes.sql` | BIGINT upgrade for `purchases.amount_usd` + `epp_partners.invite_id` UNIQUE constraint |
+| `012_community_commission.sql` | `CREATE OR REPLACE` of commission RPC — adds community referrer earning path (flat 10-3-2-1-1 for users with `users.referral_code` but no `epp_partners` row) and affiliate L5=1% so every EPP tier stays strictly ≥ community |
 
 (Migration 007 does not exist.)
 

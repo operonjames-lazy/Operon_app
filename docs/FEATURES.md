@@ -49,7 +49,7 @@ Feature implementation tracker. Stable IDs that never renumber.
 |---|---|---|---|
 | F10 | Personal `OPR-XXXXXX` code auto-generated at first wallet signin | ✅ Done | `app/api/auth/wallet/route.ts` `ensurePersonalCode()`. Back-fills existing users. |
 | F11 | Same-wallet self-referral block at signup | ✅ Done | `maybeAttachReferrer()` in `/api/auth/wallet`. |
-| F12 | Atomic commission RPC — buyer + purchase + 9-level chain walk + credited + promote + milestones | ✅ Done | Migration `010_commission_rpc.sql`. `lib/commission.ts` is a thin wrapper. See ALGORITHMS.md §1–§4. |
+| F12 | Atomic commission RPC — buyer + purchase + 9-level chain walk + EPP and community earning + credited + promote + milestones | ✅ Done | Migration `010_commission_rpc.sql`, superseded by `012_community_commission.sql` which adds the community path and affiliate L5. `lib/commission.ts` is a thin wrapper. See ALGORITHMS.md §1–§4. |
 | F13 | Tier auto-promotion (promote-only, race-safe via FOR UPDATE) | ✅ Done | Inside commission RPC. Demotion via `/api/admin/partners/tier`. |
 | F14 | Milestone bonus detection + audit logging | ✅ Done | Inside commission RPC. Logs to `admin_audit_log`. |
 | F15 | Referrals summary page (EPP + community codes, levels, network, activity, payouts) | ✅ Done | `app/(app)/referrals/page.tsx`, `/api/referrals/summary`, `/activity`, `/payouts`. |
@@ -106,7 +106,9 @@ Feature implementation tracker. Stable IDs that never renumber.
 | DB6 | Resilience: `failed_events`, `tier_increments`, BIGINT upgrades, positive-value constraints | ✅ Done | Migration 006. |
 | DB7 | Product changes — remove whitelist, add community `users.referral_code` | ✅ Done | Migration 008. |
 | DB8 | Admin hardening — payout cols, `failed_events.kind`, `epp_invites.created_by`, indexes | ✅ Done | Migration 009. |
-| DB9 | Atomic commission RPC `process_purchase_and_commissions` | ✅ Done | Migration 010. See ALGORITHMS.md §1–§4. |
+| DB9 | Atomic commission RPC `process_purchase_and_commissions` | ✅ Done | Migration 010 (original), `CREATE OR REPLACE`'d by 012. See ALGORITHMS.md §1–§4. |
+| DB10 | Review fixes — `purchases.amount_usd` → BIGINT, `epp_partners.invite_id` UNIQUE | ✅ Done | Migration 011. |
+| DB11 | Community referrer earning + affiliate L5 in commission RPC | ✅ Done | Migration 012. Community path credits `users.referral_code` holders at flat 10-3-2-1-1 with `referrer_tier='community'`. |
 
 ---
 
@@ -163,8 +165,8 @@ These are items owed by the operator (not code work). Tracked here because closi
 - Resources page URLs (9 items) — see D-pending "Resources page content URLs"
 - Vercel env vars (`ADMIN_WALLETS`, `ADMIN_PRIVATE_KEY`, rotated `JWT_SECRET`) — D-pending "Vercel deploy env"
 - Thai legal review of EPP T&Cs — D-pending "Thai legal review"
-- Live testnet smoke test of commission RPC — D-pending "Commission RPC integration test"
-- Community commission rate table on referrals page (currently stale) — D-pending "Stale referrals page rate table"
+- ~~Live testnet smoke test of commission RPC~~ — done via `scripts/smoke-test-commission.mjs` against dev Supabase (commit `5da8d39`)
+- ~~Community commission rate table on referrals page (currently stale)~~ — done in commit `5da8d39`: affiliate L5 updated `—` → `1%`, new Community Referral Programme card shows the full 10-3-2-1-1 rate table for non-EPP users
 - Delete deprecated `/api/epp/create` route — D-pending "Delete /api/epp/create"
 - EPP invite expiry default (currently none) — D-pending "EPP invite expiry policy"
 
