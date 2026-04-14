@@ -27,7 +27,8 @@ function requireRedisInProd(): void {
 }
 
 export async function generateNonce(): Promise<string> {
-  const nonce = crypto.randomUUID();
+  // EIP-4361 requires nonces to be alphanumeric only — strip UUID hyphens.
+  const nonce = crypto.randomUUID().replace(/-/g, '');
   const redis = await getRedis();
 
   if (redis) {

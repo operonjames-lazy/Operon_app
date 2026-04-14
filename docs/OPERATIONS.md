@@ -45,9 +45,7 @@ JWT_SECRET=<rotate-before-mainnet>             # any long random string
 
 # ─── Network mode ──────────────────────────────────────────────
 NEXT_PUBLIC_NETWORK_MODE=testnet                # 'testnet' | 'mainnet'
-
-# ─── WalletConnect ─────────────────────────────────────────────
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=<id>
+NEXT_PUBLIC_APP_DOMAIN=operon.app               # SIWE domain check; set to your deployed host
 
 # ─── RPC URLs ──────────────────────────────────────────────────
 NEXT_PUBLIC_ALCHEMY_KEY=<key>
@@ -85,10 +83,13 @@ ADMIN_PRIVATE_KEY=0x...                                         # owner key for 
 CRON_SECRET=<random>                                            # Vercel cron auth header Bearer token
 
 # ─── Optional monitoring ───────────────────────────────────────
-SENTRY_DSN=https://...
-POSTHOG_KEY=phc_...
-TG_BOT_TOKEN=<bot-token>                                         # abandoned-event Telegram alerts
+NEXT_PUBLIC_SENTRY_DSN=https://...              # read by sentry.{client,edge,server}.config.ts; init is no-op when unset
+TG_BOT_TOKEN=<bot-token>                         # abandoned-event Telegram alerts (reconcile cron)
 TG_ADMIN_CHAT_ID=<chat-id>
+
+# ─── Dev endpoints (LOCAL DEV ONLY — must NOT be set in production) ─
+# DEV_ENDPOINTS_ENABLED=1
+# DEV_INDEXER_SECRET=<hex32>                     # HMAC shared secret between scripts/dev-indexer.mjs and /api/dev/*
 ```
 
 ### Commands
@@ -153,6 +154,8 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 | `010_commission_rpc.sql` | Atomic `process_purchase_and_commissions` Postgres function (superseded by 012) |
 | `011_review_fixes.sql` | BIGINT upgrade for `purchases.amount_usd` + `epp_partners.invite_id` UNIQUE constraint |
 | `012_community_commission.sql` | `CREATE OR REPLACE` of commission RPC — adds community referrer earning path (flat 10-3-2-1-1 for users with `users.referral_code` but no `epp_partners` row) and affiliate L5=1% so every EPP tier stays strictly ≥ community |
+| `013_referral_chain_state.sql` | `referral_code_chain_state` queue (per code × chain) tracking whether each code has been mirrored onto the `NodeSale` contract via `addReferralCode`. Drained by `/api/cron/reconcile` in production and `/api/dev/drain-referrals` in local dev. Required for `/api/sale/validate-code` to ever return `synced` |
+| `014_seed_full_tier_curve.sql` | Fills in tiers 6-40 of the `sale_tiers` table and resets tier state so the DB matches a fresh contract deploy |
 
 (Migration 007 does not exist.)
 

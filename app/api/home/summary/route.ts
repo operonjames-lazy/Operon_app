@@ -48,6 +48,16 @@ export async function GET(request: NextRequest) {
       .select('id', { count: 'exact', head: true })
       .eq('referrer_id', userId);
 
+    // Referrer attached to this user at signup, if any. Used by the sale
+    // page to prefill the discount code input so a buyer never has to
+    // re-enter their own upline.
+    const { data: upline } = await supabase
+      .from('referrals')
+      .select('code_used')
+      .eq('referred_id', userId)
+      .maybeSingle();
+    const usedReferralCode = upline?.code_used ?? null;
+
     // Read sale config for current stage
     const { data: saleConfig } = await supabase
       .from('sale_config')
@@ -99,6 +109,7 @@ export async function GET(request: NextRequest) {
         totalSold,
         totalSupply,
         publicSaleDate: null,
+        usedReferralCode,
       },
     });
   } catch {

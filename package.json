@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:indexer": "node scripts/dev-indexer.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

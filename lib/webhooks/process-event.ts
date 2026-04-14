@@ -72,12 +72,15 @@ export function parseNodePurchasedLog(
     return null;
   }
 
-  // Validate tier
-  const tier = Number(parsed.args.tier);
-  if (tier < 1 || tier > 40) {
-    logger.error('Invalid tier in event', { tier });
+  // Validate tier. The contract emits 0-indexed tier IDs (0..39); the DB
+  // sale_tiers table is 1-indexed (1..40). Translate here so everything
+  // downstream sees the DB convention.
+  const contractTier = Number(parsed.args.tier);
+  if (contractTier < 0 || contractTier > 39) {
+    logger.error('Invalid tier in event', { contractTier });
     return null;
   }
+  const tier = contractTier + 1;
 
   // Validate quantity
   const quantity = Number(parsed.args.quantity);

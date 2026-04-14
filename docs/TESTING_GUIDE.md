@@ -1,4 +1,4 @@
-# TESTING_GUIDE.md — Operon Phase 1
+# TESTING_GUIDE.md — Operon Phase 1 (cycle 2)
 
 **Who this is for:** Anyone helping us test the Operon app before real money goes live. You need a computer, a browser, and about half a day total (roughly 2 hours of setup, then 1–2 hours of clicking through tests).
 
@@ -6,7 +6,15 @@
 
 **Why this matters:** When this goes live, people will be paying real money on two different blockchains. A silent failure on launch day — wrong commission, premature "Successful" message, missing discount — is close to impossible to fix after the fact. Your job is to break this stuff now.
 
+**What's different from cycle 1:** This is the second pass of user testing. The first pass (2026-04-14) surfaced 14 bugs; all of them have been fixed, the code has been re-reviewed end-to-end, and this package reflects the fixed state. Two items in Part 3 setup are new — **read Part 3 carefully even if you tested cycle 1**. A known-caveats list is in Part 9 at the bottom of this guide — those are items that have been intentionally deferred for later, not bugs we want you to report.
+
 **You will not need to understand code.** You will copy and paste commands. If something fails, message the operator — do not improvise.
+
+---
+
+## Part 0 — What you have in this package
+
+The `operon-dashboard/` folder next to this file is the full application codebase. You do **not** need to `git clone` anything — skip that step in any other doc you may have been handed.
 
 ---
 
@@ -58,6 +66,8 @@ You need **three wallets** in MetaMask:
 
 MetaMask icon → account circle (top-right) → **Add a new account** → name it **Deployer**. Repeat twice more for **Wallet A** and **Wallet B**.
 
+> ⚠️ **Important behaviour note (new in cycle 2):** The app expects you to sign out before switching wallets. **When you want to switch from Wallet A to Wallet B, click the Disconnect button in the app (or in the wallet icon at the top right of the page) first, THEN switch accounts in MetaMask.** If you just switch the active account in MetaMask while the app is still showing a signed-in state for the previous wallet, the app now detects the account change and forces a re-sign — which is the correct safe behaviour but may feel like a jolt. Disconnecting first is the smoother flow.
+
 ### 2.2 Add Arbitrum Sepolia to MetaMask
 
 Network dropdown → **Add a custom network**:
@@ -98,10 +108,11 @@ After this, all three accounts should show small ETH balances on Arbitrum and sm
 
 This is the one-time setup. Follow it exactly. If anything fails, copy the error and ask the operator — do not improvise.
 
-### 3.1 Get the code
+### 3.1 Install dependencies
+
+The operator handed you the `operon-dashboard/` folder inside this package. Open a Git Bash terminal in it:
 
 ```
-git clone <url-from-operator>
 cd operon-dashboard
 pnpm install
 cd contracts && pnpm install && cd ..
@@ -216,8 +227,22 @@ NEXT_PUBLIC_SALE_CONTRACT_BSC=<SALE_BSC>
 NEXT_PUBLIC_NODE_CONTRACT_BSC=<NODE_BSC>
 NEXT_PUBLIC_TESTNET_USDT_BSC=<USDT_BSC>
 
+# Same contract addresses but read server-side (no NEXT_PUBLIC_ prefix).
+# The Next.js API routes, the reconcile cron, and pnpm dev:indexer all
+# read these — set them to the same values as above.
+SALE_CONTRACT_ARBITRUM=<SALE_ARB>
+SALE_CONTRACT_BSC=<SALE_BSC>
+
 ADMIN_WALLETS=<Deployer address, all lowercase>
 ADMIN_PRIVATE_KEY=<Deployer private key from 2.5>
+
+# ── NEW in cycle 2 — gate for local dev endpoints ──────────────
+# The dev event indexer posts signed messages to /api/dev/indexer-ingest
+# and /api/dev/drain-referrals. Both routes now require these two flags
+# AND a valid HMAC signature. Skip either one and nothing moves locally.
+# Both variables must be LOCAL ONLY — never set in a Vercel or cloud deploy.
+DEV_ENDPOINTS_ENABLED=1
+DEV_INDEXER_SECRET=<see below>
 ```
 
 Generate `JWT_SECRET`:
@@ -225,6 +250,12 @@ Generate `JWT_SECRET`:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 Paste the output into the `JWT_SECRET=` line.
+
+Generate `DEV_INDEXER_SECRET` the same way — a **second** random 32-byte hex string (not the same as JWT_SECRET):
+```
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+Paste that output into the `DEV_INDEXER_SECRET=` line.
 
 **Double-check:** `ADMIN_WALLETS` must be **all lowercase**. MetaMask shows mixed case — convert it.
 
@@ -237,11 +268,13 @@ Easiest way is Supabase's SQL editor, not the terminal.
 3. In your file manager, open the folder `operon-dashboard/supabase/migrations`. You will see files named `001_initial_schema.sql`, `002_seed_data.sql`, etc.
 4. Open `001_initial_schema.sql` in a text editor. Select all. Copy. Paste into the Supabase SQL Editor. Click **Run**.
 5. Wait for **Success**.
-6. Clear the editor. Repeat for each remaining file **in numerical order**: 002, 003, 004, 005, 006, 008, 009, 010, 011, 012. **There is no 007 — skip it.**
+6. Clear the editor. Repeat for each remaining file **in numerical order**: 002, 003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015. **There is no 007 — skip it.**
 
 If any file errors, stop and message the operator.
 
-Note: `002_seed_data.sql` pre-seeds a handful of EPP invite codes into the database. You can use those in Test 5 without generating new ones.
+Notes:
+- `002_seed_data.sql` pre-seeds a handful of EPP invite codes into the database. You can use those in Test 5 without generating new ones. It also inserts demo rows (a fake "David Kim" EPP partner, two fake historical purchases) purely for dashboard screenshots — ignore them, they don't affect Tests 1–6.
+- `013_referral_chain_state.sql` creates the queue that tracks whether a referral code has been mirrored onto the sale contract. `014_seed_full_tier_curve.sql` fills in tiers 6–40 and resets tier state so the DB lines up with a fresh contract deploy.
 
 ### 3.8 Run the site
 
@@ -249,9 +282,27 @@ From the project root:
 ```
 pnpm dev
 ```
-After 20–30 seconds you will see `Local: http://localhost:3000`. Open that URL in your browser. You should see the Operon homepage. Ignore any terminal warnings about Sentry or PostHog.
+After 20–30 seconds you will see `Local: http://localhost:3000`. Open that URL in your browser. You should see the Operon homepage. Ignore any terminal warnings about Sentry.
 
 **Leave this terminal running** for the whole test session. Closing it stops the site.
+
+### 3.8.1 Start the local event indexer (**required**, or purchases won't appear on the site)
+
+Vercel cron and the Alchemy / QuickNode webhooks cannot reach `localhost`, so the test environment needs a local event poller. **Open a second terminal window** (leave the `pnpm dev` shell from §3.8 running) and from the project root run:
+
+```
+pnpm dev:indexer
+```
+
+This polls both testnets every ~5 seconds for new `NodePurchased` events and forwards anything new to the dev server. You should see `[dev-indexer] starting …` within a second or two.
+
+**New in cycle 2 — sanity check.** The first line printed after startup tells you whether the indexer picked up the HMAC secret. If you see:
+
+> `[dev-indexer] DEV_INDEXER_SECRET is not set in .env.local`
+
+stop and fix your `.env.local` — the indexer cannot run without it. If the script ran past that banner, you're good.
+
+**Without this step, Test 3 purchases will appear to disappear** — MetaMask will show the NFT minted and the USDC / USDT deducted, but the site's dashboard, transaction history, and referral activity will all stay empty. That was bug #13 in cycle 1 and it is expected in any local-dev setup that forgets the indexer.
 
 ### 3.9 Import the practice tokens into MetaMask
 
@@ -272,12 +323,14 @@ MetaMask does not show the practice USDC / USDT balances until you tell it which
 ## Part 4 — Checklist before you start testing
 
 - [ ] Site running at `http://localhost:3000`
+- [ ] Second terminal running `pnpm dev:indexer` with no "DEV_INDEXER_SECRET not set" error
 - [ ] MetaMask has three accounts: Deployer, Wallet A, Wallet B
 - [ ] MetaMask has Arbitrum Sepolia and BSC Testnet networks added
 - [ ] All three wallets have some ETH on Arbitrum and some tBNB on BSC
 - [ ] All three wallets show ~10,000 USDC on Arbitrum and ~10,000 USDT on BSC
 - [ ] You have the six contract addresses written down somewhere
-- [ ] All migrations were run including 012 (the latest) — if you stopped early you will hit bugs
+- [ ] All migrations were run including 015 (the latest) — if you stopped early you will hit bugs
+- [ ] `.env.local` has both `DEV_ENDPOINTS_ENABLED=1` and `DEV_INDEXER_SECRET=<hex>`
 
 ---
 
@@ -291,14 +344,15 @@ If you see any of these, stop, screenshot, and message the operator. These are t
    - MetaMask warns "this site is requesting unlimited access"
    - The human-readable amount is clearly many times larger than the price
    - *(BSC note: because USDT uses 18 decimals, the raw number underneath the formatted amount is long — e.g. `95000000000000000000` for $95. That is normal. Trust the formatted amount, not the raw digits.)*
-3. **You paid and there's no NFT on the My Nodes page** after waiting two minutes.
+3. **You paid and there's no NFT on the My Nodes page** after waiting two minutes. (Before reporting: check the `pnpm dev:indexer` terminal — if it's dead or full of errors, restart it and wait another 30 seconds.)
 4. **A referral commission lands on the wrong wallet**, on your own wallet when you used your own code, or the amount is clearly wrong (zero, negative, or many times larger than expected).
 5. **The price on the Sale page does not match what MetaMask asks you to pay.**
 6. **After a successful purchase, your USDC/USDT balance did not go down by the price shown**, or went down by a wildly different amount.
 7. **Raw code text on the screen** — `sale.buyButton`, `{{discount}}`, `[object Object]`, `undefined`.
-8. **You switched to a non-English language and still see English** in a button, heading, or menu.
+8. **You switched to a non-English language and still see English** in a button, heading, or menu. **(Cycle 2 fixed 17 missing sale-page translation keys — if you still see English on a non-EN page, it is a genuine bug and we want the report.)**
 9. **An Arbitrum purchase shows up as a BSC NFT or vice versa**, or commission amounts on BSC differ from Arbitrum by many orders of magnitude (this is almost always a decimals bug).
 10. **You paid and nothing happened** — no NFT, no error, no pending state, no success.
+11. **Switching MetaMask accounts while signed in leaves you still viewing the previous wallet's data.** If you change accounts in MetaMask and the /referrals or /nodes page still shows the previous wallet's nodes/commissions, that is the cross-wallet bleed bug and we need to know about it. (Cycle 2 added a defense against this — it forces a re-sign on account change. If the re-sign prompt does NOT appear, that's the red flag.)
 
 ---
 
@@ -351,15 +405,17 @@ The tests only cover things a human with a browser and a wallet can verify. Cont
 - ☐ Wallet A's code appears in the referral code badge at the top of the buy box (e.g. `OPR-ABC123 ✓`).
 - ☐ **Fail if:** no discount, wrong percentage, no referrer shown, or a different code shown.
 
+**Wait time note — new in cycle 2.** The first purchase with a brand new code may hit a "pending sync" state for 5–15 seconds while the `dev:indexer` pushes the code onto the contract. If you see a red "activating your code on-chain" toast, just wait and it'll flip green automatically. Do not re-click or refresh aggressively.
+
 **Now try one thing to break it — self-referral:**
 
-1. Sign out Wallet B. New Incognito window.
+1. Sign out Wallet B (use the Disconnect button, not just MetaMask). New Incognito window.
 2. Go to `http://localhost:3000/?ref=<Wallet A's own code>`.
 3. Sign in with **Wallet A** — the wallet that owns that code.
 4. Go to the Sale page.
 
-- ☐ Expect: no discount. You cannot refer yourself.
-- ☐ **Fail if:** a 10% discount is applied, or Wallet A ends up as its own referrer on the Referrals page.
+- ☐ Expect: no discount (the 10% should DISAPPEAR the moment you finish signing — cycle 2 re-runs the self-ref check post-sign-in).
+- ☐ **Fail if:** a 10% discount is still applied after you sign in, or Wallet A ends up as its own referrer on the Referrals page.
 
 ---
 
@@ -396,7 +452,7 @@ Confirm the referrer and 10% discount are still shown.
 - ☐ Go to **My Nodes**. One NFT is listed, owned by Wallet B, on Arbitrum.
 - ☐ Go back to the Sale page and check the USDC balance shown on the payment-token button — call this `balance_after`. **`balance_before - balance_after` should roughly equal the price** you wrote down in step 3. A few cents of rounding is fine. **RED FLAG #6** if the balance barely dropped, or dropped by many times the price.
 - ☐ Go to **Referrals** (still as Wallet B). The purchase appears in your activity.
-- ☐ Sign out. Sign in with **Wallet A**. Go to **Referrals**.
+- ☐ Disconnect, sign in with **Wallet A**. Go to **Referrals**.
 - ☐ Wallet B's purchase appears in your activity feed.
 - ☐ A commission amount is shown on Wallet A. **Expected: approximately $8.55** (L1 community rate is 10%, applied to the post-discount price of ~$85.50). A few cents of rounding is fine. Anything between **$8 and $10** is acceptable; outside that range, note the actual number and report.
 - ☐ **Fail if:** no NFT, no referral entry on Wallet A, commission is zero (the chain walk is broken), negative, or many times larger than the purchase price.
@@ -428,7 +484,7 @@ Write down Wallet B's current **USDT** balance as `balance_before`.
 - ☐ **My Nodes** now shows **four NFTs** — one from Pass 1 (Arbitrum) and **three** from Pass 2 (BSC).
 - ☐ Each NFT is clearly labelled with its chain.
 - ☐ **Balance check:** USDT `balance_before - balance_after` ≈ total price from step 3 (e.g. ~$256.50). **RED FLAG #6** if not.
-- ☐ Sign in as Wallet A → **Referrals**. You see **both** Wallet B events — one Arbitrum single node, one BSC triple. Two separate commission entries.
+- ☐ Disconnect, sign in as Wallet A → **Referrals**. You see **both** Wallet B events — one Arbitrum single node, one BSC triple. Two separate commission entries.
 - ☐ The commission for the BSC triple should be roughly 3× the commission for the Arbitrum single. **Expected: approximately $25.65** (10% of ~$256.50 post-discount). Anything between **$24 and $28** is acceptable.
 - ☐ **If the BSC commission is off by 10^12 or is in a completely different order of magnitude, that is a decimals bug.** Red Flag #9.
 - ☐ **Fail if:** 3 nodes did not appear on My Nodes, the BSC purchase shows as Arbitrum, chains are mislabelled, or the BSC commission is wildly off from 3× the Arbitrum one.
@@ -439,7 +495,7 @@ Write down Wallet B's current **USDT** balance as `balance_before`.
 
 1. Sign in as Wallet A. Go to the Sale page.
 2. In the referral code input at the top of the buy box, type Wallet A's own `OPR-XXXXXX` code.
-3. See what the field does — either it is rejected as invalid, or it accepts but applies no discount.
+3. See what the field does — the discount should not apply and a toast should say "You cannot use your own referral code."
 4. Try to go through with a purchase anyway.
 
 - ☐ Expect: Wallet A's own code does **not** apply a discount. If the purchase goes through, Wallet A has **no commission credit on its own purchase** visible on the Referrals page.
@@ -509,7 +565,7 @@ To get the `operon_session` cookie: sign in with your **Deployer** wallet on the
 
 Now we verify the partner's code gives a **15%** discount (not 10%) and produces a partner-tier commission.
 
-1. Sign out the new partner. Open a new Incognito window.
+1. Disconnect the new partner. Open a new Incognito window.
 2. Go to `http://localhost:3000/?ref=<the OPRN-XXXX code you just got>`.
 3. Sign in with a wallet that has never been used before — you can use the Deployer wallet (it has USDC and USDT on both chains from Part 3.5), or create a Wallet E in MetaMask and top it up.
 4. Go to the Sale page on Arbitrum.
@@ -526,7 +582,7 @@ Now buy one node:
 
 **Checks after purchase:**
 
-- ☐ Sign in as the new EPP partner (Wallet D or whichever wallet you onboarded). Go to Referrals.
+- ☐ Disconnect, sign in as the new EPP partner (Wallet D or whichever wallet you onboarded). Go to Referrals.
 - ☐ The purchase appears under the partner's activity, with a commission credited.
 - ☐ The commission amount should be visibly **different** from the commission Wallet A received for Wallet B's purchase in Test 3 Pass 1 — partners earn at a different rate than community referrers. If they are identical, the partner tier logic is not kicking in.
 - ☐ **Fail if:** no commission, or the commission is exactly the same as the community referrer rate.
@@ -555,7 +611,7 @@ Now buy one node:
 
 **Steps:** Use the language chip at the top of the page. Switch to each language in turn (**Traditional Chinese, Simplified Chinese, Korean, Vietnamese, Thai**) and visit these pages:
 
-- Sale page
+- Sale page (especially the buy box — cycle 2 fixed a whole batch of sale-page keys that were only in English in cycle 1)
 - Referrals page
 - EPP onboarding Welcome Letter
 - EPP onboarding terms
@@ -588,6 +644,7 @@ For each issue, send the operator:
    - **Serious** — broken but no money at risk.
    - **Minor** — cosmetic or typo.
 8. **Reproducible?** — "every time," "sometimes," or "once."
+9. **The output of your `pnpm dev:indexer` terminal** — if the bug is "nothing showed up", check that window for errors or 401s first. If it's full of errors, the indexer may have lost its HMAC secret (check `.env.local`).
 
 If it matches a Red Flag, put **RED FLAG #X** at the top of your message.
 
@@ -597,7 +654,20 @@ Also helpful: wallet address, transaction hash, approximate time, browser, OS.
 
 ## Part 8 — Known stuff — do not report
 
+These are items we're aware of that are not fixed in this package. You will see them. Please don't spend time filing reports for any of them.
+
 - The **Resources** page has placeholder links. That is fine.
 - The **Thai terms** have not had final legal review. The text is there for functional testing only.
 - The **Referrals page tier table** shows a fixed reference table, not a personalised row. That is deliberate.
 - The app has **no admin UI** — admin actions happen through API endpoints only. That is also deliberate for Phase 1.
+
+---
+
+## Part 9 — Deferred for mainnet, not testnet bugs
+
+**New in cycle 2.** These items came out of a ship-readiness review and will be addressed before mainnet, but do not affect the cycle 2 testnet walkthrough. If you notice any of them, please do not file a report.
+
+1. **`OperonNode.setTransferLockExpiry` is not called at deploy time.** On this testnet deploy, NFTs are freely transferable from minute zero. The product rule (12-month transfer lock) will be enforced via a runbook step against the mainnet contracts before the real sale opens. The tester is not asked to transfer nodes, so this does not affect Tests 1–6.
+2. **The `/api/sale/validate-code` endpoint leaks code existence** (code enumeration surface). Not a money-loss path, commercial-info concern only. Being addressed before mainnet.
+
+If you see a bug not on the Known or Deferred list, **please report it.** Everything else on the site is in scope.

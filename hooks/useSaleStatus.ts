@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useAccount } from 'wagmi';
 import { API_ROUTES } from '@/lib/api/routes';
 import {
   type SaleStatus,
@@ -21,9 +22,14 @@ async function fetchSaleStatus(): Promise<SaleStatus> {
   return res.json();
 }
 
+// Sale status carries the current user's upline (`usedReferralCode`) in
+// addition to tier data, so the query is wallet-scoped — without the address
+// in the key a wallet-switch would briefly surface wallet A's upline to
+// wallet B on the Sale page.
 export function useSaleStatus() {
+  const { address } = useAccount();
   return useQuery<SaleStatus, ApiError>({
-    queryKey: ['sale', 'status'],
+    queryKey: ['sale', 'status', address?.toLowerCase() ?? null],
     queryFn: fetchSaleStatus,
     staleTime: 5_000,
     refetchInterval: 10_000, // poll every 10 seconds

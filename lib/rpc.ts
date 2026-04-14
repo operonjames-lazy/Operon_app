@@ -12,16 +12,26 @@ import { ethers } from 'ethers';
 
 const RPC_TIMEOUT = 10_000; // 10 seconds (fits within Vercel function limits)
 
+// When NEXT_PUBLIC_NETWORK_MODE=testnet, fall back to the public testnet RPCs
+// instead of mainnet. Without this, anything server-side that calls getProvider
+// (referral code sync, reconcile cron, dev ingest) would silently query the
+// wrong chain when the tester hasn't set ARBITRUM_RPC_URL / BSC_RPC_URL.
+const IS_TESTNET = process.env.NEXT_PUBLIC_NETWORK_MODE === 'testnet';
+
 const CHAIN_RPCS: Record<string, string[]> = {
   arbitrum: [
     process.env.ARBITRUM_RPC_URL,
     process.env.ARBITRUM_RPC_URL_FALLBACK,
-    'https://arb1.arbitrum.io/rpc',
+    IS_TESTNET
+      ? 'https://sepolia-rollup.arbitrum.io/rpc'
+      : 'https://arb1.arbitrum.io/rpc',
   ].filter(Boolean) as string[],
   bsc: [
     process.env.BSC_RPC_URL,
     process.env.BSC_RPC_URL_FALLBACK,
-    'https://bsc-dataseed.binance.org',
+    IS_TESTNET
+      ? 'https://data-seed-prebsc-1-s1.binance.org:8545'
+      : 'https://bsc-dataseed.binance.org',
   ].filter(Boolean) as string[],
 };
 

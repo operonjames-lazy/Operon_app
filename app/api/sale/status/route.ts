@@ -1,12 +1,26 @@
 import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rate-limit';
+import { verifyToken } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
     const rateLimited = await rateLimit(request, 'sale-status', 60);
     if (rateLimited) return rateLimited;
     const supabase = createServerSupabase();
+
+    // Optional authenticated caller — used to surface the user's referrer
+    // code so the sale page can prefill the discount input.
+    let usedReferralCode: string | null = null;
+    const callerUserId = await verifyToken(request);
+    if (callerUserId) {
+      const { data: upline } = await supabase
+        .from('referrals')
+        .select('code_used')
+        .eq('referred_id', callerUserId)
+        .maybeSingle();
+      usedReferralCode = upline?.code_used ?? null;
+    }
 
     // Read sale config
     const { data: config, error: configError } = await supabase
@@ -47,6 +61,7 @@ export async function GET(request: NextRequest) {
       totalSold,
       totalSupply,
       publicSaleDate: config.public_sale_date,
+      usedReferralCode,
       tiers: tiers.map(t => ({
         tier: t.tier,
         price: t.price_usd,
@@ -56,7 +71,8 @@ export async function GET(request: NextRequest) {
         remaining: t.total_supply - t.total_sold,
       })),
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30' },
+      // Response varies per user (usedReferralCode), so don't allow shared caches.
+      headers: { 'Cache-Control': 'private, max-age=5' },
     });
   } catch (err) {
     return Response.json(

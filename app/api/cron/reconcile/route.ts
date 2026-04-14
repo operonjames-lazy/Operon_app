@@ -9,6 +9,7 @@ import { getTokenName } from '@/lib/webhooks/process-event';
 import { TOKEN_DECIMALS } from '@/lib/wagmi/contracts';
 import { getProvider, getSaleContract } from '@/lib/rpc';
 import { logger } from '@/lib/logger';
+import { syncReferralCodeOnChain } from '@/lib/referrals/sync-on-chain';
 
 const NODE_PURCHASED_EVENT = 'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)';
 
@@ -118,11 +119,19 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
+        // Contract emits 0-indexed tier IDs (0..39); DB sale_tiers is
+        // 1-indexed. Translate here so processReferralAttribution and
+        // increment_tier_sold both see the DB convention.
+        const contractTier = Number(event.args.tier);
+        if (contractTier < 0 || contractTier > 39) {
+          logger.error('Invalid tier in reconciled event', { txHash, contractTier });
+          continue;
+        }
         const purchaseEvent: ParsedPurchaseEvent = {
           txHash,
           chain,
           buyerWallet: event.args.buyer,
-          tier: Number(event.args.tier),
+          tier: contractTier + 1,
           quantity: Number(event.args.quantity),
           totalPaidUsd,
           token: tokenName,
@@ -236,5 +245,76 @@ export async function GET(request: NextRequest) {
     logger.error('Failed events retry failed', { route: 'cron/reconcile', error: String(retryQueueError) });
   }
 
-  return Response.json({ ok: true, results });
+  // ─── Drain referral_code_chain_state sync queue ─────────────────────────
+  // Registers DB-generated referral codes on-chain so discounted purchases
+  // actually pass the contract's validCodes check. Retries failed attempts
+  // with backoff, gives up after 10 attempts.
+  const referralSync = { attempted: 0, synced: 0, failed: 0 };
+  try {
+    const { data: pendingCodes } = await supabase
+      .from('referral_code_chain_state')
+      .select('code, chain, discount_bps, attempts')
+      .in('status', ['pending', 'failed'])
+      .lt('attempts', 10)
+      .order('updated_at', { ascending: true })
+      .limit(50);
+
+    for (const row of pendingCodes || []) {
+      referralSync.attempted += 1;
+      const result = await syncReferralCodeOnChain(
+        row.code,
+        row.discount_bps,
+        row.chain as 'arbitrum' | 'bsc',
+      );
+      if (result.ok) {
+        referralSync.synced += 1;
+        await supabase
+          .from('referral_code_chain_state')
+          .update({
+            status: 'synced',
+            tx_hash: result.txHash,
+            last_error: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('code', row.code)
+          .eq('chain', row.chain);
+      } else {
+        referralSync.failed += 1;
+        const nextAttempts = row.attempts + 1;
+        const permanent = nextAttempts >= 10;
+        await supabase
+          .from('referral_code_chain_state')
+          .update({
+            status: permanent ? 'failed' : 'pending',
+            attempts: nextAttempts,
+            last_error: result.error,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('code', row.code)
+          .eq('chain', row.chain);
+
+        if (permanent) {
+          logger.error('Referral code sync abandoned', {
+            code: row.code,
+            chain: row.chain,
+            error: result.error,
+          });
+          if (process.env.TG_BOT_TOKEN && process.env.TG_ADMIN_CHAT_ID) {
+            fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: process.env.TG_ADMIN_CHAT_ID,
+                text: `⚠️ ABANDONED REFERRAL CODE SYNC\n\nCode: ${row.code}\nChain: ${row.chain}\nError: ${result.error}`,
+              }),
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+  } catch (syncErr) {
+    logger.error('Referral code sync pass failed', { error: String(syncErr) });
+  }
+
+  return Response.json({ ok: true, results, referralSync });
 }

@@ -39,6 +39,9 @@ yarn-error.log*
 # Generated EPP invite CSVs — capability tokens, do not commit
 scripts/epp-invites-*.csv
 
+# Dev indexer cursor (local-only)
+.indexer-cursor.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

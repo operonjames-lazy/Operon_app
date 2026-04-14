@@ -47,23 +47,26 @@ async function main() {
   }
 
   // --- Set initial tiers ---
-  // Whitelist tiers with 5% increment pricing
-  // Prices converted to token-decimal amounts (e.g. 6 decimals for Arbitrum USDC/USDT)
+  // 40-tier price curve: Tier 1 at $500, +5% per tier (see docs/PRODUCT.md).
+  // Contract tier indices are 0..39; the dashboard's DB tier column is 1-indexed
+  // (tier display ID = contract index + 1). All tiers activate at deploy time.
   const TOKEN_DECIMALS = parseInt(process.env.TOKEN_DECIMALS || '6');
 
-  const tierPricesUsd = [500, 525, 551.25, 578.81, 607.75]; // USD prices
+  const tierPricesUsd = Array.from({ length: 40 }, (_, i) =>
+    Math.round(500 * Math.pow(1.05, i) * 100) / 100
+  );
   const tierConfigs = tierPricesUsd.map((price, i) => ({
     id: i,
-    price: BigInt(Math.round(price * 100)) * BigInt(10 ** (TOKEN_DECIMALS - 2)), // Convert USD to token units
+    price: BigInt(Math.round(price * 100)) * BigInt(10 ** (TOKEN_DECIMALS - 2)),
     publicSupply: 1250,   // public allocation
     adminSupply: 1250,    // admin/whitelist allocation
-    active: i === 0, // Only tier 0 active initially
+    active: true,
   }));
 
   for (const tier of tierConfigs) {
     const tx = await nodeSale.setTier(tier.id, tier.price, tier.publicSupply, tier.adminSupply, tier.active);
     await tx.wait();
-    console.log(`Tier ${tier.id} set: price=${tier.price} publicSupply=${tier.publicSupply} adminSupply=${tier.adminSupply} active=${tier.active}`);
+    console.log(`Tier ${tier.id} set: price=$${tierPricesUsd[tier.id]} (${tier.price} base units) supply=${tier.publicSupply}+${tier.adminSupply} active=${tier.active}`);
   }
 
   console.log("\n--- Deployment Summary ---");

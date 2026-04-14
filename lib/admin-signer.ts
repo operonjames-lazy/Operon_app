@@ -21,17 +21,19 @@ const PAUSABLE_ABI = [
   'function paused() external view returns (bool)',
 ];
 
+const REFERRAL_ADMIN_ABI = [
+  'function addReferralCode(bytes32 codeHash, uint16 discountBps) external',
+  'function validCodes(bytes32) external view returns (bool)',
+];
+
 export interface AdminSignerError {
   error: string;
   detail?: string;
 }
 
-/**
- * Returns an ethers.Contract bound to the admin signer for the given chain,
- * or an error object describing what's missing.
- */
-export async function getAdminSaleContract(
-  chain: AdminChain
+async function getAdminContract(
+  chain: AdminChain,
+  abi: readonly string[],
 ): Promise<ethers.Contract | AdminSignerError> {
   const saleAddr = getSaleContract(chain);
   if (!saleAddr || saleAddr === '0x' + '0'.repeat(40)) {
@@ -45,8 +47,29 @@ export async function getAdminSaleContract(
     const { getProvider } = await import('@/lib/rpc');
     const provider = await getProvider(chain);
     const signer = new ethers.Wallet(key, provider);
-    return new ethers.Contract(saleAddr, PAUSABLE_ABI, signer);
+    return new ethers.Contract(saleAddr, abi as string[], signer);
   } catch {
     return { error: 'signer_init_failed' };
   }
+}
+
+/**
+ * Returns an ethers.Contract bound to the admin signer for the given chain,
+ * or an error object describing what's missing.
+ */
+export async function getAdminSaleContract(
+  chain: AdminChain
+): Promise<ethers.Contract | AdminSignerError> {
+  return getAdminContract(chain, PAUSABLE_ABI);
+}
+
+/**
+ * Admin signer bound to the NodeSale contract with the referral-code
+ * management ABI. Used by the background sync that mirrors DB-generated
+ * referral codes into `validCodes` on-chain.
+ */
+export async function getReferralAdminContract(
+  chain: AdminChain
+): Promise<ethers.Contract | AdminSignerError> {
+  return getAdminContract(chain, REFERRAL_ADMIN_ABI);
 }

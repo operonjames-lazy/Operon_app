@@ -13,7 +13,7 @@ import { formatUsd } from '@/lib/format';
 
 export default function NodesPage() {
   const { isConnected } = useAccount();
-  const { data, isLoading } = useNodes();
+  const { data, isLoading, isError, refetch } = useNodes();
   const { t } = useTranslation();
 
   if (!isConnected) {
@@ -31,6 +31,19 @@ export default function NodesPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => <div key={i} className="h-28 bg-card rounded-lg" />)}
         </div>
+      </div>
+    );
+  }
+
+  // Distinguish "loaded but empty" from "load failed" — the previous
+  // implementation rendered the empty state for both, which misled testers
+  // who saw a 401/500 as "my purchase was lost".
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <h2 className="text-xl font-bold text-t1">{t('error.pageError')}</h2>
+        <p className="text-t3 text-sm">{t('error.pageErrorDesc')}</p>
+        <Button variant="primary" onClick={() => refetch()}>{t('btn.retry')}</Button>
       </div>
     );
   }

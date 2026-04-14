@@ -55,6 +55,7 @@ export interface SaleStatus {
   totalSold: number;
   totalSupply: number;
   publicSaleDate: string | null;
+  usedReferralCode?: string | null;
   tiers?: SaleTier[];
 }
 

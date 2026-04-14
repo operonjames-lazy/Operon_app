@@ -13,8 +13,66 @@
  * path.
  */
 
+import { ethers } from 'ethers';
 import { createServerSupabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
+
+const ZERO_CODE_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+/**
+ * Resolve a NodePurchased event's `codeHash` back to the human-readable
+ * referral code string. The on-chain event carries only the hash; the
+ * matching string lives in `users.referral_code` (community codes) or
+ * `epp_partners.referral_code` (EPP partner codes). Without this
+ * resolution the `purchases.code_used` audit column is blank for every
+ * discounted purchase, which breaks post-facto self-referral auditing
+ * (DECISIONS D09) and per-code attribution reporting.
+ *
+ * Implementation is an O(N) scan: pull every distinct code from both
+ * tables and compute `keccak256(utf8Bytes(code))` in JS, matching the
+ * contract's and frontend's hash convention (see
+ * `lib/referrals/sync-on-chain.ts codeHashFor` and
+ * `app/(app)/sale/page.tsx`). N is in the low thousands under current
+ * scale; each hash is <1 ms, so the full scan stays well under 100 ms.
+ * If total codes ever grow past ~100k, add an indexed `code_hash bytea`
+ * column to both tables and switch to a single SQL lookup.
+ *
+ * Returns `null` when the hash is the zero sentinel (no code was used),
+ * when no code in the app database matches the hash (buyer used a code
+ * that was registered on-chain but never mirrored into our DB — should
+ * not happen, but we surface `null` rather than throw so the purchase
+ * still lands), or on any database error.
+ */
+export async function resolveCodeFromHash(codeHash: string): Promise<string | null> {
+  if (!codeHash || codeHash.toLowerCase() === ZERO_CODE_HASH) {
+    return null;
+  }
+  const normalizedHash = codeHash.toLowerCase();
+  const supabase = createServerSupabase();
+
+  const [{ data: users }, { data: partners }] = await Promise.all([
+    supabase.from('users').select('referral_code').not('referral_code', 'is', null),
+    supabase.from('epp_partners').select('referral_code').not('referral_code', 'is', null),
+  ]);
+
+  const candidates = new Set<string>();
+  for (const row of users ?? []) {
+    if (row.referral_code) candidates.add(row.referral_code);
+  }
+  for (const row of partners ?? []) {
+    if (row.referral_code) candidates.add(row.referral_code);
+  }
+
+  for (const code of candidates) {
+    const hash = ethers.keccak256(ethers.toUtf8Bytes(code.toUpperCase())).toLowerCase();
+    if (hash === normalizedHash) {
+      return code.toUpperCase();
+    }
+  }
+
+  logger.warn('Purchase codeHash did not match any known referral code', { codeHash });
+  return null;
+}
 
 // Commission rates by EPP partner tier and level (in basis points, 1200 = 12%).
 // Kept here purely for reference / UI display. The authoritative copy lives
@@ -100,6 +158,22 @@ export async function processReferralAttribution(
     return { status: 'error', error: 'invalid_amount' };
   }
 
+  // Resolve the event's codeHash back to the human-readable code string
+  // so purchases.code_used has a real value for audit. Returns null when
+  // no code was used (zero hash), when the hash doesn't match anything in
+  // our DB, or on a lookup error — all three are non-fatal. The RPC
+  // itself computes purchases.discount_bps from tier base price vs
+  // totalPaid, so a null code doesn't suppress the discount field.
+  let codeUsed: string | null = null;
+  try {
+    codeUsed = await resolveCodeFromHash(purchase.codeHash);
+  } catch (err) {
+    logger.warn('resolveCodeFromHash failed; continuing with null', {
+      txHash: purchase.txHash,
+      error: String(err),
+    });
+  }
+
   const supabase = createServerSupabase();
 
   const { data, error } = await supabase.rpc('process_purchase_and_commissions', {
@@ -110,7 +184,7 @@ export async function processReferralAttribution(
     p_quantity:     purchase.quantity,
     p_token:        purchase.token ?? 'USDC',
     p_amount_usd:   purchase.totalPaidUsd,
-    p_code_used:    null,
+    p_code_used:    codeUsed,
     p_block_number: purchase.blockNumber,
   });
 

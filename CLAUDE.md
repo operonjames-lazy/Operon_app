@@ -118,7 +118,7 @@ If you're unsure which docs to update, check the file table at the top of this d
 
 ## Build Status Summary
 
-**Phase 1: Sale & EPP — mostly shipped.** Testnet deployed. Mainnet pending. See `docs/FEATURES.md` for full status matrix.
+**Phase 1: Sale & EPP.** The full happy path (connect → sign-in → select tier → approve → purchase → dashboard updates) must be re-walked end-to-end after the 2026-04-14 Phase 1 bug report fixes before re-declaring ready for testing. See `docs/FEATURES.md` for the full status matrix and `docs/PROGRESS.md` for the most recent session notes.
 
 **Latest major additions:**
 - Migration 010: atomic commission RPC (`process_purchase_and_commissions`) with 9-level recursive CTE chain walk + tier auto-promotion + milestone logging in a single transaction
