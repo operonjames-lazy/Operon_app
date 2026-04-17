@@ -16,6 +16,8 @@
 
 The `operon-dashboard/` folder next to this file is the full application codebase. You do **not** need to `git clone` anything — skip that step in any other doc you may have been handed.
 
+> **Note for the operator packaging this folder:** before handing it off, delete any `.env.local` that may have been left in the `operon-dashboard/` root. That file can contain live Supabase service keys and Upstash tokens; testers make their own per §3.6 and should never receive someone else's creds.
+
 ---
 
 ## Part 1 — Install the tools you need
@@ -115,10 +117,9 @@ The operator handed you the `operon-dashboard/` folder inside this package. Open
 ```
 cd operon-dashboard
 pnpm install
-cd contracts && pnpm install && cd ..
 ```
 
-The two `pnpm install` steps take a few minutes each.
+A single `pnpm install` at the repo root installs both the app and the `contracts/` workspace (via `pnpm-workspace.yaml`). Takes a few minutes.
 
 ### 3.2 Create a free Supabase project
 
@@ -243,6 +244,21 @@ ADMIN_PRIVATE_KEY=<Deployer private key from 2.5>
 # Both variables must be LOCAL ONLY — never set in a Vercel or cloud deploy.
 DEV_ENDPOINTS_ENABLED=1
 DEV_INDEXER_SECRET=<see below>
+
+# ── Optional but STRONGLY RECOMMENDED — private RPCs ──────────
+# The app and the dev-indexer fall back to free public RPC endpoints
+# (e.g. sepolia-rollup.arbitrum.io, publicnode BSC) when these are unset.
+# Public RPCs rate-limit under sustained polling — during a 2-4 hour test
+# session you WILL hit 429s, which show up as "code never syncs" or
+# "NFT never appears" false alarms. Spend 2 minutes getting a free
+# Alchemy key for Arbitrum and a free QuickNode / Infura endpoint for
+# BSC; paste the URLs here.
+#
+#   Arbitrum Sepolia via Alchemy: https://www.alchemy.com/ → Arbitrum Sepolia app
+#   BSC Testnet via QuickNode:    https://www.quicknode.com/ → BSC Testnet endpoint
+#
+ARBITRUM_RPC_URL=
+BSC_RPC_URL=
 ```
 
 Generate `JWT_SECRET`:
@@ -268,7 +284,7 @@ Easiest way is Supabase's SQL editor, not the terminal.
 3. In your file manager, open the folder `operon-dashboard/supabase/migrations`. You will see files named `001_initial_schema.sql`, `002_seed_data.sql`, etc.
 4. Open `001_initial_schema.sql` in a text editor. Select all. Copy. Paste into the Supabase SQL Editor. Click **Run**.
 5. Wait for **Success**.
-6. Clear the editor. Repeat for each remaining file **in numerical order**: 002, 003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015. **There is no 007 — skip it.**
+6. Clear the editor. Repeat for each remaining file **in numerical order**: 002, 003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016. **There is no 007 — skip it.**
 
 If any file errors, stop and message the operator.
 
@@ -329,7 +345,7 @@ MetaMask does not show the practice USDC / USDT balances until you tell it which
 - [ ] All three wallets have some ETH on Arbitrum and some tBNB on BSC
 - [ ] All three wallets show ~10,000 USDC on Arbitrum and ~10,000 USDT on BSC
 - [ ] You have the six contract addresses written down somewhere
-- [ ] All migrations were run including 015 (the latest) — if you stopped early you will hit bugs
+- [ ] All migrations were run including 016 (the latest) — if you stopped early you will hit bugs
 - [ ] `.env.local` has both `DEV_ENDPOINTS_ENABLED=1` and `DEV_INDEXER_SECRET=<hex>`
 
 ---

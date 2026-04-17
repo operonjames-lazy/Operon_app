@@ -155,7 +155,9 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 | `011_review_fixes.sql` | BIGINT upgrade for `purchases.amount_usd` + `epp_partners.invite_id` UNIQUE constraint |
 | `012_community_commission.sql` | `CREATE OR REPLACE` of commission RPC — adds community referrer earning path (flat 10-3-2-1-1 for users with `users.referral_code` but no `epp_partners` row) and affiliate L5=1% so every EPP tier stays strictly ≥ community |
 | `013_referral_chain_state.sql` | `referral_code_chain_state` queue (per code × chain) tracking whether each code has been mirrored onto the `NodeSale` contract via `addReferralCode`. Drained by `/api/cron/reconcile` in production and `/api/dev/drain-referrals` in local dev. Required for `/api/sale/validate-code` to ever return `synced` |
-| `014_seed_full_tier_curve.sql` | Fills in tiers 6-40 of the `sale_tiers` table and resets tier state so the DB matches a fresh contract deploy |
+| `014_seed_full_tier_curve.sql` | Fills in tiers 6-40 of the `sale_tiers` table and resets tier state so the DB matches a fresh contract deploy. ⚠ **Contains an unconditional `UPDATE sale_tiers SET total_sold = 0` — do NOT re-apply to a DB with real purchases. Use `scripts/reset-tier-state.sql` (guarded, refuses to run if purchases exist) for any subsequent reset.** |
+| `015_purchase_audit_fields.sql` | `CREATE OR REPLACE` of the commission RPC to compute applied `discount_bps` from tier base price vs event `amount_usd`, and persist resolved referral code string in `purchases.code_used`. Closes the per-code audit gap from DECISIONS D09. |
+| `016_overpay_anomaly.sql` | `CREATE OR REPLACE` of the commission RPC to split "paid exactly equal to list" from "paid more than list" in the `discount_bps` derivation. Overpay now emits `RAISE WARNING` with the event context (tx, chain, tier, qty, base_total, amount_usd) instead of being silently masked as 0% discount. Commission math unchanged. |
 
 (Migration 007 does not exist.)
 
@@ -211,7 +213,7 @@ There is no admin dashboard UI. For reads (sale stats, partner lookup, failed ev
 
 If a query becomes repetitive, add it as a saved Postgres view rather than building UI.
 
-### Write surface — 7 endpoints
+### Write surface — 11 endpoints
 
 #### Pause the sale
 
@@ -300,6 +302,52 @@ PG_MODULE_PATH=/tmp/pg-temp/node_modules/pg \
 ```
 
 Writes CSV to `scripts/epp-invites-<timestamp>.csv`. Same columns. Uses the same table (`epp_invites`) with `created_by='script:generate-epp-invites'`.
+
+#### Sweep sale proceeds to treasury
+
+```bash
+curl -X POST https://app.operon.network/api/admin/sale/withdraw \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"chain":"arbitrum","token":"USDC","to":"0xTreasuryWallet"}'
+```
+
+Calls `NodeSale.withdrawFunds(token, to)` which sweeps the full ERC-20 balance held by the sale contract to `to`. Body: `{ chain: 'arbitrum'|'bsc', token: 'USDC'|'USDT', to: '0x...' }`. On `409 no_funds`, the contract had nothing to sweep. Contract emits `FundsWithdrawn(token, to, amount)` for on-chain audit.
+
+**This is the only in-app path to collect sale proceeds.** Run it per chain / per accepted token after each settlement window.
+
+#### Promote the next tier (`setTierActive`)
+
+```bash
+curl -X POST https://app.operon.network/api/admin/sale/tier-active \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"chain":"arbitrum","tierId":1,"active":true}'
+```
+
+Paired with the deploy-time change that only activates tier 0 (see `contracts/scripts/deploy.ts`). Call this to flip the next tier on as inventory sells out. `tierId` is the **contract index** (0..39), not the 1-indexed DB tier. DB tier 1 = contract index 0.
+
+#### Reset a stuck referral-code sync
+
+```bash
+curl -X POST https://app.operon.network/api/admin/referrals/reset \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"OPR-ABC123","chain":"arbitrum"}'
+```
+
+Resets a `referral_code_chain_state` row from `failed` back to `pending` with `attempts=0` so the next cron drain retries. If `chain` is omitted, resets both chains. 404 if the code/chain is not queued.
+
+#### Revoke a referral code on-chain
+
+```bash
+curl -X POST https://app.operon.network/api/admin/referrals/remove \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"OPR-ABUSE1","chain":"both"}'
+```
+
+Calls `NodeSale.removeReferralCode(codeHash)` and tombstones the queue row so subsequent drains don't re-add the code. Historical purchases and DB-level referral bindings are NOT touched — only future on-chain purchases lose their discount. Use when a code is confirmed abused or mistakenly issued.
 
 ---
 

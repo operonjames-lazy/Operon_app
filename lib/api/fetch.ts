@@ -24,9 +24,20 @@ export async function clearSession(): Promise<void> {
 /**
  * Fetch wrapper for authenticated API calls.
  * Cookies are sent automatically by the browser for same-origin requests.
+ *
+ * Ship-readiness R5: on any 401, fire a window event so `useAuth` can
+ * tear down the local authed-session flag and re-run SIWE. Without this,
+ * a stale cookie (JWT_SECRET rotated, server-side logout, token expiry)
+ * leaves the UI "authenticated" while every authed query returns 401 and
+ * falls into the page-level error state with no recovery path.
  */
 export async function authFetch(url: string, options?: RequestInit): Promise<Response> {
-  return fetch(url, options);
+  const res = await fetch(url, options);
+  if (res.status === 401 && typeof window !== 'undefined') {
+    // Dispatch once per 401; useAuth listens and resets state.
+    window.dispatchEvent(new CustomEvent('operon:auth-expired', { detail: { url } }));
+  }
+  return res;
 }
 
 // Legacy exports — kept for backward compatibility during migration.

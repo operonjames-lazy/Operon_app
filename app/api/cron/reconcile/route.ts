@@ -95,11 +95,22 @@ export async function GET(request: NextRequest) {
         : { data: [] };
       const knownTxHashes = new Set((existingPurchases || []).map(p => p.tx_hash));
 
+      // Ship-readiness R5: require N confirmations for the gap-filler path.
+      // `queryFilter` can in principle return logs from a chain reorg; by
+      // only processing events where blockNumber <= latestBlock - CONFIRMS
+      // we bound reorg risk. Arb/BSC finality makes the risk tiny but it is
+      // cheap to enforce, and the webhook path already effectively respects
+      // this because Alchemy/QuickNode wait for finality before firing.
+      const CONFIRMATIONS = 10;
       for (const event of events) {
         if (!('args' in event)) continue;
         const txHash = event.transactionHash;
 
         if (knownTxHashes.has(txHash)) continue;
+        if (event.blockNumber > latestBlock - CONFIRMATIONS) {
+          // Not yet final — skip this run, next reconcile pass picks it up.
+          continue;
+        }
         gapsFilled++;
 
         // Convert raw token amount → USD cents via BigInt. Previously this
@@ -249,6 +260,12 @@ export async function GET(request: NextRequest) {
   // Registers DB-generated referral codes on-chain so discounted purchases
   // actually pass the contract's validCodes check. Retries failed attempts
   // with backoff, gives up after 10 attempts.
+  //
+  // Ship-readiness R5: limit raised 50 → 200 per run. At */5 cron cadence,
+  // 50/run = 600/hour ceiling, which is not enough for a Phase 1 launch
+  // burst (2,000 rows = two chains × 1,000 wallets connecting in 30 min).
+  // maxDuration (60s) + conservative RPC rate-limits still bound the work
+  // per tick; the function returns on whichever ceiling hits first.
   const referralSync = { attempted: 0, synced: 0, failed: 0 };
   try {
     const { data: pendingCodes } = await supabase
@@ -257,7 +274,7 @@ export async function GET(request: NextRequest) {
       .in('status', ['pending', 'failed'])
       .lt('attempts', 10)
       .order('updated_at', { ascending: true })
-      .limit(50);
+      .limit(200);
 
     for (const row of pendingCodes || []) {
       referralSync.attempted += 1;

@@ -61,6 +61,11 @@ export default function SalePage() {
   const [codeFromUrl, setCodeFromUrl] = useState(false);
   const [codeToast, setCodeToast] = useState('');
   const [codeToastVariant, setCodeToastVariant] = useState<'success' | 'error'>('success');
+  // pending_sync retry state. Capped so we don't poll forever if the drain
+  // hits its own attempt ceiling (10). Resets on code change.
+  const [pendingSyncRetries, setPendingSyncRetries] = useState(0);
+  const PENDING_SYNC_RETRY_CAP = 10;
+  const PENDING_SYNC_RETRY_INTERVAL_MS = 8000;
   // Chain the approve/purchase tx was submitted on, captured at click time.
   // `useWaitForTransactionReceipt` defaults to the currently-active wagmi
   // chain, which is wrong if the user flips MetaMask mid-flight — the hook
@@ -195,8 +200,12 @@ export default function SalePage() {
     query: { enabled: !!address && !!tokenAddress && !!saleAddress },
   });
 
-  const hasAllowance = allowance !== undefined && allowance >= totalTokenAmount;
-  const hasSufficientBalance = balance !== undefined && balance >= totalTokenAmount;
+  // Defensive BigInt comparison — wagmi's `useReadContract` data type is
+  // `unknown`-flavoured in older v3 versions, so guard against the rare case
+  // where the provider returns a Number for allowance (would silently drop
+  // precision on the 18-decimal BSC USDT path).
+  const hasAllowance = typeof allowance === 'bigint' && allowance >= totalTokenAmount;
+  const hasSufficientBalance = typeof balance === 'bigint' && balance >= totalTokenAmount;
 
   // Approve transaction
   const { writeContract: approve, data: approveHash, error: approveWriteError, reset: resetApprove } = useWriteContract();
@@ -296,11 +305,18 @@ export default function SalePage() {
   // `address` in place on MetaMask account changes; without this, the new
   // wallet would see stale Purchase Complete, stale errors, or a stuck
   // Confirming dwell from the previous wallet's in-flight tx.
-  const prevAddressRef = useRef<string | undefined>(address);
+  //
+  // Ship-readiness R5: also cover disconnect → reconnect-with-different
+  // wallet. Previous implementation only compared `prev && address`, so a
+  // transition that passed through `address=undefined` (Disconnect button,
+  // extension crash) skipped the guard and wallet B inherited wallet A's
+  // local state. Track the last SEEN non-null address separately so any
+  // new non-null address that doesn't match it triggers the reset.
+  const lastSeenAddressRef = useRef<string | undefined>(address?.toLowerCase());
   useEffect(() => {
-    const prev = prevAddressRef.current;
-    prevAddressRef.current = address;
-    if (prev && address && prev.toLowerCase() !== address.toLowerCase()) {
+    const current = address?.toLowerCase();
+    const last = lastSeenAddressRef.current;
+    if (current && last && last !== current) {
       setStep('idle');
       setErrorMsg('');
       setPendingRecovery(null);
@@ -310,19 +326,31 @@ export default function SalePage() {
       resetPurchase();
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
     }
+    if (current) lastSeenAddressRef.current = current;
   }, [address, resetApprove, resetPurchase]);
 
-  // Auto-reset back to idle 10s after a successful purchase (R4-08).
-  // Manual Buy More / View Nodes still work as immediate escape hatches.
+  // Auto-reset to idle after a successful purchase (R4-08). Ship-readiness
+  // R5 change: do NOT auto-reset while the tab is visible — a tester reading
+  // the success modal, writing down the tier/count, or switching to a
+  // screenshot tool would have the info yanked at exactly the wrong moment.
+  // Instead:
+  //   (a) reset immediately when the tab transitions to hidden (user moved
+  //       on to another page — safe to reset, Buy More will land on idle),
+  //   (b) otherwise leave the modal up until explicit dismissal via
+  //       "Buy More" or "View Nodes".
   useEffect(() => {
     if (step !== 'success') return;
-    const timer = setTimeout(() => {
-      setStep('idle');
-      setQuantity(1);
-      resetApprove();
-      resetPurchase();
-    }, 10000);
-    return () => clearTimeout(timer);
+    if (typeof document === 'undefined') return;
+    function onVisibilityChange() {
+      if (document.hidden) {
+        setStep('idle');
+        setQuantity(1);
+        resetApprove();
+        resetPurchase();
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [step, resetApprove, resetPurchase]);
 
   // Network slow indicator
@@ -344,6 +372,27 @@ export default function SalePage() {
     setTxSlow(false);
   }, [step]);
 
+  // Reset retries when the code changes (user typed new code, URL changed).
+  useEffect(() => {
+    setPendingSyncRetries(0);
+  }, [referralCode]);
+
+  // pending_sync retry driver. Fires a single timeout per render while
+  // `pendingSyncRetries` is in [1, CAP]; cleans up on unmount or on any
+  // change to the dependency set. This replaces the orphan setTimeout that
+  // previously lived inside validateCode().
+  useEffect(() => {
+    if (pendingSyncRetries === 0 || pendingSyncRetries > PENDING_SYNC_RETRY_CAP) return;
+    if (!referralCode) return;
+    const code = referralCode;
+    const timer = setTimeout(() => {
+      validateCode(code);
+      setPendingSyncRetries((n) => n + 1);
+    }, PENDING_SYNC_RETRY_INTERVAL_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSyncRetries, referralCode]);
+
   async function validateCode(code: string) {
     try {
       const res = await fetch('/api/sale/validate-code', {
@@ -357,18 +406,19 @@ export default function SalePage() {
       if (!data.valid && data.reason === 'self_referral') {
         setCodeToastVariant('error');
         setCodeToast(t('sale.selfReferralBlocked'));
+        setPendingSyncRetries(0);
       } else if (!data.valid && data.reason === 'pending_sync') {
         setCodeToastVariant('error');
         setCodeToast(t('sale.pendingSync'));
-        // Auto-retry every 8 seconds until the cron/dev-indexer drains the
-        // queue and the code flips to 'synced'. Clears itself if the user
-        // changes the code in the meantime.
-        setTimeout(() => {
-          setReferralCode((current) => {
-            if (current === code) validateCode(code);
-            return current;
-          });
-        }, 8000);
+        // Trigger the retry effect instead of firing a bare setTimeout from
+        // within an async function. Bare setTimeout had no cleanup path, so
+        // navigating away or swapping codes left orphan retries polling
+        // /api/sale/validate-code every 8 s for the tab's lifetime. The
+        // effect below handles timer cleanup + a hard retry cap.
+        setPendingSyncRetries((n) => (n === 0 ? 1 : n));
+      } else {
+        // Any other resolution (valid, invalid code, self-ref) stops retries.
+        setPendingSyncRetries(0);
       }
     } catch {
       setCodeValid(false);
@@ -517,7 +567,7 @@ export default function SalePage() {
         {discountBps > 0 && (
           <div className="text-xs text-t4 mt-1">
             <span className="line-through">{formatUsdShort(pricePerNode)}</span>{' '}
-            <span className="text-green font-medium">{discountBps / 100}% off</span>
+            <span className="text-green font-medium">{t('sale.percentOff', { discount: discountBps / 100 })}</span>
           </div>
         )}
         <div className="font-mono text-xs text-t2 mt-2">
@@ -546,14 +596,14 @@ export default function SalePage() {
                         : 'bg-card border border-border text-t4 text-[10px] font-medium'
                   }`}
                 >
-                  {isSoldOut ? `T${tier.tier} Sold` : `T${tier.tier} ${formatUsdShort(dp)}`}
+                  {isSoldOut ? t('sale.tierSoldLabel', { tier: tier.tier }) : `T${tier.tier} ${formatUsdShort(dp)}`}
                 </div>
               );
             })}
           </div>
           <div className="flex justify-between font-mono text-[10px] text-t3 mb-5">
-            <span>{formatNum(sale?.totalSold || 0)} / {formatNum(sale?.totalSupply || 0)} sold</span>
-            {discountBps > 0 && <span>All prices with {discountBps / 100}% discount</span>}
+            <span>{formatNum(sale?.totalSold || 0)} / {formatNum(sale?.totalSupply || 0)} {t('sale.soldCountLabel')}</span>
+            {discountBps > 0 && <span>{t('sale.allPricesDiscount', { discount: discountBps / 100 })}</span>}
           </div>
         </div>
       )}
@@ -593,7 +643,7 @@ export default function SalePage() {
                 placeholder="OPRN-XXXX"
                 className="w-28 bg-bg border border-border rounded px-2 py-2 text-t1 font-mono text-[11px] focus:outline-none focus:border-green min-h-[44px]"
               />
-              {codeValid === false && <span className="text-red text-[10px]">Invalid</span>}
+              {codeValid === false && <span className="text-red text-[10px]">{t('sale.codeInvalidBadge')}</span>}
             </div>
           )}
         </div>
@@ -638,7 +688,7 @@ export default function SalePage() {
           {discountBps > 0 ? (
             <>
               <div className="flex justify-between text-[11px]">
-                <span className="text-t4">Price × {quantity}</span>
+                <span className="text-t4">{t('sale.priceTimesQtyLabel', { qty: quantity })}</span>
                 <span className="text-t4 font-mono line-through">{formatUsd(pricePerNode * quantity)}</span>
               </div>
               <div className="flex justify-between text-[11px]">
@@ -652,7 +702,7 @@ export default function SalePage() {
             </>
           ) : (
             <div className="flex justify-between text-[11px]">
-              <span className="text-t4">Price × {quantity}</span>
+              <span className="text-t4">{t('sale.priceTimesQtyLabel', { qty: quantity })}</span>
               <span className="text-t2 font-mono">{formatUsd(pricePerNode * quantity)}</span>
             </div>
           )}
@@ -682,7 +732,7 @@ export default function SalePage() {
               {t('sale.insufficientToken', { token: paymentToken })}
             </Button>
             <p className="text-[10px] text-t4 text-center">
-              Need {paymentToken}?{' '}
+              {t('sale.needTokenLabel', { token: paymentToken })}{' '}
               <a href={selectedChain === 'arbitrum' ? 'https://bridge.arbitrum.io' : 'https://cbridge.celer.network'}
                  target="_blank" rel="noopener noreferrer" className="text-ice hover:underline">
                 {t('sale.bridgeLink')}
@@ -752,11 +802,29 @@ export default function SalePage() {
         </div>
       )}
 
-      {/* Realtime status */}
+      {/* Realtime status — when offline, surface a manual refresh so a
+          dropped Realtime connection (paused Supabase, crashed dev-indexer)
+          can be recovered without the user needing to F5. */}
       {isConnected && (
         <div className="flex items-center justify-center gap-1.5 text-xs text-t4">
           <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-green animate-pulse-dot' : 'bg-t4'}`} />
-          {connected ? t('sale.liveUpdates') : t('sale.updatesDelayed')}
+          {connected ? (
+            t('sale.liveUpdates')
+          ) : (
+            <>
+              {t('sale.realtimeOffline')}{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: ['sale'] });
+                  queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+                }}
+                className="text-ice underline cursor-pointer"
+              >
+                {t('sale.refreshNow')}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

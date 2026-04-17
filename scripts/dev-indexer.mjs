@@ -58,6 +58,7 @@ const MAX_BLOCK_CHUNK = 10;
 const BASE_URL = process.env.DEV_INDEXER_URL || 'http://localhost:3000';
 const INGEST_URL = `${BASE_URL}/api/dev/indexer-ingest`;
 const DRAIN_URL = `${BASE_URL}/api/dev/drain-referrals`;
+const REPLAY_URL = `${BASE_URL}/api/dev/replay-failed-events`;
 const DEV_SECRET = process.env.DEV_INDEXER_SECRET;
 if (!DEV_SECRET) {
   console.error('[dev-indexer] DEV_INDEXER_SECRET is not set in .env.local');
@@ -190,6 +191,22 @@ async function drainReferralQueue() {
   }
 }
 
+async function replayFailedEvents() {
+  // Mirrors /api/cron/reconcile's failed-events retry. Without this, a
+  // tester purchase that lands in `pending_verification` / `process_error`
+  // state has no local replay path — the purchase visibly disappears.
+  try {
+    const res = await postSigned(REPLAY_URL, {});
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.resolved > 0 || data.abandoned > 0) {
+      console.log(`[dev-indexer] failed-events replay: attempted=${data.attempted} resolved=${data.resolved} retried=${data.retried} abandoned=${data.abandoned}`);
+    }
+  } catch {
+    // dev server not up yet — ignore
+  }
+}
+
 async function ingest(chain, log) {
   const payload = {
     chain,
@@ -269,19 +286,41 @@ async function main() {
     process.exit(0);
   });
 
+  // Global exponential backoff when the public-RPC rotation keeps failing.
+  // Prevents a rate-limited run from spinning hot at the 5s poll interval
+  // and re-hitting the 429 wall every cycle. Resets to 0 after any
+  // successful poll cycle.
+  let consecutiveFailures = 0;
+  const MAX_BACKOFF_MS = 60_000;
+
   // eslint-disable-next-line no-constant-condition
   while (true) {
+    let anySuccess = false;
     for (const chain of ['arbitrum', 'bsc']) {
       const ctx = ctxs[chain];
       if (!ctx) continue;
       try {
         await pollOnce(chain, ctx, cursor);
+        anySuccess = true;
       } catch (err) {
         console.error(`[dev-indexer] ${chain} poll failed`, err);
       }
     }
     await drainReferralQueue();
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    await replayFailedEvents();
+
+    if (anySuccess) {
+      consecutiveFailures = 0;
+    } else {
+      consecutiveFailures += 1;
+    }
+    const backoff = consecutiveFailures > 0
+      ? Math.min(POLL_INTERVAL_MS * Math.pow(2, consecutiveFailures - 1), MAX_BACKOFF_MS)
+      : POLL_INTERVAL_MS;
+    if (consecutiveFailures > 0) {
+      console.warn(`[dev-indexer] ${consecutiveFailures} consecutive poll failures; backing off ${backoff}ms`);
+    }
+    await new Promise((r) => setTimeout(r, backoff));
   }
 }
 

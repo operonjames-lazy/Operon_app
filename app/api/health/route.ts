@@ -40,9 +40,15 @@ export async function GET() {
     ? { status: 'ok' }
     : { status: 'warn', detail: 'Placeholder addresses — contracts not yet deployed' };
 
-  // Check webhook secrets configured
+  // Check webhook secrets configured. In non-production (local tester
+  // running `pnpm dev`), Alchemy/QuickNode webhooks are not used — the
+  // dev-indexer replaces them — so missing secrets are `warn` rather than
+  // `fail`. In production they are load-bearing, so missing = fail.
+  const isProd = process.env.NODE_ENV === 'production';
+  const webhookSeverity: 'fail' | 'warn' = isProd ? 'fail' : 'warn';
+  const hasWebhookSecrets = !!process.env.ALCHEMY_WEBHOOK_SIGNING_KEY && !!process.env.QUICKNODE_WEBHOOK_SECRET;
   checks.webhooks = {
-    status: (process.env.ALCHEMY_WEBHOOK_SIGNING_KEY && process.env.QUICKNODE_WEBHOOK_SECRET) ? 'ok' : 'fail',
+    status: hasWebhookSecrets ? 'ok' : webhookSeverity,
     detail: !process.env.ALCHEMY_WEBHOOK_SIGNING_KEY ? 'Missing ALCHEMY_WEBHOOK_SIGNING_KEY' :
             !process.env.QUICKNODE_WEBHOOK_SECRET ? 'Missing QUICKNODE_WEBHOOK_SECRET' : undefined,
   };

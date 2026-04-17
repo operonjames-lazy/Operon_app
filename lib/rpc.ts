@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { logger } from '@/lib/logger';
 
 /**
  * Centralized RPC provider factory and chain config.
@@ -59,8 +60,13 @@ export async function getProvider(chain: 'arbitrum' | 'bsc'): Promise<ethers.Jso
       // Test the connection with a timeout
       await withTimeout(provider.getBlockNumber(), RPC_TIMEOUT);
       return provider;
-    } catch {
-      console.warn(`RPC ${url} for ${chain} failed, trying next...`);
+    } catch (err) {
+      // Ship-readiness R5: structured breadcrumb through Sentry logger
+      // instead of `console.warn`, so an RPC outage surfaces as a pattern
+      // rather than only appearing in the eventual final error.
+      logger.warn('RPC endpoint failed, trying next', {
+        chain, url, error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 

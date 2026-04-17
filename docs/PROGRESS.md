@@ -318,3 +318,83 @@ The root causes are structural, not individual. (1) Sale-flow state fragmentatio
 - Carry over all prior D-pending items
 
 ---
+
+## 2026-04-18 (session 2) — Ship-readiness pass 1, findings fixed
+
+Ran `/review-ship` against the combined R3 + R4 state (commits `d4e29f6` + `52dfaea`). Four agents reported 4 tester-round blockers, 4 mainnet-only blockers, 14 required, 17 advisory. User requested all blockers plus high-impact required items resolved in one session. This entry is the diff summary; per-finding traceback lives in the review report committed alongside.
+
+### Tester-round blockers closed
+
+- **Sale-page i18n (7 strings).** `% off`, `T{n} Sold`, `... sold`, `Invalid`, `Price × {qty}` (×2), `Need {token}?` now go through `t()`. Added 8 keys × 6 languages in [lib/i18n/translations.ts](lib/i18n/translations.ts) (`sale.percentOff`, `sale.tierSoldLabel`, `sale.soldCountLabel`, `sale.codeInvalidBadge`, `sale.priceTimesQtyLabel`, `sale.needTokenLabel`, `sale.realtimeOffline`, `sale.refreshNow`). Same class as R4-07 — the R4 fix only covered Referrals + FeedItem; this pass closes the Sale page.
+- **Wallet disconnect → reconnect-with-different-wallet left sale-flow state stale.** `prevAddressRef` replaced with `lastSeenAddressRef` that tracks the last non-null address and fires reset on any new non-null address that doesn't match. Previous guard required both prev and current to be set, so transitions through `address=undefined` skipped the reset.
+- **`validateCode` pending_sync setTimeout leak.** Orphan `setTimeout(..., 8000)` inside an async function with no cleanup replaced by a `useEffect`-driven retry that caps at `PENDING_SYNC_RETRY_CAP = 10` (matches drain ceiling) and clears on code change / unmount.
+- **TESTING_GUIDE §3.6 missing `ARBITRUM_RPC_URL` / `BSC_RPC_URL`.** Added an "Optional but STRONGLY RECOMMENDED — private RPCs" block with Alchemy + QuickNode signup hints. Public fallbacks survive short sessions but 429 under 4-hour tester runs.
+
+### Mainnet blockers closed
+
+- **`contracts/scripts/deploy.ts` activated all 40 tiers.** Changed to `active: i === 0` at deploy; paired with a new admin endpoint to promote subsequent tiers. 53/53 contract tests still pass.
+- **`withdrawFunds` had no app-side caller.** New `POST /api/admin/sale/withdraw` wraps `NodeSale.withdrawFunds(token, to)` with full requireAdmin + audit-before-mutation. Treasury collection is now possible from the app.
+- **`removeReferralCode` / reset-attempts missing.** New `POST /api/admin/referrals/reset` (flip failed row back to pending, attempts=0) and `POST /api/admin/referrals/remove` (calls contract `removeReferralCode` and tombstones the queue row). Failed-sync codes are now recoverable.
+- **Webhook routes accepted unsigned POSTs in dev.** Both `/api/webhooks/alchemy` and `/api/webhooks/quicknode` previously returned `NODE_ENV === 'development'` from the signature verifier when the key was unset. Changed to fail-closed regardless of env. Testers use dev-indexer so these routes have no legitimate dev caller.
+
+### Required items closed (high-impact)
+
+- **Migration 014 destructive UPDATE, no guard.** Per CLAUDE.md #13 migrations are immutable; 014 stays as-is. Added `scripts/reset-tier-state.sql` — a guarded alternative that refuses to run if `purchases` rows exist — plus an OPERATIONS.md warning against re-applying 014 directly.
+- **Hand-off #4 gap: no local `failed_events` replay.** New `POST /api/dev/replay-failed-events` mirrors the cron retry logic (kind dispatch, verify-on-chain for pending_verification, retry/abandon at 5-attempt cap). Wired into `scripts/dev-indexer.mjs` alongside `drainReferralQueue`.
+- **`isAuthenticated()` stale-session trap.** `authFetch` now dispatches `operon:auth-expired` on any 401; `useAuth` listens, clears the flag cookie, invalidates queries, and triggers re-SIWE via the existing merged connect effect.
+- **Success modal 10s auto-reset hid info mid-read.** Replaced with a `visibilitychange` listener: modal persists while the tab is visible, resets only when the user navigates away. Buy More / View Nodes still dismiss immediately.
+- **`hasAllowance` / `hasSufficientBalance` BigInt typing fragility.** Added `typeof allowance === 'bigint'` guard — defensive against wagmi `useReadContract` returning a non-bigint under rare provider conditions.
+- **Migration 015 overpay branch.** New migration `016_overpay_anomaly.sql` splits `p_amount_usd = v_base_total` (legit zero discount) from `p_amount_usd > v_base_total` (anomaly); the latter emits `RAISE WARNING` with full event context instead of silently recording 0% discount.
+- **Reconcile gap-filler reorg safety.** Added `event.blockNumber <= latestBlock - 10` check before processing. Arb/BSC finality makes the risk tiny; cheap to enforce.
+- **Reconcile drain cap 50 → 200/run.** At `*/5` cadence the previous 600-codes/hour ceiling was not enough for Phase 1 launch burst.
+- **`lib/rpc.ts` `console.warn` → `logger.warn`.** Intermediate RPC failures now show up in Sentry as structured breadcrumbs.
+- **`/api/health` fails in prod, warns in dev.** Webhook-secret check downgrades to `warn` when `NODE_ENV !== 'production'` so tester's local `/api/health` returns 200 instead of flapping.
+- **dev-indexer: global exponential backoff.** Consecutive poll failures now back off up to 60s instead of spinning hot at the 5s poll interval.
+- **Realtime refresh affordance.** Offline state on sale page now shows a "Refresh" button that invalidates `sale` + `dashboard` queries without requiring an F5.
+
+### Advisory follow-ups landed
+
+- CLAUDE.md test count: 51 → 53 (actual count).
+- OPERATIONS.md migration history: rows for 015 + 016, warning on 014 re-apply, 11-endpoint admin section (was 7).
+- TESTING_GUIDE: packaging note telling the operator to strip `.env.local` before handoff; migration list updated through 016; redundant `cd contracts && pnpm install` removed (workspace already covers it).
+
+### Systemic observations (why these kept reaching testers)
+
+Two recurring patterns across R4-07 and the new blockers:
+
+1. **i18n regression surface is not machine-enforced.** CLAUDE.md rule 6 is a convention; ESLint config has no `no-literal-string` rule. Every new JSX string is a future tester-reported bug. `eslint-plugin-i18next` would catch the R4-07 / sale-page class of regression — owed as a separate PR per CLAUDE.md dep policy.
+
+2. **Local-dev parity with prod.** Three of the hand-off-#4 findings (failed_events replay, webhook accept-unsigned-in-dev, `/api/health` 503 locally) came from localhost's environment diverging from Vercel's. Worth a "dev parity doctrine" D-entry before next round.
+
+### Verification
+
+- `npx tsc --noEmit` → clean.
+- `npx next build` → clean, 34 routes generated.
+- `cd contracts && npx hardhat test` → 53 passing, 0 failing.
+- Lint: pre-existing warnings only, nothing new from this session.
+
+### Files touched
+
+- **Sale flow**: `app/(app)/sale/page.tsx` (i18n, wallet reset, retry cleanup, BigInt typing, success modal visibility, realtime refresh)
+- **Hooks**: `hooks/useAuth.ts` (401 recovery), `hooks/useTierRealtime.ts` (untouched — refresh affordance lives in sale page)
+- **Auth**: `lib/api/fetch.ts` (401 event dispatch)
+- **Translations**: `lib/i18n/translations.ts` (+8 keys × 6 languages)
+- **Admin**: `lib/admin-signer.ts` (tier + treasury ABIs); new endpoints `app/api/admin/sale/withdraw/`, `app/api/admin/sale/tier-active/`, `app/api/admin/referrals/reset/`, `app/api/admin/referrals/remove/`
+- **Webhooks**: `app/api/webhooks/alchemy/route.ts`, `app/api/webhooks/quicknode/route.ts` (fail-closed)
+- **Health**: `app/api/health/route.ts` (warn-in-dev)
+- **Reconcile**: `app/api/cron/reconcile/route.ts` (confirmation check, drain 50→200)
+- **Dev infra**: new `app/api/dev/replay-failed-events/route.ts`; `scripts/dev-indexer.mjs` (wire replay, global backoff)
+- **RPC**: `lib/rpc.ts` (logger.warn)
+- **Contracts**: `contracts/scripts/deploy.ts` (only tier 0 active)
+- **Migration**: new `supabase/migrations/016_overpay_anomaly.sql`; new `scripts/reset-tier-state.sql`
+- **Docs**: `CLAUDE.md`, `docs/OPERATIONS.md`, `docs/TESTING_GUIDE.md`, `docs/PROGRESS.md`
+
+### Next Session
+
+- Push commits
+- Re-run `/review-ship` on the combined state to confirm blocker count = 0 and advisory items are acceptable
+- Hand tester a fresh package **after** operator strips their `.env.local`
+- Propose `eslint-plugin-i18next` (dep addition, needs user approval)
+- Dev-parity doctrine D-entry
+
+---

@@ -39,7 +39,7 @@ See `docs/PRODUCT.md` for full programme mechanics.
 
 **Backend:** Next.js API routes on Vercel · Supabase Postgres + Realtime · Upstash Redis (rate limiting, fail-closed in production)
 
-**Contracts:** Solidity 0.8.24 · Hardhat · 51 tests passing · deployed to Arbitrum Sepolia testnet (mainnet pending)
+**Contracts:** Solidity 0.8.24 · Hardhat · 53 tests passing · deployed to Arbitrum Sepolia testnet (mainnet pending)
 
 **Indexing:** Alchemy webhooks (Arbitrum) · QuickNode webhooks (BSC) · 5-minute reconciliation cron as backup
 

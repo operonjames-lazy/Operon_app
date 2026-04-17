@@ -3,11 +3,14 @@ import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent, queuePendin
 import { logger } from '@/lib/logger';
 
 function verifyAlchemySignature(body: string, signature: string | null): boolean {
+  // Ship-readiness R5: previously returned `NODE_ENV === 'development'` when
+  // the signing key was missing, which meant localhost accepted unsigned
+  // POSTs from any caller. Tester's local flow uses dev-indexer →
+  // /api/dev/indexer-ingest instead, so this route has no legitimate dev
+  // caller and opening it up is pure risk. Fail-closed regardless of env.
   if (!process.env.ALCHEMY_WEBHOOK_SIGNING_KEY) {
-    if (process.env.NODE_ENV === 'production') {
-      logger.error('ALCHEMY_WEBHOOK_SIGNING_KEY not configured in production — rejecting all webhooks', { route: 'webhook/alchemy' });
-    }
-    return process.env.NODE_ENV === 'development';
+    logger.error('ALCHEMY_WEBHOOK_SIGNING_KEY not configured — rejecting all webhooks', { route: 'webhook/alchemy', env: process.env.NODE_ENV });
+    return false;
   }
   if (!signature) {
     logger.error('Missing Alchemy signature header', { route: 'webhook/alchemy' });

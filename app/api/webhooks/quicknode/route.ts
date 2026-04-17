@@ -3,11 +3,11 @@ import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent, queuePendin
 import { logger } from '@/lib/logger';
 
 function verifyQuickNodeSignature(body: string, signature: string | null): boolean {
+  // Ship-readiness R5: fail-closed regardless of NODE_ENV. See the matching
+  // comment in alchemy/route.ts for rationale.
   if (!process.env.QUICKNODE_WEBHOOK_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
-      logger.error('QUICKNODE_WEBHOOK_SECRET not configured in production — rejecting all webhooks', { route: 'webhook/quicknode' });
-    }
-    return process.env.NODE_ENV === 'development';
+    logger.error('QUICKNODE_WEBHOOK_SECRET not configured — rejecting all webhooks', { route: 'webhook/quicknode', env: process.env.NODE_ENV });
+    return false;
   }
   if (!signature) {
     logger.error('Missing QuickNode signature header', { route: 'webhook/quicknode' });

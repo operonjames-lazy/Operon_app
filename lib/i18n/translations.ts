@@ -34,6 +34,7 @@ const pageKeys = {
   'referrals.community.title': 'Community Referral Programme', 'referrals.community.subtitle': 'Your buyers get {discount}% off. You earn commission on every sale up to 5 levels deep.', 'referrals.community.tableLevel': 'Level', 'referrals.community.tableYouEarn': 'You earn', 'referrals.community.tableMax': 'Max', 'referrals.community.disclaimer': 'Share your code or link above. Self-referral (using your own code from the same wallet) will invalidate referral rewards.',
   'feed.purchaseSingle': 'L{level} referral purchased 1 node', 'feed.purchasePlural': 'L{level} referral purchased {count} nodes', 'feed.signup': 'New L{level} signup joined your network', 'feed.tierPromotion': 'Promoted to Tier {tier}', 'feed.milestone': 'Milestone reached',
   'feed.justNow': 'just now', 'feed.minAgo': '{n}m ago', 'feed.hrAgo': '{n}h ago', 'feed.dayAgo': '{n}d ago',
+  'sale.percentOff': '{discount}% off', 'sale.tierSoldLabel': 'T{tier} Sold', 'sale.soldCountLabel': 'sold', 'sale.codeInvalidBadge': 'Invalid', 'sale.priceTimesQtyLabel': 'Price × {qty}', 'sale.needTokenLabel': 'Need {token}?', 'sale.realtimeOffline': 'Live updates offline — refresh to sync.', 'sale.refreshNow': 'Refresh',
 } as const;
 
 // ─── Traditional Chinese (繁中) ──────────────────────────────────────────
@@ -71,6 +72,7 @@ const pageKeysTc: Record<string, string> = {
   'referrals.community.title': '社群推薦計畫', 'referrals.community.subtitle': '您的買家享 {discount}% 折扣，您在最多 5 層推薦鏈中均可賺取佣金。', 'referrals.community.tableLevel': '層級', 'referrals.community.tableYouEarn': '您賺取', 'referrals.community.tableMax': '上限', 'referrals.community.disclaimer': '分享您的推薦碼或連結。自我推薦（以同一錢包使用自己的推薦碼）將使推薦獎勵失效。',
   'feed.purchaseSingle': 'L{level} 推薦用戶購買 1 個節點', 'feed.purchasePlural': 'L{level} 推薦用戶購買 {count} 個節點', 'feed.signup': '新的 L{level} 推薦用戶加入您的網絡', 'feed.tierPromotion': '晉升至第 {tier} 層', 'feed.milestone': '達成里程碑',
   'feed.justNow': '剛剛', 'feed.minAgo': '{n} 分鐘前', 'feed.hrAgo': '{n} 小時前', 'feed.dayAgo': '{n} 天前',
+  'sale.percentOff': '{discount}% 折扣', 'sale.tierSoldLabel': '第 {tier} 層已售罄', 'sale.soldCountLabel': '已售', 'sale.codeInvalidBadge': '無效', 'sale.priceTimesQtyLabel': '價格 × {qty}', 'sale.needTokenLabel': '需要 {token}？', 'sale.realtimeOffline': '即時更新已離線 — 請重新整理以同步。', 'sale.refreshNow': '重新整理',
 };
 
 // ─── Simplified Chinese (简中) ───────────────────────────────────────────
@@ -108,6 +110,7 @@ const pageKeysSc: Record<string, string> = {
   'referrals.community.title': '社区推荐计划', 'referrals.community.subtitle': '您的买家享 {discount}% 折扣，您在最多 5 层推荐链中均可赚取佣金。', 'referrals.community.tableLevel': '层级', 'referrals.community.tableYouEarn': '您赚取', 'referrals.community.tableMax': '上限', 'referrals.community.disclaimer': '分享您的推荐码或链接。自我推荐（以同一钱包使用自己的推荐码）将使推荐奖励失效。',
   'feed.purchaseSingle': 'L{level} 推荐用户购买 1 个节点', 'feed.purchasePlural': 'L{level} 推荐用户购买 {count} 个节点', 'feed.signup': '新的 L{level} 推荐用户加入您的网络', 'feed.tierPromotion': '晋升至第 {tier} 层', 'feed.milestone': '达成里程碑',
   'feed.justNow': '刚刚', 'feed.minAgo': '{n} 分钟前', 'feed.hrAgo': '{n} 小时前', 'feed.dayAgo': '{n} 天前',
+  'sale.percentOff': '{discount}% 折扣', 'sale.tierSoldLabel': '第 {tier} 层已售罄', 'sale.soldCountLabel': '已售', 'sale.codeInvalidBadge': '无效', 'sale.priceTimesQtyLabel': '价格 × {qty}', 'sale.needTokenLabel': '需要 {token}？', 'sale.realtimeOffline': '实时更新已离线 — 请刷新以同步。', 'sale.refreshNow': '刷新',
 };
 
 // ─── Korean (한국어) ─────────────────────────────────────────────────────
@@ -145,6 +148,7 @@ const pageKeysKo: Record<string, string> = {
   'referrals.community.title': '커뮤니티 추천 프로그램', 'referrals.community.subtitle': '구매자는 {discount}% 할인을 받고, 귀하는 최대 5단계까지 모든 판매에 대해 커미션을 받습니다.', 'referrals.community.tableLevel': '레벨', 'referrals.community.tableYouEarn': '커미션', 'referrals.community.tableMax': '최대', 'referrals.community.disclaimer': '위의 추천 코드 또는 링크를 공유하세요. 자기 추천(동일한 지갑에서 자신의 코드 사용)은 추천 보상을 무효화합니다.',
   'feed.purchaseSingle': 'L{level} 추천인이 노드 1개 구매', 'feed.purchasePlural': 'L{level} 추천인이 노드 {count}개 구매', 'feed.signup': '새로운 L{level} 추천인이 네트워크에 가입', 'feed.tierPromotion': '{tier} 등급으로 승격', 'feed.milestone': '마일스톤 달성',
   'feed.justNow': '방금 전', 'feed.minAgo': '{n}분 전', 'feed.hrAgo': '{n}시간 전', 'feed.dayAgo': '{n}일 전',
+  'sale.percentOff': '{discount}% 할인', 'sale.tierSoldLabel': '{tier} 등급 매진', 'sale.soldCountLabel': '판매됨', 'sale.codeInvalidBadge': '유효하지 않음', 'sale.priceTimesQtyLabel': '가격 × {qty}', 'sale.needTokenLabel': '{token} 필요?', 'sale.realtimeOffline': '실시간 업데이트 오프라인 — 새로고침하여 동기화하세요.', 'sale.refreshNow': '새로고침',
 };
 
 // ─── Vietnamese (Tiếng Việt) ─────────────────────────────────────────────
@@ -182,6 +186,7 @@ const pageKeysVi: Record<string, string> = {
   'referrals.community.title': 'Chương trình Giới thiệu Cộng đồng', 'referrals.community.subtitle': 'Người mua của bạn được giảm {discount}%. Bạn nhận hoa hồng cho mọi đơn hàng lên đến 5 cấp.', 'referrals.community.tableLevel': 'Cấp', 'referrals.community.tableYouEarn': 'Bạn nhận', 'referrals.community.tableMax': 'Tối đa', 'referrals.community.disclaimer': 'Chia sẻ mã hoặc liên kết giới thiệu ở trên. Tự giới thiệu (dùng mã của chính bạn từ cùng một ví) sẽ làm mất hiệu lực phần thưởng.',
   'feed.purchaseSingle': 'Giới thiệu L{level} đã mua 1 node', 'feed.purchasePlural': 'Giới thiệu L{level} đã mua {count} node', 'feed.signup': 'Một L{level} mới đã tham gia mạng lưới của bạn', 'feed.tierPromotion': 'Thăng lên Cấp {tier}', 'feed.milestone': 'Đạt cột mốc',
   'feed.justNow': 'vừa xong', 'feed.minAgo': '{n} phút trước', 'feed.hrAgo': '{n} giờ trước', 'feed.dayAgo': '{n} ngày trước',
+  'sale.percentOff': 'giảm {discount}%', 'sale.tierSoldLabel': 'Cấp {tier} đã bán hết', 'sale.soldCountLabel': 'đã bán', 'sale.codeInvalidBadge': 'Không hợp lệ', 'sale.priceTimesQtyLabel': 'Giá × {qty}', 'sale.needTokenLabel': 'Cần {token}?', 'sale.realtimeOffline': 'Cập nhật trực tiếp ngoại tuyến — làm mới để đồng bộ.', 'sale.refreshNow': 'Làm mới',
 };
 
 // ─── Thai (ไทย) ──────────────────────────────────────────────────────────
@@ -219,6 +224,7 @@ const pageKeysTh: Record<string, string> = {
   'referrals.community.title': 'โปรแกรมแนะนำชุมชน', 'referrals.community.subtitle': 'ผู้ซื้อของคุณได้ลด {discount}% คุณรับค่าคอมมิชชั่นจากทุกการขายสูงสุด 5 ระดับ', 'referrals.community.tableLevel': 'ระดับ', 'referrals.community.tableYouEarn': 'คุณได้', 'referrals.community.tableMax': 'สูงสุด', 'referrals.community.disclaimer': 'แชร์รหัสหรือลิงก์แนะนำด้านบน การแนะนำตัวเอง (ใช้รหัสของคุณเองจากกระเป๋าเดียวกัน) จะทำให้รางวัลการแนะนำเป็นโมฆะ',
   'feed.purchaseSingle': 'ผู้แนะนำ L{level} ซื้อ 1 โหนด', 'feed.purchasePlural': 'ผู้แนะนำ L{level} ซื้อ {count} โหนด', 'feed.signup': 'ผู้แนะนำ L{level} ใหม่เข้าร่วมเครือข่ายของคุณ', 'feed.tierPromotion': 'เลื่อนเป็นระดับ {tier}', 'feed.milestone': 'ถึงเป้าหมาย',
   'feed.justNow': 'เมื่อสักครู่', 'feed.minAgo': '{n} นาทีที่แล้ว', 'feed.hrAgo': '{n} ชั่วโมงที่แล้ว', 'feed.dayAgo': '{n} วันที่แล้ว',
+  'sale.percentOff': 'ลด {discount}%', 'sale.tierSoldLabel': 'ระดับ {tier} ขายหมดแล้ว', 'sale.soldCountLabel': 'ขายแล้ว', 'sale.codeInvalidBadge': 'ไม่ถูกต้อง', 'sale.priceTimesQtyLabel': 'ราคา × {qty}', 'sale.needTokenLabel': 'ต้องการ {token}?', 'sale.realtimeOffline': 'การอัปเดตแบบเรียลไทม์ออฟไลน์ — รีเฟรชเพื่อซิงค์', 'sale.refreshNow': 'รีเฟรช',
 };
 
 // ─── Export ──────────────────────────────────────────────────────────────

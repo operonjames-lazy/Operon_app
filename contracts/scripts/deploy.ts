@@ -49,7 +49,13 @@ async function main() {
   // --- Set initial tiers ---
   // 40-tier price curve: Tier 1 at $500, +5% per tier (see docs/PRODUCT.md).
   // Contract tier indices are 0..39; the dashboard's DB tier column is 1-indexed
-  // (tier display ID = contract index + 1). All tiers activate at deploy time.
+  // (tier display ID = contract index + 1).
+  //
+  // Ship-readiness R5: activate ONLY tier 0 at deploy time. Previously all
+  // 40 tiers were marked active, which meant a buyer could call
+  // `purchase(tier=39, ...)` on day one and skip the sequential curve —
+  // product promise broken. The contract's `setTierActive` is wired to the
+  // admin endpoint; subsequent tiers are promoted as inventory sells out.
   const TOKEN_DECIMALS = parseInt(process.env.TOKEN_DECIMALS || '6');
 
   const tierPricesUsd = Array.from({ length: 40 }, (_, i) =>
@@ -60,7 +66,7 @@ async function main() {
     price: BigInt(Math.round(price * 100)) * BigInt(10 ** (TOKEN_DECIMALS - 2)),
     publicSupply: 1250,   // public allocation
     adminSupply: 1250,    // admin/whitelist allocation
-    active: true,
+    active: i === 0,      // only tier 0 open at deploy; promote via setTierActive
   }));
 
   for (const tier of tierConfigs) {

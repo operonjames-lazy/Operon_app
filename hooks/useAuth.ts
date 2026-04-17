@@ -121,6 +121,25 @@ export function useAuth() {
     },
   });
 
+  // Ship-readiness R5: listen for 401 events from `authFetch`. A stale
+  // session cookie (JWT_SECRET rotated, server-side logout, expiry) would
+  // otherwise leave the UI "authenticated" while every authed query fails.
+  // Tear down local state + let the merged connect effect re-run SIWE.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    function onExpired() {
+      if (!isAuthed) return;
+      clearSession().catch(() => {});
+      setIsAuthed(false);
+      setAuthError(null);
+      authedAddressRef.current = null;
+      try { document.cookie = 'operon_auth=; Max-Age=0; Path=/'; } catch {}
+      queryClient.invalidateQueries();
+    }
+    window.addEventListener('operon:auth-expired', onExpired);
+    return () => window.removeEventListener('operon:auth-expired', onExpired);
+  }, [isAuthed, queryClient]);
+
   const authenticate = useCallback(async () => {
     if (!address || !chainId) return;
 

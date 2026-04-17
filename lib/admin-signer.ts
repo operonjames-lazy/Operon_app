@@ -23,7 +23,17 @@ const PAUSABLE_ABI = [
 
 const REFERRAL_ADMIN_ABI = [
   'function addReferralCode(bytes32 codeHash, uint16 discountBps) external',
+  'function removeReferralCode(bytes32 codeHash) external',
   'function validCodes(bytes32) external view returns (bool)',
+];
+
+const TIER_ADMIN_ABI = [
+  'function setTierActive(uint256 tierId, bool active) external',
+  'function tiers(uint256) external view returns (uint256 price, uint256 publicSupply, uint256 adminSupply, uint256 publicSold, uint256 adminMinted, bool active)',
+];
+
+const TREASURY_ADMIN_ABI = [
+  'function withdrawFunds(address token, address to) external',
 ];
 
 export interface AdminSignerError {
@@ -72,4 +82,26 @@ export async function getReferralAdminContract(
   chain: AdminChain
 ): Promise<ethers.Contract | AdminSignerError> {
   return getAdminContract(chain, REFERRAL_ADMIN_ABI);
+}
+
+/**
+ * Admin signer bound to the tier-management subset of NodeSale. Used by
+ * `/api/admin/sale/tier-active` to promote the next tier when inventory
+ * sells out. Paired with the deploy-time change that only activates tier 0.
+ */
+export async function getTierAdminContract(
+  chain: AdminChain
+): Promise<ethers.Contract | AdminSignerError> {
+  return getAdminContract(chain, TIER_ADMIN_ABI);
+}
+
+/**
+ * Admin signer bound to the treasury-withdrawal surface of NodeSale. Used
+ * by `/api/admin/sale/withdraw` to sweep stablecoin balances to the
+ * configured treasury wallet.
+ */
+export async function getTreasuryAdminContract(
+  chain: AdminChain
+): Promise<ethers.Contract | AdminSignerError> {
+  return getAdminContract(chain, TREASURY_ADMIN_ABI);
 }
