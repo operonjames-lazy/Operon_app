@@ -6,7 +6,7 @@
 
 **Why this matters:** When this goes live, people will be paying real money on two different blockchains. A silent failure on launch day — wrong commission, premature "Successful" message, missing discount — is close to impossible to fix after the fact. Your job is to break this stuff now.
 
-**What's different from cycle 1:** This is the second pass of user testing. The first pass (2026-04-14) surfaced 14 bugs; all of them have been fixed, the code has been re-reviewed end-to-end, and this package reflects the fixed state. Two items in Part 3 setup are new — **read Part 3 carefully even if you tested cycle 1**. A known-caveats list is in Part 9 at the bottom of this guide — those are items that have been intentionally deferred for later, not bugs we want you to report.
+**What's different from cycle 1:** This is the second pass of user testing. The first pass (2026-04-14) surfaced 14 bugs; all of them have been fixed, the code has been re-reviewed end-to-end, and this package reflects the fixed state. Two items in Part 3 setup are new — **read Part 3 carefully even if you tested cycle 1**. A known-caveats list is in Part 10 at the bottom of this guide — those are items that have been intentionally deferred for later, not bugs we want you to report. Part 7 is new and covers the common "looks like a bug but isn't" situations you'll hit — **read Part 7 before you file a report.**
 
 **You will not need to understand code.** You will copy and paste commands. If something fails, message the operator — do not improvise.
 
@@ -645,7 +645,72 @@ Now buy one node:
 
 ---
 
-## Part 7 — How to report a problem
+## Part 7 — If something doesn't work
+
+A few known rough edges that look like bugs but aren't. Check here before filing a report — it'll save you and the operator both some time.
+
+### 7.1 A referral code is stuck on "activating your code on-chain" for more than a minute
+
+**What you're seeing.** You entered a code and got the red toast *"Activating your code on-chain — please try again in a few seconds."* That's normal for the first 5–30 seconds after a brand new code is generated. If it stays red longer than about a minute, something is throttling the background sync.
+
+**Why it happens.** When a user signs up, their referral code is written into the Supabase database instantly, but it *also* has to be registered on the sale contract on-chain — because when someone later buys with that code, the contract itself checks `validCodes[code] == true` before applying the 10% discount. Registering the code means a real on-chain transaction, which the app fires through an RPC endpoint in the background.
+
+If you left `ARBITRUM_RPC_URL` and `BSC_RPC_URL` blank in `.env.local` (§3.6), the app falls back to the free public RPC endpoints (`https://sepolia-rollup.arbitrum.io/rpc` and a public BSC testnet RPC). Those endpoints rate-limit aggressively — a 2-hour test session easily hits their per-IP ceiling, at which point every background call starts returning "429 Too Many Requests" and the sync can't make progress.
+
+**How to confirm it's the RPC.** Look at your `pnpm dev:indexer` terminal. If you see repeated lines like:
+
+```
+[dev-indexer] arbitrum RPC https://... unreachable: too many requests
+[dev-indexer] arbitrum: switched to https://arbitrum-sepolia.publicnode.com
+```
+
+you're being rate-limited.
+
+**How to fix it.**
+1. Get a free Alchemy API key: **alchemy.com** → New App → Arbitrum Sepolia → copy the HTTPS URL.
+2. Get a free QuickNode (or Infura, or publicnode) endpoint for BSC Testnet.
+3. Paste the URLs into `ARBITRUM_RPC_URL=` and `BSC_RPC_URL=` in `.env.local`.
+4. Stop both terminal windows with Ctrl+C, then restart `pnpm dev` and (in the second window) `pnpm dev:indexer`.
+5. Wait ~10 seconds — the red toast should flip to the green badge automatically without you refreshing.
+
+Private endpoints don't rate-limit your volume, so this won't come back.
+
+### 7.2 I bought a node and it never appeared on the My Nodes page
+
+**Most common cause:** your `pnpm dev:indexer` terminal isn't running, or it crashed silently. Without it, on-chain events don't reach the dashboard.
+
+**What to do.**
+1. Check the second terminal window. If it's been closed or it's full of red errors, restart it: `pnpm dev:indexer`.
+2. Wait about 30 seconds after restarting — the indexer does a catch-up sweep on startup.
+3. Refresh the My Nodes page.
+4. If the NFT is visible on the block explorer (Arbiscan for Arbitrum Sepolia, BscScan for BSC Testnet) but *still* missing from the dashboard after 2 full minutes, **this is a genuine bug — please report it** using the Part 8 template.
+
+### 7.3 `pnpm dev:indexer` crashes immediately with "DEV_INDEXER_SECRET is not set"
+
+You're missing `DEV_INDEXER_SECRET=` in `.env.local` (§3.6). Generate one:
+
+```
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Paste the output into the `DEV_INDEXER_SECRET=` line and restart `pnpm dev:indexer`. This secret is separate from `JWT_SECRET` — generate a fresh 32-byte random for each.
+
+### 7.4 The sale page says "Please complete sign-in first" even though I already signed in
+
+Your session cookie has gone stale — usually happens after a database reset, a long idle period, or if you restarted the dev server. Click **Disconnect** in the top-right of the page, then reconnect your wallet. MetaMask will ask you to sign the SIWE message again; after that, purchases work normally.
+
+### 7.5 I see the spinner "Transaction is taking longer than expected" but nothing moved
+
+That banner appears after 60 seconds in the Approving or Confirming state. It now links to the block explorer so you can check the transaction directly, instead of resetting the page. Two outcomes:
+
+- **The explorer shows the transaction confirmed.** The indexer will pick it up within 30 seconds of re-appearing on-chain and the success screen will show without you needing to refresh. Give it a minute.
+- **The explorer shows the transaction is still pending** (or doesn't know about it). Open MetaMask — you may have dropped the Confirm popup without realising. Confirm there; the page will catch up.
+
+If the explorer shows the transaction reverted, that's a genuine bug and warrants a report.
+
+---
+
+## Part 8 — How to report a problem
 
 For each issue, send the operator:
 
@@ -668,7 +733,7 @@ Also helpful: wallet address, transaction hash, approximate time, browser, OS.
 
 ---
 
-## Part 8 — Known stuff — do not report
+## Part 9 — Known stuff — do not report
 
 These are items we're aware of that are not fixed in this package. You will see them. Please don't spend time filing reports for any of them.
 
@@ -679,7 +744,7 @@ These are items we're aware of that are not fixed in this package. You will see 
 
 ---
 
-## Part 9 — Deferred for mainnet, not testnet bugs
+## Part 10 — Deferred for mainnet, not testnet bugs
 
 **New in cycle 2.** These items came out of a ship-readiness review and will be addressed before mainnet, but do not affect the cycle 2 testnet walkthrough. If you notice any of them, please do not file a report.
 
