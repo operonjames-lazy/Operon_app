@@ -136,11 +136,22 @@ function saveCursor(cursor) {
   }
 }
 
+// Ship-readiness R5 re-review: wrap getBlockNumber in a timeout so a
+// slow-but-not-dead endpoint (SYN-ACK but no body) cannot hang the probe
+// for the default ethers ~30s. Matches the production lib/rpc.ts pattern.
+const RPC_PROBE_TIMEOUT_MS = 8000;
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout ${ms}ms`)), ms)),
+  ]);
+}
+
 async function tryRpc(chain) {
   for (const url of RPC_URLS[chain]) {
     try {
       const provider = new ethers.JsonRpcProvider(url);
-      const head = await provider.getBlockNumber();
+      const head = await withTimeout(provider.getBlockNumber(), RPC_PROBE_TIMEOUT_MS, `${chain} ${url}`);
       return { provider, url, head };
     } catch (err) {
       console.warn(`[dev-indexer] ${chain} RPC ${url} unreachable: ${err?.message || err}`);

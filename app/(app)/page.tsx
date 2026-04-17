@@ -56,7 +56,7 @@ export default function HomePage() {
         <StatCard
           title={t('home.nodesOwned')}
           value={dashboard?.nodesOwned || 0}
-          subtitle={dashboard?.nodesOwned ? `${formatUsd(dashboard.totalInvested)} invested` : undefined}
+          subtitle={dashboard?.nodesOwned ? t('home.investedLabel', { amount: formatUsd(dashboard.totalInvested) }) : undefined}
           href="/nodes"
         />
         <StatCard
@@ -80,7 +80,7 @@ export default function HomePage() {
               <span className="text-t3 text-xs uppercase tracking-wider">{t('home.currentTier')}</span>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-2xl font-bold text-t1">
-                  Tier {sale?.currentTier || 1}
+                  {t('home.tierLabel', { tier: sale?.currentTier || 1 })}
                 </span>
                 <Badge variant="green">
                   {sale?.stage === 'active' ? t('home.active') : sale?.stage === 'paused' ? t('home.paused') : t('home.closed')}

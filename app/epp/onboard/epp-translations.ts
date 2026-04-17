@@ -72,6 +72,8 @@ export interface EppLangPack {
   btnCopy: string;
   btnLink: string;
   btnShare: string;
+  shareTitle: string;
+  shareText: string;
   confEmailBefore: string;
   confEmailAfter: string;
   next1: string;
@@ -151,6 +153,8 @@ const en: EppLangPack = {
   btnCopy: 'Copy code',
   btnLink: 'Copy link',
   btnShare: 'Share',
+  shareTitle: 'Operon Node Sale',
+  shareText: 'Referral code {code}:',
   confEmailBefore: 'Programme documentation will be sent to',
   confEmailAfter: '— including the full rate schedule, tier thresholds, milestone structure, and pitch resources.',
   next1: 'Share your code with prospective buyers to give them whitelist access and a preferential discount',
@@ -236,6 +240,8 @@ const tc: EppLangPack = {
   btnCopy: '複製代碼',
   btnLink: '複製連結',
   btnShare: '分享',
+  shareTitle: 'Operon 節點銷售',
+  shareText: '推薦碼 {code}：',
   confEmailBefore: '計畫文件將發送至',
   confEmailAfter: '——包括完整費率表、層級門檻、里程碑結構及推廣資源。',
   next1: '分享您的推薦碼，讓買家獲得白名單資格及優惠折扣',
@@ -321,6 +327,8 @@ const sc: EppLangPack = {
   btnCopy: '复制代码',
   btnLink: '复制链接',
   btnShare: '分享',
+  shareTitle: 'Operon 节点销售',
+  shareText: '推荐码 {code}：',
   confEmailBefore: '计划文件将发送至',
   confEmailAfter: '——包括完整费率表、层级门槛、里程碑结构及推广资源。',
   next1: '分享您的推荐码，让买家获得白名单资格及优惠折扣',
@@ -406,6 +414,8 @@ const ko: EppLangPack = {
   btnCopy: '코드 복사',
   btnLink: '링크 복사',
   btnShare: '공유',
+  shareTitle: 'Operon 노드 판매',
+  shareText: '추천 코드 {code}:',
   confEmailBefore: '프로그램 문서가 다음 주소로 전송됩니다:',
   confEmailAfter: '— 전체 수수료율표, 등급 기준, 마일스톤 구조 및 홍보 자료가 포함되어 있습니다.',
   next1: '추천 코드를 공유하여 구매자에게 화이트리스트 접근 및 우대 할인을 제공하세요',
@@ -491,6 +501,8 @@ const vi: EppLangPack = {
   btnCopy: 'Sao chép mã',
   btnLink: 'Sao chép liên kết',
   btnShare: 'Chia sẻ',
+  shareTitle: 'Operon Bán Node',
+  shareText: 'Mã giới thiệu {code}:',
   confEmailBefore: 'Tài liệu chương trình sẽ được gửi đến',
   confEmailAfter: '— bao gồm bảng phí đầy đủ, ngưỡng hạng, cấu trúc cột mốc và tài liệu quảng bá.',
   next1: 'Chia sẻ mã giới thiệu để người mua nhận quyền whitelist và chiết khấu ưu đãi',
@@ -580,6 +592,8 @@ const th: EppLangPack = {
   btnCopy: 'คัดลอกรหัส',
   btnLink: 'คัดลอกลิงก์',
   btnShare: 'แชร์',
+  shareTitle: 'Operon ขายโหนด',
+  shareText: 'รหัสแนะนำ {code}:',
   confEmailBefore: 'เอกสารโครงการจะถูกส่งไปยัง',
   confEmailAfter: '— รวมถึงตารางอัตราฉบับสมบูรณ์ เกณฑ์ระดับ โครงสร้างจุดสำคัญ และทรัพยากรการนำเสนอ',
   next1: 'แชร์รหัสของท่านให้ผู้ซื้อที่สนใจ เพื่อมอบสิทธิเข้าไวต์ลิสต์และส่วนลดพิเศษ',

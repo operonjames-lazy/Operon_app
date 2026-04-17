@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface TierData {
   tier: number;
@@ -16,18 +17,27 @@ interface TierBarProps {
 
 export function TierBar({ tiers }: TierBarProps) {
   const [hoveredTier, setHoveredTier] = useState<number | null>(null);
-  const totalSupply = tiers.reduce((sum, t) => sum + t.supply, 0);
+  const { t } = useTranslation();
+  const totalSupply = tiers.reduce((sum, tier) => sum + tier.supply, 0);
+  const totalSold = tiers.reduce((sum, tier) => sum + tier.sold, 0);
 
   return (
     <div className="w-full">
-      <div className="flex h-6 w-full overflow-hidden rounded-full bg-border">
-        {tiers.map((t) => {
-          const widthPct = (t.supply / totalSupply) * 100;
-          const fillPct = t.supply > 0 ? (t.sold / t.supply) * 100 : 0;
-          const isSoldOut = t.sold >= t.supply;
+      <div
+        className="flex h-6 w-full overflow-hidden rounded-full bg-border"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={totalSupply || 1}
+        aria-valuenow={totalSold}
+        aria-label={t('tierBar.soldOfSupply', { sold: totalSold, supply: totalSupply })}
+      >
+        {tiers.map((tier) => {
+          const widthPct = (tier.supply / totalSupply) * 100;
+          const fillPct = tier.supply > 0 ? (tier.sold / tier.supply) * 100 : 0;
+          const isSoldOut = tier.sold >= tier.supply;
 
           let bgClass: string;
-          if (t.active) {
+          if (tier.active) {
             bgClass = 'bg-green';
           } else if (isSoldOut) {
             bgClass = 'bg-t4';
@@ -37,32 +47,30 @@ export function TierBar({ tiers }: TierBarProps) {
 
           return (
             <div
-              key={t.tier}
+              key={tier.tier}
               className="relative h-full border-r border-bg last:border-r-0"
               style={{ width: `${widthPct}%` }}
-              onMouseEnter={() => setHoveredTier(t.tier)}
+              onMouseEnter={() => setHoveredTier(tier.tier)}
               onMouseLeave={() => setHoveredTier(null)}
             >
               <div
                 className={`h-full transition-all duration-500 ${bgClass}`}
                 style={{ width: `${fillPct}%` }}
               />
-              {t.active && fillPct < 100 && (
+              {tier.active && fillPct < 100 && (
                 <div
                   className="absolute inset-0 bg-green/20"
                   style={{ left: `${fillPct}%` }}
                 />
               )}
 
-              {hoveredTier === t.tier && (
+              {hoveredTier === tier.tier && (
                 <div className="absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
-                  <p className="font-semibold text-t1">Tier {t.tier}</p>
-                  <p className="text-t3">${t.price.toLocaleString()} per node</p>
-                  <p className="text-t3">
-                    {t.sold.toLocaleString()} / {t.supply.toLocaleString()} sold
-                  </p>
-                  {t.active && (
-                    <p className="mt-0.5 font-medium text-green">Current Tier</p>
+                  <p className="font-semibold text-t1">{t('tierBar.tier', { tier: tier.tier })}</p>
+                  <p className="text-t3">{t('tierBar.pricePerNode', { price: `$${tier.price.toLocaleString()}` })}</p>
+                  <p className="text-t3">{t('tierBar.soldOfSupply', { sold: tier.sold.toLocaleString(), supply: tier.supply.toLocaleString() })}</p>
+                  {tier.active && (
+                    <p className="mt-0.5 font-medium text-green">{t('tierBar.currentTier')}</p>
                   )}
                 </div>
               )}
@@ -75,10 +83,10 @@ export function TierBar({ tiers }: TierBarProps) {
           to give visual anchors without overflow. */}
       <div className="mt-2 flex justify-between text-[10px] text-t4">
         {tiers
-          .filter((t, i) => i === 0 || i === tiers.length - 1 || (i + 1) % 5 === 0 || t.active)
-          .map((t) => (
-            <span key={t.tier} className={t.active ? 'font-medium text-green' : ''}>
-              T{t.tier}
+          .filter((tier, i) => i === 0 || i === tiers.length - 1 || (i + 1) % 5 === 0 || tier.active)
+          .map((tier) => (
+            <span key={tier.tier} className={tier.active ? 'font-medium text-green' : ''}>
+              T{tier.tier}
             </span>
           ))}
       </div>

@@ -32,6 +32,7 @@ import { useAccount, useChainId, useSignMessage } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { SiweMessage } from 'siwe';
 import { EPP_LANGS, EPP_LANG_LIST, type EppLang, type EppLangPack } from './epp-translations';
+import { useLanguageStore } from '@/stores/language';
 
 type Step = 0 | 1 | 2 | 3;
 type InviteState =
@@ -60,16 +61,17 @@ export default function EppOnboardPage() {
   }, []);
 
   // ─── Language ──────────────────────────────────────────────────────────
-  const [lang, setLang] = useState<EppLang>('en');
-  useEffect(() => {
-    if (typeof navigator === 'undefined') return;
-    const code = (navigator.language || 'en').toLowerCase();
-    if (code.startsWith('zh-tw') || code.startsWith('zh-hant')) setLang('tc');
-    else if (code.startsWith('zh')) setLang('sc');
-    else if (code.startsWith('ko')) setLang('ko');
-    else if (code.startsWith('vi')) setLang('vi');
-    else if (code.startsWith('th')) setLang('th');
-  }, []);
+  //
+  // Ship-readiness R5 re-review: persist the EPP onboard language across
+  // wizard steps (and across page reloads / wagmi reconnects that remount
+  // the page) by delegating to the main app's `useLanguageStore` — which
+  // is already backed by localStorage via Zustand persist. Previously
+  // the EPP page owned its own useState + navigator.language effect, so
+  // switching mid-wizard then bouncing through SIWE dropped the choice.
+  const storedLang = useLanguageStore((s) => s.language);
+  const setStoredLang = useLanguageStore((s) => s.setLanguage);
+  const lang: EppLang = storedLang;
+  const setLang = setStoredLang;
   const t: EppLangPack = EPP_LANGS[lang];
 
   // ─── Invite validation ────────────────────────────────────────────────
@@ -215,7 +217,11 @@ export default function EppOnboardPage() {
   function share() {
     if (!resultCode) return;
     if (navigator.share) {
-      navigator.share({ title: 'Operon Node Sale', text: `Referral code ${resultCode}:`, url: referralLink }).catch(() => {});
+      navigator.share({
+        title: t.shareTitle,
+        text: t.shareText.replace('{code}', resultCode),
+        url: referralLink,
+      }).catch(() => {});
     } else {
       copy('link');
     }

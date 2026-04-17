@@ -312,7 +312,9 @@ export default function SalePage() {
   // extension crash) skipped the guard and wallet B inherited wallet A's
   // local state. Track the last SEEN non-null address separately so any
   // new non-null address that doesn't match it triggers the reset.
-  const lastSeenAddressRef = useRef<string | undefined>(address?.toLowerCase());
+  // `lastSeenAddressRef` is seeded only by the effect below — not inline —
+  // so there's a single source of update and no double-write on first mount.
+  const lastSeenAddressRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const current = address?.toLowerCase();
     const last = lastSeenAddressRef.current;
@@ -341,13 +343,22 @@ export default function SalePage() {
   useEffect(() => {
     if (step !== 'success') return;
     if (typeof document === 'undefined') return;
+    function reset() {
+      setStep('idle');
+      setQuantity(1);
+      resetApprove();
+      resetPurchase();
+    }
+    // Cover the edge case where the tab is ALREADY hidden at the moment
+    // `step` becomes 'success' (user switched tabs during Confirming).
+    // Without this, no `visibilitychange` fires until the tab re-appears
+    // and is hidden again — modal stays up for the whole round trip.
+    if (document.hidden) {
+      reset();
+      return;
+    }
     function onVisibilityChange() {
-      if (document.hidden) {
-        setStep('idle');
-        setQuantity(1);
-        resetApprove();
-        resetPurchase();
-      }
+      if (document.hidden) reset();
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -515,7 +526,7 @@ export default function SalePage() {
         <div className="flex items-center justify-between rounded-lg border border-amber/30 bg-amber/5 px-4 py-3">
           <div>
             <p className="text-sm text-amber font-medium">{t('sale.pendingTx')}</p>
-            <p className="text-xs text-t3">{t('sale.nodesOnChain', { chain: pendingRecovery.chain === 'arbitrum' ? 'Arbitrum' : 'BNB Chain' }).replace('node(s)', `${pendingRecovery.quantity} node(s)`)}</p>
+            <p className="text-xs text-t3">{t('sale.pendingTxSummary', { qty: pendingRecovery.quantity, chain: pendingRecovery.chain === 'arbitrum' ? 'Arbitrum' : 'BNB Chain' })}</p>
           </div>
           <div className="flex gap-2">
             <a href={`${getExplorerTxUrl(pendingRecovery.chain as 'arbitrum' | 'bsc')}${pendingRecovery.hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-ice hover:underline">{t('sale.viewExplorer')}</a>
@@ -571,7 +582,11 @@ export default function SalePage() {
           </div>
         )}
         <div className="font-mono text-xs text-t2 mt-2">
-          Tier {sale?.currentTier || 1} · <span className="text-t1 font-medium">{formatNum(sale?.tierRemaining || 0)}</span> / {formatNum(sale?.tierSupply || 0)} remaining
+          {t('sale.tierProgressLine', {
+            tier: sale?.currentTier || 1,
+            remaining: formatNum(sale?.tierRemaining || 0),
+            supply: formatNum(sale?.tierSupply || 0),
+          })}
         </div>
       </div>
 
@@ -582,7 +597,10 @@ export default function SalePage() {
             {sale.tiers.map((tier, i) => {
               const isSoldOut = tier.sold >= tier.supply;
               const isActiveTier = tier.active;
-              const dp = discountBps > 0 ? Math.floor(tier.price * (1 - discountBps / 10000)) : tier.price;
+              // Integer math (matches contract + line 167 in this file).
+              // Previous `* (1 - discountBps / 10000)` produced a 1-cent
+              // float drift on some tier/discount combinations.
+              const dp = discountBps > 0 ? tier.price - Math.floor(tier.price * discountBps / 10000) : tier.price;
               return (
                 <div
                   key={tier.tier}
@@ -638,7 +656,12 @@ export default function SalePage() {
               <input
                 type="text"
                 value={referralCode}
-                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setReferralCode(e.target.value.toUpperCase());
+                  // User typed — this is no longer a URL-applied code, so
+                  // suppress the "code applied from URL" toast next round.
+                  if (codeFromUrl) setCodeFromUrl(false);
+                }}
                 onBlur={() => referralCode && validateCode(referralCode)}
                 placeholder="OPRN-XXXX"
                 className="w-28 bg-bg border border-border rounded px-2 py-2 text-t1 font-mono text-[11px] focus:outline-none focus:border-green min-h-[44px]"

@@ -56,15 +56,35 @@ export function useAuth() {
     if (initialMountRef.current) {
       initialMountRef.current = false;
       if (checkCookie()) {
-        // First mount with an existing session cookie. Trust it for the
-        // currently-connected wallet and let the switch-detector below
-        // catch any later account change. We cannot verify the cookie
-        // matches this specific wallet without a /me round-trip; the
-        // remaining risk is narrow (wagmi reconnecting to a different
-        // account than the one that obtained the cookie, which requires
-        // manual MetaMask permission changes between sessions).
-        setIsAuthed(true);
-        authedAddressRef.current = address.toLowerCase();
+        // First mount with an existing session cookie. Ship-readiness R5
+        // re-review: previously trusted the flag cookie on sight, which
+        // meant a stale JWT (secret rotated, server-side logout, 24h
+        // expiry) would leave the UI "authenticated" while every authed
+        // query returned 401. Now verify with `/api/auth/me` and confirm
+        // the JWT's wallet matches the currently-connected address; on
+        // any mismatch or 401, clear local flag and fall through to
+        // `authenticate()` for a fresh SIWE.
+        (async () => {
+          try {
+            const res = await fetch('/api/auth/me', { cache: 'no-store' });
+            if (!res.ok) {
+              try { document.cookie = 'operon_auth=; Max-Age=0; Path=/'; } catch {}
+              authenticate();
+              return;
+            }
+            const body = (await res.json()) as { wallet?: string };
+            if (!body.wallet || body.wallet.toLowerCase() !== address.toLowerCase()) {
+              await clearSession();
+              try { document.cookie = 'operon_auth=; Max-Age=0; Path=/'; } catch {}
+              authenticate();
+              return;
+            }
+            setIsAuthed(true);
+            authedAddressRef.current = address.toLowerCase();
+          } catch {
+            authenticate();
+          }
+        })();
         return;
       }
     }
@@ -125,16 +145,31 @@ export function useAuth() {
   // session cookie (JWT_SECRET rotated, server-side logout, expiry) would
   // otherwise leave the UI "authenticated" while every authed query fails.
   // Tear down local state + let the merged connect effect re-run SIWE.
+  //
+  // Re-review fix: await `clearSession()` BEFORE the refetch fan-out.
+  // Mirrors the wallet-switch handler at L79-110. Previous shape
+  // (fire-and-forget clearSession → immediate invalidateQueries) re-
+  // introduced the exact R4-06 race: the first wave of refetches carried
+  // the still-live stale JWT, produced another 401, and every authed page
+  // flashed its error state for the duration of the SIWE prompt.
+  //
+  // Also narrow the invalidation to wallet-scoped query keys — public
+  // queries like ['sale','tiers'] don't need a re-fetch on auth change.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     function onExpired() {
       if (!isAuthed) return;
-      clearSession().catch(() => {});
       setIsAuthed(false);
       setAuthError(null);
       authedAddressRef.current = null;
       try { document.cookie = 'operon_auth=; Max-Age=0; Path=/'; } catch {}
-      queryClient.invalidateQueries();
+      (async () => {
+        await clearSession();
+        await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        await queryClient.invalidateQueries({ queryKey: ['nodes'] });
+        await queryClient.invalidateQueries({ queryKey: ['referrals'] });
+        await queryClient.invalidateQueries({ queryKey: ['sale', 'status'] });
+      })().catch(() => {});
     }
     window.addEventListener('operon:auth-expired', onExpired);
     return () => window.removeEventListener('operon:auth-expired', onExpired);

@@ -55,7 +55,7 @@ export function NodeCard({
         <div className="flex items-center gap-2">
           <span className="text-lg font-bold text-t1">#{tokenId}</span>
           <Badge variant={chainInfo.badge}>{chainInfo.label}</Badge>
-          <Badge variant="default">Tier {tier}</Badge>
+          <Badge variant="default">{t('home.tierLabel', { tier })}</Badge>
         </div>
         <div className="flex items-center gap-1.5">
           <span className={`h-2 w-2 rounded-full ${statusInfo.color}`} />

@@ -31,6 +31,18 @@ export async function syncReferralCodeOnChain(
   discountBps: number,
   chain: AdminChain,
 ): Promise<SyncResult> {
+  // Ship-readiness R5 re-review: reject zero (and negative) discountBps.
+  // The NodeSale contract treats `validCodes[hash]=true &&
+  // codeDiscountBps[hash]=0` as "apply defaultDiscountBps=1500", so
+  // passing 0 here would silently create a 15% discount on-chain while
+  // the DB records 0% — operator-facing display / treasury divergence.
+  // If an operator explicitly wants a 15% discount, they should set
+  // `sale_config.community_discount_bps=1500` and let that flow through.
+  if (!Number.isFinite(discountBps) || discountBps <= 0 || discountBps > 10000) {
+    logger.error('syncReferralCodeOnChain refused invalid discountBps', { code, chain, discountBps });
+    return { ok: false, error: `invalid_discount_bps: ${discountBps}` };
+  }
+
   const result = await getReferralAdminContract(chain);
   // AdminSignerError has { error: string } and no contract methods; the
   // ethers.Contract has `addReferralCode`. Use that as the discriminator.

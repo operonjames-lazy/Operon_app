@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface CodeBarProps {
   code: string;
@@ -51,6 +52,7 @@ function LinkIcon() {
 export function CodeBar({ code, label }: CodeBarProps) {
   const { copied: codeCopied, copy: copyCode } = useCopyFeedback();
   const { copied: linkCopied, copy: copyLink } = useCopyFeedback();
+  const { t } = useTranslation();
 
   const referralUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/sale?ref=${code}`
@@ -60,8 +62,8 @@ export function CodeBar({ code, label }: CodeBarProps) {
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: 'Operon Node Sale',
-          text: `Use my referral code: ${code}`,
+          title: t('code.shareTitle'),
+          text: t('code.shareText', { code }),
           url: referralUrl,
         });
       } catch {
@@ -82,7 +84,7 @@ export function CodeBar({ code, label }: CodeBarProps) {
         <button
           onClick={() => copyCode(code)}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-t2 transition-colors hover:bg-card-hover hover:text-t1 cursor-pointer"
-          title="Copy code"
+          title={t('code.copyCode')}
         >
           {codeCopied ? (
             <span className="text-xs text-green font-medium">OK</span>
@@ -93,14 +95,14 @@ export function CodeBar({ code, label }: CodeBarProps) {
         <button
           onClick={handleShare}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-t2 transition-colors hover:bg-card-hover hover:text-t1 cursor-pointer"
-          title="Share"
+          title={t('code.share')}
         >
           <ShareIcon />
         </button>
         <button
           onClick={() => copyLink(referralUrl)}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-t2 transition-colors hover:bg-card-hover hover:text-t1 cursor-pointer"
-          title="Copy referral link"
+          title={t('code.copyLink')}
         >
           {linkCopied ? (
             <span className="text-xs text-green font-medium">OK</span>

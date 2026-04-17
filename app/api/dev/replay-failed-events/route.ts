@@ -89,6 +89,23 @@ export async function POST(request: NextRequest) {
           .eq('id', fe.id);
         if (abandoned) out.abandoned += 1;
         else out.retried += 1;
+
+        // Ship-readiness R5 re-review: mirror the cron's Telegram alert
+        // on abandon. A tester running a dry-run session without the
+        // alert would silently lose purchases; R-P2 in REVIEW_ADDENDUM
+        // requires escalation after the 5-retry cap. Fire-and-forget.
+        if (abandoned && process.env.TG_BOT_TOKEN && process.env.TG_ADMIN_CHAT_ID) {
+          fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: process.env.TG_ADMIN_CHAT_ID,
+              text: `⚠️ ABANDONED EVENT (dev ${kind})\n\nTx: ${fe.tx_hash}\nChain: ${fe.chain}\nError: ${String(retryError)}`,
+            }),
+          }).catch((tgErr) => {
+            logger.error('Telegram alert failed for abandoned dev event', { txHash: fe.tx_hash, error: String(tgErr) });
+          });
+        }
       }
     }
   } catch (err) {

@@ -398,3 +398,65 @@ Two recurring patterns across R4-07 and the new blockers:
 - Dev-parity doctrine D-entry
 
 ---
+
+## 2026-04-18 (session 3) — Ship-readiness re-review follow-ups
+
+Ran `/review-ship` a second time against the R5 fixes. Re-review found 0 blocking, 6 required, 15 advisory — the prior blockers all closed, but the i18n sweep had missed more hardcoded strings and the R5 401-recovery handler reintroduced the exact fire-and-forget `clearSession()` race that R4-06 fixed in the sibling wallet-switch handler. User directed all 6 required + 15 advisory items resolved in one pass.
+
+### Required closed
+
+- **More hardcoded English** (sale hero, home dashboard, tier-bar tooltip, code-bar tooltips, node-card tier badge, EPP onboard second `navigator.share` call). 13 new translation keys added × 6 languages (`home.tierLabel`, `home.investedLabel`, `sale.tierProgressLine`, `sale.pendingTxSummary`, `tierBar.tier/pricePerNode/soldOfSupply/currentTier`, `code.copyCode/share/copyLink/shareTitle/shareText`); `EppLangPack.shareTitle/shareText` × 6.
+- **`sale.nodesOnChain` `.replace('node(s)', …)` broken in 5/6 languages** → replaced with parameterized `sale.pendingTxSummary` taking `{qty}` + `{chain}`; old key deleted across all 6 languages.
+- **`useAuth.onExpired` fire-and-forget race**: now `await`s `clearSession()` before `invalidateQueries()`, and narrows the invalidation to wallet-scoped keys only. Mirrors the R4-06 fix in the sibling wallet-switch handler.
+- **`syncReferralCodeOnChain` zero-discount guard**: rejects `discountBps <= 0` / non-finite / > 10000 at the sync boundary. Prevents silent on-chain 15% default if `sale_config.*_discount_bps` is ever zeroed.
+- **Dev replay-failed-events Telegram alert**: added so tester dry-runs with a stuck event get the same R-P2 escalation prod cron gets.
+- **`scripts/reset-tier-state.sql` hardened**: wrapped in `BEGIN; … COMMIT;` (atomic guard + UPDATE); added `COUNT(*) FROM referral_purchases` to the refusal check.
+
+### Advisory closed
+
+- Integer math in sale tier-strip display (no more 1-cent float drift).
+- `visibilitychange` effect checks `document.hidden` synchronously on attach (closes tab-already-hidden edge).
+- New `GET /api/auth/me` endpoint + `useAuth` now verifies adopted cookie's JWT wallet matches connected address; on mismatch clears flag cookie + fresh SIWE.
+- `codeFromUrl` resets on user typing (toast misattribution gone).
+- `navigator.share` payload routed through translations in both CodeBar and EPP onboard.
+- Dead dup keys `sale.sold` / `sale.remaining` removed from EN `pageKeys`; orphaned `sale.nodesOnChain` removed × 6 langs.
+- ARIA on `ProgressBar` + `TierBar` (`role="progressbar"`, `aria-valuemin/max/now`, `aria-label`).
+- EPP onboard language switched to `useLanguageStore` → persists across wizard + reloads.
+- `NEXT_PUBLIC_QUICKNODE_URL` now documented in OPERATIONS.md.
+- `dev-indexer.mjs` `tryRpc` probe now wrapped in 8s `withTimeout` (matches `lib/rpc.ts`).
+- Cron reconcile computes referral queue depth pre-drain; Telegram alerts when depth ≥ 500. Stateful "2 consecutive" gate deferred (needs schema addition).
+- `lastSeenAddressRef` single source of updates (init removed).
+
+Deferred (non-blocking):
+- `F-A4` dev-indexer direct `ethers.JsonRpcProvider` (script is a CLI not a backend file; O-P6 letter-vs-intent).
+- `eslint-plugin-i18next` as a dep proposal.
+- `sale.sold` / `sale.remaining` base-`en` keys left in place since not dup-shadowed anymore.
+
+### Verification
+
+- `npx tsc --noEmit` → clean.
+- `npx next build` → clean (34 routes).
+- `cd contracts && npx hardhat test` → 53 passing.
+- Grep for `Tier {`, `Copy code`, `Share`, `Current Tier`, `Price × `, `Need {paymentToken`, `Operon Node Sale`, `Use my referral code` across `app/**/*.tsx` + `components/**/*.tsx` → zero user-facing matches.
+
+### Files touched
+
+- **Sale flow**: `app/(app)/sale/page.tsx`
+- **Home**: `app/(app)/page.tsx`
+- **Components**: `components/ui/tier-bar.tsx`, `components/ui/code-bar.tsx`, `components/ui/node-card.tsx`, `components/ui/progress-bar.tsx`
+- **EPP**: `app/epp/onboard/page.tsx`, `app/epp/onboard/epp-translations.ts`
+- **Hooks/Auth**: `hooks/useAuth.ts`, `lib/api/fetch.ts` (unchanged this session; fetch was already done), new `app/api/auth/me/route.ts`
+- **Translations**: `lib/i18n/translations.ts` (+13 keys × 6 langs; removed dups + orphan `nodesOnChain`)
+- **Referral sync**: `lib/referrals/sync-on-chain.ts`
+- **Dev replay + indexer**: `app/api/dev/replay-failed-events/route.ts`, `scripts/dev-indexer.mjs`
+- **Reconcile**: `app/api/cron/reconcile/route.ts`
+- **SQL**: `scripts/reset-tier-state.sql`
+- **Docs**: `docs/OPERATIONS.md`, `docs/PROGRESS.md`, `review-log.md`
+
+### Next Session
+
+- Push commits
+- Hand tester the package (operator strip `.env.local` first)
+- Optionally re-run `/review-ship` a third time to confirm — scope is small, remaining advisories are non-blocking
+
+---

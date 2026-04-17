@@ -49,6 +49,7 @@ NEXT_PUBLIC_APP_DOMAIN=operon.app               # SIWE domain check; set to your
 
 # ─── RPC URLs ──────────────────────────────────────────────────
 NEXT_PUBLIC_ALCHEMY_KEY=<key>
+NEXT_PUBLIC_QUICKNODE_URL=                                      # optional client-side BSC RPC; falls back to wagmi default transport when empty
 ARBITRUM_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/<key>    # server-side for verifyOnChain + reconcile
 BSC_RPC_URL=https://<provider>                                  # required once BSC testnet contracts are live
 

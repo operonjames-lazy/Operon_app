@@ -266,8 +266,42 @@ export async function GET(request: NextRequest) {
   // burst (2,000 rows = two chains × 1,000 wallets connecting in 30 min).
   // maxDuration (60s) + conservative RPC rate-limits still bound the work
   // per tick; the function returns on whichever ceiling hits first.
-  const referralSync = { attempted: 0, synced: 0, failed: 0 };
+  const referralSync = { attempted: 0, synced: 0, failed: 0, queueDepth: 0 };
   try {
+    // Ship-readiness R5 re-review: observe queue depth before the drain
+    // so operators can tell when ingress exceeds drain capacity. If the
+    // queue sits above a high-water threshold for 2 consecutive runs a
+    // Telegram alert fires so launch-day burst doesn't degrade silently.
+    const { count: depthCount } = await supabase
+      .from('referral_code_chain_state')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['pending', 'failed'])
+      .lt('attempts', 10);
+    referralSync.queueDepth = depthCount ?? 0;
+
+    // Threshold = 500 pending rows. Alert on every run while over-threshold
+    // is a tradeoff against spam: at */5 cadence a sustained backlog would
+    // alert 12×/hour. Operators can silence via TG_ADMIN_CHAT_ID env var if
+    // the noise becomes a problem; a stateful "2 consecutive runs" gate
+    // would need a new column on reconciliation_log (follow-up).
+    const QUEUE_DEPTH_ALERT_THRESHOLD = 500;
+    if (
+      referralSync.queueDepth >= QUEUE_DEPTH_ALERT_THRESHOLD &&
+      process.env.TG_BOT_TOKEN &&
+      process.env.TG_ADMIN_CHAT_ID
+    ) {
+      fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: process.env.TG_ADMIN_CHAT_ID,
+          text: `⚠️ REFERRAL SYNC BACKLOG\n\nDepth: ${referralSync.queueDepth} (threshold ${QUEUE_DEPTH_ALERT_THRESHOLD})\nIngress may be exceeding drain capacity.`,
+        }),
+      }).catch((tgErr) => {
+        logger.error('Telegram queue-depth alert failed', { error: String(tgErr) });
+      });
+    }
+
     const { data: pendingCodes } = await supabase
       .from('referral_code_chain_state')
       .select('code, chain, discount_bps, attempts')
