@@ -460,3 +460,29 @@ Deferred (non-blocking):
 - Optionally re-run `/review-ship` a third time to confirm — scope is small, remaining advisories are non-blocking
 
 ---
+
+## 2026-04-18 (session 4) — TESTING_GUIDE Part 7, package handoff, docs sync
+
+Short wrap-up session. After the R5-followup fixes landed, three things happened:
+
+1. **TESTING_GUIDE Part 7 added** (commit `fefeb4b`). The re-review's "pending_sync stuck on public RPC rate-limit" scenario was documented out-of-band as an operator-facing note; lifted into a tester-facing section with 5 subsections (7.1 referral stuck / RPC rate-limit, 7.2 purchase-missing-from-my-nodes, 7.3 `DEV_INDEXER_SECRET` missing, 7.4 stale-cookie sign-in, 7.5 tx-taking-long). Both EN and ZH guides updated; subsequent parts renumbered 7→8, 8→9, 9→10.
+2. **Push to origin main**. Commits `d4e29f6` (R3), `52dfaea` (R4), `967fa04` (R5), `88bee4e` (R5-followup), `fefeb4b` (Part 7) are now on GitHub. Prior local commits (`5da8d39`, `f54b760`, `972d3ca`) also pushed with this run. Active gh account had to be switched from `lazyjameslee-agentic` (no write) to `operonjames-lazy` (has write); the repo remote is `https://github.com/operonjames-lazy/Operon_app.git`.
+3. **Tester package built** at `C:\Users\james\Downloads\operon-tester-2026-04-18\` (folder, 1.9 MB) + `.zip` (526 KB). Built via `git archive HEAD` so only tracked files; `.env*` / `node_modules` / `.next` / `.git` all excluded. Secret-scan clean (the only `eyJhbGci`/`postgres.` hits are documentation placeholders in `docs/OPERATIONS.md`). Matches TESTING_GUIDE Part 0 layout: `TESTING_GUIDE.md` + `TESTING_GUIDE_zh.md` at top level, full codebase in `operon-dashboard/`.
+
+### Docs sync (this wrap-up)
+
+- `docs/ARCHITECTURE.md`: new `referral_code_chain_state` table in the Operations schema block; `/api/auth/me` added to Auth routes; new **Dev** section for `/api/dev/indexer-ingest`, `/api/dev/drain-referrals`, `/api/dev/replay-failed-events` with their dev-auth gate; 4 new admin routes (`sale/tier-active`, `sale/withdraw`, `referrals/reset`, `referrals/remove`); cron reconcile description rewritten to reflect the current 10-confirmation gate + MAX_BLOCK_RANGE=10000 + 200/run drain + queue-depth Telegram alert (was stale "100 blocks" language).
+- `docs/DECISIONS.md`: **D21** (deploy only tier 0 active; operator promotes via `setTierActive`), **D22** (`scripts/reset-tier-state.sql` as the gated replacement for re-applying migration 014), **D23** (`syncReferralCodeOnChain` rejects `discountBps <= 0` as defense in depth against `sale_config` drift). Phase 2 placeholder range bumped from `D21+` to `D24+` on the four pending Phase 2 entries to keep numbering consistent.
+- `docs/PROGRESS.md`: this entry.
+
+### Status
+
+Origin/main at `fefeb4b` + doc commit. Tester package ready to hand off. Memory reminder held: `/review-ship` was run twice this cycle and all blockers + required findings closed; I did not tell the user "ready to ship" from a gut check.
+
+### Next Session
+
+- Hand tester the package.
+- If the tester returns an R5 report, plan a cycle 4 session; otherwise this was the ship pass.
+- Mainnet prep is still governed by the pre-mainnet checklist in `docs/OPERATIONS.md` §3 — rotated secrets, Gnosis Safe, Thai legal review, live commission RPC smoke, Vercel env vars.
+
+---

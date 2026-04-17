@@ -237,6 +237,16 @@ reconciliation_log          -- one row per reconcile cron run
 ├── events_found, gaps_filled
 ├── run_at, duration_ms
 
+referral_code_chain_state   -- per-code × chain queue for on-chain registration
+├── code, chain              -- composite primary key
+├── status VARCHAR(20)       -- 'pending' | 'synced' | 'failed'
+├── discount_bps INT         -- bps to register with addReferralCode
+├── tx_hash, last_error
+├── attempts INT             -- capped at 10 before status → 'failed'
+└── created_at, updated_at   -- partial index on (status, updated_at) where status <> 'synced'
+                             -- Drained by cron (prod) or /api/dev/drain-referrals (local).
+                             -- Required so a discounted purchase's codeHash passes NodeSale.validCodes.
+
 payout_periods, payout_transfers  -- legacy biweekly rollup, superseded by paid_at on referral_purchases
 ```
 
@@ -256,6 +266,8 @@ Authoritative types live in `types/api.ts`. All routes return JSON. Error envelo
 |---|---|---|
 | `/api/auth/nonce` | GET | Issue a SIWE nonce |
 | `/api/auth/wallet` | POST | SIWE verification → JWT. **Also handles EPP partner creation** if an `eppOnboard` payload is present |
+| `/api/auth/me` | GET | Verify the `operon_session` JWT; returns `{ wallet, isEpp }` or 401. Called by the client's `useAuth` on first-mount cookie adoption so a stale cookie (rotated `JWT_SECRET`, server logout, expiry) falls through to fresh SIWE instead of leaving the UI in a "ghost authed" state |
+| `/api/auth/logout` | POST | Clear `operon_session` + `operon_auth` cookies |
 
 ### User-facing (JWT required)
 
@@ -288,7 +300,17 @@ Authoritative types live in `types/api.ts`. All routes return JSON. Error envelo
 
 | Route | Method | Purpose |
 |---|---|---|
-| `/api/cron/reconcile` | GET | Vercel cron every 5 min. Scans last 100 blocks per chain, fills gaps, retries `failed_events` |
+| `/api/cron/reconcile` | GET | Vercel cron every 5 min (`*/5 * * * *`). From `reconciliation_log.to_block + 1` to `latestBlock - 10 confirmations` (reorg-safe, MAX_BLOCK_RANGE=10000 cap), re-ingest any `NodePurchased` events missing from `purchases`. Also retries up to 20 `failed_events` per run (5-attempt cap → Telegram alert) and drains up to 200 `referral_code_chain_state` rows per run (10-attempt cap → Telegram alert). Queue depth ≥ 500 also fires a Telegram backlog alert |
+
+### Dev (NODE_ENV != 'production', HMAC-gated via `DEV_INDEXER_SECRET`)
+
+Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/dev-indexer.mjs` calls all three every ~5 seconds. All go through `lib/dev-auth.ts` which fail-closes on missing `DEV_ENDPOINTS_ENABLED=1`, missing secret, or bad signature.
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/dev/indexer-ingest` | POST | Receive parsed `NodePurchased` events from the poller; runs the same `verifyOnChain` → `processPurchaseEvent` pipeline as prod webhooks |
+| `/api/dev/drain-referrals` | POST | Drain `referral_code_chain_state` pending rows (max 20 per call) — local equivalent of the cron's referral-sync block |
+| `/api/dev/replay-failed-events` | POST | Retry `failed_events` — local equivalent of the cron's retry block, including Telegram alert on 5-retry abandon |
 
 ### Admin (all gated by `requireAdmin()`)
 
@@ -296,11 +318,15 @@ Authoritative types live in `types/api.ts`. All routes return JSON. Error envelo
 |---|---|---|
 | `/api/admin/sale/pause` | POST | Call `pause()` on NodeSale contracts |
 | `/api/admin/sale/unpause` | POST | Inverse |
+| `/api/admin/sale/tier-active` | POST | Call `setTierActive(tierId, active)` to promote the next tier as inventory sells out. Paired with the deploy-time decision to only activate tier 0 (see `DECISIONS.md`) |
+| `/api/admin/sale/withdraw` | POST | Call `withdrawFunds(token, to)` to sweep stablecoin balance to treasury. Only in-app path to collect sale proceeds; emits `FundsWithdrawn(token, to, amount)` on-chain |
 | `/api/admin/events/replay` | POST | Re-fetch a tx, re-run commission RPC (idempotent) |
 | `/api/admin/events/resolve` | POST | Mark a `failed_events` row resolved with reason |
 | `/api/admin/partners/tier` | POST | Manual tier override (promote or demote), required reason |
 | `/api/admin/payouts/mark-paid` | POST | Record manual USDC sends, writes `paid_at` / `payout_tx` / `paid_from_wallet` |
 | `/api/admin/epp/invites` | POST | Batch generate `EPP-XXXX` invite codes, return CSV |
+| `/api/admin/referrals/reset` | POST | Reset a `referral_code_chain_state` row from `failed` → `pending, attempts=0` so the next drain retries. Use on codes that hit the 10-attempt cap |
+| `/api/admin/referrals/remove` | POST | Call `removeReferralCode(codeHash)` to revoke a code from the contract's `validCodes` mapping. Historical purchases + DB bindings unchanged; only future on-chain purchases lose the discount |
 
 All admin routes **audit-log BEFORE mutation**. If the audit write fails, the mutation is aborted.
 
@@ -409,7 +435,7 @@ Referrer is **immutable after first signup**. A second signin ignores the `refer
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Backup path:** every 5 minutes, `/api/cron/reconcile` queries the last 100 blocks on each chain via RPC, finds any `NodePurchased` events not yet in `purchases`, and runs them through the same RPC. Also drains `failed_events` according to its `kind`:
+**Backup path:** every 5 minutes, `/api/cron/reconcile` scans from the last reconciled block up to `latestBlock - 10` (10-confirmation reorg safety, capped at MAX_BLOCK_RANGE=10000 per run) on each chain via RPC, finds any `NodePurchased` events not yet in `purchases`, and runs them through the same RPC. Also drains `failed_events` according to its `kind`:
 
 - `pending_verification` → re-run `verifyOnChain`; if OK, process; if still unreachable, backoff + retry
 - `process_error` → re-run the commission RPC (idempotent via UNIQUE constraints)

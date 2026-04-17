@@ -204,6 +204,30 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 
 ---
 
+## D21 — Deploy only tier 0 active; operator promotes subsequent tiers on-chain
+**Date:** 2026-04-18
+**Why:** Prior `contracts/scripts/deploy.ts` set `active: true` on all 40 tiers. The app-side `sale_tiers.is_active` gating in the UI was advisory only — a determined buyer could read the contract storage and call `purchase(tierId=39, ...)` on day one, bypassing the sequential bonding-curve promise. No discount or money was at risk (contract charges the tier's listed price), but the product model assumed strict tier progression.
+**Decision:** Deploy with `active: i === 0`. Operator promotes the next tier via `POST /api/admin/sale/tier-active` (new admin endpoint wired through `getTierAdminContract` → `setTierActive`) when the previous tier approaches sell-out. DB `increment_tier_sold` advancement is the signal; operator action is manual for Phase 1 and can be automated in Phase 2 if needed.
+**Affects:** `contracts/scripts/deploy.ts`, new `app/api/admin/sale/tier-active/route.ts`, `lib/admin-signer.ts` (`TIER_ADMIN_ABI` + `getTierAdminContract`), `docs/OPERATIONS.md` admin runbook.
+
+---
+
+## D22 — `scripts/reset-tier-state.sql` as the gated alternative to re-applying migration 014
+**Date:** 2026-04-18
+**Why:** Migration 014 ends with an unconditional `UPDATE sale_tiers SET total_sold = 0, is_active = (tier = 1)`. Intended for a one-shot fresh-deploy seed. If re-applied on a DB with real purchases (tester re-setup, operator accident), it silently wipes `total_sold` counters. CLAUDE.md rule 13 makes applied migrations immutable, so the destructive update stays in 014; we need a safe path for future resets.
+**Decision:** Ship `scripts/reset-tier-state.sql` — a standalone operator script wrapped in `BEGIN; ... COMMIT;` that counts both `purchases` and `referral_purchases` and `RAISE EXCEPTION` if either is non-zero. An operator who explicitly intends to wipe tier state can truncate those two tables by hand first, making the destructive intent conscious rather than accidental. OPERATIONS.md documents both the warning and the script.
+**Affects:** `scripts/reset-tier-state.sql`, `docs/OPERATIONS.md` migration history entry for 014.
+
+---
+
+## D23 — `syncReferralCodeOnChain` rejects `discountBps <= 0` (defense in depth)
+**Date:** 2026-04-18
+**Why:** The NodeSale contract treats `validCodes[hash] == true && codeDiscountBps[hash] == 0` as "apply `defaultDiscountBps = 1500`" ([NodeSale.sol:94-100](../contracts/contracts/NodeSale.sol)). If an operator ever zeroed `sale_config.community_discount_bps` and a new code got enqueued while that was live, on-chain would silently apply 15% while the DB's audit row recorded 0%. Commissions would stay correct (derived from post-discount `amount_usd`) but treasury vs. display would diverge.
+**Decision:** `lib/referrals/sync-on-chain.ts` rejects any `discountBps <= 0`, non-finite, or > 10000 at the sync boundary with an explicit error log. Forces operator to set a real `sale_config.*_discount_bps` before codes can be registered on-chain, rather than silently falling into the contract default. This is defense in depth — the upstream config reads already default to 1000 — but cheap insurance against a two-step config drift.
+**Affects:** `lib/referrals/sync-on-chain.ts`.
+
+---
+
 # Pending Decisions
 
 ## D-pending — Resources page content URLs
@@ -281,18 +305,18 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 
 Placeholder entries for Phase 2 decisions. Fill in as they come up.
 
-## D-pending (will become D21+) — Phase 2: Emissions curve parameters
+## D-pending (will become D24+) — Phase 2: Emissions curve parameters
 **Context:** $OPRN total supply is 42,000,000,000 per the EPP T&Cs. Emissions curve shape, split between holders/pool/team, time granularity, and tier multipliers are all unspecified.
 **Decision:** Pending — Phase 2 scope. See ALGORITHMS.md §5.
 
-## D-pending (will become D21+) — Phase 2: Staking multiplier + lock schedule
+## D-pending (will become D24+) — Phase 2: Staking multiplier + lock schedule
 **Context:** Lock durations and corresponding boost multipliers undefined.
 **Decision:** Pending — Phase 2 scope. See ALGORITHMS.md §6.
 
-## D-pending (will become D21+) — Phase 2: Reward pool distribution mechanism
+## D-pending (will become D24+) — Phase 2: Reward pool distribution mechanism
 **Context:** Post-TGE commissions paid in $OPRN from "Referral and Distribution Pool" per T&Cs. Merkle claim mechanism, cadence, grace period all undecided. Post-TGE commission currency discriminator on `referral_purchases` not yet designed.
 **Decision:** Pending — Phase 2 scope. See ALGORITHMS.md §7.
 
-## D-pending (will become D21+) — Phase 2: Uptime sampling source + penalty curve
+## D-pending (will become D24+) — Phase 2: Uptime sampling source + penalty curve
 **Context:** Is uptime self-reported, oracle-fed, or on-chain heartbeat? Sampling cadence? Multiplier curve shape? Delegated-node attribution?
 **Decision:** Pending — Phase 2 scope. See ALGORITHMS.md §8.
