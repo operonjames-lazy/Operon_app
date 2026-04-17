@@ -70,12 +70,17 @@ export function TierBar({ tiers }: TierBarProps) {
           );
         })}
       </div>
+      {/* R4-10: 40 tiers in a flex row collide and truncate to "T..".
+          Show every 5th label (plus the first and last and any active tier)
+          to give visual anchors without overflow. */}
       <div className="mt-2 flex justify-between text-[10px] text-t4">
-        {tiers.map((t) => (
-          <span key={t.tier} className={t.active ? 'font-medium text-green' : ''}>
-            T{t.tier}
-          </span>
-        ))}
+        {tiers
+          .filter((t, i) => i === 0 || i === tiers.length - 1 || (i + 1) % 5 === 0 || t.active)
+          .map((t) => (
+            <span key={t.tier} className={t.active ? 'font-medium text-green' : ''}>
+              T{t.tier}
+            </span>
+          ))}
       </div>
     </div>
   );

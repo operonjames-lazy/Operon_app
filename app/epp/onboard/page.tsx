@@ -31,7 +31,6 @@ import { useRouter } from 'next/navigation';
 import { useAccount, useChainId, useSignMessage } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { SiweMessage } from 'siwe';
-import { setAuthToken } from '@/lib/api/fetch';
 import { EPP_LANGS, EPP_LANG_LIST, type EppLang, type EppLangPack } from './epp-translations';
 
 type Step = 0 | 1 | 2 | 3;
@@ -182,7 +181,8 @@ export default function EppOnboardPage() {
       const partnerCode = data.user?.partner?.referral_code;
       if (!partnerCode) throw new Error('create_failed');
 
-      setAuthToken(data.token);
+      // Session cookie is set by /api/auth/wallet — nothing to persist
+      // client-side.
       setResultCode(partnerCode);
       setStep(3);
     } catch (err) {
@@ -487,7 +487,13 @@ function EppShell({
   return (
     <>
       <div className="ambient"><div className="orb1" /><div className="orb2" /></div>
-      <div className="app" data-lang={lang}>
+      {/* R4-09: `lang` is client-detected from navigator.language after
+          mount, so SSR renders `data-lang='en'` while the first paint on a
+          non-English browser flips to the detected locale. Only CSS font
+          selection depends on this attribute (see styles below), so the
+          mismatch is visual-only and suppressing the warning avoids the
+          noisy React hydration error without changing behaviour. */}
+      <div className="app" data-lang={lang} suppressHydrationWarning>
         <div className="header"><div className="logo">OPER<span>ON</span></div></div>
         <div className="lang-bar">
           {EPP_LANG_LIST.map((l) => (

@@ -263,3 +263,58 @@ Items owed by operator / next pending decisions (all tracked in DECISIONS.md):
 - **D-pending: EPP invite expiry policy**
 
 ---
+
+## 2026-04-18 — Round 4 tester bug fixes
+
+Tester 蕭遙 returned 10 bugs on 2026-04-17 (`Operon_R4_Bug_Report.docx`, 2 Blocker, 5 Major, 3 Minor). Five were regressions of R3 fixes. This session resolves all ten plus a small amount of systemic hygiene. Build + typecheck green.
+
+### Bugs fixed
+
+- **R4-01 (Blocker)** — wallet-switch during Confirming showed stale Purchase Complete. Added `prevAddressRef` wallet-change effect in `app/(app)/sale/page.tsx` that resets `step`, `errorMsg`, `pendingRecovery`, `lastSubmittedChainIdRef`, `operon_pending_tx`, and calls `resetApprove()` / `resetPurchase()` to clear the wagmi hash refs. Pulls the sale-flow local state into the wallet-switch signal that previously only reset auth + query cache.
+- **R4-02 (Major)** — Purchase button predicate was implicitly guarded by `!hasAllowance`. Made defensive with explicit `step === 'approving' || approveLoading || purchaseLoading` terms. Not chain-specific in the code; tester's "Arb only" is most likely a leftover-allowance artifact in the test wallet.
+- **R4-03 (Major)** — bound referral input had an editable window before the validate-code round trip completed. Lock gate changed from `codeValid === true` to `sale?.usedReferralCode || codeValid === true`. Note: the commission RPC walks the immutable `referrals` table, so this was UX/audit confusion only — not an L1 attribution exploit.
+- **R4-04 (Major)** — page timeout banner reset `step` to idle, abandoning the `useWaitForTransactionReceipt` listener. Replaced the "Try Again" reset button with a "View on explorer" link that keeps the listener alive. If MetaMask confirms the tx, the success effect now fires normally.
+- **R4-05 (Major)** — added `isAuthenticated()` cookie-check guard in `handleApprove` and `handlePurchase`. Blocks pre-SIWE writes so a pre-close Approve cannot survive a tab close + reopen and be confirmed before the replayed SIWE. On-chain + DB RPC do not require SIWE (both re-verify on-chain), so this is UX hardening, not a security boundary.
+- **R4-06 (Major)** — `hooks/useAuth.ts` wallet-switch effect was fire-and-forget: `clearSession()` not awaited, then `queryClient.clear()` wiped the cache while the old cookie was still live, so refetches returned 401 and `/referrals` / `/nodes` rendered blank. Now awaits `clearSession()` then calls `queryClient.invalidateQueries()` (targeted refetch, keeps cache entries mounted so page-level `isLoading` skeletons actually render).
+- **R4-07 (Blocker)** — Community Referral Programme card in `app/(app)/referrals/page.tsx` was hardcoded English. `components/ui/feed-item.tsx` had hardcoded event descriptions + hardcoded `relativeTime()`. Added 16 translation keys across all 6 languages (`sale.signInFirst`, `referrals.community.*`, `feed.*`). Purchase feed uses split keys (`feed.purchaseSingle` / `feed.purchasePlural`) because `useTranslation` has no ICU plural support. EPP tier names in the rate table switched to existing `tier.affiliate` / `tier.partner` / `tier.senior` keys.
+- **R4-08 (Minor)** — added a 10s `setTimeout` in the sale-page success-step effect to auto-reset to `idle` + `quantity = 1` + `resetApprove` + `resetPurchase`. Manual Buy More / View Nodes still escape immediately.
+- **R4-09 (Minor)** — EPP onboard hydration mismatch. `suppressHydrationWarning` on the `data-lang` div. The attribute only drives CSS font selection so the mismatch is visual-only; a deeper fix (cookie-based SSR language) is owed but out of scope for this round.
+- **R4-10 (Minor)** — tier-bar labels truncated to `T..`. Filter to every 5th tier + first + last + any active tier. 1-line CSS-free fix in `components/ui/tier-bar.tsx`.
+
+### Systemic / owed follow-ups
+
+- **i18n lint plugin deferred.** Plan called for `eslint-plugin-i18next` with `no-literal-string` to catch future regressions of the R4-07 class. Skipped because adding a dependency requires discussion per user instructions. Owed as a separate PR. CLAUDE.md rule 6 ("all user-facing strings through `t()`") remains unenforced at the lint layer.
+- **Playwright E2E for wallet-switch + i18n DOM assertions deferred.** Same reason. Would have caught R4-01, R4-06, R4-07, R4-08 pre-tester.
+- **EPP onboard SSR language** — tactical `suppressHydrationWarning` in place; a proper fix would pass lang via cookie or URL so SSR renders the right locale on first paint.
+- **Bound-referral lock** relies on server response presence of `sale.usedReferralCode`. If the `/api/sale/status` response is ever slow or stale, the lock briefly disappears. Low-risk given on-chain/DB immutability but worth a server-rendered preload.
+
+### Verification
+
+- `pnpm tsc --noEmit` → clean.
+- `npx next build` → clean (34 pages generated, all existing routes compile).
+- Lint pre-existing errors only — none introduced by this session.
+- Grep for hardcoded English in `app/(app)/referrals/page.tsx` and `components/ui/feed-item.tsx` returns 0 user-facing matches (only a JSX comment string).
+- End-to-end manual re-walk on both chains, including each R4 steps-to-reproduce, is **still owed** before declaring R5 ready — memory feedback `feedback_ship_readiness_review.md` binds: must run `/review-ship` + full TESTING_GUIDE walkthrough before saying "ready".
+
+### Files touched
+
+- `app/(app)/sale/page.tsx` — R4-01 / R4-02 / R4-03 / R4-04 / R4-05 / R4-08
+- `hooks/useAuth.ts` — R4-06
+- `app/(app)/referrals/page.tsx` — R4-07 (Community card + EPP tier names)
+- `components/ui/feed-item.tsx` — R4-07 (full i18n rewrite)
+- `components/ui/tier-bar.tsx` — R4-10
+- `app/epp/onboard/page.tsx` — R4-09
+- `lib/i18n/translations.ts` — 16 new keys × 6 languages
+
+### Why these kept recurring (for the session journal)
+
+The root causes are structural, not individual. (1) Sale-flow state fragmentation — local `useState` in SalePage is not synchronized to wallet-switch signals that go through `useAuth` + TanStack Query. Every wallet-switch bug (R4-01, R4-06, R4-08) is a symptom. (2) Fire-and-forget async cleanup (R4-06) — `clearSession().catch(() => {})` raced its own cache-wipe. (3) No machine-enforced i18n discipline — CLAUDE.md rule 6 is a human-readable convention; whole components (FeedItem) shipped without a single `useTranslation` import. (4) No automated wallet-switch or i18n DOM tests in CI. The regression loop is: tester finds → manual fix → no test written → next tester finds same or adjacent bug.
+
+### Next Session
+
+- Push commits
+- Run `/review-ship` + full TESTING_GUIDE end-to-end (both chains, fresh wallets) **before** answering any "is it ready" question from the user
+- Propose i18n lint plugin addition to user (eslint-plugin-i18next) — one-line config, catches R4-07 class
+- Carry over all prior D-pending items
+
+---

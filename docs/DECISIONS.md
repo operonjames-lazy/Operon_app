@@ -193,6 +193,17 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 
 ---
 
+## D-pending — SIWE's role: UX convention, not a security boundary
+
+**Date raised:** 2026-04-18 (from R4 bug analysis)
+**Context:** R4-05 reported that a user can confirm a queued Approve transaction in MetaMask without completing SIWE (close tab during Approve-pending → reopen → MetaMask shows Approve at slot 1/2, SIWE at 2/2). Review of the purchase path found that the on-chain contract enforces all purchase invariants (tier bounds, supply caps, allowance checks), and the commission RPC walks the immutable `referrals` table keyed by the on-chain buyer — neither requires a valid SIWE JWT. The webhook re-verifies the on-chain event independently of any session. So a purchase without SIWE still mints to the correct wallet, credits the correct L1, and appears in the correct user's dashboard on next login.
+**Question:** Should SIWE be treated as (a) a security boundary that must block all on-chain writes until complete, or (b) a UX convention that gates dashboard/API access but not on-chain actions?
+**Current state:** We added a client-side `isAuthenticated()` guard in `handleApprove` / `handlePurchase` (R4-05 fix) to prevent the confusing out-of-order queue, but this is UX hygiene — not an enforcement boundary. A user who bypassed our UI (calling the contract directly via etherscan or a script) would still succeed, and the DB would still credit them correctly.
+**Decision needed:** If (a) — need server-side enforcement: purchase webhooks must reject events whose buyer has no valid SIWE session, or contract-level whitelisting. If (b) — document the current design, remove the false impression that SIWE is security-load-bearing, and accept the R4-05 queue order bug as UX-only.
+**Recommendation:** (b), on the basis that on-chain + immutable-DB invariants are the real authority and SIWE-as-security would require either expensive contract changes or brittle webhook-level session enforcement. Ratify at next design session.
+
+---
+
 # Pending Decisions
 
 ## D-pending — Resources page content URLs

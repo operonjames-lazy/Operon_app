@@ -7,29 +7,22 @@ import { CodeBar } from '@/components/ui/code-bar';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Badge } from '@/components/ui/badge';
 import { FeedItem } from '@/components/ui/feed-item';
-import { useReferralSummary } from '@/hooks/useReferrals';
+import { Button } from '@/components/ui/button';
+import { useReferralSummary, useReferralActivity, useReferralPayouts } from '@/hooks/useReferrals';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { useQuery } from '@tanstack/react-query';
-import { API_ROUTES } from '@/lib/api/routes';
-import type { ActivityResponse, PayoutsResponse } from '@/types/api';
 import { formatUsd } from '@/lib/format';
 
 export default function ReferralsPage() {
   const { isConnected } = useAccount();
-  const { data: summary, isLoading } = useReferralSummary();
+  // Wallet-scoped and error-aware: each hook hits authFetch, throws on !ok,
+  // and its query key carries the wallet address so a switch clears cache.
+  // The prior implementation duplicated these as inline `useQuery` calls
+  // that bypassed authFetch, did not check res.ok, and used un-scoped query
+  // keys that leaked across wallets.
+  const { data: summary, isLoading, isError: isSummaryError, refetch: refetchSummary } = useReferralSummary();
+  const { data: activity } = useReferralActivity();
+  const { data: payouts } = useReferralPayouts();
   const { t } = useTranslation();
-
-  const { data: activity } = useQuery<ActivityResponse>({
-    queryKey: ['referral-activity'],
-    queryFn: () => fetch(API_ROUTES.REFERRALS_ACTIVITY).then(r => r.json()),
-    enabled: isConnected,
-  });
-
-  const { data: payouts } = useQuery<PayoutsResponse>({
-    queryKey: ['referral-payouts'],
-    queryFn: () => fetch(API_ROUTES.REFERRALS_PAYOUTS).then(r => r.json()),
-    enabled: isConnected,
-  });
 
   if (!isConnected) {
     return (
@@ -46,6 +39,16 @@ export default function ReferralsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => <div key={i} className="h-28 bg-card rounded-lg" />)}
         </div>
+      </div>
+    );
+  }
+
+  if (isSummaryError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <h2 className="text-xl font-bold text-t1">{t('error.pageError')}</h2>
+        <p className="text-t3 text-sm">{t('error.pageErrorDesc')}</p>
+        <Button variant="primary" onClick={() => refetchSummary()}>{t('btn.retry')}</Button>
       </div>
     );
   }
@@ -235,9 +238,9 @@ export default function ReferralsPage() {
                     </tr>
                   </thead>
                   <tbody className="text-t2">
-                    <tr><td className="py-1">Affiliate</td><td>12%</td><td>7%</td><td>4.5%</td><td>3%</td><td>1%</td></tr>
-                    <tr><td className="py-1">Partner</td><td>12%</td><td>7%</td><td>4.5%</td><td>3%</td><td>2%</td></tr>
-                    <tr><td className="py-1">Senior</td><td>12%</td><td>7%</td><td>4.5%</td><td>3%</td><td>2%+</td></tr>
+                    <tr><td className="py-1">{t('tier.affiliate')}</td><td>12%</td><td>7%</td><td>4.5%</td><td>3%</td><td>1%</td></tr>
+                    <tr><td className="py-1">{t('tier.partner')}</td><td>12%</td><td>7%</td><td>4.5%</td><td>3%</td><td>2%</td></tr>
+                    <tr><td className="py-1">{t('tier.senior')}</td><td>12%</td><td>7%</td><td>4.5%</td><td>3%</td><td>2%+</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -250,27 +253,27 @@ export default function ReferralsPage() {
         </Card>
       )}
 
-      {/* Community Referral Programme (non-EPP) */}
+      {/* Community Referral Programme (non-EPP) — R4-07: translated */}
       {!isEpp && summary?.code && (
-        <Card title="Community Referral Programme">
+        <Card title={t('referrals.community.title')}>
           <div className="space-y-3 text-sm">
-            <p className="text-t2">Your buyers get <span className="text-green font-medium">10% off</span>. You earn commission on every sale up to 5 levels deep.</p>
+            <p className="text-t2">{t('referrals.community.subtitle', { discount: 10 })}</p>
             <div className="overflow-x-auto">
               <table className="w-full text-xs min-w-[320px]">
                 <thead>
                   <tr className="text-t3">
-                    <th className="text-left pb-1 whitespace-nowrap">Level</th>
+                    <th className="text-left pb-1 whitespace-nowrap">{t('referrals.community.tableLevel')}</th>
                     <th className="pb-1">L1</th><th className="pb-1">L2</th>
                     <th className="pb-1">L3</th><th className="pb-1">L4</th>
-                    <th className="pb-1">L5</th><th className="pb-1">Max</th>
+                    <th className="pb-1">L5</th><th className="pb-1">{t('referrals.community.tableMax')}</th>
                   </tr>
                 </thead>
                 <tbody className="text-t2">
-                  <tr><td className="py-1">You earn</td><td>10%</td><td>3%</td><td>2%</td><td>1%</td><td>1%</td><td>17%</td></tr>
+                  <tr><td className="py-1">{t('referrals.community.tableYouEarn')}</td><td>10%</td><td>3%</td><td>2%</td><td>1%</td><td>1%</td><td>17%</td></tr>
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-t3">Share your code or link above. Self-referral (using your own code from the same wallet) will invalidate referral rewards.</p>
+            <p className="text-xs text-t3">{t('referrals.community.disclaimer')}</p>
           </div>
         </Card>
       )}

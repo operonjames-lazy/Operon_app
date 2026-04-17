@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, useChainId, useSwitchChain, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseUnits, encodePacked, keccak256, formatUnits } from 'viem';
-import { arbitrum, bsc } from 'wagmi/chains';
+import { encodePacked, keccak256, formatUnits } from 'viem';
 import { useAccountModal } from '@rainbow-me/rainbowkit';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,8 +14,9 @@ import { QuantitySelector } from '@/components/ui/quantity-selector';
 import { useSaleStatus } from '@/hooks/useSaleStatus';
 import { useTierRealtime } from '@/hooks/useTierRealtime';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { STABLECOIN_ADDRESSES, SALE_CONTRACT_ADDRESSES, TOKEN_DECIMALS } from '@/lib/wagmi/contracts';
+import { STABLECOIN_ADDRESSES, SALE_CONTRACT_ADDRESSES, TOKEN_DECIMALS, CHAIN_IDS } from '@/lib/wagmi/contracts';
 import { formatUsd, formatUsdShort, formatNum } from '@/lib/format';
+import { isAuthenticated } from '@/lib/api/fetch';
 import type { Chain, PaymentToken } from '@/types/api';
 
 const ERC20_ABI = [
@@ -60,6 +60,13 @@ export default function SalePage() {
   const [txSlow, setTxSlow] = useState(false);
   const [codeFromUrl, setCodeFromUrl] = useState(false);
   const [codeToast, setCodeToast] = useState('');
+  const [codeToastVariant, setCodeToastVariant] = useState<'success' | 'error'>('success');
+  // Chain the approve/purchase tx was submitted on, captured at click time.
+  // `useWaitForTransactionReceipt` defaults to the currently-active wagmi
+  // chain, which is wrong if the user flips MetaMask mid-flight — the hook
+  // looks for the tx on the wrong chain and hangs. Capturing the submitted
+  // chain and passing it explicitly pins the receipt lookup.
+  const lastSubmittedChainIdRef = useRef<number | undefined>(undefined);
 
   // Recover pending transaction from localStorage (scoped to current wallet)
   useEffect(() => {
@@ -77,7 +84,7 @@ export default function SalePage() {
     } catch {}
   }, [address]);
 
-  // Read referral code from URL
+  // Read referral code from URL (takes precedence over stored referrer)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
@@ -88,17 +95,53 @@ export default function SalePage() {
     }
   }, []);
 
+  // Prefill the referral field from the user's stored upline. Runs after
+  // the /api/sale/status response lands, only if the URL didn't already
+  // populate something.
+  useEffect(() => {
+    if (!referralCode && sale?.usedReferralCode) {
+      setReferralCode(sale.usedReferralCode);
+      validateCode(sale.usedReferralCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sale?.usedReferralCode]);
+
+  // Re-validate the code whenever the user switches chain — the pending_sync
+  // state is per-chain, so a code that passes on Arbitrum may still be
+  // syncing on BSC (or vice versa).
+  useEffect(() => {
+    if (referralCode) {
+      validateCode(referralCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChain]);
+
+  // Re-validate the code once the user connects — self-referral can only be
+  // detected by `/api/sale/validate-code` when the caller is authenticated,
+  // so the pre-signin capture path returns valid for anything including the
+  // user's own code. Signing in flips `address` from undefined to set; this
+  // effect re-runs validation so a self-referral discount gets revoked
+  // before the tester can act on it.
+  useEffect(() => {
+    if (referralCode && address) {
+      validateCode(referralCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address]);
+
   // Show toast when code from URL validates successfully
   useEffect(() => {
     if (codeFromUrl && codeValid === true) {
+      setCodeToastVariant('success');
       setCodeToast(t('sale.codeAppliedToast', { discount: discountBps / 100 }));
       const timer = setTimeout(() => setCodeToast(''), 5000);
       return () => clearTimeout(timer);
     }
   }, [codeFromUrl, codeValid, discountBps]);
 
-  // Ensure correct chain
-  const targetChainId = selectedChain === 'arbitrum' ? arbitrum.id : bsc.id;
+  // Ensure correct chain — CHAIN_IDS resolves to testnet or mainnet based on
+  // NEXT_PUBLIC_NETWORK_MODE, so the sale page never has to branch on mode itself.
+  const targetChainId = CHAIN_IDS[selectedChain];
   const isCorrectChain = chainId === targetChainId;
 
   const tokenAddress = STABLECOIN_ADDRESSES[selectedChain]?.[paymentToken];
@@ -111,13 +154,23 @@ export default function SalePage() {
   const baseTotalCents = pricePerNode * quantity;
   const discountCents = discountBps > 0 ? Math.floor(baseTotalCents * discountBps / 10000) : 0;
   const totalCents = baseTotalCents - discountCents;
+  // Display-only per-unit after-discount cents. The contract applies the
+  // discount on (price × qty) as a whole, which can produce a 1-cent drift
+  // versus `discountedPrice × qty` on some tier/discount combinations, so
+  // the price summary below renders `totalCents` directly rather than
+  // reconstructing the total from this per-unit value.
   const discountedPrice = discountBps > 0
     ? Math.floor(pricePerNode - (pricePerNode * discountBps / 10000))
     : pricePerNode;
-  const totalTokenAmount = parseUnits(
-    (totalCents / 100).toString(),
-    decimals
-  );
+  // Integer-only token-amount math. `decimals - 2` converts USD cents to the
+  // token's base unit via pure BigInt multiplication, avoiding the float
+  // division (`cents / 100`) that the previous implementation used. USDC is
+  // 6 decimals on Arbitrum (scale = 10^4) and USDT is 18 decimals on BSC
+  // (scale = 10^16). Violated D-P1 "no float math for money" in the prior
+  // code; this path now respects it end-to-end.
+  const tokenScale = BigInt(10) ** BigInt(decimals - 2);
+  const totalTokenAmount = BigInt(totalCents) * tokenScale;
+  const maxPricePerNodeToken = BigInt(pricePerNode) * tokenScale;
 
   // Code hash for contract
   const codeHash = referralCode
@@ -146,12 +199,18 @@ export default function SalePage() {
   const hasSufficientBalance = balance !== undefined && balance >= totalTokenAmount;
 
   // Approve transaction
-  const { writeContract: approve, data: approveHash, error: approveWriteError } = useWriteContract();
-  const { isLoading: approveLoading, isSuccess: approveSuccess, isError: approveReceiptError } = useWaitForTransactionReceipt({ hash: approveHash });
+  const { writeContract: approve, data: approveHash, error: approveWriteError, reset: resetApprove } = useWriteContract();
+  const { isLoading: approveLoading, isSuccess: approveSuccess, isError: approveReceiptError } = useWaitForTransactionReceipt({
+    hash: approveHash,
+    chainId: lastSubmittedChainIdRef.current,
+  });
 
   // Purchase transaction
-  const { writeContract: purchase, data: purchaseHash, error: purchaseWriteError } = useWriteContract();
-  const { isLoading: purchaseLoading, isSuccess: purchaseSuccess, isError: purchaseReceiptError } = useWaitForTransactionReceipt({ hash: purchaseHash });
+  const { writeContract: purchase, data: purchaseHash, error: purchaseWriteError, reset: resetPurchase } = useWriteContract();
+  const { isLoading: purchaseLoading, isSuccess: purchaseSuccess, isError: purchaseReceiptError } = useWaitForTransactionReceipt({
+    hash: purchaseHash,
+    chainId: lastSubmittedChainIdRef.current,
+  });
 
   // Handle write errors (wallet rejection, contract revert)
   useEffect(() => {
@@ -233,6 +292,39 @@ export default function SalePage() {
     }
   }, [address, step]);
 
+  // Reset local sale-flow state on wallet switch (R4-01). Wagmi updates
+  // `address` in place on MetaMask account changes; without this, the new
+  // wallet would see stale Purchase Complete, stale errors, or a stuck
+  // Confirming dwell from the previous wallet's in-flight tx.
+  const prevAddressRef = useRef<string | undefined>(address);
+  useEffect(() => {
+    const prev = prevAddressRef.current;
+    prevAddressRef.current = address;
+    if (prev && address && prev.toLowerCase() !== address.toLowerCase()) {
+      setStep('idle');
+      setErrorMsg('');
+      setPendingRecovery(null);
+      setTxSlow(false);
+      lastSubmittedChainIdRef.current = undefined;
+      resetApprove();
+      resetPurchase();
+      try { localStorage.removeItem('operon_pending_tx'); } catch {}
+    }
+  }, [address, resetApprove, resetPurchase]);
+
+  // Auto-reset back to idle 10s after a successful purchase (R4-08).
+  // Manual Buy More / View Nodes still work as immediate escape hatches.
+  useEffect(() => {
+    if (step !== 'success') return;
+    const timer = setTimeout(() => {
+      setStep('idle');
+      setQuantity(1);
+      resetApprove();
+      resetPurchase();
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [step, resetApprove, resetPurchase]);
+
   // Network slow indicator
   useEffect(() => {
     if (isLoading) {
@@ -257,11 +349,27 @@ export default function SalePage() {
       const res = await fetch('/api/sale/validate-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, chain: selectedChain }),
       });
       const data = await res.json();
       setCodeValid(data.valid);
       setDiscountBps(data.discountBps || 0);
+      if (!data.valid && data.reason === 'self_referral') {
+        setCodeToastVariant('error');
+        setCodeToast(t('sale.selfReferralBlocked'));
+      } else if (!data.valid && data.reason === 'pending_sync') {
+        setCodeToastVariant('error');
+        setCodeToast(t('sale.pendingSync'));
+        // Auto-retry every 8 seconds until the cron/dev-indexer drains the
+        // queue and the code flips to 'synced'. Clears itself if the user
+        // changes the code in the meantime.
+        setTimeout(() => {
+          setReferralCode((current) => {
+            if (current === code) validateCode(code);
+            return current;
+          });
+        }, 8000);
+      }
     } catch {
       setCodeValid(false);
     }
@@ -269,7 +377,16 @@ export default function SalePage() {
 
   function handleApprove() {
     if (!tokenAddress || !saleAddress) return;
+    if (!isCorrectChain) return;
+    // R4-05: block writes until SIWE completes, otherwise a pre-SIWE Approve
+    // queued in MetaMask can survive a close+reopen and be confirmed before
+    // the replayed sign-in (MetaMask serves requests in FIFO order).
+    if (!isAuthenticated()) {
+      setErrorMsg(t('sale.signInFirst'));
+      return;
+    }
     setStep('approving');
+    lastSubmittedChainIdRef.current = targetChainId;
     approve({
       address: tokenAddress as `0x${string}`,
       abi: ERC20_ABI,
@@ -280,17 +397,36 @@ export default function SalePage() {
 
   function handlePurchase() {
     if (!saleAddress) return;
+    if (!isCorrectChain) return;
+    // R4-05: same SIWE guard as handleApprove above.
+    if (!isAuthenticated()) {
+      setErrorMsg(t('sale.signInFirst'));
+      return;
+    }
+    // DB tiers are 1-indexed, the contract is 0-indexed. Guard against the
+    // currentTier being missing or malformed before subtracting.
+    if (!sale?.currentTier || sale.currentTier < 1) {
+      setStep('error');
+      setErrorMsg(t('sale.noActiveTier'));
+      return;
+    }
     setStep('purchasing');
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
     // maxPricePerNode must be the BASE (undiscounted) price — the contract's
-    // slippage check runs BEFORE applying the discount on-chain.
-    const maxPrice = parseUnits((pricePerNode / 100).toString(), decimals);
+    // slippage check runs BEFORE applying the discount on-chain. Integer
+    // BigInt scaling (see `maxPricePerNodeToken` above) avoids the float
+    // division the previous implementation used.
+    const maxPrice = maxPricePerNodeToken;
+    // Pin the submitted chain so `useWaitForTransactionReceipt` below can
+    // still find the tx if the user flips MetaMask to the other chain
+    // mid-flight.
+    lastSubmittedChainIdRef.current = targetChainId;
     purchase({
       address: saleAddress as `0x${string}`,
       abi: SALE_ABI,
       functionName: 'purchase',
       args: [
-        BigInt(sale?.currentTier || 1),
+        BigInt(sale.currentTier - 1),
         BigInt(quantity),
         tokenAddress as `0x${string}`,
         codeHash as `0x${string}`,
@@ -424,7 +560,13 @@ export default function SalePage() {
 
       {/* Code toast */}
       {codeToast && (
-        <div className="rounded-lg border border-green-border bg-green-bg px-4 py-3 text-sm text-green text-center animate-fade-in">
+        <div
+          className={
+            codeToastVariant === 'error'
+              ? 'rounded-lg border border-red/40 bg-red/10 px-4 py-3 text-sm text-red text-center animate-fade-in'
+              : 'rounded-lg border border-green-border bg-green-bg px-4 py-3 text-sm text-green text-center animate-fade-in'
+          }
+        >
           {codeToast}
         </div>
       )}
@@ -432,10 +574,15 @@ export default function SalePage() {
       {/* ═══ BUY BOX — matches HTML reference ═══ */}
       <div className="bg-card border border-border rounded-[10px] p-4 md:p-5">
         {/* Header: "Buy Nodes" + code badge */}
+        {/* R4-03: if the wallet has a DB-bound referral code, lock the input
+            immediately (don't wait for validateCode's round trip). The bound
+            code is authoritative — the commission RPC walks the immutable
+            referrals table, not whatever the user types here — but an
+            editable window still causes UX confusion and audit-trail noise. */}
         <div className="flex items-center justify-between mb-3.5">
           <span className="text-sm font-semibold text-t1">{t('home.buyNodes')}</span>
-          {codeValid === true ? (
-            <span className="font-mono text-[10px] px-2.5 py-1.5 bg-green-bg border border-green-border rounded text-green">{referralCode} ✓</span>
+          {sale?.usedReferralCode || codeValid === true ? (
+            <span className="font-mono text-[10px] px-2.5 py-1.5 bg-green-bg border border-green-border rounded text-green">{sale?.usedReferralCode || referralCode} ✓</span>
           ) : (
             <div className="flex gap-1.5 items-center">
               <input
@@ -496,11 +643,11 @@ export default function SalePage() {
               </div>
               <div className="flex justify-between text-[11px]">
                 <span className="text-green">{t('sale.discountLabel', { discount: discountBps / 100 })}</span>
-                <span className="text-green font-mono">-{formatUsd((pricePerNode - discountedPrice) * quantity)}</span>
+                <span className="text-green font-mono">-{formatUsd(discountCents)}</span>
               </div>
               <div className="flex justify-between text-[11px]">
                 <span className="text-t4">{t('sale.afterDiscount')}</span>
-                <span className="text-t1 font-mono font-medium">{formatUsd(discountedPrice * quantity)}</span>
+                <span className="text-t1 font-mono font-medium">{formatUsd(totalCents)}</span>
               </div>
             </>
           ) : (
@@ -551,7 +698,12 @@ export default function SalePage() {
             )}
             <Button
               variant="primary" size="lg" className="w-full mt-1.5"
-              disabled={(!hasAllowance && step !== 'approved') || step === 'purchasing'}
+              // R4-02: defensive predicate. The old condition
+              // `(!hasAllowance && step !== 'approved') || step === 'purchasing'`
+              // relied on !hasAllowance to implicitly cover step === 'approving',
+              // which is fragile if allowance refetches mid-approve. Explicitly
+              // block on approving / approveLoading / purchaseLoading too.
+              disabled={(!hasAllowance && step !== 'approved') || step === 'approving' || step === 'purchasing' || approveLoading || purchaseLoading}
               loading={step === 'purchasing' || purchaseLoading} onClick={handlePurchase}
             >
               {step === 'purchasing' || purchaseLoading ? t('sale.confirming') : t('sale.purchaseNodes', { qty: quantity })}
@@ -560,9 +712,22 @@ export default function SalePage() {
         )}
 
         {txSlow && (step === 'approving' || step === 'purchasing') && (
+          // R4-04: do NOT reset step on "still waiting" — that abandons the
+          // useWaitForTransactionReceipt listener, so if the user then confirms
+          // in MetaMask, the success state never fires and the NFT appears only
+          // after a manual refresh. Instead, keep the listener alive and give
+          // the user an explorer link to verify the tx directly.
           <div className="text-center text-[11px] text-amber mt-2">
             {t('sale.txSlow')}{' '}
-            <button onClick={() => setStep('idle')} className="text-ice underline cursor-pointer">{t('btn.tryAgain')}</button>
+            {(step === 'approving' ? approveHash : purchaseHash) && (
+              <a
+                href={`${getExplorerTxUrl(selectedChain)}${step === 'approving' ? approveHash : purchaseHash}`}
+                target="_blank" rel="noopener noreferrer"
+                className="text-ice underline cursor-pointer"
+              >
+                {t('sale.viewExplorer')}
+              </a>
+            )}
           </div>
         )}
 
