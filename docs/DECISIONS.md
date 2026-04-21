@@ -267,6 +267,19 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 
 ---
 
+## D28 — `referral_code_chain_state.status='revoked'` as a terminal, drain-excluded status
+**Date:** 2026-04-22
+**Why:** Ship-readiness R14 caught a money-safety defect: `/api/admin/referrals/remove` called `removeReferralCode` on-chain then set `referral_code_chain_state.status='failed'`. The drain query in `/api/cron/reconcile` and `/api/dev/drain-referrals` selects `status IN ('pending','failed') AND attempts < 10`, so the next tick picked up the row, saw `validCodes[hash]=false` (the admin just removed it), called `addReferralCode` again, and all four post-conditions in `syncReferralCodeOnChain` passed — the code was silently re-registered on-chain within 5 minutes. Admin revocations were unenforceable.
+**Options considered:**
+1. Bump `attempts=10` on revoke so the row exceeds the retry cap. Overloads a counter-based field with a semantic meaning; any future raise of the cap would revive revoked codes.
+2. Add a `revoked_at timestamptz` column and gate drain on `revoked_at IS NULL`. Adds a column for what is fundamentally a status distinction. More invasive than needed.
+3. **Add `'revoked'` as a new terminal status value on the existing `status` column.** Chosen. Matches the existing three-state enum; drain filter already lists explicit statuses; terminal semantics are clear at a glance in the DB.
+**Decision:** New migration **018** widens the existing CHECK constraint to `status IN ('pending', 'synced', 'failed', 'revoked')`. `/api/admin/referrals/remove` writes `'revoked'`. `/api/cron/reconcile` and `/api/dev/drain-referrals` drain queries continue to use the explicit list `['pending', 'failed']`, so revoked rows are naturally excluded without additional logic. `/api/sale/validate-code` returns `reason: 'revoked'` for API consumers; the sale page falls through to "code invalid, no discount" which is the correct business outcome.
+**Un-revoke path:** An operator who wants to reinstate a revoked code calls `/api/admin/referrals/reset`, which sets `status='pending', attempts=0` and re-enters the drain queue. The drain then re-calls `addReferralCode` and the row transitions back to `'synced'` on the next tick.
+**Affected code:** [supabase/migrations/018_revoked_referral_status.sql](../supabase/migrations/018_revoked_referral_status.sql); [app/api/admin/referrals/remove/route.ts](../app/api/admin/referrals/remove/route.ts); [app/api/cron/reconcile/route.ts](../app/api/cron/reconcile/route.ts); [app/api/dev/drain-referrals/route.ts](../app/api/dev/drain-referrals/route.ts); [app/api/sale/validate-code/route.ts](../app/api/sale/validate-code/route.ts); [docs/OPERATIONS.md](OPERATIONS.md) migration history table.
+
+---
+
 # Pending Decisions
 
 ## D-pending — Resources page content URLs

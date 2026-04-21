@@ -415,7 +415,7 @@ Referrer is **immutable after first signup**. A second signin ignores the `refer
                                  │
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  6. process_purchase_and_commissions(...)  [migrations 010 → 012]    │
+│  6. process_purchase_and_commissions(...)  [migrations 010 → 016]    │
 │     Single Postgres transaction:                                     │
 │     a. Upsert buyer in users                                         │
 │     b. INSERT INTO purchases (ON CONFLICT tx_hash DO NOTHING)        │

@@ -4,7 +4,7 @@ Formulas, thresholds, rate tables, and scoring rules. The numeric rules that mus
 
 **When to consult:** When writing or modifying any code that calculates commissions, tier promotions, discounts, emissions, staking rewards, or anything else numeric. Before changing a rate, always search this file first to understand the knock-on effects.
 
-**When to update:** Every time a constant changes. The authoritative values live in code (`lib/commission.ts` TS constants + the latest RPC migration — currently `012_community_commission.sql`, which `CREATE OR REPLACE`s the function from migration 010). This file is the human-readable reference. When you change the code, update this file in the same session — otherwise future-you will forget one side and the two will drift.
+**When to update:** Every time a constant changes. The authoritative values live in code (`lib/commission.ts` TS constants + the latest RPC migration — currently `016_overpay_anomaly.sql`, the most recent `CREATE OR REPLACE` of the function originally defined in `010_commission_rpc.sql`. Migrations 012 → 015 → 016 each replaced the function body in sequence). This file is the human-readable reference. When you change the code, update this file in the same session — otherwise future-you will forget one side and the two will drift.
 
 ---
 
@@ -162,7 +162,7 @@ referrals
 
 ### Walk implementation
 
-A PL/pgSQL recursive CTE in the commission RPC (latest: migration 012):
+A PL/pgSQL recursive CTE in the commission RPC (latest: migration 016):
 
 ```sql
 WITH RECURSIVE chain AS (
@@ -195,7 +195,7 @@ ORDER BY level
 
 The older TypeScript implementation did 9 sequential queries from `lib/commission.ts`; that's been replaced by the RPC. Do not reintroduce.
 
-**Note on the "silently skip non-EPP" behaviour:** migration 010 used to skip any upline not in `epp_partners`, which silently broke community commissions. Migration 012 replaced that with an explicit community-path branch. If you're reading the function body in 010 directly, you are reading a superseded version — always check the latest migration that redefines `process_purchase_and_commissions`.
+**Note on the "silently skip non-EPP" behaviour:** migration 010 used to skip any upline not in `epp_partners`, which silently broke community commissions. Migration 012 replaced that with an explicit community-path branch; 015 added discount_bps derivation from tier base vs amount_usd; 016 split overpay from at-list with a `RAISE WARNING` on overpay. If you're reading the function body in 010, 012, or 015 directly, you are reading a superseded version — always check the latest migration that redefines `process_purchase_and_commissions`.
 
 ---
 
@@ -301,12 +301,12 @@ When updating any numeric constant, search this file and update BOTH the code an
 
 | Constant | TS location | SQL location | This doc section |
 |---|---|---|---|
-| EPP commission rates per tier | `lib/commission.ts` `COMMISSION_RATES` | `migrations/012_community_commission.sql` `v_rates CASE` | §1 |
-| Community commission rates | `lib/commission.ts` `COMMUNITY_COMMISSION_RATES` | `migrations/012_community_commission.sql` `v_community_rates` | §1 |
-| Credited weights per level | `lib/commission.ts` `CREDITED_WEIGHTS` | `migrations/012_community_commission.sql` `v_weights` | §2 |
-| Tier thresholds | `lib/commission.ts` `TIER_THRESHOLDS` | `migrations/012_community_commission.sql` `CASE v_new_credited` | §2 |
-| Tier order | `lib/commission.ts` `TIER_ORDER` | `migrations/012_community_commission.sql` `v_tier_order` | §2 |
-| Milestones | `lib/commission.ts` `MILESTONES` | `migrations/012_community_commission.sql` `v_milestones` | §3 |
+| EPP commission rates per tier | `lib/commission.ts` `COMMISSION_RATES` | `migrations/016_overpay_anomaly.sql` (latest replace of 012) `v_rates CASE` | §1 |
+| Community commission rates | `lib/commission.ts` `COMMUNITY_COMMISSION_RATES` | `migrations/016_overpay_anomaly.sql` (latest replace of 012) `v_community_rates` | §1 |
+| Credited weights per level | `lib/commission.ts` `CREDITED_WEIGHTS` | `migrations/016_overpay_anomaly.sql` (latest replace of 012) `v_weights` | §2 |
+| Tier thresholds | `lib/commission.ts` `TIER_THRESHOLDS` | `migrations/016_overpay_anomaly.sql` (latest replace of 012) `CASE v_new_credited` | §2 |
+| Tier order | `lib/commission.ts` `TIER_ORDER` | `migrations/016_overpay_anomaly.sql` (latest replace of 012) `v_tier_order` | §2 |
+| Milestones | `lib/commission.ts` `MILESTONES` | `migrations/016_overpay_anomaly.sql` (latest replace of 012) `v_milestones` | §3 |
 | Discount bps | `supabase/migrations/005_sale_config.sql` (`community_discount_bps`, `epp_discount_bps`) | same table, read at runtime by `/api/sale/validate-code` | PRODUCT.md |
 | Token decimals | `lib/wagmi/contracts.ts` `TOKEN_DECIMALS` | — (converted in `tokenAmountToCents`) | ARCHITECTURE.md |
 

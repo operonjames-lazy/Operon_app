@@ -122,7 +122,7 @@ If you're unsure which docs to update, check the file table at the top of this d
 
 ## Build Status Summary
 
-**Phase 1: Sale & EPP.** The full happy path (connect → sign-in → select tier → approve → purchase → dashboard updates) must be re-walked end-to-end after the 2026-04-14 Phase 1 bug report fixes before re-declaring ready for testing. See `docs/FEATURES.md` for the full status matrix and `docs/PROGRESS.md` for the most recent session notes.
+**Phase 1: Sale & EPP.** R14 ship-readiness pass landed 2026-04-22 — 6 of 7 blockers fixed in code (1 deferred: E2E mock-connector wiring in `app/providers.tsx`, regression safety net only). Build green, typecheck clean, live verification on `referral_code_chain_state` CHECK. Livenet go-live remains operator-side: Vercel env rotation, mainnet contract deploy, webhook rewire, live smoke test, Gnosis Safe novation. See `docs/FEATURES.md` for the full status matrix and `docs/PROGRESS.md` for the most recent session notes.
 
 **Latest major additions:**
 - Migration 010: atomic commission RPC (`process_purchase_and_commissions`) with 9-level recursive CTE chain walk + tier auto-promotion + milestone logging in a single transaction
@@ -134,6 +134,7 @@ If you're unsure which docs to update, check the file table at the top of this d
 - **R6→R7 contract role split** (2026-04-21): NodeSale adds `admin` role distinct from Ownable2Step `owner` so Gnosis Safe novation is a two-tx handshake with no redeploy. 4 hot-path functions moved to `onlyAdmin`; `discountBps <= 10000` cap added. 10 new tests.
 - **R6→R7 sync-on-chain hardening** (2026-04-21): `syncReferralCodeOnChain` enforces 4 post-conditions (signer==admin, receipt non-null, `ReferralCodeAdded` event present, `validCodes[hash]` readback). Shared by both `/api/dev/drain-referrals` and `/api/cron/reconcile`. Errors surface per-row in the dev-indexer log.
 - **Regression-prevention scaffolding** (2026-04-21): `scripts/test-webhooks.mjs` local harness + `OPERATIONS.md §6.5` runbook for Alchemy + QuickNode. Playwright E2E scaffolded — `e2e/ui/*` runnable, `e2e/full-chain/*` awaiting ~3–4h of fixture wiring.
+- **R14 ship-readiness fixes** (2026-04-22): admin referral-code revoke is now enforceable — migration 018 adds `'revoked'` as a terminal status on `referral_code_chain_state`, and the remove endpoint writes it so the drain loop no longer silently reverses the admin action (D28). `useTierRealtime` reconciles `['sale']` + `['dashboard']` queries on Supabase Realtime reconnect. Sale-page pending-tx recovery requires strict address match (`!parsed.address` fallback removed). `lib/auth.ts` refuses to boot on mainnet+production if `JWT_SECRET` matches a known placeholder (REVIEW_ADDENDUM S-P7 backstop). QuickNode topic0 in `OPERATIONS.md §6.5.3` corrected from a fabricated value to the real `0x6591bdbb…` + reproduction command. Migrations 013 + 018 applied to the hosted Supabase; 014/015/016/017 deferred (014 wipes sold counters on a DB with purchases — apply cleanly to a fresh mainnet DB instead). Fresh mainnet `JWT_SECRET` + `CRON_SECRET` generated to `~/operon-mainnet-secrets.txt` for Vercel Production paste.
 
 **Owed before mainnet:** See `docs/DECISIONS.md` pending section for operator-owed items (Resources URLs, Vercel env vars, live smoke test, Thai legal review, Gnosis Safe migration, etc.)
 

@@ -49,7 +49,7 @@ Feature implementation tracker. Stable IDs that never renumber.
 |---|---|---|---|
 | F10 | Personal `OPR-XXXXXX` code auto-generated at first wallet signin | ✅ Done | `app/api/auth/wallet/route.ts` `ensurePersonalCode()`. Back-fills existing users. |
 | F11 | Same-wallet self-referral block at signup | ✅ Done | `maybeAttachReferrer()` in `/api/auth/wallet`. |
-| F12 | Atomic commission RPC — buyer + purchase + 9-level chain walk + EPP and community earning + credited + promote + milestones | ✅ Done | Migration `010_commission_rpc.sql`, superseded by `012_community_commission.sql` which adds the community path and affiliate L5. `lib/commission.ts` is a thin wrapper. See ALGORITHMS.md §1–§4. |
+| F12 | Atomic commission RPC — buyer + purchase + 9-level chain walk + EPP and community earning + credited + promote + milestones | ✅ Done | Migration `010_commission_rpc.sql`, superseded by `012_community_commission.sql` (community path + affiliate L5), then `015_purchase_audit_fields.sql` (discount_bps derived from tier base vs amount_usd + code_used persisted), then `016_overpay_anomaly.sql` (split at-list from overpay with `RAISE WARNING`). `lib/commission.ts` is a thin wrapper. See ALGORITHMS.md §1–§4. |
 | F13 | Tier auto-promotion (promote-only, race-safe via FOR UPDATE) | ✅ Done | Inside commission RPC. Demotion via `/api/admin/partners/tier`. |
 | F14 | Milestone bonus detection + audit logging | ✅ Done | Inside commission RPC. Logs to `admin_audit_log`. |
 | F15 | Referrals summary page (EPP + community codes, levels, network, activity, payouts) | ✅ Done | `app/(app)/referrals/page.tsx`, `/api/referrals/summary`, `/activity`, `/payouts`. |

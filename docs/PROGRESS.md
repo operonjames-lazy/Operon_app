@@ -550,3 +550,54 @@ Verification tonight: `cd contracts && npx hardhat test` → 64 passing. `npx ne
 - Mainnet-path items still owed: Gnosis Safe deployment + `setAdmin` rotation + `transferOwnership` handshake, live Vercel webhook smoke, rotated `JWT_SECRET` + `CRON_SECRET`, Thai legal review closeout.
 
 ---
+
+## 2026-04-22 — R14 ship-readiness fixes + livenet-prep
+
+### Completed
+
+**Ship-readiness `/review-ship` run across the whole repo** (4 agents: security, correctness, client, scale). Output: 7 blocking, 26 required, 19 advisory. Each blocker verified against code before fixing — 3 agent findings were downgraded or refuted (B3 "community key UI crash" had zero consumers; `NEXT_PUBLIC_APP_DOMAIN` and fallback RPC env vars were flagged missing from `.env.example` but are present).
+
+**Blocker fixes landed:**
+- **B1 (money-safety):** admin-remove of a referral code was silently reversed by the drain loop within 5 min. The remove endpoint set `status='failed'`, but drain filter = `status IN ('pending','failed') AND attempts < 10`, so `syncReferralCodeOnChain` re-called `addReferralCode` on-chain on the next tick. Fix: new migration **018** adds `'revoked'` as a terminal status (CHECK widening); `/api/admin/referrals/remove` now writes `'revoked'`; drain queries naturally exclude it. `/api/sale/validate-code` returns `reason: 'revoked'` for API consumers (UI falls through to "no discount" correctly). See D28.
+- **B4 (stale UI):** `useTierRealtime` had no reconnect reconcile — any `UPDATE` on `sale_tiers`/`sale_config` during a dropped socket was lost forever. Fix: track `priorStatusRef`; on transition INTO `SUBSCRIBED` from any non-`SUBSCRIBED` state, invalidate `['sale']` + `['dashboard']` queries. First subscribe is a no-op (initial data already loaded).
+- **B5 (cross-wallet bleed):** sale page's pending-tx recovery accepted records with no stored address (`!parsed.address` fallback) — a record written during the wagmi address-undefined window could be shown to any wallet on the same machine. Fix: strict address match required; write skipped when `address` is undefined.
+- **B6 (BSC commissions would silently fail at mainnet):** `OPERATIONS.md §6.5.3` printed a **fabricated** QuickNode topic0 hash. Computed real hash via `ethers.id('NodePurchased(address,uint256,uint256,bytes32,uint256,address)')` = `0x6591bdbb6081a7574c59839f425dbc80961b4ab0c0d444bd5d095fe42dd1e501` (verified against `NodeSale.sol:45`). Replaced the bad value + added reproduction command.
+- **JWT_SECRET mainnet placeholder guard:** `lib/auth.ts` now refuses to boot if `NODE_ENV=production && NEXT_PUBLIC_NETWORK_MODE=mainnet && JWT_SECRET ∈ {known placeholders}`. Backstop for REVIEW_ADDENDUM S-P7.
+
+**OPERATIONS.md drift fixes:**
+- Migration history table extended with 017 + 018.
+- §3 step 5 Vercel cron auth reworded — the `CRON_SECRET` env alone is the whole mechanism; there is no header UI to configure.
+- Hardhat test count 51 → 64.
+
+**Database work (against the hosted Supabase at `erxxsmvdzhxelezlocuf`, ap-northeast-2):**
+- Discovered migrations 013–017 had never been applied to this working DB (the R6/R7 cycle migrations were repo-only). Commission RPC `process_purchase_and_commissions` was present (applied as function separately) with migration-012 body. `referral_code_chain_state` table did not exist.
+- Applied 013 + 018 transactionally. Verified: table now exists, CHECK accepts `'revoked'`, rejects `'bogus'` (error 23514). Existing data intact (2 purchase rows, 5 tiers, tier 2 still active).
+- 014 not applied — contains unconditional `UPDATE sale_tiers SET total_sold = 0` which would wipe the current 1250+403 counters. 017 is 014's compensating guard but only works pre-014. Decision: defer 014/015/016/017 for a separate session; for a fresh mainnet Supabase they'll apply cleanly in order on an empty DB.
+
+**Mainnet secrets generated** (to `~/operon-mainnet-secrets.txt`, mode 0600): fresh 64-byte `JWT_SECRET` + 32-byte `CRON_SECRET`. For operator to paste into Vercel Production env when deploying mainnet. NOT written to `.env.local` — testnet sessions stay valid.
+
+### Explicit deferrals (documented, not fixed)
+
+- **B3 comment drift** (`lib/commission.ts` header said "migration 012" — latest is 016; fixed inline this session, see doc sync below).
+- **B7 E2E harness** — `e2e/README.md §1` claims the mock-connector path in `smoke.spec.ts` works, but `app/providers.tsx` has no `NEXT_PUBLIC_E2E` branch to swap the connector set. Regression safety net only; not user-visible on livenet. Deferred with clear ownership in the README for next cycle.
+- **`failed_events` UNIQUE on `(tx_hash, kind)`** — retry flap wastes RPC cycles but doesn't lose money (RPC is idempotent). Next cycle.
+- **Post-Safe-novation pause/unpause/withdraw dead endpoints** — still `onlyOwner` on the contract; will revert once ownership is Safe. Operator must know to use Safe for pause after novation. Flagged in OPERATIONS §3 "Before mainnet" checklist already.
+- **`sale_config.stage` hybrid** — DB stage is decorative; contract does its own `Pausable` state. Purchase button doesn't gate on DB stage. Either delete or wire it. Left as-is for this cycle.
+
+### Verification
+
+- `npx tsc --noEmit` — clean.
+- `npx next build` — green, 40 routes.
+- `node verify-018.mjs` against live DB — CHECK enforces the widened set; accepts `'revoked'`, rejects `'bogus'`.
+
+### What's left for livenet test (operator)
+
+1. Paste `JWT_SECRET` + `CRON_SECRET` from `~/operon-mainnet-secrets.txt` into Vercel Production env.
+2. Flip `NEXT_PUBLIC_NETWORK_MODE=mainnet` in Vercel Production; set mainnet contract addresses, RPC URLs, fresh `ADMIN_PRIVATE_KEY`, confirm `ADMIN_WALLETS`, confirm `NEXT_PUBLIC_APP_DOMAIN`.
+3. Deploy mainnet `NodeSale` + `OperonNode` on Arb One + BSC Mainnet via `hardhat run scripts/deploy.ts`.
+4. Rewire Alchemy (Arbitrum) + QuickNode (BSC, corrected topic0) webhooks to Vercel Prod URL.
+5. `scripts/test-webhooks.mjs --mode signature-only` against Vercel Prod for both vendors.
+6. **Live smoke:** one real small purchase on each chain with a referral chain. Verify webhook → DB → dashboard → commission rows.
+7. Gnosis Safe novation last — pause/unpause/withdraw admin endpoints stop working after. Accept or update runbook.
+
+---
