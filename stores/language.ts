@@ -45,17 +45,34 @@ interface LanguageState {
   setLanguage: (language: Language) => void;
 }
 
+// R2: initial state is SSR-stable ('en') so server render and first
+// client render match. `detectBrowserLanguage()` runs only post-mount
+// via the `onRehydrateStorage` hook below, after zustand's persist
+// middleware has had a chance to restore any saved preference. The
+// previous shape — which called `detectBrowserLanguage()` eagerly in
+// the initial-state factory — evaluated `navigator.language` on the
+// client module load but not on the server, producing a guaranteed
+// hydration mismatch for every translated string on every 'use client'
+// page for any non-English browser. React's contract forbids that, and
+// Sentry noise from the mismatch warnings hid real bugs.
 export const useLanguageStore = create<LanguageState>()(
   persist(
     (set) => ({
-      language: detectBrowserLanguage(),
+      language: 'en',
       setLanguage: (language) => set({ language }),
     }),
     {
       name: 'operon-language',
-      // Only rehydrate if there's a saved value — otherwise use browser detection
-      // The persist middleware automatically uses the stored value if it exists,
-      // and falls back to the initial state (detectBrowserLanguage) on first visit.
+      onRehydrateStorage: () => (state) => {
+        // After persist rehydrates: if nothing was stored, fall back to
+        // browser detection. `_hasHydrated` would otherwise require the
+        // caller to gate; doing the fallback here keeps the public API
+        // simple — every consumer gets a stable string.
+        if (state && state.language === 'en' && typeof navigator !== 'undefined') {
+          const detected = detectBrowserLanguage();
+          if (detected !== 'en') state.setLanguage(detected);
+        }
+      },
     },
   ),
 );

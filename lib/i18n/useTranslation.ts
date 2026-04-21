@@ -28,7 +28,12 @@ export function useTranslation() {
         }
       }
 
-      return value;
+      // R5-BUG-09 hardening: normalize to NFC so any future string slipped
+      // in NFD form (e.g. via a translator tool that decomposed combining
+      // marks) still renders as precomposed glyphs. Current repo strings
+      // are already NFC — this is insurance, not a live fix, and the
+      // cost is one normalize call per translated render.
+      return value.normalize('NFC');
     },
     [locale],
   );
