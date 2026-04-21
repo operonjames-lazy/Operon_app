@@ -51,7 +51,9 @@ export async function POST(request: NextRequest) {
       event.txHash = activity.hash;
       event.blockNumber = parseInt(activity.log.blockNumber, 16);
 
-      const verified = await verifyOnChain(event.txHash, 'arbitrum', saleContractAddress);
+      // Pass the parsed event so verifyOnChain re-derives the same fields
+      // from the receipt's on-chain log and rejects any payload drift (B6).
+      const verified = await verifyOnChain(event.txHash, 'arbitrum', saleContractAddress, event);
       if (verified === 'failed') {
         // Forged or reverted — drop it.
         continue;

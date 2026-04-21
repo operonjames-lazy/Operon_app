@@ -22,7 +22,16 @@ export async function POST(request: NextRequest) {
   if (deny) return deny;
 
   const supabase = createServerSupabase();
-  const out = { attempted: 0, synced: 0, failed: 0 };
+  // R6-BUG-02: include a bounded sample of per-row errors in the response
+  // so the dev-indexer log surfaces *why* a sync failed, not just a count.
+  // Previous implementation reported `attempted=N synced=N failed=0` even
+  // when the underlying addReferralCode silently didn't land on-chain.
+  const out: {
+    attempted: number;
+    synced: number;
+    failed: number;
+    errors: Array<{ code: string; chain: string; error: string }>;
+  } = { attempted: 0, synced: 0, failed: 0, errors: [] };
 
   try {
     const { data: pending } = await supabase
@@ -54,6 +63,9 @@ export async function POST(request: NextRequest) {
           .eq('chain', row.chain);
       } else {
         out.failed += 1;
+        if (out.errors.length < 5) {
+          out.errors.push({ code: row.code, chain: row.chain, error: result.error });
+        }
         const nextAttempts = row.attempts + 1;
         const permanent = nextAttempts >= 10;
         await supabase

@@ -196,6 +196,14 @@ async function drainReferralQueue() {
     const data = await res.json();
     if (data.synced > 0 || data.failed > 0) {
       console.log(`[dev-indexer] referral sync: attempted=${data.attempted} synced=${data.synced} failed=${data.failed}`);
+      // R6-BUG-02: surface per-row failure reasons so an operator can tell
+      // admin_mismatch / event_missing / validCodes_still_false apart at a
+      // glance rather than reading Supabase.
+      if (Array.isArray(data.errors) && data.errors.length > 0) {
+        for (const e of data.errors) {
+          console.warn(`[dev-indexer]   failed ${e.chain} ${e.code}: ${e.error}`);
+        }
+      }
     }
   } catch {
     // dev server not up yet — ignore

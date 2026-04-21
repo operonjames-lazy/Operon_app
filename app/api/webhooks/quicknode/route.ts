@@ -49,7 +49,9 @@ export async function POST(request: NextRequest) {
         event.txHash = receipt.transactionHash;
         event.blockNumber = receipt.blockNumber;
 
-        const verified = await verifyOnChain(event.txHash, 'bsc', saleContractAddress);
+        // Pass event so verifyOnChain re-parses the on-chain log and rejects
+        // any payload drift (ship-readiness B6).
+        const verified = await verifyOnChain(event.txHash, 'bsc', saleContractAddress, event);
         if (verified === 'failed') {
           continue;
         }

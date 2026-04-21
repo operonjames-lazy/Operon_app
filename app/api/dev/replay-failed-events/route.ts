@@ -50,7 +50,9 @@ export async function POST(request: NextRequest) {
           const saleAddr = getSaleContract(fe.chain as 'arbitrum' | 'bsc');
           if (!saleAddr) throw new Error('No sale contract configured for chain');
 
-          const verified = await verifyOnChain(fe.tx_hash, fe.chain as 'arbitrum' | 'bsc', saleAddr);
+          // B6: pass stored event_data so the on-chain log is compared
+          // field-by-field (parity with the production cron reconcile path).
+          const verified = await verifyOnChain(fe.tx_hash, fe.chain as 'arbitrum' | 'bsc', saleAddr, eventData);
           if (verified === 'failed') {
             await supabase.from('failed_events')
               .update({ status: 'abandoned', error_message: 'On-chain verification rejected', updated_at: new Date().toISOString() })

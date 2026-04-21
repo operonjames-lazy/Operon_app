@@ -66,7 +66,9 @@ export async function POST(request: NextRequest) {
   // optimistic-processing shortcut into prod on copy-paste. Do not restore
   // it. If the tester's RPC is flaky, fix the RPC or use the admin replay
   // endpoint — do not weaken this path.
-  const verified = await verifyOnChain(txHash, chain, saleAddr);
+  // Pass event so verifyOnChain re-parses the on-chain log and rejects
+  // any payload drift (ship-readiness B6). HMAC-authed, but still defense-in-depth.
+  const verified = await verifyOnChain(txHash, chain, saleAddr, event);
   if (verified === 'failed') {
     return Response.json({ ok: false, error: 'verify_failed' }, { status: 400 });
   }

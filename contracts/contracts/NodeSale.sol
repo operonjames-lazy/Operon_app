@@ -22,6 +22,14 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
     OperonNode public nodeContract;
     address public treasury;
 
+    // Hot-path operational role. `owner` (cold, Safe) is retained via
+    // Ownable2Step for treasury/price/ownership-handover; `admin` holds
+    // the frequently-called functions that cannot wait on multi-sig —
+    // referral code registration and per-tier active flips. Initialised
+    // to the deployer in the constructor so deploy.ts does not need a
+    // second tx. `setAdmin` lets owner rotate the key or zero it out.
+    address public admin;
+
     mapping(uint256 => Tier) public tiers;
     mapping(bytes32 => bool) public validCodes;
     mapping(bytes32 => uint16) public codeDiscountBps;
@@ -54,11 +62,20 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
     event FundsWithdrawn(address indexed token, address indexed to, uint256 amount);
     event ReferralCodeRemoved(bytes32 indexed codeHash);
     event MaxBatchSizeUpdated(uint256 oldSize, uint256 newSize);
+    event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
+
+    // --- Modifiers ---
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "NodeSale: caller is not admin");
+        _;
+    }
 
     // --- Constructor ---
     constructor(address _treasury) Ownable(msg.sender) {
         require(_treasury != address(0), "NodeSale: treasury is zero address");
         treasury = _treasury;
+        admin = msg.sender;
+        emit AdminUpdated(address(0), msg.sender);
     }
 
     // --- Purchase ---
@@ -156,7 +173,7 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
         emit TierUpdated(tierId, price, publicSupply, adminSupply, active);
     }
 
-    function setTierActive(uint256 tierId, bool active) external onlyOwner {
+    function setTierActive(uint256 tierId, bool active) external onlyAdmin {
         tiers[tierId].active = active;
         emit TierActiveUpdated(tierId, active);
     }
@@ -166,24 +183,38 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
         emit MaxPerWalletUpdated(tierId, max);
     }
 
-    function addReferralCode(bytes32 codeHash, uint16 discountBps) external onlyOwner {
+    function addReferralCode(bytes32 codeHash, uint16 discountBps) external onlyAdmin {
+        // Cap at 100%. `uint16` goes to 65535 and the purchase path uses
+        // `totalPrice - (totalPrice * discount / 10000)`, which underflows
+        // (and reverts in 0.8.x) above 10000 — so the tx would fail loudly
+        // at purchase time. Rejecting here keeps the failure mode upstream:
+        // a leaked admin key can't stealth-register a 100%-off code and
+        // force every subsequent purchase to revert on buyers.
+        require(discountBps <= 10000, "NodeSale: discount > 100%");
         validCodes[codeHash] = true;
         codeDiscountBps[codeHash] = discountBps;
         emit ReferralCodeAdded(codeHash, discountBps);
     }
 
-    function removeReferralCode(bytes32 codeHash) external onlyOwner {
+    function removeReferralCode(bytes32 codeHash) external onlyAdmin {
         validCodes[codeHash] = false;
         codeDiscountBps[codeHash] = 0;
         emit ReferralCodeRemoved(codeHash);
     }
 
-    function addReferralCodes(bytes32[] calldata codeHashes, uint16 discountBps) external onlyOwner {
+    function addReferralCodes(bytes32[] calldata codeHashes, uint16 discountBps) external onlyAdmin {
+        require(discountBps <= 10000, "NodeSale: discount > 100%");
         for (uint256 i = 0; i < codeHashes.length; i++) {
             validCodes[codeHashes[i]] = true;
             codeDiscountBps[codeHashes[i]] = discountBps;
             emit ReferralCodeAdded(codeHashes[i], discountBps);
         }
+    }
+
+    function setAdmin(address _admin) external onlyOwner {
+        address old = admin;
+        admin = _admin;
+        emit AdminUpdated(old, _admin);
     }
 
     function setAcceptedToken(address token, bool accepted) external onlyOwner {

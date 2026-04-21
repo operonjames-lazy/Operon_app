@@ -131,17 +131,31 @@ export function parseNodePurchasedLog(
 export type VerifyResult = 'ok' | 'failed' | 'unreachable';
 
 /**
- * Re-verify a webhook-reported event against the chain via RPC.
+ * Re-verify a webhook-reported event against the chain via RPC, **and
+ * confirm the payload's event fields match what the chain actually
+ * emitted**.
  *
  * Fails CLOSED — if RPC is unreachable or times out, we return 'unreachable'
  * and the caller must queue the event as pending_verification instead of
- * processing it. Previously this fell back to 'ok' on timeout, which was a
- * real security hole (a forged webhook could slip through during RPC slowness).
+ * processing it.
+ *
+ * Ship-readiness finding B6: previously this only checked that *some* log
+ * from the sale contract existed for the tx. A forged webhook carrying a
+ * valid HMAC signature but crafted `topics`/`data` values could slip
+ * through as long as any real NodePurchased event existed on the same tx
+ * hash. Now we locate the contract's own NodePurchased log, parse it
+ * server-side from the on-chain receipt, and compare every field to the
+ * payload the caller passed in. Any mismatch fails.
  */
 export async function verifyOnChain(
   txHash: string,
   chain: 'arbitrum' | 'bsc',
-  saleContractAddress: string
+  saleContractAddress: string,
+  // Optional — when present, we compare the on-chain log field-by-field to
+  // these values. Legacy call sites that only need "some purchase happened"
+  // can omit it, but every real ingest path passes the parsed event so the
+  // comparison is live.
+  expected?: ParsedPurchaseEvent,
 ): Promise<VerifyResult> {
   try {
     const { getProvider, withTimeout } = await import('@/lib/rpc');
@@ -156,11 +170,53 @@ export async function verifyOnChain(
       logger.error('Transaction reverted on-chain', { txHash, chain });
       return 'failed';
     }
-    const matchingLog = receipt.logs.find(log => log.address.toLowerCase() === saleContractAddress);
-    if (!matchingLog) {
-      logger.error('No matching sale-contract log in transaction', { txHash, chain });
+    const saleAddrLower = saleContractAddress.toLowerCase();
+    const iface = new ethers.Interface([NODE_PURCHASED_EVENT]);
+    const nodePurchasedTopic = iface.getEvent('NodePurchased')?.topicHash;
+    if (!nodePurchasedTopic) {
+      logger.error('Could not derive NodePurchased topic hash', { txHash, chain });
       return 'failed';
     }
+
+    // Walk logs for a NodePurchased emission from our sale contract.
+    const matchingLog = receipt.logs.find(log =>
+      log.address.toLowerCase() === saleAddrLower && log.topics[0] === nodePurchasedTopic
+    );
+    if (!matchingLog) {
+      logger.error('No matching NodePurchased log in transaction', { txHash, chain });
+      return 'failed';
+    }
+
+    // If the caller gave us an expected event shape, re-derive from the
+    // on-chain log and compare. Any field drift → fail.
+    if (expected) {
+      const onChain = parseNodePurchasedLog(
+        { topics: Array.from(matchingLog.topics), data: matchingLog.data },
+        chain,
+      );
+      if (!onChain) {
+        logger.error('Failed to parse on-chain NodePurchased log', { txHash, chain });
+        return 'failed';
+      }
+      const mismatches: string[] = [];
+      if (onChain.buyerWallet.toLowerCase() !== expected.buyerWallet.toLowerCase()) mismatches.push('buyerWallet');
+      if (onChain.tier !== expected.tier) mismatches.push('tier');
+      if (onChain.quantity !== expected.quantity) mismatches.push('quantity');
+      if (onChain.totalPaidUsd !== expected.totalPaidUsd) mismatches.push('totalPaidUsd');
+      if (onChain.token !== expected.token) mismatches.push('token');
+      if ((onChain.codeHash || '').toLowerCase() !== (expected.codeHash || '').toLowerCase()) mismatches.push('codeHash');
+      if (mismatches.length > 0) {
+        logger.error('Webhook payload disagrees with on-chain log', {
+          txHash,
+          chain,
+          mismatches,
+          onChain,
+          expected,
+        });
+        return 'failed';
+      }
+    }
+
     return 'ok';
   } catch (err) {
     logger.warn('On-chain verification unreachable — queueing as pending_verification', {

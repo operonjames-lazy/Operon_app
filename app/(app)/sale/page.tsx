@@ -71,7 +71,15 @@ export default function SalePage() {
   // chain, which is wrong if the user flips MetaMask mid-flight — the hook
   // looks for the tx on the wrong chain and hangs. Capturing the submitted
   // chain and passing it explicitly pins the receipt lookup.
-  const lastSubmittedChainIdRef = useRef<number | undefined>(undefined);
+  //
+  // R5-BUG-01: state not ref — refs do not trigger re-renders, so the
+  // receipt hook evaluated `chainId: undefined` on the first render after
+  // a click, then re-evaluated with the correct chain only when another
+  // state change forced a re-render. A mismatch between hash and chainId
+  // in wagmi v3 can surface `isSuccess=true` from a sibling observer if
+  // the queryKey de-dupes. State makes the chain id part of the render,
+  // so both receipt hooks subscribe to the right query from render 0.
+  const [submittedChainId, setSubmittedChainId] = useState<number | undefined>(undefined);
 
   // Recover pending transaction from localStorage (scoped to current wallet)
   useEffect(() => {
@@ -100,12 +108,24 @@ export default function SalePage() {
     }
   }, []);
 
-  // Prefill the referral field from the user's stored upline. Runs after
-  // the /api/sale/status response lands, only if the URL didn't already
-  // populate something.
+  // Prefill + keep the referral field in sync with the user's stored
+  // upline. Runs after the /api/sale/status response lands.
+  //
+  // R5-BUG-03: the `!referralCode` guard was load-bearing — once the
+  // bound code landed, the input JSX flips from "editable textbox" to
+  // "locked green badge" (see the render block below). But if the user
+  // had typed a garbage/invalid code into the editable window BEFORE the
+  // poll returned, `referralCode` state still held the typed value and
+  // `discountBps` was pinned at 0 by the failed validateCode response.
+  // The locked badge visibly showed the bound code while the price
+  // summary showed no discount — the "auto-reverts but discount doesn't"
+  // artifact in the report. Re-syncing whenever the bound code arrives
+  // (not only on empty) keeps state, badge, and pricing coherent.
   useEffect(() => {
-    if (!referralCode && sale?.usedReferralCode) {
-      setReferralCode(sale.usedReferralCode);
+    if (sale?.usedReferralCode) {
+      if (referralCode !== sale.usedReferralCode) {
+        setReferralCode(sale.usedReferralCode);
+      }
       validateCode(sale.usedReferralCode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,17 +197,38 @@ export default function SalePage() {
   const totalTokenAmount = BigInt(totalCents) * tokenScale;
   const maxPricePerNodeToken = BigInt(pricePerNode) * tokenScale;
 
-  // Code hash for contract
-  const codeHash = referralCode
+  // Code hash for contract.
+  //
+  // R5-BUG-06: gate on `codeValid === true`. The NodeSale contract applies
+  // a discount whenever `validCodes[codeHash]` is true (NodeSale.sol L94),
+  // independent of any frontend check. For self-referral the backend
+  // `/api/sale/validate-code` returns `{valid:false, reason:'self_referral'}`
+  // and the UI surfaces a red "invalid" badge — but if we still hand the
+  // contract the buyer's own code hash, the on-chain mapping still matches
+  // (the code is validly registered) and the buyer gets the 10% off they
+  // were told they wouldn't. Zeroing the hash when the backend hasn't
+  // affirmed `valid:true` forces the contract onto its `if (codeHash != 0
+  // && validCodes[...])` false branch → full price. This same gate also
+  // protects against `pending_sync` and format-fail cases; only an
+  // explicitly valid response discounts.
+  const ZERO_CODE_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as const;
+  const codeHash = codeValid === true && referralCode
     ? keccak256(encodePacked(['string'], [referralCode.toUpperCase()]))
-    : '0x0000000000000000000000000000000000000000000000000000000000000000';
+    : ZERO_CODE_HASH;
 
-  // Read token balance
+  // R5-BUG-02: pin reads to the *selected* chain, not the wallet's current
+  // chain. On Arb, when the wallet briefly reports a stale chainId after
+  // an approve click (MetaMask chain updates race with wagmi's hook), an
+  // unpinned read would resolve against the wrong chain and could report
+  // a non-zero allowance that belongs to the *other* chain's (USDT/USDC)
+  // contract, letting `hasAllowance` flip true inside the approve window.
+  // Pinning to `targetChainId` removes the cross-chain bleed.
   const { data: balance } = useReadContract({
     address: tokenAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
+    chainId: targetChainId,
     query: { enabled: !!address && !!tokenAddress },
   });
 
@@ -197,6 +238,7 @@ export default function SalePage() {
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: address && saleAddress ? [address, saleAddress as `0x${string}`] : undefined,
+    chainId: targetChainId,
     query: { enabled: !!address && !!tokenAddress && !!saleAddress },
   });
 
@@ -211,14 +253,20 @@ export default function SalePage() {
   const { writeContract: approve, data: approveHash, error: approveWriteError, reset: resetApprove } = useWriteContract();
   const { isLoading: approveLoading, isSuccess: approveSuccess, isError: approveReceiptError } = useWaitForTransactionReceipt({
     hash: approveHash,
-    chainId: lastSubmittedChainIdRef.current,
+    chainId: submittedChainId,
+    // R5-BUG-01: wait for ≥1 block. viem's default is 1 but being explicit
+    // documents the Critical Rule #1 ("never show successful until ≥1
+    // confirmation") at the call site so a future minor-version bump
+    // that changes the default cannot silently weaken the guarantee.
+    confirmations: 1,
   });
 
   // Purchase transaction
   const { writeContract: purchase, data: purchaseHash, error: purchaseWriteError, reset: resetPurchase } = useWriteContract();
   const { isLoading: purchaseLoading, isSuccess: purchaseSuccess, isError: purchaseReceiptError } = useWaitForTransactionReceipt({
     hash: purchaseHash,
-    chainId: lastSubmittedChainIdRef.current,
+    chainId: submittedChainId,
+    confirmations: 1,
   });
 
   // Handle write errors (wallet rejection, contract revert)
@@ -262,12 +310,16 @@ export default function SalePage() {
     }
   }, [purchaseReceiptError, t]);
 
+  // R5-BUG-01: step-gated transitions. Require the local state machine to
+  // actually be in the sending state and the hash to be populated before
+  // promoting to approved/success. Prevents any stale observer result or
+  // re-subscription glitch from jumping the flow ahead of the wallet.
   useEffect(() => {
-    if (approveSuccess) setStep('approved');
-  }, [approveSuccess]);
+    if (approveSuccess && approveHash && step === 'approving') setStep('approved');
+  }, [approveSuccess, approveHash, step]);
 
   useEffect(() => {
-    if (purchaseSuccess) {
+    if (purchaseSuccess && purchaseHash && step === 'purchasing') {
       setStep('success');
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
       // Invalidate caches so nodes page shows fresh data
@@ -275,7 +327,7 @@ export default function SalePage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['sale'] });
     }
-  }, [purchaseSuccess, queryClient]);
+  }, [purchaseSuccess, purchaseHash, step, queryClient]);
 
   // Persist pending transaction in localStorage (scoped to wallet)
   useEffect(() => {
@@ -323,7 +375,7 @@ export default function SalePage() {
       setErrorMsg('');
       setPendingRecovery(null);
       setTxSlow(false);
-      lastSubmittedChainIdRef.current = undefined;
+      setSubmittedChainId(undefined);
       resetApprove();
       resetPurchase();
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
@@ -446,8 +498,17 @@ export default function SalePage() {
       setErrorMsg(t('sale.signInFirst'));
       return;
     }
+    // R5 review: explicit mutation reset before re-entering the approve
+    // flow. Without this, `approveHash` retains the hash from the previous
+    // successful approve, and the step-gated success effect would see a
+    // stale `approveSuccess=true` on the first render after `setStep(
+    // 'approving')` — firing `setStep('approved')` before the new wallet
+    // prompt even opens. `resetApprove` drops the mutation back to
+    // `data: undefined`, which flips `approveSuccess` false via the
+    // disabled-query path before the new mutate() dispatches.
+    resetApprove();
     setStep('approving');
-    lastSubmittedChainIdRef.current = targetChainId;
+    setSubmittedChainId(targetChainId);
     approve({
       address: tokenAddress as `0x${string}`,
       abi: ERC20_ABI,
@@ -471,6 +532,12 @@ export default function SalePage() {
       setErrorMsg(t('sale.noActiveTier'));
       return;
     }
+    // R5 review: see handleApprove — reset the purchase mutation so a
+    // stale hash from a previous successful purchase does not make the
+    // step-gated success effect fire immediately when the user clicks
+    // Purchase a second time ("Buy More" after the R4-08 modal does not
+    // itself reset the mutation — it only resets `step` and quantity).
+    resetPurchase();
     setStep('purchasing');
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
     // maxPricePerNode must be the BASE (undiscounted) price — the contract's
@@ -481,7 +548,7 @@ export default function SalePage() {
     // Pin the submitted chain so `useWaitForTransactionReceipt` below can
     // still find the tx if the user flips MetaMask to the other chain
     // mid-flight.
-    lastSubmittedChainIdRef.current = targetChainId;
+    setSubmittedChainId(targetChainId);
     purchase({
       address: saleAddress as `0x${string}`,
       abi: SALE_ABI,
@@ -558,7 +625,7 @@ export default function SalePage() {
           <p className="text-t2 relative">{t('sale.youNowOwn', { count: quantity, tier: sale?.currentTier || 1 })}</p>
           <div className="flex gap-3 justify-center mt-4 relative">
             <Button variant="primary" onClick={() => window.location.href = '/nodes'}>{t('sale.viewNodes')}</Button>
-            <Button variant="secondary" onClick={() => { setStep('idle'); setQuantity(1); }}>{t('sale.buyMore')}</Button>
+            <Button variant="secondary" onClick={() => { resetApprove(); resetPurchase(); setStep('idle'); setQuantity(1); }}>{t('sale.buyMore')}</Button>
           </div>
         </div>
       )}
@@ -657,7 +724,17 @@ export default function SalePage() {
                 type="text"
                 value={referralCode}
                 onChange={(e) => {
-                  setReferralCode(e.target.value.toUpperCase());
+                  const next = e.target.value.toUpperCase();
+                  setReferralCode(next);
+                  // R5 review: invalidate the cached validation result on
+                  // every keystroke so the contract call path (R5-BUG-06)
+                  // doesn't pick up a stale `codeValid=true` from the
+                  // previous code while the user is typing a different
+                  // one. onBlur re-validates and restores codeValid. This
+                  // also zeros the displayed discount while the new code
+                  // is unvalidated — matches what the contract will do.
+                  setCodeValid(null);
+                  setDiscountBps(0);
                   // User typed — this is no longer a URL-applied code, so
                   // suppress the "code applied from URL" toast next round.
                   if (codeFromUrl) setCodeFromUrl(false);
@@ -676,7 +753,18 @@ export default function SalePage() {
 
         {/* Chain */}
         <div className="text-[11px] text-t4 mb-1">{t('sale.chain')}</div>
-        <ChainSelector value={selectedChain} onChange={(chain) => { setSelectedChain(chain); setStep('idle'); }} />
+        <ChainSelector value={selectedChain} onChange={(chain) => {
+          // R6 ship-review: clear approve/purchase mutation state on chain flip,
+          // not just local step. Without this, an Arb→BSC→Arb round-trip leaves
+          // a stale `approveHash` set, which — combined with the R6-BUG-03
+          // defensive disable clause — makes the Purchase button permanently
+          // disabled on the returned-to chain until page refresh.
+          setSelectedChain(chain);
+          setStep('idle');
+          setSubmittedChainId(undefined);
+          resetApprove();
+          resetPurchase();
+        }} />
 
         {/* Quantity */}
         <div className="bg-card-hover border border-border rounded-lg p-3 my-3">
@@ -684,7 +772,18 @@ export default function SalePage() {
             <span className="text-[11px] text-t4">{t('sale.quantity')}</span>
             <span className="text-[10px] text-t4">{t('sale.maxPerWallet')}</span>
           </div>
-          <QuantitySelector value={quantity} onChange={setQuantity} min={1} max={10} />
+          {/* Quantity change invalidates any prior Approve — totalTokenAmount
+              grows, the existing allowance may no longer cover it. Reset step
+              to 'idle' and clear the approve mutation so the user is re-routed
+              through Approve before Purchase re-enables. The other two
+              selectors (ChainSelector, payment-token buttons) already do this;
+              QuantitySelector was the lone gap. Ship-readiness finding B8. */}
+          <QuantitySelector
+            value={quantity}
+            onChange={(q) => { setQuantity(q); setStep('idle'); resetApprove(); }}
+            min={1}
+            max={10}
+          />
           {quantity > 1 && (
             <p className="text-[10px] text-t4 mt-1">{formatUsd(discountedPrice)} {t('sale.each')}</p>
           )}
@@ -696,7 +795,17 @@ export default function SalePage() {
           {(['USDC', 'USDT'] as const).map(token => (
             <button
               key={token}
-              onClick={() => { setPaymentToken(token); setStep('idle'); }}
+              onClick={() => {
+                // Same rationale as ChainSelector above: flipping token
+                // invalidates the existing approve. Reset mutation state so
+                // the R6-BUG-03 clause `(approveHash !== undefined && step
+                // !== 'approved')` doesn't leave Purchase stuck-disabled.
+                setPaymentToken(token);
+                setStep('idle');
+                setSubmittedChainId(undefined);
+                resetApprove();
+                resetPurchase();
+              }}
               className={`flex-1 px-3 py-2.5 rounded-md border text-xs font-medium transition-colors cursor-pointer min-h-[44px] ${
                 paymentToken === token ? 'border-green text-green bg-green-bg' : 'border-border text-t2 hover:bg-card-hover'
               }`}
@@ -771,12 +880,27 @@ export default function SalePage() {
             )}
             <Button
               variant="primary" size="lg" className="w-full mt-1.5"
-              // R4-02: defensive predicate. The old condition
-              // `(!hasAllowance && step !== 'approved') || step === 'purchasing'`
-              // relied on !hasAllowance to implicitly cover step === 'approving',
-              // which is fragile if allowance refetches mid-approve. Explicitly
-              // block on approving / approveLoading / purchaseLoading too.
-              disabled={(!hasAllowance && step !== 'approved') || step === 'approving' || step === 'purchasing' || approveLoading || purchaseLoading}
+              // R4-02 / R5-BUG-02 / R6-BUG-03: disable whenever any of —
+              //   (a) allowance insufficient and step hasn't latched 'approved'
+              //   (b) local step is mid-flight (approving/purchasing)
+              //   (c) wagmi receipt-waiter is mid-flight (approveLoading/purchaseLoading)
+              //   (d) an approveHash exists but step has not reached 'approved'
+              //       — this is the R6 tester's Arb-only regression: a stale
+              //       allowance large enough to satisfy the discounted total
+              //       briefly flips `hasAllowance` true during the approving
+              //       window, which unblocked (a); (b) and (c) should have
+              //       caught it but the tester observed a race. Gate (d) makes
+              //       "approve hash dispatched, not yet latched approved" an
+              //       unconditional disable so the race surface is closed
+              //       regardless of the exact timing path.
+              disabled={
+                (!hasAllowance && step !== 'approved') ||
+                step === 'approving' ||
+                step === 'purchasing' ||
+                approveLoading ||
+                purchaseLoading ||
+                (approveHash !== undefined && step !== 'approved')
+              }
               loading={step === 'purchasing' || purchaseLoading} onClick={handlePurchase}
             >
               {step === 'purchasing' || purchaseLoading ? t('sale.confirming') : t('sale.purchaseNodes', { qty: quantity })}

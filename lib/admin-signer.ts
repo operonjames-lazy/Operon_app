@@ -25,6 +25,9 @@ const REFERRAL_ADMIN_ABI = [
   'function addReferralCode(bytes32 codeHash, uint16 discountBps) external',
   'function removeReferralCode(bytes32 codeHash) external',
   'function validCodes(bytes32) external view returns (bool)',
+  'function codeDiscountBps(bytes32) external view returns (uint16)',
+  'function admin() external view returns (address)',
+  'event ReferralCodeAdded(bytes32 indexed codeHash, uint16 discountBps)',
 ];
 
 const TIER_ADMIN_ABI = [

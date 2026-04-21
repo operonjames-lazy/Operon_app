@@ -164,6 +164,39 @@ describe("NodeSale", function () {
       expect(await usdc.balanceOf(treasury.address)).to.equal(tierPrice);
     });
 
+    it("R5-BUG-06: charges full price when codeHash is bytes32(0) even if the buyer owns a registered code", async function () {
+      // Pins the frontend→contract contract that the R5-BUG-06 fix depends on.
+      // The frontend zeroes the codeHash whenever `codeValid !== true` (including
+      // the self-referral case where the UI rejects the buyer's own code). The
+      // contract has no on-chain self-referral check — that's a known gap
+      // tracked for mainnet — so the frontend's zeroing is the load-bearing
+      // guard. This test fails loudly if either side of that contract drifts:
+      // e.g. a future frontend refactor that stops zeroing, or a contract
+      // upgrade that adds a self-referral check without updating this test.
+      const { buyer, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // Register the buyer's own code on-chain with a 10% discount — the exact
+      // shape the frontend has to defend against.
+      const buyerCodeHash = ethers.keccak256(ethers.toUtf8Bytes("OPR-SELF"));
+      await sale.addReferralCode(buyerCodeHash, 1000);
+
+      // Buyer approves only the FULL price (what the UI would have asked for
+      // after setting discountBps = 0 on codeValid = false).
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+
+      const treasuryBefore = await usdc.balanceOf(treasury.address);
+
+      await expect(
+        sale.connect(buyer).purchase(
+          0, 1, await usdc.getAddress(), ethers.ZeroHash, futureDeadline(), tierPrice
+        )
+      )
+        .to.emit(sale, "NodePurchased")
+        .withArgs(buyer.address, 0, 1, ethers.ZeroHash, tierPrice, await usdc.getAddress());
+
+      expect((await usdc.balanceOf(treasury.address)) - treasuryBefore).to.equal(tierPrice);
+    });
+
     it("validateCode should return correct info", async function () {
       const { sale } = await loadFixture(deployFixture);
 
@@ -212,7 +245,7 @@ describe("NodeSale", function () {
       expect(await usdc.balanceOf(treasury.address)).to.equal(tierPrice);
     });
 
-    it("should only allow owner to remove a referral code", async function () {
+    it("should only allow admin to remove a referral code", async function () {
       const { other, sale } = await loadFixture(deployFixture);
 
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("CODE"));
@@ -220,7 +253,7 @@ describe("NodeSale", function () {
 
       await expect(
         sale.connect(other).removeReferralCode(codeHash)
-      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+      ).to.be.revertedWith("NodeSale: caller is not admin");
     });
 
     it("should batch add referral codes", async function () {
@@ -771,6 +804,122 @@ describe("NodeSale", function () {
       await expect(nodeContract.getNodeInfo(999)).to.be.revertedWith(
         "OperonNode: token does not exist"
       );
+    });
+  });
+
+  // Role separation — cold `owner` (Safe) retains treasury / price / pause /
+  // ownership handover; hot `admin` (rotating key) holds frequently-called
+  // operational functions that cannot wait on multi-sig. Deploy-time default
+  // sets `admin = deployer` so a fresh deploy is usable without a second tx;
+  // production deploys rotate admin via `setAdmin` after handing `owner` to
+  // the Safe.
+  describe("Admin role separation", function () {
+    it("initialises admin = deployer and emits AdminUpdated", async function () {
+      const [owner, treasury] = await ethers.getSigners();
+      const NodeSale = await ethers.getContractFactory("NodeSale");
+      const sale = await NodeSale.deploy(treasury.address);
+      await sale.waitForDeployment();
+      expect(await sale.admin()).to.equal(owner.address);
+    });
+
+    it("setAdmin only callable by owner", async function () {
+      const { sale, other } = await loadFixture(deployFixture);
+      await expect(
+        sale.connect(other).setAdmin(other.address)
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+
+    it("setAdmin updates storage and emits AdminUpdated", async function () {
+      const { sale, owner, other } = await loadFixture(deployFixture);
+      await expect(sale.connect(owner).setAdmin(other.address))
+        .to.emit(sale, "AdminUpdated")
+        .withArgs(owner.address, other.address);
+      expect(await sale.admin()).to.equal(other.address);
+    });
+
+    it("setAdmin can rotate to zero to disable admin-only functions", async function () {
+      const { sale, owner } = await loadFixture(deployFixture);
+      await sale.connect(owner).setAdmin(ethers.ZeroAddress);
+      expect(await sale.admin()).to.equal(ethers.ZeroAddress);
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("DISABLED"));
+      await expect(
+        sale.connect(owner).addReferralCode(codeHash, 1000)
+      ).to.be.revertedWith("NodeSale: caller is not admin");
+    });
+
+    it("after rotation, new admin can call, old admin cannot", async function () {
+      const { sale, owner, other } = await loadFixture(deployFixture);
+      await sale.connect(owner).setAdmin(other.address);
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("ROTATED"));
+      await sale.connect(other).addReferralCode(codeHash, 1000);
+      expect(await sale.validCodes(codeHash)).to.be.true;
+      const codeHash2 = ethers.keccak256(ethers.toUtf8Bytes("ROTATED2"));
+      await expect(
+        sale.connect(owner).addReferralCode(codeHash2, 1000)
+      ).to.be.revertedWith("NodeSale: caller is not admin");
+    });
+
+    it("owner-without-admin cannot setTierActive (proves Safe handover preserves ops path)", async function () {
+      const { sale, owner, other } = await loadFixture(deployFixture);
+      await sale.connect(owner).setAdmin(other.address);
+      await expect(
+        sale.connect(owner).setTierActive(0, false)
+      ).to.be.revertedWith("NodeSale: caller is not admin");
+      await sale.connect(other).setTierActive(0, false);
+      const tier = await sale.tiers(0);
+      expect(tier.active).to.be.false;
+    });
+
+    it("addReferralCodes (batch) enforces onlyAdmin", async function () {
+      const { sale, other } = await loadFixture(deployFixture);
+      const hashes = [ethers.keccak256(ethers.toUtf8Bytes("X"))];
+      await expect(
+        sale.connect(other).addReferralCodes(hashes, 1000)
+      ).to.be.revertedWith("NodeSale: caller is not admin");
+    });
+
+    it("addReferralCode rejects discountBps > 10000", async function () {
+      const { sale } = await loadFixture(deployFixture);
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("TOOHIGH"));
+      await expect(sale.addReferralCode(codeHash, 10001)).to.be.revertedWith(
+        "NodeSale: discount > 100%"
+      );
+      // 10000 (exactly 100% off) is allowed — treasury policy decision, not
+      // an invariant violation; operators who want a lower ceiling enforce
+      // it at the application layer.
+      await sale.addReferralCode(codeHash, 10000);
+      expect(await sale.validCodes(codeHash)).to.be.true;
+    });
+
+    it("addReferralCodes (batch) rejects discountBps > 10000", async function () {
+      const { sale } = await loadFixture(deployFixture);
+      const hashes = [
+        ethers.keccak256(ethers.toUtf8Bytes("B1")),
+        ethers.keccak256(ethers.toUtf8Bytes("B2")),
+      ];
+      await expect(sale.addReferralCodes(hashes, 15000)).to.be.revertedWith(
+        "NodeSale: discount > 100%"
+      );
+      // And the batch must have registered nothing — all-or-nothing.
+      for (const h of hashes) expect(await sale.validCodes(h)).to.be.false;
+    });
+
+    it("owner (Safe) retains treasury/price/pause/withdraw even with rotated admin", async function () {
+      const { sale, owner, other, usdc, treasury } = await loadFixture(deployFixture);
+      await sale.connect(owner).setAdmin(other.address);
+      // A rotated admin must not be able to call owner-only functions.
+      await expect(
+        sale.connect(other).setTreasury(other.address)
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+      await expect(
+        sale.connect(other).pause()
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+      await expect(
+        sale.connect(other).withdrawFunds(await usdc.getAddress(), treasury.address)
+      ).to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+      // Owner (Safe) still can.
+      await sale.connect(owner).pause();
+      expect(await sale.paused()).to.be.true;
     });
   });
 });
