@@ -82,16 +82,25 @@ export default function SalePage() {
   const [submittedChainId, setSubmittedChainId] = useState<number | undefined>(undefined);
 
   // Recover pending transaction from localStorage (scoped to current wallet)
+  //
+  // R14 (2026-04-22): require strict address match. Previously the guard
+  // allowed `!parsed.address` as a backward-compat fallback, but the write
+  // path below uses `address?.toLowerCase()` which JSON-serialises to
+  // omitted when `address` is transiently undefined (wagmi briefly drops
+  // `address` during account-switch). A record landing in that window had
+  // no address and was then shown to ANY wallet loading the page on the
+  // same machine — C-P7 cross-wallet bleed. Drop the fallback; a record
+  // without an address is treated as unattributable and discarded.
   useEffect(() => {
     try {
       const saved = localStorage.getItem('operon_pending_tx');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Date.now() - parsed.timestamp < 3600000
-            && (!parsed.address || parsed.address === address?.toLowerCase())) {
-          setPendingRecovery(parsed);
-        } else if (Date.now() - parsed.timestamp >= 3600000) {
+        const expired = Date.now() - parsed.timestamp >= 3600000;
+        if (expired || !parsed.address) {
           localStorage.removeItem('operon_pending_tx');
+        } else if (parsed.address === address?.toLowerCase()) {
+          setPendingRecovery(parsed);
         }
       }
     } catch {}
@@ -330,15 +339,20 @@ export default function SalePage() {
   }, [purchaseSuccess, purchaseHash, step, queryClient]);
 
   // Persist pending transaction in localStorage (scoped to wallet)
+  //
+  // R14 (2026-04-22): skip the write when `address` is undefined. Without
+  // the guard, the record lands with `address` omitted (undefined isn't
+  // serialisable) and the recovery reader would need a fallback that the
+  // cross-wallet bleed fix above removed.
   useEffect(() => {
-    if (purchaseHash) {
+    if (purchaseHash && address) {
       try {
         localStorage.setItem('operon_pending_tx', JSON.stringify({
           hash: purchaseHash,
           chain: selectedChain,
           tier: sale?.currentTier,
           quantity,
-          address: address?.toLowerCase(),
+          address: address.toLowerCase(),
           timestamp: Date.now(),
         }));
       } catch {}

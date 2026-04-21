@@ -18,9 +18,11 @@ import { logger } from '@/lib/logger';
  * appears in admin tools. Only new purchases that try to use this code
  * on-chain will receive 0% discount (validCodes returns false).
  *
- * Also marks the `referral_code_chain_state` row as 'failed' with a
- * tombstone note so the sync queue doesn't re-add the code on the next
- * drain cycle.
+ * Also marks the `referral_code_chain_state` row as 'revoked' (a terminal
+ * status added in migration 018) so the sync queue does not re-add the
+ * code on the next drain cycle. Prior to migration 018 this was 'failed',
+ * which the drain loop treated as retry-eligible and silently reversed
+ * the revocation within 5 minutes — ship-readiness R14.
  */
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
@@ -72,11 +74,12 @@ export async function POST(request: NextRequest) {
       await tx.wait();
       results.push({ chain, status: 'ok', txHash: tx.hash });
 
-      // Tombstone the queue row so subsequent drains don't re-add the code.
+      // Tombstone the queue row with terminal 'revoked' status so subsequent
+      // drains don't re-add the code. See migration 018.
       const supabase = createServerSupabase();
       await supabase
         .from('referral_code_chain_state')
-        .update({ status: 'failed', last_error: `removed by admin ${admin.wallet}`, updated_at: new Date().toISOString() })
+        .update({ status: 'revoked', last_error: `removed by admin ${admin.wallet}`, updated_at: new Date().toISOString() })
         .eq('code', code)
         .eq('chain', chain);
 

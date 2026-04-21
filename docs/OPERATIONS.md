@@ -99,7 +99,7 @@ TG_ADMIN_CHAT_ID=<chat-id>
 pnpm dev                                  # Next dev server
 pnpm build                                # or: npx next build — production build + TS check
 npx next start                            # run the built app
-cd contracts && npx hardhat test          # 51 contract tests
+cd contracts && npx hardhat test          # 64 contract tests
 
 # Migrations
 PG_MODULE_PATH=/tmp/pg-temp/node_modules/pg \
@@ -159,6 +159,8 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 | `014_seed_full_tier_curve.sql` | Fills in tiers 6-40 of the `sale_tiers` table and resets tier state so the DB matches a fresh contract deploy. ⚠ **Contains an unconditional `UPDATE sale_tiers SET total_sold = 0` — do NOT re-apply to a DB with real purchases. Use `scripts/reset-tier-state.sql` (guarded, refuses to run if purchases exist) for any subsequent reset.** |
 | `015_purchase_audit_fields.sql` | `CREATE OR REPLACE` of the commission RPC to compute applied `discount_bps` from tier base price vs event `amount_usd`, and persist resolved referral code string in `purchases.code_used`. Closes the per-code audit gap from DECISIONS D09. |
 | `016_overpay_anomaly.sql` | `CREATE OR REPLACE` of the commission RPC to split "paid exactly equal to list" from "paid more than list" in the `discount_bps` derivation. Overpay now emits `RAISE WARNING` with the event context (tx, chain, tier, qty, base_total, amount_usd) instead of being silently masked as 0% discount. Commission math unchanged. |
+| `017_guard_tier_reset.sql` | Compensating control for migration 014's unconditional `UPDATE sale_tiers SET total_sold = 0` — guarded version that skips the reset if any `purchases` or `referral_purchases` row exists. CLAUDE.md Rule 13 (applied migrations are immutable) forbids editing 014; this file carries the same intent safely. Always apply 017 after 014 on any re-run. |
+| `018_revoked_referral_status.sql` | Adds terminal `'revoked'` status to `referral_code_chain_state` (CHECK constraint). Required because `/api/admin/referrals/remove` previously set `'failed'`, which the drain loop treats as retry-eligible — admin revocations were silently re-registered on-chain within 5 minutes. Ship-readiness R14. |
 
 (Migration 007 does not exist.)
 
@@ -172,7 +174,7 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 2. Set **all** env vars in Vercel → Project Settings → Environment Variables. Production environment only to start; preview environments can use testnet values.
 3. Confirm `ADMIN_WALLETS` and `ADMIN_PRIVATE_KEY` are set — missing = admin endpoints return 503.
 4. Confirm `UPSTASH_REDIS_REST_URL` + `_TOKEN` are set — missing in production = rate limiter fails closed (all requests rejected).
-5. Set Vercel cron: `/api/cron/reconcile` → `*/5 * * * *` with Authorization header `Bearer <CRON_SECRET>`.
+5. Confirm `CRON_SECRET` is set as a Vercel env var (Production scope). The cron schedule itself is already declared in `vercel.json` — Vercel's cron invoker automatically sends `Authorization: Bearer $CRON_SECRET` when that env var is present. There is no UI to configure headers; setting the env var is the whole mechanism. The handler 503s when the env is unset and 401s on header mismatch.
 6. Deploy.
 
 ### Before mainnet
@@ -443,7 +445,7 @@ Paste both into Vercel env (Production scope, not Preview) and re-deploy. The ro
 
 1. QuickNode dashboard → **Streams** → **Create Stream** → **Log filter**.
 2. Network: **BNB Chain / Mainnet** (or **BSC Testnet** for the dry-run).
-3. Filter: address = `NEXT_PUBLIC_SALE_CONTRACT_BSC`; topic0 = `keccak256("NodePurchased(address,uint256,uint256,bytes32,uint256,address)")` = `0x7e9d97f3e7f5af15ac70e6f2e1b5a75d4dfd8e5fe1dfbfa7c05e1d9e3e8e2c6a` (verify against an actual on-chain tx before saving).
+3. Filter: address = `NEXT_PUBLIC_SALE_CONTRACT_BSC`; topic0 = `keccak256("NodePurchased(address,uint256,uint256,bytes32,uint256,address)")` = `0x6591bdbb6081a7574c59839f425dbc80961b4ab0c0d444bd5d095fe42dd1e501`. Recompute before saving: `node -e "console.log(require('ethers').id('NodePurchased(address,uint256,uint256,bytes32,uint256,address)'))"` — a stale hash here means the filter matches zero events and BSC commissions silently never fire. Verified against `contracts/contracts/NodeSale.sol:45` on 2026-04-22.
 4. Destination: **Webhook** → URL `https://<your-vercel-prod-domain>/api/webhooks/quicknode`.
 5. **Set HMAC signing secret** to `QUICKNODE_WEBHOOK_SECRET` verbatim. Header name: `x-qn-signature`.
 6. Save, then send a test log → expect **200 OK**.

@@ -56,6 +56,9 @@ export async function POST(request: NextRequest) {
           .eq('code', normalizedCode)
           .eq('chain', chain)
           .maybeSingle();
+        if (syncRow?.status === 'revoked') {
+          return Response.json({ valid: false, discountBps: 0, codeType: 'epp', reason: 'revoked' });
+        }
         if (!syncRow || syncRow.status !== 'synced') {
           return Response.json({ valid: false, discountBps: 0, codeType: 'epp', reason: 'pending_sync' });
         }
@@ -85,6 +88,9 @@ export async function POST(request: NextRequest) {
           .eq('code', normalizedCode)
           .eq('chain', chain)
           .maybeSingle();
+        if (syncRow?.status === 'revoked') {
+          return Response.json({ valid: false, discountBps: 0, codeType: 'community', reason: 'revoked' });
+        }
         if (!syncRow || syncRow.status !== 'synced') {
           return Response.json({ valid: false, discountBps: 0, codeType: 'community', reason: 'pending_sync' });
         }

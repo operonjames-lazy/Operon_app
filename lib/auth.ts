@@ -1,10 +1,29 @@
 import { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
+// R14 (2026-04-22): known-placeholder JWT secrets. Refuse to boot on mainnet
+// with any of these — an unrotated placeholder means every JWT is forgeable
+// by anyone with the repo checked out. REVIEW_ADDENDUM S-P7 exists to catch
+// this at review time; this guard catches it at runtime if review was missed.
+const KNOWN_PLACEHOLDER_JWT_SECRETS = new Set([
+  'operon-testnet-jwt-secret-change-before-mainnet',
+  'change-this-to-a-secure-random-string',
+]);
+
 function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     throw new Error('JWT_SECRET environment variable is required. Set it in .env.local');
+  }
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.NEXT_PUBLIC_NETWORK_MODE === 'mainnet' &&
+    KNOWN_PLACEHOLDER_JWT_SECRETS.has(secret)
+  ) {
+    throw new Error(
+      'JWT_SECRET is a known placeholder and NODE_ENV=production with NEXT_PUBLIC_NETWORK_MODE=mainnet. ' +
+        'Refusing to boot. Rotate JWT_SECRET in Vercel env before re-deploying.',
+    );
   }
   return new TextEncoder().encode(secret);
 }

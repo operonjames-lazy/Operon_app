@@ -23,6 +23,11 @@ export function useTierRealtime() {
   const [lastEvent, setLastEvent] = useState<TierChangeEvent | null>(null);
   const [connected, setConnected] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  // R14 (2026-04-22): track previous subscribe state so we can tell the
+  // difference between the first SUBSCRIBED (initial connect — data already
+  // loaded by TanStack Query) and a re-SUBSCRIBED after a drop (any UPDATE
+  // fired during the gap was not delivered — reconcile by invalidating).
+  const priorStatusRef = useRef<string | null>(null);
 
   const dismissEvent = useCallback(() => setLastEvent(null), []);
 
@@ -91,6 +96,17 @@ export function useTierRealtime() {
       channel.subscribe((status: string) => {
         if (cancelled) return;
         setConnected(status === 'SUBSCRIBED');
+        // R14: on any transition BACK to SUBSCRIBED from a non-SUBSCRIBED
+        // state, assume we missed UPDATEs on sale_tiers / sale_config during
+        // the gap. TanStack Query invalidation re-fetches from the DB, which
+        // is authoritative. The very first subscribe (priorStatusRef=null)
+        // is the initial connect — data already loaded on mount, no action.
+        const prior = priorStatusRef.current;
+        if (status === 'SUBSCRIBED' && prior !== null && prior !== 'SUBSCRIBED') {
+          queryClient.invalidateQueries({ queryKey: ['sale'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        }
+        priorStatusRef.current = status;
       });
 
       channelRef.current = channel;

@@ -34,6 +34,8 @@ export async function POST(request: NextRequest) {
   } = { attempted: 0, synced: 0, failed: 0, errors: [] };
 
   try {
+    // `revoked` is terminal (see migration 018) — excluded so admin removals
+    // are not silently reversed on the next drain tick.
     const { data: pending } = await supabase
       .from('referral_code_chain_state')
       .select('code, chain, discount_bps, attempts')

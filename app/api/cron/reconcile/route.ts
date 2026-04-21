@@ -276,6 +276,10 @@ export async function GET(request: NextRequest) {
     // so operators can tell when ingress exceeds drain capacity. If the
     // queue sits above a high-water threshold for 2 consecutive runs a
     // Telegram alert fires so launch-day burst doesn't degrade silently.
+    //
+    // R14 (2026-04-22): `revoked` is terminal (see migration 018) and must
+    // stay out of the queue-depth count + drain select — otherwise admin
+    // removals get silently re-registered on the next tick.
     const { count: depthCount } = await supabase
       .from('referral_code_chain_state')
       .select('*', { count: 'exact', head: true })
