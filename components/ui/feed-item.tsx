@@ -2,6 +2,7 @@
 
 import type { EventType } from '@/types/api';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { formatUsd } from '@/lib/format';
 
 interface FeedItemProps {
   type: EventType;
@@ -94,7 +95,14 @@ export function FeedItem(props: FeedItemProps) {
       </div>
       <p className="flex-1 truncate text-sm text-t2">{describe()}</p>
       {amount != null && amount > 0 && (
-        <span className="shrink-0 text-sm font-medium text-green">+${amount.toFixed(2)}</span>
+        // R5-BUG-04: `amount` is `referral_purchases.net_amount_usd`,
+        // stored in integer cents (migrations/001 + 006 BIGINT). The prior
+        // `+$${amount.toFixed(2)}` treated cents as dollars and inflated
+        // by 100× (e.g. 45000c → "+$45000.00" instead of "+$450.00").
+        // `formatUsd()` is the canonical cents→USD helper used by the top
+        // summary cards and commission breakdown on the same page, so
+        // routing through it here also keeps those three surfaces in sync.
+        <span className="shrink-0 text-sm font-medium text-green">+{formatUsd(amount)}</span>
       )}
       <span className="shrink-0 text-xs text-t4">{relative()}</span>
     </div>

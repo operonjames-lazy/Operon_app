@@ -37,7 +37,11 @@ export async function verifyToken(request: NextRequest): Promise<string | null> 
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    // R4: pin the signing algorithm to HS256 (the one we actually sign
+    // with at /api/auth/wallet). jose rejects `none` by default, but
+    // pinning closes any future major-bump drift + any hypothetical
+    // alg-confusion attack if a key ever rotates to an asymmetric form.
+    const { payload } = await jwtVerify(token, getSecret(), { algorithms: ['HS256'] });
     return payload.sub || null;
   } catch {
     return null;
@@ -49,7 +53,7 @@ export async function verifyTokenPayload(request: NextRequest) {
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const { payload } = await jwtVerify(token, getSecret(), { algorithms: ['HS256'] });
     return payload as { sub: string; wallet: string; isEpp: boolean };
   } catch {
     return null;

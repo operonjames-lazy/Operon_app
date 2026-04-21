@@ -118,8 +118,13 @@ export function useAuth() {
         await clearSession();
         // Invalidate rather than clear — keeps cache entries mounted so
         // skeletons show, but marks them stale to trigger a refetch for
-        // the new wallet.
-        await queryClient.invalidateQueries();
+        // the new wallet. Narrowed to wallet-scoped keys (A6) — public
+        // ['sale','tiers'] doesn't depend on wallet and doesn't need
+        // invalidation.
+        await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        await queryClient.invalidateQueries({ queryKey: ['nodes'] });
+        await queryClient.invalidateQueries({ queryKey: ['referrals'] });
+        await queryClient.invalidateQueries({ queryKey: ['sale', 'status'] });
       })().catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -222,8 +227,32 @@ export function useAuth() {
 
       // 5. Cookie is set by the server response — consume the referral code
       clearPendingReferralCode();
+      // R5-BUG-07: any purchase tx that was queued in MetaMask before the
+      // browser closed is outside our control — the wallet owns the
+      // request queue. Completing SIWE means this is a fresh session, so
+      // the stale pending_tx bookkeeping is no longer relevant and should
+      // not continue to fire the "pending transaction" recovery banner on
+      // the Sale page. Clearing it here is hygiene, not a security gate.
+      // See docs/DECISIONS.md D24 for why we cannot cancel the MetaMask
+      // request itself.
+      try { localStorage.removeItem('operon_pending_tx'); } catch {}
       setIsAuthed(true);
       authedAddressRef.current = address.toLowerCase();
+      // Ship-readiness R1: on the wallet-switch path above, `clearSession`
+      // + `invalidateQueries` run BEFORE SIWE re-completes, so the first
+      // round of re-fetches hit 401 and the `retry: 2` cascade lands the
+      // referrals/nodes/dashboard pages in their error boundary well
+      // before this SIWE authenticate() resolves. The expiry listener
+      // (L168) invalidates on 401 but only when `isAuthed` is true —
+      // during SIWE it's false, so the stuck-error queries are never
+      // re-attempted on their own. Invalidate wallet-scoped keys here,
+      // the moment the new cookie is live, so the error-state queries
+      // re-fire with the fresh session and the tester never sees the
+      // lingering page-level error boundary.
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      await queryClient.invalidateQueries({ queryKey: ['nodes'] });
+      await queryClient.invalidateQueries({ queryKey: ['referrals'] });
+      await queryClient.invalidateQueries({ queryKey: ['sale', 'status'] });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Authentication failed';
       // User rejected signature is not an error — they can retry

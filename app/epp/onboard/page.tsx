@@ -657,7 +657,14 @@ function EppShell({
         [data-lang="tc"] .greeting, [data-lang="tc"] .lp, [data-lang="tc"] .tc-t, [data-lang="tc"] .form-t, [data-lang="tc"] .conf-t { font-family: 'Noto Sans TC', var(--sf), serif; }
         [data-lang="sc"] .greeting, [data-lang="sc"] .lp, [data-lang="sc"] .tc-t, [data-lang="sc"] .form-t, [data-lang="sc"] .conf-t { font-family: 'Noto Sans SC', var(--sf), serif; }
         [data-lang="ko"] .greeting, [data-lang="ko"] .lp, [data-lang="ko"] .tc-t, [data-lang="ko"] .form-t, [data-lang="ko"] .conf-t { font-family: 'Noto Sans KR', var(--sf), serif; }
-        [data-lang="vi"] .greeting, [data-lang="vi"] .lp, [data-lang="vi"] .tc-t, [data-lang="vi"] .form-t, [data-lang="vi"] .conf-t { font-family: 'Noto Sans', var(--sf), serif; }
+        /* R5-BUG-09: use Be Vietnam Pro (loaded via next/font with the
+           vietnamese subset in app/layout.tsx) as the first choice and
+           drop the serif fallback. 'Noto Sans' without a preload falls
+           straight through to 'Cormorant Garamond'/serif, which lacks
+           precomposed Vietnamese diacritic glyphs (e.g. ề U+1EC1) and
+           renders combining marks as detached backticks. Be Vietnam Pro
+           is guaranteed loaded here so the H1 always has a covering font. */
+        [data-lang="vi"] .greeting, [data-lang="vi"] .lp, [data-lang="vi"] .tc-t, [data-lang="vi"] .form-t, [data-lang="vi"] .conf-t { font-family: var(--font-be-vietnam), 'Noto Sans', sans-serif; }
 
         @media (min-width: 640px) {
           .app { padding: 40px 48px 80px; }
