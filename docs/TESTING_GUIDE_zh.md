@@ -161,19 +161,24 @@ npx hardhat run scripts/deploy.ts --network arbitrumSepolia
 
 ### 3.4 在 BSC Testnet 上部署智能合约
 
-做法相同,但小数位数是 18 而不是 6。
+做法相同,但**请使用 BSC 专用的 mock 部署脚本**(symbol USDT、18 位小数)。Arbitrum 用的 `deploy-mock-usdc.ts` 把小数位数写死为 6,和 BSC 的 `TOKEN_DECIMALS=18` 不相容,会让后续每一笔购买都失败。
 
 ```
-npx hardhat run scripts/deploy-mock-usdc.ts --network bscTestnet
+npx hardhat run scripts/deploy-mock-usdt.ts --network bscTestnet
 ```
 保存为 `USDT_BSC`。
 
+**跑下一段之前**,请另开一个新的终端(或在当前终端里先执行 `unset USDC_ADDRESS TOKEN_DECIMALS`)。`deploy.ts` 会读取下面 export 的环境变量——如果 §3.3 部署 Arbitrum 时留下的值还在当前 shell 里,BSC 的部署会静默地沿用那个错误的地址。
+
 ```
+unset USDC_ADDRESS TOKEN_DECIMALS
 export USDC_ADDRESS=<USDT_BSC>
 export TOKEN_DECIMALS=18
 npx hardhat run scripts/deploy.ts --network bscTestnet
 ```
 保存为 `SALE_BSC` 和 `NODE_BSC`。
+
+*(没错,BSC 上部署的是 USDT,但这里的环境变量名字仍然叫 `USDC_ADDRESS`。`deploy.ts` 把它当成「这条链上接受的稳定币地址」,跟币种符号没关系。不要被名字混淆。)*
 
 **现在你手里应当有六个地址：** `USDC_ARB`、`SALE_ARB`、`NODE_ARB`、`USDT_BSC`、`SALE_BSC`、`NODE_BSC`。
 
@@ -243,6 +248,20 @@ ADMIN_PRIVATE_KEY=<来自 2.5 的 Deployer 私钥>
 # 这两个变量只能在本地设置,绝对不要写入 Vercel 或任何云端部署的环境变量里。
 DEV_ENDPOINTS_ENABLED=1
 DEV_INDEXER_SECRET=<见下文>
+
+# ── 可选但强烈建议 —— 私有 RPC ───────────────────────────────
+# 不填下面这两行时,应用和 dev-indexer 会退回到免费的公共 RPC
+# (例如 sepolia-rollup.arbitrum.io、publicnode 的 BSC)。
+# 公共 RPC 在持续轮询下会被限流——在 2–4 小时的测试过程中你一定
+# 会撞到 429,表现出来像是「推荐码迟迟无法同步」「NFT 一直没出现」
+# 这类假阳性。花 2 分钟申请一把免费的 Alchemy (Arbitrum)
+# 和 QuickNode / Infura (BSC) key,把 URL 填到下面:
+#
+#   Arbitrum Sepolia via Alchemy: https://www.alchemy.com/ → Arbitrum Sepolia app
+#   BSC Testnet via QuickNode:    https://www.quicknode.com/ → BSC Testnet endpoint
+#
+ARBITRUM_RPC_URL=
+BSC_RPC_URL=
 ```
 
 生成 `JWT_SECRET`：
@@ -268,13 +287,14 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 3. 在文件管理器里打开 `operon-dashboard/supabase/migrations` 文件夹。你会看到 `001_initial_schema.sql`、`002_seed_data.sql` 这样的文件。
 4. 用文本编辑器打开 `001_initial_schema.sql`。全选,复制,粘贴到 Supabase SQL Editor。点击 **Run**。
 5. 等到显示 **Success**。
-6. 清空编辑器。按**编号顺序**对剩下的文件依次重复：002、003、004、005、006、008、009、010、011、012、013、014、015。**没有 007 —— 直接跳过。**
+6. 清空编辑器。按**编号顺序**对剩下的文件依次重复：002、003、004、005、006、008、009、010、011、012、013、014、015、016、017。**没有 007 —— 直接跳过。**
 
 任何一个文件报错就停下,联系操作人员。
 
 说明：
 - `002_seed_data.sql` 预先写入了一批 EPP 邀请码,你在 Test 5 里可以直接用这些,不用另外生成。它还会插入几行演示数据(一个虚构的 "David Kim" EPP 合作伙伴、两条虚构的历史购买记录),纯粹是为了仪表板截图——请忽略,对 Tests 1–6 没有影响。
 - `013_referral_chain_state.sql` 建立了一个队列,追踪每个推荐码是否已经同步到销售合约上。`014_seed_full_tier_curve.sql` 把 6–40 层的价格曲线填满,并重置层级状态,让数据库和全新部署的合约对齐。
+- `017_guard_tier_reset.sql` 是 `014` 的补强:如果数据库里已经有真实购买记录,就跳过 `014` 会做的层级计数清零——让你在测试途中可以安全地重跑迁移清单,不会破坏计数。必须排在 `016` 之后。
 
 ### 3.8 启动网站
 

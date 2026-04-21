@@ -162,19 +162,24 @@ Save the two printed addresses as `SALE_ARB` and `NODE_ARB`.
 
 ### 3.4 Deploy the smart contracts on BSC Testnet
 
-Same again, but 18 decimals instead of 6.
+Same again, but **use the BSC-specific mock script** (symbol USDT, 18 decimals). The Arbitrum script (`deploy-mock-usdc.ts`) hardcodes 6 decimals, which mismatches BSC's `TOKEN_DECIMALS=18` and makes every purchase fail.
 
 ```
-npx hardhat run scripts/deploy-mock-usdc.ts --network bscTestnet
+npx hardhat run scripts/deploy-mock-usdt.ts --network bscTestnet
 ```
 Save as `USDT_BSC`.
 
+**Before you run the next block**, open a fresh terminal (or run `unset USDC_ADDRESS TOKEN_DECIMALS`). `deploy.ts` is chain-agnostic and reads whichever env var you set below — if the Arbitrum values from §3.3 are still exported in this shell, the BSC deploy will silently use the wrong address.
+
 ```
+unset USDC_ADDRESS TOKEN_DECIMALS
 export USDC_ADDRESS=<USDT_BSC>
 export TOKEN_DECIMALS=18
 npx hardhat run scripts/deploy.ts --network bscTestnet
 ```
 Save as `SALE_BSC` and `NODE_BSC`.
+
+*(Yes, the env var is named `USDC_ADDRESS` even though on BSC you're passing the USDT address. `deploy.ts` treats it as "the accepted stablecoin address for this chain" regardless of which symbol it is. Don't let the name confuse you.)*
 
 **You should now have six addresses:** `USDC_ARB`, `SALE_ARB`, `NODE_ARB`, `USDT_BSC`, `SALE_BSC`, `NODE_BSC`.
 
@@ -219,6 +224,10 @@ SUPABASE_SERVICE_KEY=<from 3.2>
 SUPABASE_DB_URL=<from 3.2>
 
 JWT_SECRET=<see below>
+# IMPORTANT: do not leave JWT_SECRET as the placeholder in .env.example.
+# Generate a fresh random value (instructions below this code block).
+# If you leave the placeholder, anyone who sees your .env.local can forge
+# your login session — low stakes on testnet, but please still do it.
 
 NEXT_PUBLIC_SALE_CONTRACT_ARB=<SALE_ARB>
 NEXT_PUBLIC_NODE_CONTRACT_ARB=<NODE_ARB>
@@ -284,13 +293,14 @@ Easiest way is Supabase's SQL editor, not the terminal.
 3. In your file manager, open the folder `operon-dashboard/supabase/migrations`. You will see files named `001_initial_schema.sql`, `002_seed_data.sql`, etc.
 4. Open `001_initial_schema.sql` in a text editor. Select all. Copy. Paste into the Supabase SQL Editor. Click **Run**.
 5. Wait for **Success**.
-6. Clear the editor. Repeat for each remaining file **in numerical order**: 002, 003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016. **There is no 007 — skip it.**
+6. Clear the editor. Repeat for each remaining file **in numerical order**: 002, 003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017. **There is no 007 — skip it.**
 
 If any file errors, stop and message the operator.
 
 Notes:
 - `002_seed_data.sql` pre-seeds a handful of EPP invite codes into the database. You can use those in Test 5 without generating new ones. It also inserts demo rows (a fake "David Kim" EPP partner, two fake historical purchases) purely for dashboard screenshots — ignore them, they don't affect Tests 1–6.
 - `013_referral_chain_state.sql` creates the queue that tracks whether a referral code has been mirrored onto the sale contract. `014_seed_full_tier_curve.sql` fills in tiers 6–40 and resets tier state so the DB lines up with a fresh contract deploy.
+- `017_guard_tier_reset.sql` is the compensating control for `014` — it makes `014`'s tier-state reset skip if any real purchases already exist, so re-running the migration list mid-session does not corrupt counters. Must be applied after `016`.
 
 ### 3.8 Run the site
 

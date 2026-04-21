@@ -81,7 +81,10 @@ Feature implementation tracker. Stable IDs that never renumber.
 | I11 | Admin endpoint: `payouts/mark-paid` | ✅ Done | Records manual USDC sends. Refuses mixed recipients / already-paid. |
 | I12 | Admin endpoint: `epp/invites` (batch generation, CSV) | ✅ Done | Used by `scripts/generate-epp-invites.mjs` too. |
 | I13 | Admin allowlist auth (`ADMIN_WALLETS` env) + audit-log-before-mutation | ✅ Done | `lib/admin.ts` `requireAdmin()` + `logAdminAction()`. Allowlist cached. |
-| I14 | 6-language i18n (EN, TC, SC, KO, VI, TH) | ✅ Done | `lib/i18n/translations.ts` + EPP-specific `epp-translations.ts`. Thai is real prose. |
+| I14 | 6-language i18n (EN, TC, SC, KO, VI, TH) | ✅ Done | `lib/i18n/translations.ts` + EPP-specific `epp-translations.ts`. Thai is real prose; native-speaker pass 2026-04-21 fixed 11 main-file defects + 2 EPP tweaks (see PROGRESS). |
+| I15 | NodeSale admin role separation (admin vs Ownable2Step owner) | ✅ Done | `contracts/contracts/NodeSale.sol` — `addReferralCode{s}` / `removeReferralCode` / `setTierActive` moved to `onlyAdmin`; all else stays `onlyOwner`. `setAdmin(address)` rotates the hot key. Makes Gnosis Safe novation (F34) a two-tx handshake instead of a contract redeploy. Tested in "Admin role separation" suite (8 tests). See DECISIONS D26. |
+| I16 | Webhook local signed-payload harness | ✅ Done | `scripts/test-webhooks.mjs` — Alchemy + QuickNode, two modes (signature-only / live-tx), `--wrong-sig` negative control. Exercises signature verify + payload parse + on-chain re-verify + commission RPC without needing cloud webhook config. Runbook in `OPERATIONS.md §6.5`. |
+| I17 | Playwright E2E regression harness | 🔄 In Progress | `playwright.config.ts` + `e2e/{ui,full-chain,fixtures}/`. `ui/smoke.spec.ts` + `ui/referral-capture.spec.ts` runnable today. `full-chain/*` (referral-sync + purchase-arbitrum + purchase-bsc) stubbed pending ~3–4h of fixture wiring (hardhat-node, supabase-test-db, `E2E=1` mock-connector branch in `app/providers.tsx`). See `e2e/README.md` and DECISIONS D27. |
 
 ### Dashboard pages
 
@@ -131,7 +134,7 @@ These are placeholders. Each maps roughly to a planned scope area. Open decision
 | F31 | Transfer lock lift (12-month lockup ends) | 🔵 Future | Contract call; migration adds tracking column. |
 | F32 | Emission epoch cron job | 🔵 Future | Hourly or per-epoch. |
 | F33 | Uptime sample cron job | 🔵 Future | Hourly. |
-| F34 | Migration of contract ownership to Gnosis Safe | 🔵 Future | See DECISIONS D06. |
+| F34 | Migration of contract ownership to Gnosis Safe | 🔵 Future | See DECISIONS D06 / D26. Contract-level enabler landed 2026-04-21 (I15 — admin/owner role split). Remaining work is operator-run: `setAdmin(<fresh hot key>)` + `transferOwnership(<Safe>)` + Safe `acceptOwnership()`. |
 | F35 | Admin panel v2 — UI dashboards, charts, partner search | 🔵 Future | Post-emissions scope. |
 | F36 | — | 🔵 Future | Reserved |
 | F37 | — | 🔵 Future | Reserved |
@@ -164,7 +167,7 @@ These are items owed by the operator (not code work). Tracked here because closi
 
 - Resources page URLs (9 items) — see D-pending "Resources page content URLs"
 - Vercel env vars (`ADMIN_WALLETS`, `ADMIN_PRIVATE_KEY`, rotated `JWT_SECRET`) — D-pending "Vercel deploy env"
-- Thai legal review of EPP T&Cs — D-pending "Thai legal review"
+- Thai legal review of EPP T&Cs — D-pending "Thai legal review". Note: a native-speaker prose review landed 2026-04-21 (fixed 11 defects in main i18n + 2 EPP tweaks — EPP rated high quality, formal legal register consistent). That is **not** a legal opinion; compliance / MLM classification / securities classification still owed.
 - ~~Live testnet smoke test of commission RPC~~ — done via `scripts/smoke-test-commission.mjs` against dev Supabase (commit `5da8d39`)
 - ~~Community commission rate table on referrals page (currently stale)~~ — done in commit `5da8d39`: affiliate L5 updated `—` → `1%`, new Community Referral Programme card shows the full 10-3-2-1-1 rate table for non-EPP users
 - Delete deprecated `/api/epp/create` route — D-pending "Delete /api/epp/create"

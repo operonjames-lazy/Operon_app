@@ -486,3 +486,67 @@ Origin/main at `fefeb4b` + doc commit. Tester package ready to hand off. Memory 
 - Mainnet prep is still governed by the pre-mainnet checklist in `docs/OPERATIONS.md` §3 — rotated secrets, Gnosis Safe, Thai legal review, live commission RPC smoke, Vercel env vars.
 
 ---
+
+## 2026-04-21 — R6→R7 fixes, contract role split, regression-prevention scaffolding
+
+R6 tester report (三個 bugs + 1 regression-verified). Session covered four bands:
+(1) verifying + fixing R6 findings, (2) contract-level role separation so future Safe novation is surgical rather than a contract redeploy, (3) ship-review via four parallel agents and closing all blocking + required findings, (4) mainnet-path work — webhook audit + local harness + runbook, Playwright E2E scaffold, native Thai prose review.
+
+### Completed
+
+**R6 bug fixes.**
+- **Bug #1 (BSC decimals mismatch)** — new `contracts/scripts/deploy-mock-usdt.ts` (USDT / 18 decimals). EN + ZH testing guides Part 3.4 updated; added `unset USDC_ADDRESS TOKEN_DECIMALS` cue + an explanatory parenthetical so testers running both deploys in one shell don't drag Arbitrum's `USDC_ADDRESS` into the BSC deploy.
+- **Bug #2 (drain-referrals silent success)** — `lib/referrals/sync-on-chain.ts` now enforces four post-conditions on every sync: signer == `contract.admin()`, `tx.wait(1)` resolves with a non-null receipt, `ReferralCodeAdded` event present in receipt logs matching the code hash, `validCodes[hash]` reads back `true`. Each failure has a distinct error string that propagates through `referral_code_chain_state.last_error`, the drain-referrals endpoint response body, and the dev-indexer stdout — so "`synced=N failed=0` while chain state says otherwise" can't recur. Production path (`/api/cron/reconcile`) uses the same function, so the fix covers both dev and prod.
+- **Bug #3 (Arb Purchase button stuck clickable during Approve)** — `app/(app)/sale/page.tsx` disable clause extended with `|| (approveHash !== undefined && step !== 'approved')`. Ship-review caught a follow-on bug: ChainSelector's onChange only did `setStep('idle')`, so an Arb→BSC→Arb round-trip with a cached allowance left Purchase permanently disabled on return. Fixed by also calling `resetApprove()`/`resetPurchase()`/`setSubmittedChainId(undefined)` in the ChainSelector and payment-token handlers.
+
+**Contract role separation (makes Safe novation viable).**
+- `NodeSale.sol` now has a second on-chain role `admin` alongside Ownable2Step `owner`. `addReferralCode`, `addReferralCodes`, `removeReferralCode`, `setTierActive` moved from `onlyOwner` to `onlyAdmin` — the functions that fire continuously in production and cannot wait on multi-sig latency. Everything else (treasury, price, pause/unpause, `setAcceptedToken`, `withdrawFunds`, `setNodeContract`, `setMaxBatchSize`, `setMaxPerWallet`, `setTierPaused`, `adminMint`, `setAdmin`, ownership handover) stays `onlyOwner`.
+- Constructor default is `admin = deployer` so a fresh deploy works without a second tx. `setAdmin(address) onlyOwner` lets the owner rotate or zero the hot key. `AdminUpdated(oldAdmin, newAdmin)` event emitted on both init and rotation.
+- `discountBps <= 10000` hard-cap added to both `addReferralCode` and `addReferralCodes` — defense in depth against a leaked admin key registering a 100%-off code.
+- 10 new tests: 8 "Admin role separation" (rotation, zero-out, owner-without-admin cannot hit onlyAdmin, rotated admin cannot hit onlyOwner), 2 discount-cap. Hardhat suite 51 → 64, all passing.
+- Pre-mainnet handover is now: (a) `setAdmin(<fresh hot key>)` + rotate `ADMIN_PRIVATE_KEY` in Vercel, (b) `transferOwnership(<Safe>)` + Safe `acceptOwnership()`. Two on-chain txs, no state migration, no redeploy. See DECISIONS D26.
+
+**Ship-readiness review (`/review-ship`).** Four agents run in parallel (security / correctness / client / scale) with the journey ledger as shared context. 3 blocking + 5 required + 8 advisory. All blocking + required closed this session:
+- guides: EN listed migrations 001–016 (missing 017); ZH listed 001–015 (missing 016 + 017); ZH §3.6 was missing the private-RPC recommendation block — fixed.
+- client: ChainSelector stuck-disabled bug my own Bug #3 fix introduced — fixed.
+- contract: `discountBps > 10000` accepted without guard — capped.
+- docs: ARCHITECTURE + OPERATIONS said "51 tests" — bumped to 64.
+- security: no JWT_SECRET placeholder warning in TESTING_GUIDE §3.6 — added.
+
+**Regression-prevention / mainnet-path scaffolding.**
+- `scripts/test-webhooks.mjs` — local signed-payload harness for Alchemy + QuickNode handlers. Two modes: `signature-only` (synthesised payload, no chain dependency) and `live-tx --tx 0x…` (fetches real log via RPC, signs vendor-shape, posts, prints Supabase SQL for verification). Plus a `--wrong-sig` negative control that expects 401. Covers the code-internal 80% of mainnet webhook setup; the remaining 20% (Alchemy/QuickNode → Vercel delivery) stays an operator-run check per `OPERATIONS.md §6.5` (new subsection added with dashboard steps + rollback procedure).
+- Playwright E2E harness scaffolded. `@playwright/test` installed at workspace root; `playwright.config.ts`, `e2e/{ui,full-chain,fixtures}/`, 7 tests discovered. Runnable today: `e2e/ui/smoke.spec.ts` (homepage renders without unexpected console errors) and `e2e/ui/referral-capture.spec.ts` (`?ref=` survives reload — R5-BUG-03). Stubbed with clear TODOs: `e2e/full-chain/{purchase-arbitrum,purchase-bsc,referral-sync}.spec.ts` — these need the Hardhat-node fixture, Supabase test-schema fixture, and the app's `E2E=1` provider-swap branch to be wired. Estimate 3–4 focused hours to finish. Rationale in DECISIONS D27.
+- `pnpm test:webhooks` / `test:e2e` / `test:e2e:ci` / `test:e2e:ui` / `test:e2e:chain` scripts added.
+
+**Native Thai prose review.** Read every Thai string in `lib/i18n/translations.ts` and `app/epp/onboard/epp-translations.ts`. EPP file rated high quality (formal register consistent, legal terminology correct, `ข้าพเจ้า`/`ท่าน` used correctly, `อนุญาโตตุลาการ` for arbitration) — two small prose tweaks. Main i18n file had 11 defects: the biggest was `home.payoutWallet: 'กระเป๋าจ่ายเงิน'` (ambiguous — could mean "wallet that pays out money" vs "wallet that receives payouts"; fixed to `'กระเป๋ารับเงิน'`), plus `nav.support: 'สนับสนุน'` (wrong sense of "support" — fixed to `'ช่วยเหลือ'`), `error.NOT_FOUND`, two `ได้ลด` grammar fixes, three `ใช้งาน → กำลังขาย` consistency fixes, and polish.
+
+**Docs during the session.**
+- `docs/DECISIONS.md`: D-pending "Mainnet contract ownership via Gnosis Safe" updated with R6→R7 progress + remaining handover steps.
+- `docs/OPERATIONS.md`: §3 pre-mainnet checklist item rewritten with handover plan; new §6.5 webhook configuration + verification subsection; test count 51 → 64 (2 places).
+- `docs/ARCHITECTURE.md`: test count 51 → 64 (3 places); role separation paragraph added under contract tests summary.
+- `docs/TESTING_GUIDE.md` + `TESTING_GUIDE_zh.md`: migration list → 001–017; ZH §3.6 private-RPC block ported from EN; ZH §3.4 BSC deploy instructions clarified; EN JWT_SECRET placeholder warning added.
+- `review-log.md`: two entries (R6→R7 review; follow-up fixes landing).
+
+### Docs sync (this wrap-up)
+
+- `CLAUDE.md`: Tech Stack — contracts test count 53 → 64; Key commands block 51 → 64; new "Testing" line adding Playwright. Build Status Summary "Latest major additions" — 3 new bullets for role split + webhook harness + Playwright scaffold. Doc-sync table unchanged.
+- `docs/FEATURES.md`: new **I15** (NodeSale admin role separation — ✅ Done), **I16** (webhook local test harness — ✅ Done), **I17** (Playwright E2E regression harness — 🔄 In Progress). F34 note updated to reflect role-split enabler landed. Owed-content line for Thai legal review annotated with the native-prose pass status.
+- `docs/DECISIONS.md`: new **D26** (NodeSale admin/owner role split design — which functions go where + handover plan), new **D27** (Playwright + wagmi mock connector chosen over Synpress for the regression harness).
+- `docs/ARCHITECTURE.md`: `e2e/` top-level directory + `scripts/test-webhooks.mjs` added to the directory tree.
+- `docs/PROGRESS.md`: this entry.
+
+### Status
+
+R7 tester-package ready, with caveats: the new admin-assert code path in `sync-on-chain.ts` is not exercised when `admin == owner == deployer` (R7's default). If you want R7 to validate it, paste a different key into `ADMIN_PRIVATE_KEY` for one drain cycle and confirm the dev-indexer prints `failed <chain> <code>: admin_mismatch: signer=… contract.admin=…`. Added as a testing note.
+
+Verification tonight: `cd contracts && npx hardhat test` → 64 passing. `npx next build` → compiled clean, TypeScript green. `npx playwright test --list` → 7 tests discovered. Local harness (`node scripts/test-webhooks.mjs --vendor alchemy --mode signature-only`) validated at the crypto/payload layer; end-to-end POST untested because there's no `.env.local` on the workstation I was running from (operator will complete this step).
+
+### Next Session
+
+- Operator-side: engage Thai counsel (the in-app prose review I did is a native-speaker pass, not a legal opinion — compliance / MLM classification / securities classification all still owed).
+- Wire the three `e2e/full-chain/*` fixtures (`hardhat-node` deployContracts, `supabase-test-db`, `app/providers.tsx` E2E=1 mock-connector branch) and flip the four skipped tests. ~3–4 focused hours. Unblocks automated regression coverage for R8+.
+- Operator-side: configure Alchemy + QuickNode webhooks against Vercel preview, run `scripts/test-webhooks.mjs --mode live-tx --tx 0x…` against a real R7 purchase to confirm commission row lands.
+- When tester returns R7 report, triage against the feature / regression list — manual flows that are now E2E-covered should not appear as new bug reports; anything that does is a harness gap.
+- Mainnet-path items still owed: Gnosis Safe deployment + `setAdmin` rotation + `transferOwnership` handshake, live Vercel webhook smoke, rotated `JWT_SECRET` + `CRON_SECRET`, Thai legal review closeout.
+
+---

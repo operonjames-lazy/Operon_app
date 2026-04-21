@@ -193,14 +193,18 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 
 ---
 
-## D-pending — SIWE's role: UX convention, not a security boundary
+## D24 — SIWE is a UX convention for off-chain API access, not a transaction gate
 
-**Date raised:** 2026-04-18 (from R4 bug analysis)
-**Context:** R4-05 reported that a user can confirm a queued Approve transaction in MetaMask without completing SIWE (close tab during Approve-pending → reopen → MetaMask shows Approve at slot 1/2, SIWE at 2/2). Review of the purchase path found that the on-chain contract enforces all purchase invariants (tier bounds, supply caps, allowance checks), and the commission RPC walks the immutable `referrals` table keyed by the on-chain buyer — neither requires a valid SIWE JWT. The webhook re-verifies the on-chain event independently of any session. So a purchase without SIWE still mints to the correct wallet, credits the correct L1, and appears in the correct user's dashboard on next login.
-**Question:** Should SIWE be treated as (a) a security boundary that must block all on-chain writes until complete, or (b) a UX convention that gates dashboard/API access but not on-chain actions?
-**Current state:** We added a client-side `isAuthenticated()` guard in `handleApprove` / `handlePurchase` (R4-05 fix) to prevent the confusing out-of-order queue, but this is UX hygiene — not an enforcement boundary. A user who bypassed our UI (calling the contract directly via etherscan or a script) would still succeed, and the DB would still credit them correctly.
-**Decision needed:** If (a) — need server-side enforcement: purchase webhooks must reject events whose buyer has no valid SIWE session, or contract-level whitelisting. If (b) — document the current design, remove the false impression that SIWE is security-load-bearing, and accept the R4-05 queue order bug as UX-only.
-**Recommendation:** (b), on the basis that on-chain + immutable-DB invariants are the real authority and SIWE-as-security would require either expensive contract changes or brittle webhook-level session enforcement. Ratify at next design session.
+**Date:** 2026-04-18 (ratified from the prior D-pending after R5-BUG-07 re-raised the same scenario).
+**Why:** R4-05 and R5-BUG-07 both report the same reproduction: user clicks Purchase → MetaMask queues a Confirm dialog → user closes the browser before signing → reopens → MetaMask now holds two pending requests (tx Confirm at slot 1, SIWE sign-in at slot 2) → user confirms the tx without signing SIWE, and the tx executes on-chain. Investigation established three facts that together determine the answer:
+  1. **The contract enforces every purchase invariant** (tier bounds, supply caps, allowance, token whitelist, slippage, deadline). The commission RPC walks the immutable `referrals` table keyed by the on-chain buyer. The webhook re-verifies the event via direct RPC independent of any session. A purchase without a live SIWE JWT still mints to the correct wallet, credits the correct L1, and shows in the correct user's dashboard the moment they eventually sign in.
+  2. **We cannot cancel wallet-queued requests from the page.** MetaMask's request queue is wallet-owned; there is no JSON-RPC method to list, dismiss, or re-order it from a web page. Any "fix" amounts to a warning modal the user can ignore, or a contract-level gate that doesn't exist.
+  3. **No major Web3 project treats SIWE as a transaction gate.** Uniswap, Aave, OpenSea, Blur, and the rest do not use SIWE at all. Farcaster and Lens scope SIWE strictly to off-chain reads/writes. The industry treats SIWE as "log in for personalised views", which matches what Operon actually uses it for.
+**Decision:** SIWE is a UX convention, not a security boundary. The `isAuthenticated()` guard in `handleApprove` / `handlePurchase` is retained as UX hygiene — it prevents `wagmi.writeContract` being invoked from an un-authed page — but it is explicitly **not** treated as an enforcement boundary. R4-05 and R5-BUG-07 are closed as working-as-designed, with the only code change being to clear `operon_pending_tx` on SIWE success (`hooks/useAuth.ts`) so the Sale page's recovery banner does not carry a prior-session transaction into a freshly-authenticated session.
+**Affected code:**
+- `hooks/useAuth.ts` — clear stale `operon_pending_tx` on SIWE success.
+- `app/(app)/sale/page.tsx` — UX `isAuthenticated()` guards retained; no server-side or contract-side gating added.
+**Re-open criteria:** If the indexer/webhook path ever loses the invariant that every `NodePurchased` event is processed into the DB (RPC re-verification disabled, webhooks routed elsewhere, contract forked), revisit whether a SIWE JWT should be required for the backend to accept an on-chain purchase. Until then, this entry is closed.
 
 ---
 
@@ -225,6 +229,41 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 **Why:** The NodeSale contract treats `validCodes[hash] == true && codeDiscountBps[hash] == 0` as "apply `defaultDiscountBps = 1500`" ([NodeSale.sol:94-100](../contracts/contracts/NodeSale.sol)). If an operator ever zeroed `sale_config.community_discount_bps` and a new code got enqueued while that was live, on-chain would silently apply 15% while the DB's audit row recorded 0%. Commissions would stay correct (derived from post-discount `amount_usd`) but treasury vs. display would diverge.
 **Decision:** `lib/referrals/sync-on-chain.ts` rejects any `discountBps <= 0`, non-finite, or > 10000 at the sync boundary with an explicit error log. Forces operator to set a real `sale_config.*_discount_bps` before codes can be registered on-chain, rather than silently falling into the contract default. This is defense in depth — the upstream config reads already default to 1000 — but cheap insurance against a two-step config drift.
 **Affects:** `lib/referrals/sync-on-chain.ts`.
+
+---
+
+## D25 — Purchase-flow state machine follows the wagmi/viem canonical pattern
+**Date:** 2026-04-19
+**Why:** R5-BUG-01 (premature "Purchase successful") and R5-BUG-02 (Arb Purchase button clickable during Approve) were fixed with a layered defensive pattern: `submittedChainId` as state (not ref), explicit `confirmations: 1`, step-gated success transitions (`purchaseSuccess && purchaseHash && step === 'purchasing'`), `resetApprove` / `resetPurchase` on flow re-entry, and `codeValid` invalidation on every keystroke. Because the exact R5 repro could not be isolated locally, the CTO review asked whether the fix was overkill or still missing something — we needed to know how the rest of the industry handles this.
+**Validation:** verified against the installed library sources that (a) viem 2.47.6's `waitForTransactionReceipt` cannot emit `isSuccess` before a mined receipt with a block number — the confirmations gate at the action level (`blockNumber - receipt.blockNumber + 1n < confirmations`, default 1) is unconditional; (b) wagmi 3.6.0 delegates with a hash-scoped query key so no cross-hash cache bleed is possible; (c) RainbowKit 2.2.10's `useAddRecentTransaction` is UI-only (toast list) and **not** a state-machine replacement. The Operon sale-page pattern matches what Uniswap, Aave, and Safe{Wallet} do: explicit local step + receipt hook gates the `mined` transition + explicit confirmations + mutation reset on re-entry.
+**Decision:** the R5 fix is the industry standard; no further defensive code is warranted. If a future bug report reproduces premature success despite this pattern, the root cause lies outside the web app (wallet provider emitting receipt metadata for unmined txs, proxy RPC caching receipts across requests, or a viem/wagmi upstream bug) and must be diagnosed with a live RPC trace rather than more layered guards on our side. The companion invariant for R5-BUG-06 — "contract charges full price when codeHash is `bytes32(0)` even if the buyer owns a registered code" — is now pinned as a Hardhat test at `contracts/test/NodeSale.test.ts` so the same class of frontend→contract contract drift cannot silently recur.
+**Affected code:** [app/(app)/sale/page.tsx](../app/(app)/sale/page.tsx) lines 78-82 (chainId state), 260-282 (receipt hooks with explicit confirmations), 313-334 (step-gated success effects), 490-555 (handleApprove/handlePurchase with mutation resets); [contracts/test/NodeSale.test.ts](../contracts/test/NodeSale.test.ts) "R5-BUG-06" test in the "Referral code discount" describe block.
+
+---
+
+## D26 — NodeSale role split: hot `admin` vs cold `owner`
+**Date:** 2026-04-21
+**Why:** D06 / D-pending "Gnosis Safe" required mainnet contract ownership to move off a single hot key. But NodeSale originally had one `onlyOwner` role guarding everything from `withdrawFunds` (rare, high-impact) to `addReferralCode` (fires every wallet signup — cannot wait on multi-sig). Safe-ifying a single role either broke operational latency or left withdrawal authority on a hot key, defeating the point.
+**Options considered:**
+1. Single `onlyOwner` → Safe. Breaks referral signup (no Safe can sign inside a user auth request) and tier auto-promotion. Rejected.
+2. Keep hot key as owner, add a separate multi-sig wrapper only for withdraw. Non-standard; still leaves other sensitive ops on the hot key. Rejected.
+3. **Split the roles at the contract level: `admin` (hot, rotating) for the 4 hot-path functions, `owner` (cold, Safe) for everything else, `setAdmin(address) onlyOwner` to rotate.** Chosen.
+**Decision:** `onlyAdmin` guards `addReferralCode`, `addReferralCodes`, `removeReferralCode`, `setTierActive`. `onlyOwner` (Ownable2Step) keeps `setTier`, `setTreasury`, `setNodeContract`, `setMaxPerWallet`, `setAcceptedToken`, `withdrawFunds`, `setMaxBatchSize`, `setTierPaused`, `pause`, `unpause`, `adminMint`, `setAdmin`, and ownership handover. Constructor default: `admin = deployer` (usable out of the box). `discountBps <= 10000` hard-cap added to both `addReferralCode{s}` as defense against a leaked admin key registering a 100%-off code.
+**Why this is retrofittable-post-launch-proof:** NodeSale holds treasury balances and tier state; a redeploy means migrating ERC20 balances + OperonNode minter authority — ugly under pressure. Landing the role split pre-launch means the handover is (a) `setAdmin(<fresh hot key>)` + rotate `ADMIN_PRIVATE_KEY` in Vercel, (b) `transferOwnership(<Safe>)` + Safe `acceptOwnership()` (Ownable2Step handshake). Two on-chain txs, no state migration, no redeploy.
+**Affected code:** [contracts/contracts/NodeSale.sol](../contracts/contracts/NodeSale.sol) `admin` state + `onlyAdmin` modifier + `setAdmin` + `AdminUpdated` event; [contracts/test/NodeSale.test.ts](../contracts/test/NodeSale.test.ts) "Admin role separation" describe (8 tests) + 2 discount-cap tests; [lib/referrals/sync-on-chain.ts](../lib/referrals/sync-on-chain.ts) pre-flight `signer == contract.admin()` assertion; [lib/admin-signer.ts](../lib/admin-signer.ts) `REFERRAL_ADMIN_ABI` gained `admin()` + `codeDiscountBps()` + `ReferralCodeAdded` event; [docs/OPERATIONS.md](OPERATIONS.md) §3 pre-mainnet checklist with handover steps.
+
+---
+
+## D27 — Playwright + wagmi mock connector as the E2E regression harness
+**Date:** 2026-04-21
+**Why:** Every user-testing round (R4 / R5 / R6) has introduced regressions in the same 3–4 state-machine surfaces — approve-purchase transitions, referral-code discount application, cross-chain allowance bleed. Manual testing caught them but by the time a tester filed a report we'd already spent the round. We need automated browser-level coverage that replays the human tester's critical path.
+**Options considered:**
+1. **Synpress (Playwright + real MetaMask extension).** Closest to a human tester; catches MetaMask-UX bugs. Slow, flaky in CI, chromium-only. Rejected for regression-coverage role — the R4/R5/R6 regressions were state-machine bugs, not MetaMask-UX bugs, so the extra fragility buys nothing for our actual failure mode.
+2. **Playwright + wagmi mock connector (via `@wagmi/connectors/mock`).** Runs headless in CI. Connects a deterministic private-key-backed signer. Exercises the full Next.js frontend + any RPC target (local Hardhat node, or mocked). Misses MetaMask-specific visual bugs. Chosen.
+3. **Cypress.** No Solidity/wagmi integration advantage over Playwright; Playwright's multi-context model + auto-wait are better for wallet state machines.
+**Decision:** Playwright + mock connector. Harness split into `e2e/ui/` (runs against `pnpm dev` with stubbed RPC, cheap + fast, catches frontend state-machine bugs) and `e2e/full-chain/` (pairs with a local Hardhat node, deployed contracts, a Supabase test schema — catches the kind of bugs R5-BUG-02 and R6-BUG-03 were). MetaMask-UX-specific bugs (like R6's astronomical-gas fallback) remain a human-tester concern — documented as a known gap in `e2e/README.md §4`.
+**Implementation status (2026-04-21):** `playwright.config.ts`, `e2e/{ui,full-chain,fixtures}/` directories scaffolded. `ui/smoke.spec.ts` + `ui/referral-capture.spec.ts` runnable. `full-chain/*.spec.ts` stubbed with clear TODOs — require (a) Hardhat-node fixture to deploy contracts + mint stables, (b) Supabase test-schema bootstrap, (c) `E2E=1` provider-swap branch in `app/providers.tsx` to mount the mock connector. ~3–4 focused hours to finish.
+**Affected code:** [playwright.config.ts](../playwright.config.ts); [e2e/README.md](../e2e/README.md); [e2e/fixtures/mock-wallet.ts](../e2e/fixtures/mock-wallet.ts); [e2e/fixtures/hardhat-node.ts](../e2e/fixtures/hardhat-node.ts); [package.json](../package.json) new `test:e2e*` + `test:webhooks` scripts; `@playwright/test` added as a devDependency.
 
 ---
 
@@ -296,7 +335,15 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 2. OpenZeppelin Defender — managed service, easier ops, vendor lock-in
 3. Custom timelock contract — full control, more work
 **Decision:** Pending — must be resolved before mainnet deploy. Recommended Gnosis Safe.
-**How to resolve:** Deploy a Gnosis Safe with at least 2-of-3 signers, transfer contract ownership to the Safe, migrate the admin pause/unpause flow to submit proposals to the Safe instead of directly calling pause(). Admin endpoint becomes a Safe proposal submitter, not a signer.
+
+**Progress (R6→R7):** Contract-level role separation landed so that Safe novation does not strand the hot-path operational flows. `NodeSale` now exposes a second, rotating role — `admin` — alongside the `Ownable2Step` `owner`. The four functions that fire continuously in production (`addReferralCode`, `addReferralCodes`, `removeReferralCode`, `setTierActive`) are moved from `onlyOwner` to `onlyAdmin`; everything else (treasury, price, pause, withdraw, setAdmin itself, ownership handover) stays on `onlyOwner`. Deploy-time default is `admin = deployer` so the deploy script does not need a second tx. Without this change, Safe-ifying `owner` would break referral signup (no Safe can sign inside a user's auth request) and tier auto-promotion (latency bound by multi-sig response time). 8 new tests cover rotation, zero-out, and owner/admin separation (see `contracts/test/NodeSale.test.ts` → `Admin role separation`).
+
+**How to resolve (remaining):**
+1. Deploy a Gnosis Safe with at least 2-of-3 signers.
+2. Call `setAdmin(<fresh hot key address>)` from the current deployer key, and rotate `ADMIN_PRIVATE_KEY` in Vercel to the new hot key.
+3. Call `transferOwnership(<Safe address>)` from the current deployer, then have the Safe call `acceptOwnership()` (Ownable2Step handshake — no state migration, no redeploy).
+4. After that point, `pause`, `unpause`, `withdrawFunds`, `setTier`, `setTreasury`, `setNodeContract`, `setMaxPerWallet`, `setAcceptedToken`, `setMaxBatchSize`, `setTierPaused`, `adminMint` all require Safe signatures. The admin endpoints `/api/admin/sale/{pause,unpause,withdraw}` will stop working from the hot key — intentionally. Operators pause by signing a Safe proposal instead. OPERATIONS.md pre-mainnet checklist must mention this so nobody tries to hit the old API during an incident.
+
 **Tracking:** REVIEW_ADDENDUM.md S-P3 (key handling), OPERATIONS.md pre-mainnet checklist
 
 ---

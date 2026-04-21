@@ -35,7 +35,7 @@ Technical architecture: stack, schema, routes, data flow, invariants. The "how i
 pnpm install
 pnpm dev                         # Next dev server
 npx next build                   # production build + TS check
-cd contracts && npx hardhat test # smart contract tests (51 tests)
+cd contracts && npx hardhat test # smart contract tests (64 tests)
 ```
 
 ---
@@ -84,19 +84,26 @@ operon-dashboard/
 │   ├── rpc.ts                 # Provider + fallback transports
 │   ├── webhooks/process-event.ts  # Parse + verify + process purchase events
 │   ├── wagmi/                 # chain config, contract addresses, transports
-│   ├── i18n/                  # 6-language dictionary + useTranslation hook
+│   ├── i18n/                  # 6-language dictionary + useTranslation hook + rainbowkit-locale mapping
 │   └── api/                   # Fetch helpers, route constants
 ├── contracts/
 │   ├── contracts/             # NodeSale.sol, OperonNode.sol, interfaces, mocks
-│   ├── test/                  # Hardhat tests (51 passing)
-│   ├── scripts/               # Deploy scripts
+│   ├── test/                  # Hardhat tests (64 passing, incl. "Admin role separation")
+│   ├── scripts/               # Deploy scripts — deploy.ts, deploy-mock-usdc.ts (Arb, 6 dec), deploy-mock-usdt.ts (BSC, 18 dec), export-abis.ts
 │   └── hardhat.config.ts
 ├── supabase/
-│   └── migrations/            # 001 → 010 (+ future)
+│   └── migrations/            # 001 → 017 (+ future)
 ├── scripts/
 │   ├── apply-migration.mjs    # Run a migration file against SUPABASE_DB_URL
 │   ├── verify-migrations.mjs  # Sanity-check applied migrations
-│   └── generate-epp-invites.mjs # Bulk-generate EPP invite codes
+│   ├── generate-epp-invites.mjs # Bulk-generate EPP invite codes
+│   ├── dev-indexer.mjs        # Poll both chains + post signed events to /api/dev/*
+│   └── test-webhooks.mjs      # Local signed-payload harness for Alchemy + QuickNode webhook handlers (see OPERATIONS.md §6.5)
+├── e2e/                       # Playwright regression harness — ui/* runnable; full-chain/* stubbed pending fixture wiring. See e2e/README.md, DECISIONS D27.
+│   ├── ui/                    # Frontend-stubbed tests (cheap/fast)
+│   ├── full-chain/            # Playwright + local Hardhat node + mock connector
+│   └── fixtures/              # Shared mock-wallet + hardhat-node helpers
+├── playwright.config.ts
 ├── types/api.ts               # Shared request/response types (single source of truth)
 └── middleware.ts              # Adds x-request-id header; minimal
 ```
@@ -277,7 +284,7 @@ Authoritative types live in `types/api.ts`. All routes return JSON. Error envelo
 | `/api/sale/status` | GET | Current sale stage + active tier |
 | `/api/sale/tiers` | GET | All 40 tiers with sold counts |
 | `/api/sale/validate-code` | POST | Check a referral code, return discount |
-| `/api/nodes/mine` | GET | User's owned nodes |
+| `/api/nodes/mine` | GET | User's owned nodes (token IDs read on-chain via `OperonNode.tokenOfOwnerByIndex`, see R5-BUG-05) |
 | `/api/referrals/summary` | GET | Commission totals, network, code |
 | `/api/referrals/activity` | GET | Recent referral events |
 | `/api/referrals/payouts` | GET | Payout history |
@@ -465,7 +472,9 @@ Located in `contracts/contracts/`:
 - **`NodeSale.sol`** — tiered pricing, per-wallet limits, referral discount verification, pause/unpause, admin-mint support, deadline + max-price-per-node guards, transfer lock helpers
 - **`OperonNode.sol`** — ERC-721 with transfer lock, minter role, getNodeInfo view
 
-Hardhat test suite in `contracts/test/NodeSale.test.ts` — 51 tests, all passing, covers: tier boundaries, wallet limits, paused-state behaviour, wrong token rejection, insufficient balance/allowance, batch purchase, transfer lock, admin functions, deadline + max-price guards, caller-contract guard, max-batch-size, per-tier pause, discount rounding, adminMint, and `getNodeInfo` for non-existent tokens.
+Hardhat test suite in `contracts/test/NodeSale.test.ts` — 64 tests, all passing, covers: tier boundaries, wallet limits, paused-state behaviour, wrong token rejection, insufficient balance/allowance, batch purchase, transfer lock, admin functions, deadline + max-price guards, caller-contract guard, max-batch-size, per-tier pause, discount rounding, adminMint, `getNodeInfo` for non-existent tokens, and the `admin` role separation (rotation, onlyAdmin enforcement on `addReferralCode{s}` / `removeReferralCode` / `setTierActive`, owner-retained treasury/price/pause/withdraw, discount cap ≤ 100%).
+
+**Role separation (R7):** `NodeSale` exposes two on-chain roles. `owner` (Ownable2Step, cold Safe post-novation) controls treasury, price, pause, `setAcceptedToken`, `withdrawFunds`, `setAdmin`, and ownership handover. `admin` (rotating hot key, default = deployer at constructor time) controls `addReferralCode`, `addReferralCodes`, `removeReferralCode`, `setTierActive` — the functions that fire continuously in production and cannot wait on multi-sig latency. Owner rotates or zeros the admin via `setAdmin(address)`. The backend's `ADMIN_PRIVATE_KEY` in Vercel maps to the `admin` role. Pre-mainnet handover plan: see `docs/DECISIONS.md` → D-pending "Mainnet contract ownership via Gnosis Safe."
 
 ### Contract Deployment Status
 
