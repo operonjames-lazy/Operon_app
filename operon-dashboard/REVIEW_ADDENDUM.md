@@ -327,3 +327,13 @@ Project-specific review checks for the global `/review` skill.
 **Why:** Direct construction bypasses fallback, uses inconsistent timeouts, and creates duplicate chain config objects that drift.
 **Check:** Grep for `new ethers.JsonRpcProvider` outside of `lib/rpc.ts`. Any hit is a violation.
 **Severity:** Required.
+
+---
+
+## Checks added from 2026-04-22 admin panel review
+
+### D-P9. Admin dashboards aggregate via Postgres RPC, not client-side sum over unbounded SELECT
+**What:** Any admin read endpoint that reports a total, count, or bucket-sum (revenue, attribution, commissions owed, partner counts, milestone balances) must compute the aggregate in a Postgres function (see migration 020), not by pulling rows with `supabase.from(...).select('col')` and summing them in JS via `.reduce()`.
+**Why:** PostgREST applies an implicit row cap on unbounded SELECTs. A `.select('amount_usd')` against a million-row `purchases` table returns a truncated prefix — the `.reduce()` happily sums whatever it gets and produces confidently wrong money-math on the Overview and Payouts tiles, with no error to alert on. Pattern surfaced in the 2026-04-22 admin-panel review as D-9 (overview aggregates) and Pass-3 (per-user commission totals).
+**Check:** Grep `lib/admin-read.ts` and `app/api/admin/*/route.ts` for `supabase.from(` calls followed by `.reduce(`, `Set(`, or JS-side `SUM`. Any hit where the result feeds a money/count display is a violation — move the aggregation into a new RPC in the latest migration. `count: 'exact', head: true` shadow queries are acceptable for row-count headers (can't truncate); `.rpc('admin_…')` calls are acceptable for sums.
+**Severity:** Blocking.

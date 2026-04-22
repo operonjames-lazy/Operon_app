@@ -87,7 +87,17 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     }
   }
 
-  const { user, partner, referredBy, purchases, referralsMade, commissions, auditActions } = data;
+  const {
+    user,
+    partner,
+    referredBy,
+    purchases,
+    purchaseCount,
+    referralsMade,
+    referralsMadeCount,
+    commissions,
+    auditActions,
+  } = data;
 
   return (
     <div className="space-y-6">
@@ -273,7 +283,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       {/* Purchases */}
-      <Card title={`Purchases · ${purchases.length}`}>
+      <Card title={`Purchases · ${formatNum(purchaseCount)}`}>
         {purchases.length === 0 ? (
           <p className="text-xs text-t3">No purchases.</p>
         ) : (
@@ -360,7 +370,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       </Card>
 
       {/* Network */}
-      <Card title={`Referrals made · ${referralsMade.length}`}>
+      <Card title={`Referrals made · ${formatNum(referralsMadeCount)}`}>
         {referralsMade.length === 0 ? (
           <p className="text-xs text-t3">No downline yet.</p>
         ) : (
@@ -385,8 +395,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 ))}
               </tbody>
             </table>
-            {referralsMade.length > 50 && (
-              <p className="mt-2 text-[11px] text-t4">Showing first 50 of {formatNum(referralsMade.length)}.</p>
+            {referralsMadeCount > 50 && (
+              <p className="mt-2 text-[11px] text-t4">Showing first 50 of {formatNum(referralsMadeCount)}.</p>
             )}
           </div>
         )}

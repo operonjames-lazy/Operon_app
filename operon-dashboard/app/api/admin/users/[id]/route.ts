@@ -7,9 +7,16 @@ import { logger } from '@/lib/logger';
  * GET /api/admin/users/:id
  *
  * Full owner view of one user: profile, EPP partner row (if any), the
- * referral that brought them in, every purchase, every referral they
- * made, commission totals + recent 25 rows, and any audit-log entries
- * where they were the target.
+ * referral that brought them in, the 100 most recent purchases, the 100
+ * most recent referrals they made, commission totals + recent 25 rows,
+ * and any audit-log entries where they were the target.
+ *
+ * Commission totals come from the `admin_user_commission_totals` RPC so
+ * Senior+ partners with >500 commission rows get correct lifetime
+ * numbers. Previously summed a LIMIT-500 list in JS (Pass-3). Header
+ * counts use `count: 'exact', head: true` shadow queries so "Purchases ·
+ * N" / "Referrals made · N" show the real totals rather than the
+ * truncated list length (Pass-3 advisory).
  */
 export async function GET(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin(request);
@@ -28,8 +35,11 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
       partnerRes,
       referredByRes,
       purchasesRes,
+      purchaseCountRes,
       referralsMadeRes,
-      commissionsRes,
+      referralsMadeCountRes,
+      commissionsRecentRes,
+      commissionsTotalsRes,
       auditRes,
     ] = await Promise.all([
       db.from('users').select('*').eq('id', id).single(),
@@ -46,17 +56,26 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
         .order('created_at', { ascending: false })
         .limit(100),
       db
+        .from('purchases')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', id),
+      db
         .from('referrals')
         .select('referred_id, code_used, level, created_at')
         .eq('referrer_id', id)
         .order('created_at', { ascending: false })
         .limit(100),
       db
+        .from('referrals')
+        .select('*', { count: 'exact', head: true })
+        .eq('referrer_id', id),
+      db
         .from('referral_purchases')
         .select('id, purchase_tx, level, commission_usd, paid_at, created_at')
         .eq('referrer_id', id)
         .order('created_at', { ascending: false })
-        .limit(500),
+        .limit(25),
+      db.rpc('admin_user_commission_totals', { p_user_id: id }),
       db
         .from('admin_audit_log')
         .select('action, target_type, details, created_at')
@@ -109,12 +128,11 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
       created_at: r.created_at,
     }));
 
-    const allCommissions = commissionsRes.data ?? [];
-    const totalCents = allCommissions.reduce((a, c) => a + (Number(c.commission_usd) || 0), 0);
-    const paidCents = allCommissions
-      .filter((c) => c.paid_at)
-      .reduce((a, c) => a + (Number(c.commission_usd) || 0), 0);
-    const unpaidCents = totalCents - paidCents;
+    const totals = (commissionsTotalsRes.data ?? {
+      totalCents: 0,
+      paidCents: 0,
+      unpaidCents: 0,
+    }) as { totalCents: number; paidCents: number; unpaidCents: number };
 
     return Response.json({
       user: {
@@ -145,12 +163,14 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
         : null,
       referredBy,
       purchases: purchasesRes.data ?? [],
+      purchaseCount: purchaseCountRes.count ?? (purchasesRes.data?.length ?? 0),
       referralsMade,
+      referralsMadeCount: referralsMadeCountRes.count ?? referralsMade.length,
       commissions: {
-        totalCents,
-        paidCents,
-        unpaidCents,
-        recent: allCommissions.slice(0, 25),
+        totalCents: totals.totalCents,
+        paidCents: totals.paidCents,
+        unpaidCents: totals.unpaidCents,
+        recent: commissionsRecentRes.data ?? [],
       },
       auditActions: auditRes.data ?? [],
     });

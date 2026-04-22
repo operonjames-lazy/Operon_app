@@ -101,12 +101,14 @@ export interface UserDetail {
     code_used: string | null;
     created_at: string;
   }>;
+  purchaseCount: number;
   referralsMade: Array<{
     referred_wallet: string;
     code_used: string;
     level: number;
     created_at: string;
   }>;
+  referralsMadeCount: number;
   commissions: {
     totalCents: number;
     paidCents: number;
