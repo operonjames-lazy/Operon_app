@@ -71,6 +71,16 @@ NEXT_PUBLIC_TESTNET_USDT_ARB=0x...
 NEXT_PUBLIC_TESTNET_USDC_BSC=0x...
 NEXT_PUBLIC_TESTNET_USDT_BSC=0x...
 
+# ─── Mainnet token addresses ───────────────────────────────────
+# Read by /api/admin/sale/balance to report USDC+USDT held in each NodeSale
+# contract (cents, normalised for 6 / 18 decimals). Unset on mainnet = the
+# four balance tiles render "n/a" with no hint. Paste the canonical token
+# addresses from each chain's token registry before flipping NETWORK_MODE.
+NEXT_PUBLIC_USDC_ARB=0x...   # Arbitrum One USDC, 6 decimals
+NEXT_PUBLIC_USDT_ARB=0x...   # Arbitrum One USDT, 6 decimals
+NEXT_PUBLIC_USDC_BSC=0x...   # BNB Chain USDC, 18 decimals
+NEXT_PUBLIC_USDT_BSC=0x...   # BNB Chain USDT, 18 decimals
+
 # ─── Rate limiting ─────────────────────────────────────────────
 UPSTASH_REDIS_REST_URL=https://<id>.upstash.io
 UPSTASH_REDIS_REST_TOKEN=<token>
@@ -185,6 +195,7 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 - [ ] Rotate `CRON_SECRET` off the placeholder
 - [ ] Deploy mainnet NodeSale + OperonNode contracts
 - [ ] Update `NEXT_PUBLIC_SALE_CONTRACT_*` and `SALE_CONTRACT_*` env vars for mainnet addresses
+- [ ] Set `NEXT_PUBLIC_USDC_ARB`, `NEXT_PUBLIC_USDT_ARB`, `NEXT_PUBLIC_USDC_BSC`, `NEXT_PUBLIC_USDT_BSC` to canonical mainnet token addresses (consumed by `/api/admin/sale/balance`; unset = balance tiles render "n/a")
 - [ ] Update `ARBITRUM_RPC_URL` and `BSC_RPC_URL` to mainnet endpoints
 - [ ] Update webhook subscriptions in Alchemy and QuickNode dashboards to mainnet contracts
 - [ ] Run a live smoke test of the commission RPC with a real purchase → webhook → commission → tier promotion path (see §7)
