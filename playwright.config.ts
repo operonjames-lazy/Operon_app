@@ -46,7 +46,7 @@ export default defineConfig({
   ],
 
   // Boot the dev server before tests. We run a separate port (3100) so an
-  // already-running `pnpm dev` on 3000 does not collide. `E2E=1` is a
+  // already-running `pnpm dev` on 3001 does not collide. `E2E=1` is a
   // breadcrumb the app can read in dev to mount its mock wagmi connector
   // instead of the real RainbowKit provider — see e2e/README.md for the
   // provider-swap plan.

@@ -302,7 +302,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 pnpm dev
 ```
-20–30 秒后你会看到 `Local: http://localhost:3000`。用浏览器打开这个地址,应该能看到 Operon 首页。终端里关于 Sentry 的警告可以忽略。
+20–30 秒后你会看到 `Local: http://localhost:3001`。用浏览器打开这个地址,应该能看到 Operon 首页。终端里关于 Sentry 的警告可以忽略。
 
 **这个终端要保持运行**,在整个测试过程中都不要关。关掉它等于关掉网站。
 
@@ -342,7 +342,7 @@ pnpm dev:indexer
 
 ## Part 4 — 开始测试前的自检清单
 
-- [ ] 站点正在 `http://localhost:3000` 运行
+- [ ] 站点正在 `http://localhost:3001` 运行
 - [ ] 第二个终端运行着 `pnpm dev:indexer`,没有 "DEV_INDEXER_SECRET not set" 错误
 - [ ] MetaMask 里有三个账户：Deployer、Wallet A、Wallet B
 - [ ] MetaMask 里已经添加 Arbitrum Sepolia 和 BSC Testnet
@@ -395,7 +395,7 @@ pnpm dev:indexer
 **步骤：**
 
 1. 打开一个无痕窗口(Ctrl+Shift+N)。
-2. 访问 `http://localhost:3000`。
+2. 访问 `http://localhost:3001`。
 3. 点击 **Connect Wallet** → **MetaMask** → **Connect**。
 4. MetaMask 会第二次弹出,请求你**签名**一条消息。点击 **Sign**。
 5. 点击菜单里的 **Referrals**。
@@ -415,7 +415,7 @@ pnpm dev:indexer
 **步骤：**
 
 1. 打开一个新的无痕窗口。
-2. 访问 `http://localhost:3000/?ref=<Test 1 里拿到的推荐码>`。
+2. 访问 `http://localhost:3001/?ref=<Test 1 里拿到的推荐码>`。
 3. 点击 **Connect Wallet** → **MetaMask** → 选择 **Wallet B** → **Connect** → **Sign**。
 4. 点击菜单里的 **Sale**。
 
@@ -430,7 +430,7 @@ pnpm dev:indexer
 **现在尝试破坏它 —— 自我推荐：**
 
 1. 断开 Wallet B(用应用里的 Disconnect 按钮,不要只在 MetaMask 里切)。打开一个新的无痕窗口。
-2. 访问 `http://localhost:3000/?ref=<Wallet A 自己的推荐码>`。
+2. 访问 `http://localhost:3001/?ref=<Wallet A 自己的推荐码>`。
 3. 用 **Wallet A** 登录 —— 也就是拥有该推荐码的那个钱包。
 4. 进入销售页面。
 
@@ -533,7 +533,7 @@ pnpm dev:indexer
 
 1. 开始一次购买：选数量 1,点 Approve → 在 MetaMask 里 Confirm → 等授权完成 → 点 Purchase。
 2. MetaMask 弹出让你确认购买。**不要点 Confirm。** 而是**直接关掉整个浏览器窗口**。
-3. 等 10 秒。重新打开浏览器,访问 `http://localhost:3000`,用 Wallet A 登录。
+3. 等 10 秒。重新打开浏览器,访问 `http://localhost:3001`,用 Wallet A 登录。
 
 **检查项：**
 
@@ -553,19 +553,19 @@ pnpm dev:indexer
 
 **方式 B —— 通过管理 API 生成新的邀请码。** 再开一个终端窗口(让 `pnpm dev` 继续在原来的终端里跑),执行：
 ```
-curl -X POST http://localhost:3000/api/admin/epp/invites \
+curl -X POST http://localhost:3001/api/admin/epp/invites \
   -H "Content-Type: application/json" \
   -H "Cookie: operon_session=<粘贴你的管理员会话 cookie>" \
   -d '{"count": 5}'
 ```
-获取 `operon_session` cookie 的方法：用 **Deployer** 钱包在站点上登录(记住它是管理员钱包),然后在浏览器里按 **F12** → **Application** 标签 → **Cookies** → `http://localhost:3000` → 找到 `operon_session`,复制它的值。
+获取 `operon_session` cookie 的方法：用 **Deployer** 钱包在站点上登录(记住它是管理员钱包),然后在浏览器里按 **F12** → **Application** 标签 → **Cookies** → `http://localhost:3001` → 找到 `operon_session`,复制它的值。
 
 ---
 
 #### 正常流程 —— 向导
 
 1. 打开一个新的无痕窗口。
-2. 访问 `http://localhost:3000/epp/onboard?inv=<你的 EPP 邀请码>`。
+2. 访问 `http://localhost:3001/epp/onboard?inv=<你的 EPP 邀请码>`。
 3. **Step 1 —— 欢迎信。** 读完后点 Next。
 4. **Step 2 —— 条款。** 滚动到底部(共 9 节)。勾选 **I agree**。点 Next。
 5. **Step 3 —— 钱包和表单。** 填写表单。点 Connect Wallet → 选一个**从未作为合作伙伴使用过的全新钱包**(如果需要,在 MetaMask 里新建一个 "Wallet D")。签署消息。
@@ -586,7 +586,7 @@ curl -X POST http://localhost:3000/api/admin/epp/invites \
 现在验证合作伙伴的推荐码带来 **15%** 折扣(不是 10%),并产生合作伙伴级别的佣金。
 
 1. 把刚才的新合作伙伴 Disconnect。打开一个新的无痕窗口。
-2. 访问 `http://localhost:3000/?ref=<你刚拿到的 OPRN-XXXX 推荐码>`。
+2. 访问 `http://localhost:3001/?ref=<你刚拿到的 OPRN-XXXX 推荐码>`。
 3. 用一个**从未使用过的钱包**登录 —— 可以用 Deployer 钱包(它在 Part 3.5 里已经拿到两条链上的 USDC 和 USDT),或者在 MetaMask 里建一个 Wallet E 并充好值。
 4. 进入 Arbitrum 上的销售页面。
 
@@ -614,10 +614,10 @@ curl -X POST http://localhost:3000/api/admin/epp/invites \
 **a) 用过的邀请码。** 把刚才走完流程的邀请码拿回来,重新打开同一个入驻 URL。
 - ☐ 预期：提示 "this invite has already been used"。
 
-**b) 无效邀请码。** 访问 `http://localhost:3000/epp/onboard?inv=EPP-NOPE`。
+**b) 无效邀请码。** 访问 `http://localhost:3001/epp/onboard?inv=EPP-NOPE`。
 - ☐ 预期：提示 "invalid invite"。
 
-**c) 过期邀请码。** 进入 Supabase 项目 → Table Editor → `epp_invites` → 找一条未使用的记录 → 把 `expires_at` 改为昨天 → 保存。然后访问 `http://localhost:3000/epp/onboard?inv=<该邀请码>`。
+**c) 过期邀请码。** 进入 Supabase 项目 → Table Editor → `epp_invites` → 找一条未使用的记录 → 把 `expires_at` 改为昨天 → 保存。然后访问 `http://localhost:3001/epp/onboard?inv=<该邀请码>`。
 - ☐ 预期：提示 "expired"。
 
 **d) 跳过条款。** 用一个新的邀请码,走到 Step 2 时不勾选 I agree,尝试点 Next。

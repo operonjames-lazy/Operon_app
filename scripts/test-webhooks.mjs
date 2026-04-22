@@ -66,7 +66,7 @@ function parseArgs() {
     mode: 'signature-only',
     tx: null,
     chain: null,
-    url: 'http://localhost:3000',
+    url: 'http://localhost:3001',
     wrongSig: false,
   };
   for (let i = 0; i < args.length; i++) {

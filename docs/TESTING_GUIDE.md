@@ -308,7 +308,7 @@ From the project root:
 ```
 pnpm dev
 ```
-After 20–30 seconds you will see `Local: http://localhost:3000`. Open that URL in your browser. You should see the Operon homepage. Ignore any terminal warnings about Sentry.
+After 20–30 seconds you will see `Local: http://localhost:3001`. Open that URL in your browser. You should see the Operon homepage. Ignore any terminal warnings about Sentry.
 
 **Leave this terminal running** for the whole test session. Closing it stops the site.
 
@@ -348,7 +348,7 @@ MetaMask does not show the practice USDC / USDT balances until you tell it which
 
 ## Part 4 — Checklist before you start testing
 
-- [ ] Site running at `http://localhost:3000`
+- [ ] Site running at `http://localhost:3001`
 - [ ] Second terminal running `pnpm dev:indexer` with no "DEV_INDEXER_SECRET not set" error
 - [ ] MetaMask has three accounts: Deployer, Wallet A, Wallet B
 - [ ] MetaMask has Arbitrum Sepolia and BSC Testnet networks added
@@ -401,7 +401,7 @@ The tests only cover things a human with a browser and a wallet can verify. Cont
 **Steps:**
 
 1. Open an Incognito window (Ctrl+Shift+N).
-2. Go to `http://localhost:3000`.
+2. Go to `http://localhost:3001`.
 3. Click **Connect Wallet** → **MetaMask** → **Connect**.
 4. MetaMask pops up a second time asking you to **Sign** a message. Click **Sign**.
 5. Click **Referrals** in the menu.
@@ -421,7 +421,7 @@ The tests only cover things a human with a browser and a wallet can verify. Cont
 **Steps:**
 
 1. New Incognito window.
-2. Go to `http://localhost:3000/?ref=<the code from Test 1>`.
+2. Go to `http://localhost:3001/?ref=<the code from Test 1>`.
 3. Click **Connect Wallet** → **MetaMask** → pick **Wallet B** → **Connect** → **Sign**.
 4. Click **Sale** in the menu.
 
@@ -436,7 +436,7 @@ The tests only cover things a human with a browser and a wallet can verify. Cont
 **Now try one thing to break it — self-referral:**
 
 1. Sign out Wallet B (use the Disconnect button, not just MetaMask). New Incognito window.
-2. Go to `http://localhost:3000/?ref=<Wallet A's own code>`.
+2. Go to `http://localhost:3001/?ref=<Wallet A's own code>`.
 3. Sign in with **Wallet A** — the wallet that owns that code.
 4. Go to the Sale page.
 
@@ -539,7 +539,7 @@ Write down Wallet B's current **USDT** balance as `balance_before`.
 
 1. Start a purchase: pick quantity 1, click Approve → Confirm in MetaMask → wait for approval → click Purchase.
 2. MetaMask opens asking you to confirm the purchase. **Do not click Confirm.** Instead, **close the entire browser window**.
-3. Wait 10 seconds. Reopen the browser, go to `http://localhost:3000`, sign in as Wallet A.
+3. Wait 10 seconds. Reopen the browser, go to `http://localhost:3001`, sign in as Wallet A.
 
 **Checks:**
 
@@ -559,19 +559,19 @@ Write down Wallet B's current **USDT** balance as `balance_before`.
 
 **Option B — generate new invites via the admin API.** Open a **new terminal window** (leave `pnpm dev` running in the other) and run:
 ```
-curl -X POST http://localhost:3000/api/admin/epp/invites \
+curl -X POST http://localhost:3001/api/admin/epp/invites \
   -H "Content-Type: application/json" \
   -H "Cookie: operon_session=<paste your admin session cookie>" \
   -d '{"count": 5}'
 ```
-To get the `operon_session` cookie: sign in with your **Deployer** wallet on the site (remember it is the admin wallet), then in the browser press **F12** → **Application** tab → **Cookies** → `http://localhost:3000` → find `operon_session` and copy the value.
+To get the `operon_session` cookie: sign in with your **Deployer** wallet on the site (remember it is the admin wallet), then in the browser press **F12** → **Application** tab → **Cookies** → `http://localhost:3001` → find `operon_session` and copy the value.
 
 ---
 
 #### Happy-path wizard
 
 1. Open a new Incognito window.
-2. Go to `http://localhost:3000/epp/onboard?inv=<your EPP code>`.
+2. Go to `http://localhost:3001/epp/onboard?inv=<your EPP code>`.
 3. **Step 1 — Welcome letter.** Read and click Next.
 4. **Step 2 — Terms.** Scroll to the bottom (9 sections). Tick **I agree**. Click Next.
 5. **Step 3 — Wallet and form.** Fill the form. Click Connect Wallet → pick a **fresh wallet that has never been used as a partner** (create a new "Wallet D" if needed). Sign the message.
@@ -592,7 +592,7 @@ To get the `operon_session` cookie: sign in with your **Deployer** wallet on the
 Now we verify the partner's code gives a **15%** discount (not 10%) and produces a partner-tier commission.
 
 1. Disconnect the new partner. Open a new Incognito window.
-2. Go to `http://localhost:3000/?ref=<the OPRN-XXXX code you just got>`.
+2. Go to `http://localhost:3001/?ref=<the OPRN-XXXX code you just got>`.
 3. Sign in with a wallet that has never been used before — you can use the Deployer wallet (it has USDC and USDT on both chains from Part 3.5), or create a Wallet E in MetaMask and top it up.
 4. Go to the Sale page on Arbitrum.
 
@@ -620,10 +620,10 @@ Now buy one node:
 **a) Already-used invite.** Take the invite code you already walked through. Reload the same onboarding URL.
 - ☐ Expect: "this invite has already been used" message.
 
-**b) Invalid invite.** Go to `http://localhost:3000/epp/onboard?inv=EPP-NOPE`.
+**b) Invalid invite.** Go to `http://localhost:3001/epp/onboard?inv=EPP-NOPE`.
 - ☐ Expect: "invalid invite" message.
 
-**c) Expired invite.** Go to your Supabase project → Table Editor → `epp_invites` → find an unused row → edit `expires_at` to yesterday's date → save. Visit `http://localhost:3000/epp/onboard?inv=<that code>`.
+**c) Expired invite.** Go to your Supabase project → Table Editor → `epp_invites` → find an unused row → edit `expires_at` to yesterday's date → save. Visit `http://localhost:3001/epp/onboard?inv=<that code>`.
 - ☐ Expect: "expired" message.
 
 **d) Skip terms.** Fresh invite. Step 2: do not tick the agree box. Try to click Next.

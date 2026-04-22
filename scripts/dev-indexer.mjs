@@ -18,7 +18,7 @@
  *   SALE_CONTRACT_BSC=0x...
  *   ARBITRUM_RPC_URL=...       (optional — defaults to public Sepolia RPC)
  *   BSC_RPC_URL=...            (optional — defaults to public BSC testnet)
- *   DEV_INDEXER_URL=http://localhost:3000   (optional)
+ *   DEV_INDEXER_URL=http://localhost:3001   (optional)
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -55,7 +55,7 @@ const INITIAL_LOOKBACK_BLOCKS = 100;
 // eth_getLogs queries spanning more than 10 blocks. Chunk the poll range
 // into sub-queries so long catch-ups still work.
 const MAX_BLOCK_CHUNK = 10;
-const BASE_URL = process.env.DEV_INDEXER_URL || 'http://localhost:3000';
+const BASE_URL = process.env.DEV_INDEXER_URL || 'http://localhost:3001';
 const INGEST_URL = `${BASE_URL}/api/dev/indexer-ingest`;
 const DRAIN_URL = `${BASE_URL}/api/dev/drain-referrals`;
 const REPLAY_URL = `${BASE_URL}/api/dev/replay-failed-events`;

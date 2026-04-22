@@ -1,9 +1,9 @@
 'use client';
 
-import { type ReactNode, useState, useEffect } from 'react';
-import { WagmiProvider } from 'wagmi';
+import { type ReactNode, useState, useEffect, useRef } from 'react';
+import { WagmiProvider, useAccount } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import { RainbowKitProvider, useConnectModal } from '@rainbow-me/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';
 
 import { config } from '@/lib/wagmi/config';
@@ -40,6 +40,50 @@ function ReferralCapture() {
       // ignore
     }
   }, [hydrate, setPendingCode]);
+
+  return null;
+}
+
+/**
+ * Deep-link handler: when the marketing site sends a user here with
+ * `?connect=1`, auto-open the RainbowKit connect modal so the user
+ * lands straight in the signing flow without a second click. The
+ * query param is stripped from the URL after handling so a refresh
+ * won't re-fire the modal.
+ *
+ * Must render inside <RainbowKitProvider> — `useConnectModal` requires it.
+ */
+function ConnectParamHandler() {
+  const { isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    if (firedRef.current) return;
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('connect') !== '1') return;
+
+    const cleanUrl = () => {
+      params.delete('connect');
+      const qs = params.toString();
+      const next = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+      window.history.replaceState({}, '', next);
+    };
+
+    if (isConnected) {
+      cleanUrl();
+      firedRef.current = true;
+      return;
+    }
+
+    if (!openConnectModal) return; // RainbowKit not ready — wait for next render.
+
+    openConnectModal();
+    firedRef.current = true;
+    cleanUrl();
+  }, [isConnected, openConnectModal]);
 
   return null;
 }
@@ -91,6 +135,7 @@ export default function Providers({ children }: ProvidersProps) {
       <QueryClientProvider client={queryClient}>
         <LocalizedRainbowKit>
           <ReferralCapture />
+          <ConnectParamHandler />
           {children}
         </LocalizedRainbowKit>
       </QueryClientProvider>
