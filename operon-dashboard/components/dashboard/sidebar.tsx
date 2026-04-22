@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebarStore } from '@/stores/sidebar';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useIsAdmin } from '@/hooks/useAdmin';
 
 interface NavItem {
   labelKey: string;
@@ -81,6 +82,15 @@ function NodeOpsIcon() {
   );
 }
 
+function AdminIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10 2l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V5l7-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M7.5 10l2 2 3.5-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 const mainNav: NavItem[] = [
   { labelKey: 'nav.overview', href: '/', icon: <OverviewIcon /> },
   { labelKey: 'nav.sale', href: '/sale', icon: <SaleIcon /> },
@@ -129,6 +139,8 @@ export function Sidebar({ walletAddress, isEpp }: SidebarProps) {
   const pathname = usePathname();
   const { isOpen, close } = useSidebarStore();
   const { t } = useTranslation();
+  const { data: adminCheck } = useIsAdmin();
+  const showAdminLink = !!adminCheck?.isAdmin;
 
   // Close sidebar on mobile when navigating
   useEffect(() => {
@@ -180,6 +192,19 @@ export function Sidebar({ walletAddress, isEpp }: SidebarProps) {
           {comingSoonNav.map((item) => (
             <NavLink key={item.labelKey} item={item} active={false} t={t} />
           ))}
+
+          {showAdminLink && (
+            <>
+              <div className="my-3 border-t border-border" />
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-amber hover:bg-amber/5 min-h-[44px]"
+              >
+                <span className="shrink-0"><AdminIcon /></span>
+                Admin panel
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* User info */}
