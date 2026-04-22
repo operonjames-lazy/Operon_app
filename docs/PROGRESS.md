@@ -601,3 +601,17 @@ Verification tonight: `cd contracts && npx hardhat test` → 64 passing. `npx ne
 7. Gnosis Safe novation last — pause/unpause/withdraw admin endpoints stop working after. Accept or update runbook.
 
 ---
+
+## 2026-04-22 — monorepo workspace fix + pnpm bump
+
+Short tooling session.
+
+- Root `pnpm-workspace.yaml` referenced `apps/dashboard/contracts` (path doesn't exist — dashboard lives at `operon-dashboard/`). `pnpm dev` from root only started the website; `pnpm --filter operon-dashboard` matched nothing silently. Repointed packages to `operon-dashboard` + `operon-dashboard/contracts`. `pnpm -r exec pwd` now lists all three workspace roots (`apps/website`, `operon-dashboard`, `operon-dashboard/contracts`).
+- Root `package.json` `packageManager` was `pnpm@9.0.0` while `operon-dashboard/contracts/package.json` already pinned `pnpm@10.31.0` — every command printed a version-mismatch warning. Bumped root to `pnpm@10.31.0` and activated via `corepack prepare pnpm@10.31.0 --activate`. `pnpm --version` reports `10.31.0` in the project, warning is gone.
+- Website's Launch button (`CONNECT_URL = ${DASHBOARD_URL}/?connect=1` in `apps/website/constants.ts`) was already correctly wired — the broken piece was only that the dashboard wasn't being started by `pnpm dev` from root.
+
+### Not verified
+
+- Did not actually run `pnpm dev` end-to-end in this session. Filters resolve, workspace lists all three; operator should confirm the Launch button lands on the dashboard once both servers are up.
+
+---
