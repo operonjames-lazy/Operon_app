@@ -46,8 +46,17 @@ export async function GET(request: NextRequest) {
       data?.forEach((r) => ids.add(r.id));
     }
 
-    // Wildcard on users
-    const like = `%${q.replace(/[%_]/g, '')}%`;
+    // Wildcard on users. Stripped chars:
+    //   %, _   → ILIKE wildcards (would widen the match to everything)
+    //   , ( )  → PostgREST .or() metachars (clause separator + group);
+    //              leaving these in produces malformed queries that
+    //              silently return garbage rather than failing.
+    //   "      → terminates a quoted value; strip to be safe.
+    //   \      → PostgREST escape char.
+    // `.`, `:`, `@`, `-` are safe inside a .or() value (`.` and `:` are
+    // only structural in the key half of `field.op.value`) so we keep
+    // them — otherwise email / UUID searches stop working. See S-76/A-8.
+    const like = `%${q.replace(/[%_,()"\\]/g, '')}%`;
     const { data: userMatches } = await db
       .from('users')
       .select('id')

@@ -1,5 +1,13 @@
 'use client';
 
+// All strings under /admin/* are deliberately hardcoded English — the
+// panel is operator-only and currently serves a single user. Routing
+// every label through `t()` would bloat the 6-language translation
+// files for zero audience value. The rest of the app honours Rule 6
+// (all user-facing strings via `t()`); this subtree is a scoped
+// exception. Revisit if a second admin onboards who doesn't read EN.
+// Tracked as REVIEW_ADDENDUM C-P4 (admin review 2026-04-22).
+
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
