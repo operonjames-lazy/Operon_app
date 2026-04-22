@@ -1,0 +1,7 @@
+packages:
+  - "."
+  - "contracts"
+
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

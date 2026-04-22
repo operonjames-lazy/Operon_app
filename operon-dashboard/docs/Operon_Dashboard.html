@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Operon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&family=Unbounded:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0A0E14;--side:#080B10;--card:#141B27;--card2:#1A2435;--edge:#1F2B3D;--white:#FFFFFF;--t1:#E2E8F0;--t2:#94A3B8;--t3:#64748B;--t4:#475569;--green:#22C55E;--green-bg:rgba(34,197,94,0.08);--green-edge:rgba(34,197,94,0.15);--blue:#3B82F6;--ice:#93C5FD;--gold:#D4A843;--gold-bg:rgba(212,168,67,0.06);--gold-edge:rgba(212,168,67,0.18);--red:#EF4444;--ss:'DM Sans',sans-serif;--mn:'DM Mono',monospace;--dp:'Unbounded',sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);overflow:hidden}
+body{font-family:var(--ss);color:var(--t2);-webkit-font-smoothing:antialiased;line-height:1.6}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--edge);border-radius:4px}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+.shell{display:flex;height:100vh}
+
+/* ═══ SIDEBAR ═══ */
+.sb{width:200px;background:var(--side);border-right:1px solid var(--edge);display:flex;flex-direction:column;flex-shrink:0}
+.sb-logo{padding:20px 16px;font-family:var(--dp);font-weight:700;font-size:14px;color:var(--white);letter-spacing:0.04em;border-bottom:1px solid var(--edge)}
+.sb-logo span{color:var(--ice)}
+.sb-nav{padding:16px 10px;flex:1;overflow-y:auto}
+.sb-lbl{font-family:var(--mn);font-size:7px;letter-spacing:0.14em;color:var(--t4);text-transform:uppercase;padding:20px 8px 6px}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:6px;font-size:12.5px;color:var(--t3);cursor:pointer;transition:all 0.12s;margin-bottom:2px;position:relative}
+.ni:hover{color:var(--t1);background:rgba(255,255,255,0.02)}
+.ni.on{color:var(--white);background:rgba(147,197,253,0.05)}
+.ni.on::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--ice);border-radius:2px}
+.ni .ic{width:16px;text-align:center;font-size:11px;opacity:0.5;flex-shrink:0}.ni.on .ic{opacity:0.9}
+.ni.off{opacity:0.2;pointer-events:none}
+.ni .bdg{margin-left:auto;font-family:var(--mn);font-size:8px;background:rgba(147,197,253,0.1);color:var(--ice);border-radius:10px;padding:1px 7px}
+.sb-foot{padding:14px 16px;border-top:1px solid var(--edge)}
+.sb-tier{display:inline-flex;align-items:center;gap:4px;font-family:var(--mn);font-size:8px;color:var(--gold);border:1px solid var(--gold-edge);background:var(--gold-bg);border-radius:4px;padding:3px 9px;margin-bottom:6px}
+.sb-name{font-size:12px;color:var(--t1);font-weight:600}.sb-role{font-size:10px;color:var(--t3)}
+
+/* ═══ MAIN ═══ */
+.mn{flex:1;display:flex;flex-direction:column;min-width:0}
+.hd{display:flex;align-items:center;gap:10px;padding:12px 28px;border-bottom:1px solid var(--edge);background:var(--side)}
+.hd-t{font-family:var(--dp);font-size:14px;font-weight:600;color:var(--white);flex:1}
+.hd-out{font-size:10px;color:var(--t3);border:1px solid var(--edge);border-radius:4px;padding:4px 12px;text-decoration:none;transition:all 0.1s}
+.hd-out:hover{border-color:var(--t3);color:var(--t1);text-decoration:none}
+.ham{display:none;align-items:center;justify-content:center;width:32px;height:32px;cursor:pointer;flex-shrink:0}
+.ham span{display:block;width:16px;height:1.5px;background:var(--t1);position:relative}.ham span::before,.ham span::after{content:'';position:absolute;left:0;width:16px;height:1.5px;background:var(--t1)}.ham span::before{top:-5px}.ham span::after{top:5px}
+
+.ct{flex:1;overflow-y:auto;padding:24px 28px 60px}
+.pg{display:none;animation:fadeIn 0.3s ease}.pg.on{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══ ATOMS ═══ */
+.sh{font-family:var(--mn);font-size:8px;letter-spacing:0.1em;color:var(--t4);text-transform:uppercase;margin:28px 0 10px}.sh:first-child{margin-top:0}
+.sg{display:grid;gap:10px;margin-bottom:20px}
+.sg4{grid-template-columns:repeat(4,1fr)}.sg3{grid-template-columns:repeat(3,1fr)}.sg2{grid-template-columns:repeat(2,1fr)}
+.st{background:var(--card);border:1px solid var(--edge);border-radius:8px;padding:16px 14px;transition:border-color 0.15s;cursor:pointer}
+.st:hover{border-color:var(--t4)}
+.st-l{font-size:11px;color:var(--t2);margin-bottom:4px}
+.st-v{font-family:var(--dp);font-size:22px;font-weight:700;color:var(--white)}
+.st-s{font-size:10px;color:var(--t4);margin-top:3px}
+.st-link{font-size:10px;color:var(--green);margin-top:6px}
+.btn{display:block;width:100%;padding:13px;border:none;border-radius:6px;font-family:var(--ss);font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;text-align:center;margin-top:6px}
+.btn-g{background:var(--green);color:#000}.btn-g:hover{background:#16A34A;box-shadow:0 4px 20px rgba(34,197,94,0.2)}
+.btn-g:disabled{background:var(--edge);color:var(--t4);cursor:not-allowed;box-shadow:none}
+.btn-o{background:transparent;color:var(--t2);border:1px solid var(--edge)}.btn-o:hover{border-color:var(--t3)}
+.cd{background:var(--card);border:1px solid var(--edge);border-radius:8px;margin-bottom:8px;overflow:hidden}
+.cd-h{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none;transition:background 0.1s}
+.cd-h:hover{background:var(--card2)}.cd-t{font-size:12px;font-weight:600;color:var(--t1)}
+.cd-a{font-size:7px;color:var(--t4);transition:transform 0.2s}.cd.open .cd-a{transform:rotate(180deg);color:var(--green)}
+.cd-b{display:none;padding:4px 14px 14px;font-size:11px;color:var(--t3);line-height:1.7}.cd.open .cd-b{display:block}
+.tb{width:100%;border-collapse:collapse;font-size:10px;margin:6px 0}
+.tb th{text-align:left;padding:6px 8px;font-family:var(--mn);font-size:8px;letter-spacing:0.04em;color:var(--t4);text-transform:uppercase;border-bottom:1px solid var(--edge);font-weight:500}
+.tb td{padding:6px 8px;border-bottom:1px solid var(--edge);color:var(--t2)}.tb tr:last-child td{border-bottom:none}
+.tb td:not(:first-child){font-family:var(--mn);text-align:center}
+.tb tr.cur{background:rgba(34,197,94,0.04)}.tb tr.cur td:first-child{color:var(--green);font-weight:600}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.nr{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--edge);font-size:11px}.nr:last-child{border-bottom:none}
+.cbar{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--edge);border-radius:8px;margin-bottom:16px}
+.cbar-code{font-family:var(--dp);font-size:16px;font-weight:800;color:var(--white);letter-spacing:0.03em;flex-shrink:0}
+.cbar-link{font-family:var(--mn);font-size:9px;color:var(--t4);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbar-btns{display:flex;gap:3px;flex-shrink:0}
+.cb{padding:5px 12px;font-size:9px;font-weight:600;border:1px solid var(--edge);background:none;color:var(--green);border-radius:4px;cursor:pointer;font-family:var(--ss);transition:all 0.1s}
+.cb:hover{border-color:var(--green);background:var(--green-bg)}
+.feed{background:var(--card);border:1px solid var(--edge);border-radius:8px;padding:14px;height:100%}
+.feed-t{font-size:12px;font-weight:600;color:var(--t1);margin-bottom:10px}
+.feed-empty{font-size:11px;color:var(--t4);font-style:italic;padding:16px 0;text-align:center}
+.feed-i{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--edge);font-size:11px}.feed-i:last-child{border-bottom:none}
+.feed-ic{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;background:var(--green-bg);border:1px solid var(--green-edge);color:var(--green)}
+.feed-tx{color:var(--t2);line-height:1.4}.feed-tm{font-family:var(--mn);font-size:8px;color:var(--t4);margin-top:1px}
+
+/* NODE CARD */
+.nc{background:var(--card);border:1px solid var(--edge);border-radius:8px;padding:12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+.nc-l{display:flex;align-items:center;gap:10px}
+.nc-nft{width:34px;height:34px;border-radius:6px;background:linear-gradient(135deg,var(--green-bg),rgba(34,197,94,0.02));border:1px solid var(--green-edge);display:flex;align-items:center;justify-content:center;font-family:var(--dp);font-size:9px;font-weight:700;color:var(--ice)}
+.nc-tier{font-size:12px;color:var(--white);font-weight:500}.nc-meta{font-size:9px;color:var(--t4);margin-top:1px}
+.nc-r{text-align:right}.nc-status{color:var(--green);font-size:9px;font-family:var(--mn)}.nc-rw{color:var(--t3);font-size:9px;margin-top:1px}
+
+/* PARTNER STATUS */
+.psc{background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden}
+.psc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.psc-tier{display:inline-flex;align-items:center;gap:4px;font-family:var(--mn);font-size:9px;color:var(--gold);border:1px solid var(--gold-edge);background:var(--gold-bg);border-radius:4px;padding:3px 10px;margin-bottom:12px}
+.psc-name{font-family:var(--dp);font-size:20px;font-weight:700;color:var(--white);margin-bottom:2px}
+.psc-since{font-size:10px;color:var(--t4)}
+.psc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--edge)}
+.psc-st{text-align:center}.psc-sv{font-family:var(--dp);font-size:18px;font-weight:700;color:var(--white)}.psc-sl{font-size:8px;color:var(--t4);text-transform:uppercase;margin-top:2px}
+
+/* MILESTONE */
+.ms-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--edge);font-size:10px}.ms-row:last-child{border-bottom:none}
+.ms-label{width:50px;color:var(--t4);flex-shrink:0;font-family:var(--mn);font-size:9px}
+.ms-bar{flex:1;height:3px;background:var(--edge);border-radius:3px;overflow:hidden}.ms-fill{height:100%;background:var(--green);border-radius:3px}
+.ms-bonus{font-family:var(--mn);color:var(--t4);width:50px;text-align:right;flex-shrink:0;font-size:9px}
+
+/* RESOURCES */
+.rl{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--edge);border-radius:8px;text-decoration:none;margin-bottom:6px;transition:all 0.12s}
+.rl:hover{background:var(--card2);border-color:var(--t4);text-decoration:none}
+.rl-ic{font-size:16px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:var(--green-bg);border:1px solid var(--green-edge);border-radius:6px}
+.rl-t{font-size:12px;color:var(--green)}.rl-s{font-size:10px;color:var(--t4);margin-top:1px}
+.sl{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--card);border:1px solid var(--edge);border-radius:6px;font-size:11px;margin-bottom:4px}
+.sl a{font-family:var(--mn);font-size:10px}
+.cl{font-size:10px;color:var(--t3);line-height:1.6;padding:4px 0 4px 12px;border-left:2px solid var(--edge);margin-bottom:4px}
+
+/* SALE */
+.chain-sel{display:flex;gap:6px;margin:10px 0}
+.cs{flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--edge);border-radius:6px;cursor:pointer;text-align:center;transition:all 0.12s}
+.cs:hover{border-color:var(--t4)}.cs.on{border-color:var(--green);background:var(--green-bg)}
+.cs-n{font-family:var(--dp);font-size:10px;font-weight:600;color:var(--white)}.cs-s{font-size:9px;color:var(--t4)}
+.qty{display:flex;align-items:center;gap:10px;margin:8px 0}
+.qty-btn{width:28px;height:28px;border:1px solid var(--edge);background:var(--card2);color:var(--white);border-radius:5px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color 0.1s}
+.qty-btn:hover{border-color:var(--green)}
+.qty-val{font-family:var(--dp);font-size:20px;font-weight:700;color:var(--white);min-width:36px;text-align:center}
+.pay-sel{width:100%;padding:10px 14px;background:var(--card2);border:1px solid var(--edge);border-radius:6px;color:var(--white);font-family:var(--ss);font-size:12px;outline:none;appearance:none;cursor:pointer}
+
+.ft{margin-top:28px;padding-top:14px;border-top:1px solid var(--edge);font-size:9px;color:var(--t4)}
+.ft .m{font-family:var(--mn);color:var(--t3)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--green);color:var(--green);font-size:12px;font-weight:500;padding:8px 20px;border-radius:6px;transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);z-index:100;pointer-events:none}.toast.show{transform:translateX(-50%) translateY(0)}
+.lng{padding:3px 8px;font-size:8px;font-family:var(--ss);font-weight:600;border:1px solid var(--edge);background:none;color:var(--t4);border-radius:3px;cursor:pointer;transition:all 0.1s}.lng:hover{border-color:var(--t3);color:var(--t2)}.lng.on{border-color:var(--ice);color:var(--ice);background:rgba(147,197,253,0.06)}
+
+.share-box{background:var(--card);border:1px solid var(--edge);border-radius:8px;padding:14px}
+.share-item{padding:8px 0;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px;font-size:10px}.share-item:last-child{border-bottom:none}
+
+@media(max-width:860px){.sb{position:fixed;left:-220px;top:0;bottom:0;width:210px;z-index:20;transition:left 0.25s ease}.sb.open{left:0}.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:15}.sb-overlay.show{display:block}.ct{padding:18px 16px 40px}.hd{padding:10px 16px}.sg4,.sg2{grid-template-columns:1fr 1fr}.sg3{grid-template-columns:1fr 1fr 1fr}.g2{grid-template-columns:1fr}.cdw{flex-direction:column;align-items:flex-start;gap:8px}.cbar{flex-direction:column;align-items:stretch;gap:6px}.cbar-btns{width:100%}.cbar-btns .cb{flex:1}.ham{display:flex!important}}
+@media(min-width:861px){.ham{display:none!important}.sb-overlay{display:none!important}}
+@media(min-width:1100px){.ct{max-width:820px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sb">
+<div class="sb-logo">OPER<span>ON</span></div>
+<nav class="sb-nav">
+<div class="ni on" onclick="go('home')"><span class="ic">◎</span data-t="nav_home">Home</div>
+<div class="ni" onclick="go('sale')"><span class="ic">⬡</span data-t="nav_sale">Purchase Node</div>
+<div class="ni" onclick="go('nodes')"><span class="ic">◈</span data-t="nav_nodes">Node Status<span class="bdg">3</span></div>
+<div class="ni" onclick="go('referrals')"><span class="ic">↗</span data-t="nav_ref">Referrals</div>
+<div class="ni" onclick="go('resources')"><span class="ic">📄</span data-t="nav_res">Resources</div>
+<div class="sb-lbl" data-t="nav_soon">Coming Soon</div>
+<div class="ni off"><span class="ic">◇</span data-t="nav_staking">Staking</div>
+<div class="ni off"><span class="ic">⚙</span data-t="nav_ops">Node Operations</div>
+</nav>
+<div class="sb-foot">
+<div class="sb-tier">★ Affiliate Partner</div>
+<div class="sb-name">David Kim</div>
+<div class="sb-role">Elite Partner</div>
+</div>
+</aside>
+
+<div class="mn">
+<header class="hd"><div class="ham" onclick="toggleMenu()"><span></span></div><div class="hd-t" id="hd-t">Home</div><div style="display:flex;align-items:center;gap:3px"><button class="lng on" onclick="setLang('en')">EN</button><button class="lng" onclick="setLang('tc')">繁中</button><button class="lng" onclick="setLang('sc')">简中</button></div><a href="#" class="hd-out" data-t="signout">Sign out</a></header>
+<div class="ct">
+
+<!-- ═══ HOME ═══ -->
+<div class="pg on" id="pg-home">
+<div class="sg sg3">
+<div class="st" onclick="go('nodes')"><div class="st-l" data-t="nodes_owned">Nodes Owned</div><div class="st-v">3</div><div class="st-link">View status →</div></div>
+<div class="st" onclick="go('nodes')"><div class="st-l" data-t="est_daily">Est. Daily Emission</div><div class="st-v">~228 <span style="font-size:11px;font-weight:400;color:var(--t3)">$OPRN</span></div><div class="st-link">View breakdown →</div></div>
+<div class="st" onclick="go('referrals')"><div class="st-l" data-t="ref_network">Referral Network</div><div class="st-v">3</div><div class="st-link">View referrals →</div></div>
+</div>
+
+<div style="background:var(--card);border:1px solid var(--edge);border-radius:8px;padding:20px;margin-bottom:20px">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+<div><div style="font-size:16px;font-weight:600;color:var(--white)" data-t="genesis">Genesis Node Sale</div><div style="font-size:12px;color:var(--t2);margin-top:2px">Whitelist · Tier 2 from <span style="color:var(--green);font-weight:600">$446</span></div></div>
+<div style="font-family:var(--mn);font-size:9px;color:var(--green);display:flex;align-items:center;gap:4px"><div class="ban-dot" style="width:5px;height:5px"></div>Live</div>
+</div>
+<div style="display:flex;gap:2px;margin-bottom:12px">
+<div style="flex:1;height:6px;background:var(--t4);border-radius:3px 0 0 3px"></div>
+<div style="flex:1;height:6px;background:linear-gradient(90deg,var(--green),#16A34A);border-radius:0;box-shadow:0 0 8px rgba(34,197,94,0.3)"></div>
+<div style="flex:1;height:6px;background:var(--edge);border-radius:0"></div>
+<div style="flex:1;height:6px;background:var(--edge);border-radius:0"></div>
+<div style="flex:1;height:6px;background:var(--edge);border-radius:0 3px 3px 0"></div>
+</div>
+<div style="display:flex;justify-content:space-between;font-family:var(--mn);font-size:10px;color:var(--t3);margin-bottom:14px"><span>4,597 / 6,250 whitelist remaining</span><span>15% EPP discount</span></div>
+<button class="btn btn-g" onclick="go('sale')" data-t="purchase_btn">Purchase Node →</button>
+</div>
+
+<div style="background:var(--card);border:1px solid var(--edge);border-radius:8px;padding:14px;display:flex;align-items:center;justify-content:space-between">
+<div><div style="font-size:11px;color:var(--t3);margin-bottom:2px" data-t="your_code">Your referral code</div><div style="font-family:var(--dp);font-size:15px;font-weight:700;color:var(--white)">OPRN-K7VM</div></div>
+<div style="display:flex;gap:3px"><button class="cb" onclick="cpy('c')" data-t="copy">Copy</button><button class="cb" onclick="cpy('l')" data-t="link">Link</button><button class="cb" onclick="shr()" data-t="share">Share</button></div>
+</div>
+<div style="font-size:10px;color:var(--t4);margin-top:6px">Your buyers get whitelist access + 15% discount. You earn on every sale.</div>
+<div class="ft"><span>Payouts to <span class="m">0x742d...2bD38</span> on <span class="m">BNB Chain</span></span></div>
+</div>
+
+<!-- ═══ PURCHASE NODE ═══ -->
+<div class="pg" id="pg-sale">
+<div style="text-align:center;padding:12px 0 24px">
+<div style="font-family:var(--mn);font-size:12px;letter-spacing:0.08em;color:var(--green);text-transform:uppercase;margin-bottom:10px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:5px"><div class="ban-dot" style="width:7px;height:7px"></div>Whitelist Live</div>
+<div style="font-size:14px;color:var(--t2);font-weight:500" data-t="current_tier">Current Tier</div>
+<div style="font-family:var(--dp);font-size:46px;font-weight:800;color:var(--white);letter-spacing:-0.02em">$446</div>
+<div style="font-size:12px;color:var(--t4)"><span style="text-decoration:line-through">$525</span> <span style="color:var(--green);font-weight:500">15% off</span></div>
+<div style="font-family:var(--mn);font-size:12px;color:var(--t2);margin-top:8px">Tier 2 · <span style="color:var(--white)">847</span> / 1,250 remaining</div>
+</div>
+
+<div style="display:flex;gap:2px;margin-bottom:4px">
+<div style="flex:1;height:34px;background:var(--edge);border-radius:6px 0 0 6px;display:flex;align-items:center;justify-content:center;font-family:var(--mn);font-size:8px;color:var(--t4)">T1 Sold</div>
+<div style="flex:1;height:34px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--mn);font-size:9px;color:#000;font-weight:600;box-shadow:0 0 24px rgba(34,197,94,0.25)">T2 $446</div>
+<div style="flex:1;height:34px;background:var(--card);border:1px solid var(--edge);display:flex;align-items:center;justify-content:center;font-family:var(--mn);font-size:8px;color:var(--t4)">T3 $468</div>
+<div style="flex:1;height:34px;background:var(--card);border:1px solid var(--edge);display:flex;align-items:center;justify-content:center;font-family:var(--mn);font-size:8px;color:var(--t4)">T4 $492</div>
+<div style="flex:1;height:34px;background:var(--card);border:1px solid var(--edge);border-radius:0 6px 6px 0;display:flex;align-items:center;justify-content:center;font-family:var(--mn);font-size:8px;color:var(--t4)">T5 $517</div>
+</div>
+<div style="display:flex;justify-content:space-between;font-family:var(--mn);font-size:9px;color:var(--t3);margin-bottom:20px"><span>4,597 / 6,250 whitelist</span><span>All prices with 15% EPP discount</span></div>
+
+<div style="background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:20px">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><span style="font-size:14px;font-weight:600;color:var(--white)" data-t="buy_nodes">Buy Nodes</span><span style="font-family:var(--mn);font-size:8px;padding:4px 10px;background:var(--green-bg);border:1px solid var(--green-edge);border-radius:4px;color:var(--green)">OPRN-K7VM ✓</span></div>
+
+<div style="font-size:10px;color:var(--t4);margin-bottom:4px" data-t="chain">Chain</div>
+<div class="chain-sel"><div class="cs on" onclick="this.classList.add('on');this.nextElementSibling.classList.remove('on')"><div class="cs-n">BNB Chain</div><div class="cs-s">BEP-20</div></div><div class="cs" onclick="this.classList.add('on');this.previousElementSibling.classList.remove('on')"><div class="cs-n">Arbitrum</div><div class="cs-s">ERC-20</div></div></div>
+
+<div style="background:var(--card2);border:1px solid var(--edge);border-radius:8px;padding:12px;margin:12px 0">
+<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:10px;color:var(--t4)" data-t="quantity">Quantity</span><span style="font-size:9px;color:var(--t4)">Max 10/wallet</span></div>
+<div class="qty"><button class="qty-btn" onclick="adjQ(-1)">−</button><div class="qty-val" id="q-val">1</div><button class="qty-btn" onclick="adjQ(1)">+</button></div>
+</div>
+
+<div style="font-size:10px;color:var(--t4);margin-bottom:4px">Pay with</div>
+<select class="pay-sel"><option>USDC — $2,340.00</option><option>USDT — $180.00</option></select>
+
+<div style="background:var(--card2);border:1px solid var(--edge);border-radius:8px;padding:12px;margin:14px 0">
+<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px"><span style="color:var(--t4)">Price × 1</span><span style="color:var(--t2);font-family:var(--mn)">$446.25</span></div>
+<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px"><span style="color:var(--t4)">Gas est.</span><span style="color:var(--t2);font-family:var(--mn)">~$0.12</span></div>
+<div style="height:1px;background:var(--edge);margin:8px 0"></div>
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:600;color:var(--white)" data-t="total">Total</span><span style="font-family:var(--dp);font-size:18px;font-weight:700;color:var(--green)" id="total-val">$446</span></div>
+</div>
+
+<button class="btn btn-g" style="padding:14px;font-size:14px" data-t="approve">Approve USDC</button>
+<button class="btn btn-g" disabled style="padding:14px;font-size:14px;margin-top:6px">Purchase 1 Node</button>
+<div style="font-size:8px;color:var(--t4);margin-top:10px;text-align:center">1 × ERC-721 NFT on BNB Chain · 63,000 $OPRN base emission per node</div>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--t4);margin-top:10px"><span>Wallet: <span style="font-family:var(--mn);color:var(--t2)">0x742d...2bD38</span></span><a href="#" style="font-size:9px">Switch</a></div>
+</div>
+
+<!-- ═══ NODE STATUS ═══ -->
+<div class="pg" id="pg-nodes">
+<div style="background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:24px;margin-bottom:20px;text-align:center">
+<div style="font-size:12px;color:var(--t2);margin-bottom:4px" data-t="est_emission">Estimated Total Daily Emission</div>
+<div style="font-family:var(--dp);font-size:40px;font-weight:800;color:var(--white)">~228 <span style="font-size:14px;color:var(--t3);font-weight:400">$OPRN/day</span></div>
+<div style="display:flex;justify-content:center;gap:24px;margin-top:14px;font-size:11px">
+<span><span style="color:var(--t4)">Your nodes:</span> <span style="color:var(--white);font-family:var(--mn)">207.0</span></span>
+<span><span style="color:var(--t4)">Referral pool:</span> <span style="color:var(--green);font-family:var(--mn)">20.7</span></span>
+</div>
+<div style="font-size:9px;color:var(--t4);margin-top:10px">Monthly ~6,930 · Annual ~83,739 · Every referred node increases your pool share</div>
+</div>
+
+<div style="background:rgba(34,197,94,0.04);border:1px solid var(--green-edge);border-radius:6px;padding:10px 14px;margin-bottom:20px;font-size:11px;color:var(--green);text-align:center">Rewards begin at TGE · Date TBA</div>
+
+<div class="sg sg3">
+<div class="st" style="cursor:default"><div class="st-l" data-t="owned">Owned</div><div class="st-v">3</div></div>
+<div class="st" style="cursor:default"><div class="st-l" data-t="invested">Invested</div><div class="st-v">$1,338</div></div>
+<div class="st" style="cursor:default"><div class="st-l" data-t="chains">Chains</div><div class="st-v">2</div><div class="st-s">ARB + BSC</div></div>
+</div>
+
+<div class="sh">Your Nodes</div>
+<div class="nc"><div class="nc-l"><div class="nc-nft">T2</div><div><div class="nc-tier">Tier 2 · #1247</div><div class="nc-meta">$446 · Arbitrum · Apr 15</div></div></div><div class="nc-r"><div class="nc-status">● Active</div><div class="nc-rw">~69/day</div></div></div>
+<div class="nc"><div class="nc-l"><div class="nc-nft">T2</div><div><div class="nc-tier">Tier 2 · #1248</div><div class="nc-meta">$446 · Arbitrum · Apr 15</div></div></div><div class="nc-r"><div class="nc-status">● Active</div><div class="nc-rw">~69/day</div></div></div>
+<div class="nc"><div class="nc-l"><div class="nc-nft">T2</div><div><div class="nc-tier">Tier 2 · #1249</div><div class="nc-meta">$446 · BNB Chain · Apr 16</div></div></div><div class="nc-r"><div class="nc-status">● Active</div><div class="nc-rw">~69/day</div></div></div>
+<div style="font-size:9px;color:var(--t4);margin-top:8px">Delegation + NaaS available at network launch</div>
+<div class="ft"><span></span><a href="#" style="font-size:10px" onclick="go('sale');return false">Buy more nodes →</a></div>
+</div>
+
+<!-- ═══ REFERRALS ═══ -->
+<div class="pg" id="pg-referrals">
+<div class="psc">
+<div class="psc-tier">★ Elite Partner · Affiliate</div>
+<div class="psc-name">David Kim</div>
+<div class="psc-since">Partner since April 2, 2026</div>
+<div class="psc-stats">
+<div class="psc-st"><div class="psc-sv">$1,338</div><div class="psc-sl">Credited</div></div>
+<div class="psc-st"><div class="psc-sv">$161</div><div class="psc-sl" data-t="commission">Commission</div></div>
+<div class="psc-st"><div class="psc-sv">3</div><div class="psc-sl">Network</div></div>
+</div>
+</div>
+
+<div class="cbar"><div class="cbar-code">OPRN-K7VM</div><div class="cbar-link">operon.network/node?ref=OPRN-K7VM</div><div class="cbar-btns"><button class="cb" onclick="cpy('c')" data-t="copy">Copy</button><button class="cb" onclick="cpy('l')" data-t="link">Link</button><button class="cb" onclick="shr()" data-t="share">Share</button></div></div>
+<div style="font-size:10px;color:var(--t4);margin:-8px 0 16px">Whitelist access + 15% discount. <span style="font-family:var(--mn);font-size:9px;color:var(--green)">At Tier 2 → you earn $53.52 per node</span></div>
+
+<div class="sh" data-t="commission">Commission</div>
+<div class="cd" style="margin-bottom:16px"><div style="padding:12px 14px">
+<div class="nr"><span style="color:var(--t3)">L1 Direct (12%)</span><span style="font-family:var(--mn);color:var(--white)">$160.56</span></div>
+<div class="nr"><span style="color:var(--t3)">L2 (7%)</span><span style="font-family:var(--mn);color:var(--t2)">$0</span></div>
+<div class="nr"><span style="color:var(--t3)">L3 (4.5%)</span><span style="font-family:var(--mn);color:var(--t2)">$0</span></div>
+<div class="nr"><span style="color:var(--t3)">L4 (3%)</span><span style="font-family:var(--mn);color:var(--t2)">$0</span></div>
+<div style="display:flex;justify-content:space-between;padding:8px 0 0;font-size:13px;font-weight:600;border-top:1px solid var(--edge);margin-top:4px"><span style="color:var(--t1)">Unpaid</span><span style="font-family:var(--mn);color:var(--green)">$160.56</span></div>
+</div></div>
+
+<div class="sh" data-t="milestones">Milestones</div>
+<div class="cd" style="margin-bottom:16px"><div style="padding:12px 14px">
+<div style="font-size:11px;color:var(--green);margin-bottom:8px;font-weight:500">$3,662 to your $500 bonus</div>
+<div class="ms-row"><div class="ms-label">$10K</div><div class="ms-bar"><div class="ms-fill" style="width:13.4%"></div></div><div class="ms-bonus">$500</div></div>
+<div class="ms-row"><div class="ms-label">$25K</div><div class="ms-bar"><div class="ms-fill" style="width:5.4%"></div></div><div class="ms-bonus">$1,500</div></div>
+<div class="ms-row"><div class="ms-label">$50K</div><div class="ms-bar"><div class="ms-fill" style="width:2.7%"></div></div><div class="ms-bonus">$3,000</div></div>
+<div class="ms-row"><div class="ms-label">$100K</div><div class="ms-bar"><div class="ms-fill" style="width:0%"></div></div><div class="ms-bonus">$7,500</div></div>
+</div></div>
+
+<div class="g2">
+<div class="feed"><div class="feed-t" data-t="activity">Activity</div>
+<div class="feed-i"><div class="feed-ic">⬡</div><div><div class="feed-tx">Referral bought 2 nodes at Tier 2</div><div class="feed-tm">2 hours ago</div></div></div>
+<div class="feed-i"><div class="feed-ic">⬡</div><div><div class="feed-tx">Referral bought 1 node at Tier 2</div><div class="feed-tm">Yesterday</div></div></div>
+<div class="feed-i"><div class="feed-ic">↗</div><div><div class="feed-tx">New L1 referral joined</div><div class="feed-tm">2 days ago</div></div></div>
+</div>
+<div class="feed"><div class="feed-t" data-t="network">Network</div>
+<div class="nr"><span style="color:var(--t3)">L1 Direct</span><span style="font-family:var(--mn);color:var(--white)">2</span></div>
+<div class="nr"><span style="color:var(--t3)">L2</span><span style="font-family:var(--mn);color:var(--t2)">1</span></div>
+<div class="nr"><span style="color:var(--t3)">L3</span><span style="font-family:var(--mn);color:var(--t2)">0</span></div>
+<div class="nr"><span style="color:var(--t3)">L4</span><span style="font-family:var(--mn);color:var(--t2)">0</span></div>
+<div class="nr"><span style="color:var(--t3)">L5+</span><span style="font-family:var(--mn);color:var(--t2)">0</span></div>
+<div style="font-size:8px;color:var(--t4);margin-top:6px">3 total</div>
+</div>
+</div>
+
+<div class="sh" data-t="payout">Payout History</div>
+<div class="cd"><div style="padding:12px;text-align:center;font-size:10px;color:var(--t4);font-style:italic">No payouts yet. Biweekly via Merkle root.</div></div>
+
+<div class="sh" data-t="prog_ref">Programme Reference</div>
+<div class="cd" onclick="this.classList.toggle('open')"><div class="cd-h"><div class="cd-t" data-t="rates">Commission Rates &amp; Tiers</div><div class="cd-a">▼</div></div><div class="cd-b"><table class="tb"><tr><th>Tier</th><th>Threshold</th><th>L1</th><th>Cascade</th><th>Stipend</th></tr><tr class="cur"><td>Affiliate</td><td>$5K</td><td>12%</td><td>4</td><td>—</td></tr><tr><td>Partner</td><td>$25K</td><td>14%</td><td>5</td><td>$1.5K/mo</td></tr><tr><td>Senior</td><td>$75K</td><td>16%</td><td>6</td><td>$3K/mo</td></tr><tr><td>Regional</td><td>$200K</td><td>18%</td><td>7</td><td>$5K/mo</td></tr><tr><td>Market</td><td>$500K</td><td>20%</td><td>8</td><td>$8K/mo</td></tr><tr><td>Founding</td><td>$1M</td><td>20%</td><td>9</td><td>$10K/mo</td></tr></table><p style="font-size:8px;margin-top:4px">All tiers: 15% buyer discount.</p></div></div>
+<div class="cd" onclick="this.classList.toggle('open')"><div class="cd-h"><div class="cd-t" data-t="weights">Credited Amount Weights</div><div class="cd-a">▼</div></div><div class="cd-b"><table class="tb"><tr><th>Level</th><th>Weight</th></tr><tr><td>L1</td><td>100%</td></tr><tr><td>L2</td><td>25%</td></tr><tr><td>L3</td><td>15%</td></tr><tr><td>L4</td><td>10%</td></tr><tr><td>L5</td><td>5%</td></tr><tr><td>L6-L8</td><td>2-1%</td></tr></table></div></div>
+<div class="cd" onclick="this.classList.toggle('open')"><div class="cd-h"><div class="cd-t" data-t="stipend">Monthly Stipend</div><div class="cd-a">▼</div></div><div class="cd-b"><p>Available from Partner tier and above. Paid biweekly in USDC.</p><p style="margin-top:6px"><strong style="color:var(--t1)">Full stipend:</strong> Your biweekly L1 sales ≥ 5× your biweekly stipend amount.</p><p><strong style="color:var(--t1)">Half stipend:</strong> 80–99% of the threshold.</p><p><strong style="color:var(--t1)">Forfeited:</strong> Below 80%. Does not carry forward.</p></div></div>
+</div>
+
+<!-- ═══ RESOURCES ═══ -->
+<div class="pg" id="pg-resources">
+<div class="sh" style="margin-top:0" data-t="partner_mat">Partner Materials</div>
+<a href="#" class="rl"><div class="rl-ic">📄</div><div><div class="rl-t">Pitch Training Manual</div><div class="rl-s">Rates, messaging, objection handling</div></div></a>
+<a href="#" class="rl"><div class="rl-ic">🎨</div><div><div class="rl-t">Brand Assets</div><div class="rl-s">Logos, colours, templates</div></div></a>
+<a href="#" class="rl"><div class="rl-ic">📋</div><div><div class="rl-t">Terms & Conditions</div><div class="rl-s">EPP v1.0</div></div></a>
+<div class="sh" data-t="useful">Useful Links</div>
+<a href="#" class="rl"><div class="rl-ic">🌐</div><div><div class="rl-t">Website</div><div class="rl-s">operon.network</div></div></a>
+<a href="#" class="rl"><div class="rl-ic">📖</div><div><div class="rl-t">Whitepaper</div><div class="rl-s">Technical architecture and tokenomics</div></div></a>
+<a href="#" class="rl"><div class="rl-ic">❓</div><div><div class="rl-t">FAQ</div><div class="rl-s">Frequently asked questions</div></div></a>
+<a href="#" class="rl"><div class="rl-ic">✍️</div><div><div class="rl-t">Medium</div><div class="rl-s">Articles, updates, announcements</div></div></a>
+<div class="sh" data-t="community">Community</div>
+<div class="sl"><span style="color:var(--t4)">Telegram</span><a href="#">t.me/operon_network</a></div>
+<div class="sl"><span style="color:var(--t4)">Discord</span><a href="#">discord.gg/operon</a></div>
+<div class="sl"><span style="color:var(--t4)">X</span><a href="#">@operon_network</a></div>
+<div class="sh" data-t="compliance">Compliance</div>
+<div class="cl">Nodes are network participation licences — not securities or investments.</div>
+<div class="cl">Programme rates are subject to your T&C acceptance.</div>
+<div class="cl">Use only Operon-approved branding and terminology.</div>
+<div class="cl">Do not communicate guaranteed returns or target US persons.</div>
+</div>
+
+</div></div></div>
+<div class="sb-overlay" id="sb-overlay" onclick="toggleMenu()"></div>
+<div class="toast" id="toast"></div>
+<script>
+var qty=1,code='OPRN-K7VM',link='https://operon.network/node?ref=OPRN-K7VM';
+var titles={home:'Home',sale:'Purchase Node',nodes:'Node Status',referrals:'Referrals',resources:'Resources'};
+function toggleMenu(){document.querySelector('.sb').classList.toggle('open');document.getElementById('sb-overlay').classList.toggle('show')}
+function go(pg){document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on')});document.getElementById('pg-'+pg).classList.add('on');document.querySelectorAll('.sb .ni').forEach(function(n){n.classList.remove('on')});if(event&&event.target){var el=event.target.closest('.ni,.st');if(el)el.classList.add('on')}document.getElementById('hd-t').textContent=titles[pg]||pg;document.querySelector('.ct').scrollTop=0;document.querySelector('.sb').classList.remove('open');document.getElementById('sb-overlay').classList.remove('show')}
+function adjQ(d){qty=Math.max(1,Math.min(10,qty+d));document.getElementById('q-val').textContent=qty;document.getElementById('total-val').textContent='$'+(446*qty).toLocaleString()}
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2000)}
+function cpy(w){var v=w==='c'?code:link;navigator.clipboard.writeText(v).then(function(){toast(w==='c'?'Code copied':'Link copied')})}
+function shr(){if(navigator.share)navigator.share({title:'Operon',text:'Code '+code+':',url:link}).catch(function(){});else cpy('l')}
+
+var L = {
+en: {
+  nav_home:'Home', nav_sale:'Purchase Node', nav_nodes:'Node Status', nav_ref:'Referrals', nav_res:'Resources',
+  nav_soon:'Coming Soon', nav_staking:'Staking', nav_ops:'Node Operations', signout:'Sign out',
+  t_home:'Home', t_sale:'Purchase Node', t_nodes:'Node Status', t_ref:'Referrals', t_res:'Resources',
+  nodes_owned:'Nodes Owned', est_daily:'Est. Daily Emission', ref_network:'Referral Network',
+  view_status:'View status →', view_breakdown:'View breakdown →', view_ref:'View referrals →',
+  genesis:'Genesis Node Sale', wl_tier:'Whitelist · Tier 2 from', purchase_btn:'Purchase Node →',
+  your_code:'Your referral code', code_desc:'Your buyers get whitelist access + 15% discount. You earn on every sale.',
+  current_tier:'Current Tier', wl_live:'Whitelist Live', remaining:'remaining',
+  buy_nodes:'Buy Nodes', chain:'Chain', quantity:'Quantity', pay_with:'Pay with', total:'Total',
+  approve:'Approve USDC', purchase_1:'Purchase 1 Node', max_wallet:'Max 10/wallet',
+  est_emission:'Estimated Total Daily Emission', your_nodes_label:'Your nodes:', ref_pool:'Referral pool:',
+  tge_note:'Rewards begin at TGE · Date TBA', your_nodes:'Your Nodes', owned:'Owned', invested:'Invested', chains:'Chains',
+  partner_since:'Partner since April 2, 2026', commission:'Commission', milestones:'Milestones',
+  to_bonus:'to your $500 bonus', activity:'Activity', network:'Network', payout:'Payout History',
+  no_payouts:'No payouts yet. Biweekly via Merkle root.', prog_ref:'Programme Reference',
+  rates:'Commission Rates & Tiers', weights:'Credited Amount Weights', stipend:'Monthly Stipend',
+  partner_mat:'Partner Materials', useful:'Useful Links', community:'Community', compliance:'Compliance',
+  copy:'Copy', link:'Link', share:'Share'
+},
+tc: {
+  nav_home:'首頁', nav_sale:'購買節點', nav_nodes:'節點狀態', nav_ref:'推薦', nav_res:'資源',
+  nav_soon:'即將推出', nav_staking:'質押', nav_ops:'節點管理', signout:'登出',
+  t_home:'首頁', t_sale:'購買節點', t_nodes:'節點狀態', t_ref:'推薦', t_res:'資源',
+  nodes_owned:'持有節點', est_daily:'預估每日產出', ref_network:'推薦網絡',
+  view_status:'查看狀態 →', view_breakdown:'查看詳情 →', view_ref:'查看推薦 →',
+  genesis:'創世節點銷售', wl_tier:'白名單 · 第二層起', purchase_btn:'購買節點 →',
+  your_code:'您的推薦碼', code_desc:'您的買家可獲得白名單資格及 15% 折扣，每筆銷售皆為您帶來佣金。',
+  current_tier:'當前層級', wl_live:'白名單進行中', remaining:'剩餘',
+  buy_nodes:'購買節點', chain:'區塊鏈', quantity:'數量', pay_with:'付款方式', total:'合計',
+  approve:'授權 USDC', purchase_1:'購買 1 個節點', max_wallet:'每錢包上限 10 個',
+  est_emission:'預估每日總產出', your_nodes_label:'您的節點：', ref_pool:'推薦池：',
+  tge_note:'獎勵將於 TGE 啟動 · 日期待定', your_nodes:'您的節點', owned:'持有', invested:'投入', chains:'鏈',
+  partner_since:'合作夥伴自 2026 年 4 月 2 日', commission:'佣金', milestones:'里程碑',
+  to_bonus:'距下一筆 $500 獎金', activity:'動態', network:'網絡', payout:'支付記錄',
+  no_payouts:'尚無支付記錄，每兩週通過 Merkle Root 發放。', prog_ref:'計畫參考',
+  rates:'佣金費率與層級', weights:'入帳金額權重', stipend:'每月津貼',
+  partner_mat:'合作夥伴資料', useful:'實用連結', community:'社群', compliance:'合規',
+  copy:'複製', link:'連結', share:'分享'
+},
+sc: {
+  nav_home:'首页', nav_sale:'购买节点', nav_nodes:'节点状态', nav_ref:'推荐', nav_res:'资源',
+  nav_soon:'即将推出', nav_staking:'质押', nav_ops:'节点管理', signout:'登出',
+  t_home:'首页', t_sale:'购买节点', t_nodes:'节点状态', t_ref:'推荐', t_res:'资源',
+  nodes_owned:'持有节点', est_daily:'预估每日产出', ref_network:'推荐网络',
+  view_status:'查看状态 →', view_breakdown:'查看详情 →', view_ref:'查看推荐 →',
+  genesis:'创世节点销售', wl_tier:'白名单 · 第二层起', purchase_btn:'购买节点 →',
+  your_code:'您的推荐码', code_desc:'您的买家可获得白名单资格及 15% 折扣，每笔销售皆为您带来佣金。',
+  current_tier:'当前层级', wl_live:'白名单进行中', remaining:'剩余',
+  buy_nodes:'购买节点', chain:'区块链', quantity:'数量', pay_with:'付款方式', total:'合计',
+  approve:'授权 USDC', purchase_1:'购买 1 个节点', max_wallet:'每钱包上限 10 个',
+  est_emission:'预估每日总产出', your_nodes_label:'您的节点：', ref_pool:'推荐池：',
+  tge_note:'奖励将于 TGE 启动 · 日期待定', your_nodes:'您的节点', owned:'持有', invested:'投入', chains:'链',
+  partner_since:'合作伙伴自 2026 年 4 月 2 日', commission:'佣金', milestones:'里程碑',
+  to_bonus:'距下一笔 $500 奖金', activity:'动态', network:'网络', payout:'支付记录',
+  no_payouts:'尚无支付记录，每两周通过 Merkle Root 发放。', prog_ref:'计划参考',
+  rates:'佣金费率与层级', weights:'入账金额权重', stipend:'每月津贴',
+  partner_mat:'合作伙伴资料', useful:'实用链接', community:'社群', compliance:'合规',
+  copy:'复制', link:'链接', share:'分享'
+}
+};
+var curLang='en';
+function setLang(lang){
+  curLang=lang;
+  var t=L[lang];
+  document.querySelectorAll('.lng').forEach(function(b){b.classList.remove('on')});
+  event.target.classList.add('on');
+  document.querySelectorAll('[data-t]').forEach(function(el){
+    var k=el.getAttribute('data-t');
+    if(t[k])el.textContent=t[k];
+  });
+  titles={home:t.t_home,sale:t.t_sale,nodes:t.t_nodes,referrals:t.t_ref,resources:t.t_res};
+  var pg=document.querySelector('.pg.on');
+  if(pg){var id=pg.id.replace('pg-','');document.getElementById('hd-t').textContent=titles[id]||id}
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 packages:
-  - "."
-  - "contracts"
+  - "apps/*"
+  - "operon-dashboard"
+  - "operon-dashboard/contracts"
 
 ignoredBuiltDependencies:
   - sharp

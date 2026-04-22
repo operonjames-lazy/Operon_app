@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPN-202 · QUILL — Operon Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#060B14;--deep:#0C1424;--card:#111C2E;--edge:#1E2D45;
+  --blue:#2563EB;--glow:#3B82F6;--ice:#93C5FD;--sky:#BFDBFE;
+  --white:#F0F4FF;--soft:#D4DFEF;--dim:#8BA3C7;--mid:rgba(148,185,253,0.3);--faint:rgba(148,185,253,0.10);
+  --gold:#F59E0B;--green:#34D399;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--void);color:var(--white);-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+
+/* NAV */
+.lang-bar{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(6,11,20,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--mid);display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:56px;}
+.lang-logo{font-family:'Unbounded',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.02em;color:var(--white);}
+.lang-logo span{color:var(--ice);}
+.nav-tag{display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.08em;color:var(--ice);border:1px solid rgba(147,197,253,0.3);padding:5px 14px;border-radius:20px;background:rgba(37,99,235,0.15);}
+.nav-tag::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;animation:blink 2s ease infinite;}
+.lang-select-wrap{position:relative;}
+.lang-select-btn{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.08em;padding:5px 28px 5px 12px;border-radius:20px;cursor:pointer;border:1px solid rgba(147,197,253,0.3);color:var(--ice);background:rgba(37,99,235,0.15);transition:all 0.2s;appearance:none;outline:none;}
+.lang-select-btn:hover{background:rgba(37,99,235,0.25);border-color:rgba(147,197,253,0.5);}
+.lang-select-btn::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;pointer-events:none;color:var(--ice);}
+.lang-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--card);border:1px solid var(--edge);border-radius:12px;overflow:hidden;min-width:140px;z-index:300;box-shadow:0 8px 32px rgba(0,0,0,0.5);}
+.lang-dropdown.open{display:block;}
+.lang-option{display:block;width:100%;padding:10px 16px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.04em;color:var(--soft);background:transparent;border:none;cursor:pointer;text-align:left;transition:background 0.15s,color 0.15s;}
+.lang-option:hover{background:rgba(37,99,235,0.15);color:var(--ice);}
+.lang-option.active{color:var(--ice);background:rgba(37,99,235,0.2);}
+body.zh .hero-title,body.zh .card-title,body.zh .step-name,body.zh .section-title,body.zh .pillar-title,body.zh .proto-title,body.zh .footer-logo,body.zh .demo-btn,body.zh .locked-card-title,body.zh .angle-topic{font-family:'Noto Sans TC','Unbounded',sans-serif;}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 40px 60px;position:relative;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;z-index:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(37,99,235,0.28) 0%,transparent 65%),radial-gradient(ellipse 50% 40% at 20% 80%,rgba(59,130,246,0.12) 0%,transparent 60%),radial-gradient(ellipse 40% 50% at 80% 70%,rgba(37,99,235,0.10) 0%,transparent 60%);}
+.hero-grid{position:absolute;inset:0;z-index:0;background-image:linear-gradient(rgba(59,130,246,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.06) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 90% 90% at 50% 50%,black 20%,transparent 75%);}
+.hero-orb{position:absolute;z-index:0;width:500px;height:500px;background:radial-gradient(circle,rgba(37,99,235,0.20) 0%,transparent 70%);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);animation:pulse 6s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.8;}50%{transform:translate(-50%,-50%) scale(1.15);opacity:1;}}
+.hero-inner{position:relative;z-index:1;max-width:780px;}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ice);border:1px solid rgba(147,197,253,0.3);padding:6px 18px;border-radius:30px;margin-bottom:28px;background:rgba(37,99,235,0.15);opacity:0;animation:fadeUp .6s .1s ease forwards;}
+.hero-badge::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;animation:blink 2s ease infinite;}
+.hero-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:clamp(28px,5.5vw,60px);line-height:1.1;letter-spacing:-0.02em;color:var(--white);margin-bottom:24px;opacity:0;animation:fadeUp .6s .2s ease forwards;}
+.hero-title .accent{color:var(--ice);}
+.hero-sub{font-size:clamp(14px,1.8vw,17px);line-height:1.8;color:var(--dim);max-width:600px;margin:0 auto;opacity:0;animation:fadeUp .6s .3s ease forwards;}
+
+/* DEMO */
+.demo-section{padding:40px 40px 0;position:relative;z-index:1;}
+.demo-inner{max-width:720px;margin:0 auto;}
+.demo-box{background:var(--card);border:1px solid var(--edge);border-radius:20px;overflow:hidden;}
+.demo-box-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--edge);}
+.demo-box-title{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--ice);text-transform:uppercase;}
+.demo-word-count{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);}
+.demo-word-count.over{color:#F87171;}
+.demo-textarea{width:100%;min-height:180px;max-height:360px;resize:vertical;background:transparent;border:none;outline:none;color:var(--white);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.8;padding:20px 24px;}
+.demo-textarea::placeholder{color:rgba(139,163,199,0.35);}
+.demo-prefill{display:flex;align-items:center;gap:8px;padding:0 24px 14px;}
+.demo-prefill-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--ice);background:rgba(37,99,235,0.12);border:1px solid rgba(147,197,253,0.2);padding:5px 12px;border-radius:8px;cursor:pointer;transition:background .2s,border-color .2s;}
+.demo-prefill-btn:hover{background:rgba(37,99,235,0.2);border-color:rgba(147,197,253,0.4);}
+.demo-prefill-label{font-family:'DM Mono',monospace;font-size:9px;color:rgba(139,163,199,0.4);letter-spacing:.06em;text-transform:uppercase;}
+.demo-error{font-family:'DM Mono',monospace;font-size:11px;color:#F87171;padding:0 24px 14px;}
+.demo-loading{display:none;padding:32px 24px;text-align:center;}
+.demo-loading.active{display:block;}
+.demo-loading-text{font-family:'DM Mono',monospace;font-size:11px;color:var(--ice);letter-spacing:.08em;}
+.demo-loading-bar{width:200px;height:2px;background:var(--edge);border-radius:1px;margin:16px auto 0;overflow:hidden;position:relative;}
+.demo-loading-bar::after{content:'';position:absolute;left:-40%;top:0;width:40%;height:100%;background:linear-gradient(90deg,var(--blue),var(--ice));border-radius:1px;animation:loadSlide 1.2s ease-in-out infinite;}
+@keyframes loadSlide{0%{left:-40%;}100%{left:100%;}}
+.demo-footer{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-top:1px solid var(--edge);gap:12px;}
+.demo-btn{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;background:var(--blue);color:white;border:none;cursor:pointer;padding:14px 36px;border-radius:12px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;box-shadow:0 0 40px rgba(37,99,235,0.5);flex-shrink:0;}
+.demo-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.15) 0%,transparent 60%);}
+.demo-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 0 60px rgba(37,99,235,0.7);}
+.demo-btn:disabled{opacity:0.35;cursor:default;transform:none;box-shadow:none;}
+.demo-remaining{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.06em;text-align:right;white-space:nowrap;}
+
+/* CAROUSEL */
+.carousel-section{padding:48px 0 80px;overflow:hidden;}
+.carousel-label{max-width:720px;margin:0 auto;padding:0 40px 24px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.20em;text-transform:uppercase;color:var(--ice);display:flex;align-items:center;gap:12px;}
+.carousel-label::before{content:'';width:40px;height:1px;background:var(--blue);}
+.carousel-wrap{position:relative;width:100%;}
+.carousel-wrap::before,.carousel-wrap::after{content:'';position:absolute;top:0;bottom:0;width:100px;z-index:2;pointer-events:none;}
+.carousel-wrap::before{left:0;background:linear-gradient(90deg,var(--void),transparent);}
+.carousel-wrap::after{right:0;background:linear-gradient(270deg,var(--void),transparent);}
+.carousel-track{display:flex;gap:0;animation:carouselScroll 70s linear infinite;width:max-content;}
+.carousel-track:hover{animation-play-state:paused;}
+.b-item{flex-shrink:0;width:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 8px;opacity:.7;transition:opacity .3s;}
+.b-item:hover{opacity:1;}
+.b-logo{width:72px;height:72px;border-radius:14px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;border:1px solid var(--edge);transition:border-color .3s;background:#ffffff;}
+.b-item:hover .b-logo{border-color:rgba(147,197,253,0.4);}
+.b-name{font-family:'Unbounded',sans-serif;font-size:9px;font-weight:600;color:var(--soft);text-align:center;white-space:nowrap;}
+@keyframes carouselScroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+
+/* RESULTS */
+.results{display:none;max-width:720px;margin:0 auto;padding:32px 40px 80px;}
+.results.active{display:block;}
+.result-card{background:var(--card);border:1px solid var(--edge);border-radius:20px;margin-bottom:20px;overflow:hidden;opacity:0;transform:translateY(12px);transition:opacity .4s ease,transform .4s ease;}
+.result-card.visible{opacity:1;transform:translateY(0);}
+.result-card-head{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid rgba(148,185,253,0.12);}
+.result-card-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.result-card-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--ice);text-transform:uppercase;}
+.result-card-body{padding:18px 20px;}
+.voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.voice-item-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.10em;color:var(--dim);text-transform:uppercase;margin-bottom:4px;}
+.voice-item-value{font-size:13px;line-height:1.6;color:var(--white);}
+.angle-topic{font-family:'Unbounded',sans-serif;font-weight:600;font-size:15px;line-height:1.4;color:var(--white);margin-bottom:10px;}
+.angle-rationale{font-size:13px;line-height:1.7;color:var(--soft);}
+.hook-item{padding:14px 0;border-bottom:1px solid var(--faint);}
+.hook-item:last-child{border-bottom:none;}
+.hook-platform{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.hook-platform-icon{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;}
+.hook-platform-name{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.10em;color:var(--dim);text-transform:uppercase;}
+.hook-text{font-size:14px;line-height:1.7;color:var(--white);}
+.locked-card{background:linear-gradient(135deg,rgba(37,99,235,0.12),rgba(17,28,46,0.9));border:1px solid rgba(37,99,235,0.35);border-radius:20px;padding:28px 24px;margin-bottom:20px;position:relative;overflow:hidden;}
+.locked-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blue),var(--ice),transparent);}
+.locked-card-title{font-family:'Unbounded',sans-serif;font-weight:600;font-size:14px;color:var(--white);margin-bottom:8px;}
+.locked-card-list{font-size:13px;line-height:1.8;color:var(--soft);margin-bottom:16px;}
+.locked-card-lock{display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--ice);letter-spacing:.06em;}
+.reset-wrap{text-align:center;margin:24px 0 0;}
+.reset-btn{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--dim);background:transparent;border:1px solid var(--edge);padding:8px 20px;border-radius:8px;cursor:pointer;transition:border-color .2s,color .2s;}
+.reset-btn:hover{border-color:var(--mid);color:var(--ice);}
+
+/* SECTIONS */
+.section{max-width:1200px;margin:0 auto;padding:100px 40px;}
+.section-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.20em;text-transform:uppercase;color:var(--ice);margin-bottom:16px;display:flex;align-items:center;gap:12px;}
+.section-label::before{content:'';width:40px;height:1px;background:var(--blue);}
+.section-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:clamp(24px,4vw,44px);letter-spacing:-0.02em;line-height:1.15;margin-bottom:20px;}
+.section-title span{color:var(--ice);}
+.section-intro{font-size:15px;line-height:1.8;color:var(--dim);max-width:640px;margin-bottom:56px;}
+
+.how-section{background:var(--deep);border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);padding:100px 40px;}
+.how-inner{max-width:1200px;margin:0 auto;}
+.steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:56px;}
+.step-card{padding:28px 24px;border:1px solid var(--edge);position:relative;transition:border-color .3s,transform .3s,box-shadow .3s;}
+.step-card:hover{border-color:rgba(59,130,246,0.4);transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,0.5),0 0 30px rgba(37,99,235,0.12);}
+.step-num{font-family:'Unbounded',sans-serif;font-weight:700;font-size:11px;color:var(--ice);margin-bottom:12px;}
+.step-name{font-family:'Unbounded',sans-serif;font-weight:600;font-size:14px;color:var(--white);margin-bottom:10px;line-height:1.3;}
+.step-desc{font-size:13px;line-height:1.7;color:var(--soft);}
+.step-arrow{position:absolute;right:-8px;top:50%;transform:translateY(-50%);color:var(--ice);font-size:14px;z-index:2;width:16px;height:16px;display:flex;align-items:center;justify-content:center;background:var(--deep);border-radius:50%;}
+.step-return{grid-column:1/-1;text-align:center;padding:16px;border:1px solid var(--edge);border-top:none;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.10em;color:var(--ice);text-transform:uppercase;}
+.step-return::before{content:'↻';margin-right:8px;font-size:14px;}
+
+.pillars{display:grid;grid-template-columns:1fr;gap:80px;}
+.pillar-header{margin-bottom:32px;}
+.pillar-num{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.20em;color:var(--ice);text-transform:uppercase;margin-bottom:8px;}
+.pillar-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:clamp(20px,3vw,28px);line-height:1.2;margin-bottom:12px;}
+.pillar-intro{font-size:14px;line-height:1.8;color:var(--dim);max-width:560px;}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.card{background:var(--card);border:1px solid var(--edge);border-radius:20px;padding:32px 28px;position:relative;overflow:hidden;transition:border-color .3s,transform .3s,box-shadow .3s;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blue),transparent);opacity:0;transition:opacity .3s;}
+.card:hover{border-color:rgba(59,130,246,0.4);transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,0.5),0 0 30px rgba(37,99,235,0.12);}
+.card:hover::before{opacity:1;}
+.card-title{font-family:'Unbounded',sans-serif;font-weight:600;font-size:14px;line-height:1.4;color:var(--white);margin-bottom:14px;}
+.card-body{font-size:13.5px;line-height:1.8;color:var(--soft);}
+
+.protocol-section{background:var(--deep);border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);}
+.protocol-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+.proto-card{padding:32px 24px;border-right:1px solid var(--edge);transition:background .3s;}
+.proto-card:last-child{border-right:none;}
+.proto-card:hover{background:rgba(37,99,235,0.05);}
+.proto-agent{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;color:var(--ice);text-transform:uppercase;margin-bottom:10px;}
+.proto-title{font-family:'Unbounded',sans-serif;font-weight:600;font-size:13px;color:var(--white);margin-bottom:10px;line-height:1.3;}
+.proto-body{font-size:12.5px;line-height:1.7;color:var(--soft);}
+
+.site-footer{border-top:1px solid var(--edge);padding:48px 40px;text-align:center;}
+.footer-logo{font-family:'Unbounded',sans-serif;font-weight:800;font-size:18px;color:var(--white);letter-spacing:.02em;margin-bottom:8px;}
+.footer-logo span{color:var(--ice);}
+.footer-url{font-family:'DM Mono',monospace;font-size:12px;color:var(--dim);margin-bottom:20px;}
+.footer-note{font-size:11px;color:rgba(139,163,199,0.3);max-width:680px;margin:0 auto;line-height:1.8;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+@media(max-width:900px){
+  .steps{grid-template-columns:1fr 1fr;}.step-arrow{display:none;}
+  .cards{grid-template-columns:1fr;}
+  .protocol-grid{grid-template-columns:1fr 1fr;}.proto-card{border-bottom:1px solid var(--edge);}
+  .voice-grid{grid-template-columns:1fr;}
+}
+@media(max-width:700px){
+  .lang-bar{padding:0 16px;}.hero{padding:88px 20px 40px;}
+  .demo-section{padding:20px 16px 0;}.demo-footer{flex-direction:column;align-items:stretch;gap:10px;}
+  .demo-btn{width:100%;text-align:center;padding:14px 20px;}.demo-remaining{text-align:center;}
+  .carousel-section{padding:32px 0 48px;}.carousel-label{padding:0 16px 16px;}
+  .results{padding:24px 16px 60px;}
+  .section,.how-section,.how-inner{padding-left:16px;padding-right:16px;}
+  .steps{grid-template-columns:1fr;}.protocol-grid{grid-template-columns:1fr;}.proto-card{border-right:none;}
+  .site-footer{padding:32px 16px;}
+}
+</style>
+</head>
+<body>
+
+<div class="lang-bar">
+  <a href="https://operon.network/" class="lang-logo" style="text-decoration:none;display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 433.1 112.0" style="height:28px;width:auto;display:block;"><g transform="translate(20,0)"><path d="M482 -16Q349 -16 248.5 33.0Q148 82 92.5 170.0Q37 258 37 375Q37 492 92.5 580.0Q148 668 248.5 717.0Q349 766 482 766Q616 766 716.0 717.0Q816 668 872.0 580.0Q928 492 928 375Q928 258 872.0 170.0Q816 82 716.0 33.0Q616 -16 482 -16ZM482 169Q555 169 608.0 194.0Q661 219 689.5 265.0Q718 311 718 375Q718 439 689.5 485.0Q661 531 608.0 556.0Q555 581 482 581Q410 581 357.0 556.0Q304 531 275.0 485.0Q246 439 246 375Q246 311 275.0 265.0Q304 219 357.0 194.0Q410 169 482 169Z" fill="#F8FAFF" transform="translate(0.00,76.16) scale(0.072000,-0.072000)"/><path d="M491 750Q585 750 653.5 718.0Q722 686 758.0 627.5Q794 569 794 491Q794 414 758.0 355.5Q722 297 653.5 265.0Q585 233 491 233H166V399H478Q528 399 556.0 423.5Q584 448 584 491Q584 535 556.0 559.5Q528 584 478 584H184L277 680V0H70V750Z" fill="#F8FAFF" transform="translate(70.92,76.16) scale(0.072000,-0.072000)"/><path d="M711 450V300H162V450ZM303 375 254 74 170 168H744V0H47L104 375L47 750H739V582H170L254 676Z" fill="#F8FAFF" transform="translate(130.97,76.16) scale(0.072000,-0.072000)"/><path d="M213 422H486Q536 422 564.0 445.0Q592 468 592 509Q592 551 564.0 573.5Q536 596 486 596H184L277 695V0H70V750H515Q601 750 665.0 719.5Q729 689 765.0 635.5Q801 582 801 509Q801 438 765.0 384.0Q729 330 665.0 300.0Q601 270 515 270H213ZM325 351H558L827 0H587Z" fill="#F8FAFF" transform="translate(189.58,76.16) scale(0.072000,-0.072000)"/><path d="M482 -16Q349 -16 248.5 33.0Q148 82 92.5 170.0Q37 258 37 375Q37 492 92.5 580.0Q148 668 248.5 717.0Q349 766 482 766Q616 766 716.0 717.0Q816 668 872.0 580.0Q928 492 928 375Q928 258 872.0 170.0Q816 82 716.0 33.0Q616 -16 482 -16ZM482 169Q555 169 608.0 194.0Q661 219 689.5 265.0Q718 311 718 375Q718 439 689.5 485.0Q661 531 608.0 556.0Q555 581 482 581Q410 581 357.0 556.0Q304 531 275.0 485.0Q246 439 246 375Q246 311 275.0 265.0Q304 219 357.0 194.0Q410 169 482 169Z" fill="#93C5FD" transform="translate(252.22,76.16) scale(0.072000,-0.072000)"/><path d="M765 145 701 132V750H902V0H641L208 617L271 630V0H70V750H338Z" fill="#93C5FD" transform="translate(323.14,76.16) scale(0.072000,-0.072000)"/></g></svg></a>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="nav-tag">OPN-202 · QUILL</div>
+    <div class="lang-select-wrap" id="langWrap">
+      <button class="lang-select-btn" id="langBtn" onclick="toggleLangMenu()">EN</button>
+      <div class="lang-dropdown" id="langDropdown">
+        <button class="lang-option active" onclick="pickLang('en')">English</button>
+        <button class="lang-option" onclick="pickLang('zh_cn')">简体中文</button>
+        <button class="lang-option" onclick="pickLang('zh')">繁體中文</button>
+        <button class="lang-option" onclick="pickLang('ko')">한국어</button>
+        <button class="lang-option" onclick="pickLang('ja')">日本語</button>
+        <button class="lang-option" onclick="pickLang('th')">ภาษาไทย</button>
+        <button class="lang-option" onclick="pickLang('vi')">Tiếng Việt</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="hero">
+  <div class="hero-bg"></div><div class="hero-grid"></div><div class="hero-orb"></div>
+  <div class="hero-inner">
+    <div class="hero-badge" data-i="hero_badge">OPN-202 · Autonomous Content Intelligence</div>
+    <h1 class="hero-title" data-i="hero_title_html">Paste your content.<br><span class="accent">See your voice.</span></h1>
+    <p class="hero-sub" data-i="hero_sub">Drop in anything you've written. Quill extracts your voice, identifies your next best angle, and drafts hooks across four platforms — in your tone, live, right now.</p>
+  </div>
+</section>
+
+<section class="demo-section">
+  <div class="demo-inner">
+    <div class="demo-box">
+      <div class="demo-box-header">
+        <div class="demo-box-title" data-i="demo_title">Paste Your Content</div>
+        <div class="demo-word-count" id="wordCount">0 / 1,000 words</div>
+      </div>
+      <textarea class="demo-textarea" id="inputArea" data-ph-en="Paste a blog post, a few tweets, an about page — anything you've written. Quill will analyze your voice and draft in your style." data-ph-zh="貼上一篇文章、幾則推文、關於頁面——任何你寫過的內容。Quill 會解析你的寫作風格，並以你的口吻生成草稿。" data-ph-zh_cn="粘贴一篇文章、几条推文、关于页面——任何你写过的内容。Quill 会解析你的写作风格，并以你的口吻生成草稿。" data-ph-ko="블로그 글, 트윗 몇 개, 소개 페이지 — 직접 쓴 글이면 무엇이든 붙여넣으세요. Quill이 문체를 분석하고 당신의 스타일로 초안을 작성합니다." data-ph-ja="ブログ記事、ツイート、自己紹介ページなど、あなたが書いた文章を貼り付けてください。Quill が文体を分析し、あなたのスタイルでドラフトを作成します。" data-ph-th="วางบล็อกโพสต์ ทวีตสักสองสามอัน หน้าเกี่ยวกับตัวคุณ — อะไรก็ได้ที่คุณเขียน Quill จะวิเคราะห์สไตล์การเขียนของคุณและร่างในสไตล์ของคุณ" data-ph-vi="Dán một bài blog, vài tweet, trang giới thiệu — bất kỳ nội dung nào bạn đã viết. Quill sẽ phân tích giọng văn và soạn thảo theo phong cách của bạn." placeholder="Paste a blog post, a few tweets, an about page — anything you've written. Quill will analyze your voice and draft in your style."></textarea>
+      <div class="demo-prefill">
+        <div class="demo-prefill-label" data-i="prefill_label">No text handy?</div>
+        <button class="demo-prefill-btn" onclick="prefill('notion')" data-i="prefill_notion">Try with Notion's blog</button>
+        <button class="demo-prefill-btn" onclick="prefill('coindesk')" data-i="prefill_coindesk">Try with CoinDesk</button>
+        <button class="demo-prefill-btn" onclick="prefill('runner')" data-i="prefill_runner">Try with a running blog</button>
+      </div>
+      <div class="demo-error" id="errorMsg" style="display:none;"></div>
+      <div class="demo-loading" id="loadingState">
+        <div class="demo-loading-text" data-i="loading_text">QUILL is analyzing your voice...</div>
+        <div class="demo-loading-bar"></div>
+      </div>
+      <div class="demo-footer">
+        <button class="demo-btn" id="analyzeBtn" onclick="analyze()" disabled data-i="analyze_btn">Analyze My Voice →</button>
+        <div class="demo-remaining" id="remainingCount" data-i="remaining">5 analyses remaining</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="carousel-section">
+  <div class="carousel-label" data-i="carousel_label">Affiliate Partners</div>
+  <div class="carousel-wrap">
+    <div class="carousel-track" id="carouselTrack"></div>
+  </div>
+</section>
+
+<div class="results" id="resultsArea"></div>
+
+<section class="how-section">
+  <div class="how-inner">
+    <div class="section-label" data-i="loop_label">The Full Agentic Loop</div>
+    <h2 class="section-title" data-i="loop_title_html">What you just saw is <span>step one.</span></h2>
+    <p class="section-intro" data-i="loop_intro">The demo runs the first half of Quill's cycle — voice extraction and drafting. The full agent runs continuously: research, draft, publish, monitor, learn, repeat.</p>
+    <div class="steps">
+      <div class="step-card"><div class="step-num">01</div><div class="step-name" data-i="s1_name">Ingest & Learn</div><div class="step-desc" data-i="s1_desc">Absorbs your content history. Builds a continuously updating brand voice model: tone, vocabulary, sentence rhythm. A learned fingerprint, not a prompt.</div><span class="step-arrow">→</span></div>
+      <div class="step-card"><div class="step-num">02</div><div class="step-name" data-i="s2_name">Research & Discover</div><div class="step-desc" data-i="s2_desc">Monitors competitors, tracks trends before they peak, identifies content gaps with high demand but low quality coverage, surfaces revenue opportunities.</div><span class="step-arrow">→</span></div>
+      <div class="step-card"><div class="step-num">03</div><div class="step-name" data-i="s3_name">Draft & Adapt</div><div class="step-desc" data-i="s3_desc">One insight becomes a full distribution kit: article, thread, video script, newsletter, carousel — each genuinely adapted to format. A/B variants generated automatically.</div></div>
+      <div class="step-card"><div class="step-num">04</div><div class="step-name" data-i="s4_name">Approve & Publish</div><div class="step-desc" data-i="s4_desc">Human approval gate — or autonomous publishing within guardrails. Adaptive scheduling per platform, timed to when your specific audience is most active.</div><span class="step-arrow">→</span></div>
+      <div class="step-card"><div class="step-num">05</div><div class="step-name" data-i="s5_name">Monitor & Earn</div><div class="step-desc" data-i="s5_desc">Tracks engagement, conversions, affiliate revenue, lead attribution. Identifies which formats, angles, and placements drive results.</div><span class="step-arrow">→</span></div>
+      <div class="step-card"><div class="step-num">06</div><div class="step-name" data-i="s6_name">Learn & Loop</div><div class="step-desc" data-i="s6_desc">All performance data feeds back into the voice model, research layer, and scheduling engine. Next cycle begins with sharper intelligence.</div></div>
+      <div class="step-return" data-i="loop_return">Cycle restarts — every loop makes the next one better</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="pillars">
+    <div class="pillar"><div class="pillar-header"><div class="pillar-num" data-i="p1_num">Pillar 01</div><h3 class="pillar-title" data-i="p1_title_html">Content intelligence that <span style="color:var(--ice)">sharpens with use.</span></h3><p class="pillar-intro" data-i="p1_intro">Every cycle adds signal. After a hundred cycles, Quill knows your brand better than a new hire ever could.</p></div>
+      <div class="cards">
+        <div class="card"><div class="card-title" data-i="p1c1_title">Brand Voice as Living Model</div><div class="card-body" data-i="p1c1_body">Ingests your full content corpus and builds a voice fingerprint — vocabulary, rhythm, tone. Updates with every published piece.</div></div>
+        <div class="card"><div class="card-title" data-i="p1c2_title">Performance-Aware Drafting</div><div class="card-body" data-i="p1c2_body">Learns that data-led openings work on LinkedIn but narrative hooks land on X. Drafts improve because the agent accumulated signal.</div></div>
+        <div class="card"><div class="card-title" data-i="p1c3_title">Research Beyond Summarisation</div><div class="card-body" data-i="p1c3_body">Identifies topics with high demand but low quality coverage. Monitors competitors. Surfaces the angle nobody is serving well yet.</div></div>
+      </div>
+    </div>
+    <div class="pillar"><div class="pillar-header"><div class="pillar-num" data-i="p2_num">Pillar 02</div><h3 class="pillar-title" data-i="p2_title_html">Autonomous operation, <span style="color:var(--ice)">not assisted prompting.</span></h3><p class="pillar-intro" data-i="p2_intro">Quill doesn't wait. It identifies this week's best angles, drafts, schedules, tests, measures, and adjusts.</p></div>
+      <div class="cards">
+        <div class="card"><div class="card-title" data-i="p2c1_title">Strategic Content Calendar</div><div class="card-body" data-i="p2c1_body">"You haven't covered this topic in three weeks — it's 30% of your audience's interest." The calendar recommends; it doesn't just fill slots.</div></div>
+        <div class="card"><div class="card-title" data-i="p2c2_title">Adaptive Scheduling</div><div class="card-body" data-i="p2c2_body">Learns when your audience is active per platform. Experiments, measures the delta, adjusts. Genuine hypothesis-action-adaptation.</div></div>
+        <div class="card"><div class="card-title" data-i="p2c3_title">Autonomous A/B Testing</div><div class="card-body" data-i="p2c3_body">Two headlines. Two hooks. Split across platforms. Publishes both, measures which performs, applies patterns to future drafts — every cycle.</div></div>
+      </div>
+    </div>
+    <div class="pillar"><div class="pillar-header"><div class="pillar-num" data-i="p3_num">Pillar 03</div><h3 class="pillar-title" data-i="p3_title_html">A content agent that <span style="color:var(--ice)">pays for itself.</span></h3><p class="pillar-intro" data-i="p3_intro">Most content tools are cost centres. Quill generates revenue — affiliate, sponsored, lead-gen, social growth.</p></div>
+      <div class="cards">
+        <div class="card"><div class="card-title" data-i="p3c1_title">Affiliate Integration</div><div class="card-body" data-i="p3c1_body">Identifies natural affiliate opportunities in content. Tracked links woven contextually. Tracks conversions and optimises placement over time.</div></div>
+        <div class="card"><div class="card-title" data-i="p3c2_title">Sponsored Content Matching</div><div class="card-body" data-i="p3c2_body">Maintains your audience profile and engagement data. Matches with brands seeking sponsored placement. You approve, Quill executes.</div></div>
+        <div class="card"><div class="card-title" data-i="p3c3_title">Social Presence as Asset</div><div class="card-body" data-i="p3c3_body">Replies to relevant conversations. Engages with comments. Identifies collaboration opportunities. Compounds a social graph with real economic value.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="protocol-section">
+  <div class="section" style="padding-bottom:0;"><div class="section-label" data-i="proto_label">Operon-Native</div><h2 class="section-title" data-i="proto_title_html">Protocol-verified. <span>Not just another SaaS.</span></h2><p class="section-intro" data-i="proto_intro">Every Quill cycle is logged, verifiable, and composable within the Operon network.</p></div>
+  <div style="max-width:1200px;margin:0 auto;padding:40px 40px 0;">
+    <div class="protocol-grid">
+      <div class="proto-card"><div class="proto-agent">Verify · OPN-106</div><div class="proto-title" data-i="proto1_title">On-Chain Output Attestation</div><div class="proto-body" data-i="proto1_body">Three-tier on-chain proof that output matched brand voice constraints, accuracy standards, and content guidelines.</div></div>
+      <div class="proto-card"><div class="proto-agent">Scout · OPN-002</div><div class="proto-title" data-i="proto2_title">Public Performance Index</div><div class="proto-body" data-i="proto2_body">Scout indexes Quill's metrics publicly. Brands see verified track records in the Agent Reputation Directory.</div></div>
+      <div class="proto-card"><div class="proto-agent">Relay · OPN-006</div><div class="proto-title" data-i="proto3_title">Multi-Agent Composition</div><div class="proto-body" data-i="proto3_body">Via Relay, Quill pulls research from Pulse, data from Anchor, triggers docs through Scribe. OAMS-native.</div></div>
+      <div class="proto-card"><div class="proto-agent">Ledger · OPN-004</div><div class="proto-title" data-i="proto4_title">Attribution & Revenue</div><div class="proto-body" data-i="proto4_body">Every cycle, conversion, and placement logged on-chain via Ledger. Node operators earn from every cycle.</div></div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 433.1 112.0" style="height:22px;width:auto;display:block;margin:0 auto;"><g transform="translate(20,0)"><path d="M482 -16Q349 -16 248.5 33.0Q148 82 92.5 170.0Q37 258 37 375Q37 492 92.5 580.0Q148 668 248.5 717.0Q349 766 482 766Q616 766 716.0 717.0Q816 668 872.0 580.0Q928 492 928 375Q928 258 872.0 170.0Q816 82 716.0 33.0Q616 -16 482 -16ZM482 169Q555 169 608.0 194.0Q661 219 689.5 265.0Q718 311 718 375Q718 439 689.5 485.0Q661 531 608.0 556.0Q555 581 482 581Q410 581 357.0 556.0Q304 531 275.0 485.0Q246 439 246 375Q246 311 275.0 265.0Q304 219 357.0 194.0Q410 169 482 169Z" fill="#F8FAFF" transform="translate(0.00,76.16) scale(0.072000,-0.072000)"/><path d="M491 750Q585 750 653.5 718.0Q722 686 758.0 627.5Q794 569 794 491Q794 414 758.0 355.5Q722 297 653.5 265.0Q585 233 491 233H166V399H478Q528 399 556.0 423.5Q584 448 584 491Q584 535 556.0 559.5Q528 584 478 584H184L277 680V0H70V750Z" fill="#F8FAFF" transform="translate(70.92,76.16) scale(0.072000,-0.072000)"/><path d="M711 450V300H162V450ZM303 375 254 74 170 168H744V0H47L104 375L47 750H739V582H170L254 676Z" fill="#F8FAFF" transform="translate(130.97,76.16) scale(0.072000,-0.072000)"/><path d="M213 422H486Q536 422 564.0 445.0Q592 468 592 509Q592 551 564.0 573.5Q536 596 486 596H184L277 695V0H70V750H515Q601 750 665.0 719.5Q729 689 765.0 635.5Q801 582 801 509Q801 438 765.0 384.0Q729 330 665.0 300.0Q601 270 515 270H213ZM325 351H558L827 0H587Z" fill="#F8FAFF" transform="translate(189.58,76.16) scale(0.072000,-0.072000)"/><path d="M482 -16Q349 -16 248.5 33.0Q148 82 92.5 170.0Q37 258 37 375Q37 492 92.5 580.0Q148 668 248.5 717.0Q349 766 482 766Q616 766 716.0 717.0Q816 668 872.0 580.0Q928 492 928 375Q928 258 872.0 170.0Q816 82 716.0 33.0Q616 -16 482 -16ZM482 169Q555 169 608.0 194.0Q661 219 689.5 265.0Q718 311 718 375Q718 439 689.5 485.0Q661 531 608.0 556.0Q555 581 482 581Q410 581 357.0 556.0Q304 531 275.0 485.0Q246 439 246 375Q246 311 275.0 265.0Q304 219 357.0 194.0Q410 169 482 169Z" fill="#93C5FD" transform="translate(252.22,76.16) scale(0.072000,-0.072000)"/><path d="M765 145 701 132V750H902V0H641L208 617L271 630V0H70V750H338Z" fill="#93C5FD" transform="translate(323.14,76.16) scale(0.072000,-0.072000)"/></g></svg></div>
+  <div class="footer-url">operon.network/quill · OPN-202</div>
+  <div class="footer-note" data-i="footer_note">Quill is part of the Operon agent ecosystem. Performance indexed by Scout. Output attestable via Verify. Revenue attribution logged via Ledger. Node operators earn from every content cycle.</div>
+</footer>
+
+<script>
+// ═══ PREFILL SAMPLES ═══
+const samples = {
+  notion:{
+    en:`We built Notion to be the connective tissue for teams. Not another tool bolted onto the stack — the workspace that replaces the stack. When we talk to teams using Notion, the pattern is consistent: they started with docs, moved their project tracking in, then realised their wiki belonged there too. The consolidation isn't a feature we designed. It's a behaviour that emerges when the workspace is flexible enough.\n\nWhat makes this work is the block-based architecture. Every piece of content — text, database, embed, toggle, callout — is a block that can be rearranged, referenced, and linked. A meeting note can become a task. A task can surface in a roadmap. A roadmap can embed in a quarterly review. Nothing is siloed because nothing was built to be siloed.\n\nThe teams that get the most from Notion aren't the ones using the most features. They're the ones who stopped context-switching between six apps and started building their operating system in one place. That shift — from tool user to system builder — is the inflection point.`,
+    zh:`我們打造 Notion 的初衷，是讓它成為團隊的結締組織。不是往工具堆裡再加一個工具，而是取代整個工具堆的工作空間。和使用 Notion 的團隊交流時，我們發現一個一致的模式：他們從文件開始，接著把專案追蹤搬進來，然後發現知識庫也該放在這裡。這種整合不是我們刻意設計的功能，而是當工作空間夠彈性時自然浮現的行為。\n\n讓這一切運作的是區塊式架構。每一段內容——文字、資料庫、嵌入、摺疊、標註——都是一個區塊，可以重新排列、引用、連結。會議紀錄可以變成任務，任務可以出現在路線圖上，路線圖可以嵌入季度檢討報告。沒有任何東西是孤立的，因為它們從來就不是被孤立地建造的。\n\n從 Notion 獲得最多價值的團隊，不是用了最多功能的團隊，而是那些停止在六個應用之間切換、開始在同一個地方構建作業系統的團隊。這個轉變——從工具使用者到系統建構者——就是轉折點。`,
+    zh_cn:`我们打造 Notion 的初衷，是让它成为团队的结缔组织。不是往工具堆里再加一个工具，而是取代整个工具堆的工作空间。和使用 Notion 的团队交流时，我们发现一个一致的模式：他们从文档开始，接着把项目追踪搬进来，然后发现知识库也该放在这里。这种整合不是我们刻意设计的功能，而是当工作空间够弹性时自然浮现的行为。\n\n让这一切运作的是区块式架构。每一段内容——文字、数据库、嵌入、折叠、标注——都是一个区块，可以重新排列、引用、链接。会议记录可以变成任务，任务可以出现在路线图上，路线图可以嵌入季度检讨报告。没有任何东西是孤立的，因为它们从来就不是被孤立地建造的。\n\n从 Notion 获得最多价值的团队，不是用了最多功能的团队，而是那些停止在六个应用之间切换、开始在同一个地方构建操作系统的团队。这个转变——从工具使用者到系统构建者——就是转折点。`,
+    ko:`우리는 Notion을 팀의 결합 조직으로 만들었습니다. 기존 도구 위에 하나 더 얹는 것이 아니라, 도구 스택 자체를 대체하는 워크스페이스입니다. Notion을 사용하는 팀들과 이야기해보면 패턴은 일관됩니다: 문서에서 시작해서, 프로젝트 관리를 옮기고, 결국 위키도 여기에 속한다는 걸 깨닫게 됩니다. 이 통합은 우리가 설계한 기능이 아닙니다. 워크스페이스가 충분히 유연할 때 자연스럽게 나타나는 행동입니다.\n\n이것을 가능하게 하는 것은 블록 기반 아키텍처입니다. 모든 콘텐츠 — 텍스트, 데이터베이스, 임베드, 토글, 콜아웃 — 는 재배열하고 참조하고 연결할 수 있는 블록입니다. 회의록이 작업이 되고, 작업이 로드맵에 나타나고, 로드맵이 분기 리뷰에 들어갑니다. 그 어떤 것도 격리되어 있지 않습니다. 처음부터 격리되도록 만들어진 것이 없기 때문입니다.\n\nNotion에서 가장 많은 가치를 얻는 팀은 기능을 가장 많이 쓰는 팀이 아닙니다. 여섯 개 앱 사이를 오가는 것을 멈추고 한 곳에서 운영 시스템을 구축하기 시작한 팀입니다. 이 전환 — 도구 사용자에서 시스템 빌더로 — 이것이 변곡점입니다.`,
+    ja:`私たちは Notion を、チームの結合組織として構築しました。既存のスタックにもう一つツールを追加するのではなく、スタックそのものを置き換えるワークスペースです。Notion を使うチームと話すと、パターンは一貫しています。ドキュメントから始めて、プロジェクト管理を移行し、やがてウィキもここに属すると気づきます。この統合は私たちが設計した機能ではありません。ワークスペースが十分に柔軟なときに自然と現れる行動です。\n\nこれを可能にしているのがブロックベースのアーキテクチャです。すべてのコンテンツ — テキスト、データベース、埋め込み、トグル、コールアウト — は並べ替え、参照、リンクできるブロックです。議事録がタスクになり、タスクがロードマップに現れ、ロードマップが四半期レビューに埋め込まれます。何もサイロ化されていません。最初からサイロとして作られたものがないからです。\n\nNotion から最も価値を得ているチームは、最も多くの機能を使っているチームではありません。6つのアプリ間の切り替えをやめ、一箇所でオペレーティングシステムを構築し始めたチームです。この転換 — ツールユーザーからシステムビルダーへ — が変曲点です。`,
+    th:`เราสร้าง Notion ให้เป็นเนื้อเยื่อเชื่อมต่อของทีม ไม่ใช่เครื่องมืออีกตัวที่เพิ่มเข้ามาในกอง แต่เป็นพื้นที่ทำงานที่แทนที่กองทั้งหมด เมื่อเราพูดคุยกับทีมที่ใช้ Notion รูปแบบที่พบมีความสอดคล้องกัน: พวกเขาเริ่มจากเอกสาร ย้ายการติดตามโปรเจกต์เข้ามา แล้วก็ตระหนักว่าวิกิก็ควรอยู่ที่นี่ด้วย การรวมศูนย์นี้ไม่ใช่ฟีเจอร์ที่เราออกแบบ แต่เป็นพฤติกรรมที่เกิดขึ้นเองเมื่อพื้นที่ทำงานมีความยืดหยุ่นเพียงพอ\n\nสิ่งที่ทำให้มันทำงานได้คือสถาปัตยกรรมแบบบล็อก เนื้อหาทุกชิ้น — ข้อความ ฐานข้อมูล embed toggle callout — คือบล็อกที่สามารถจัดเรียงใหม่ อ้างอิง และเชื่อมโยงได้ บันทึกการประชุมกลายเป็นงาน งานปรากฏในโรดแมป โรดแมปฝังอยู่ในรีวิวรายไตรมาส ไม่มีอะไรถูกแยกส่วน เพราะไม่มีอะไรถูกสร้างมาให้แยกส่วน\n\nทีมที่ได้ประโยชน์จาก Notion มากที่สุดไม่ใช่ทีมที่ใช้ฟีเจอร์มากที่สุด แต่เป็นทีมที่หยุดสลับไปมาระหว่างหกแอปแล้วเริ่มสร้างระบบปฏิบัติการในที่เดียว การเปลี่ยนแปลงนั้น — จากผู้ใช้เครื่องมือเป็นผู้สร้างระบบ — คือจุดเปลี่ยน`,
+    vi:`Chúng tôi xây dựng Notion để trở thành mô liên kết của các đội nhóm. Không phải thêm một công cụ nữa vào chồng công cụ — mà là không gian làm việc thay thế cả chồng. Khi nói chuyện với các đội dùng Notion, quy luật luôn nhất quán: họ bắt đầu với tài liệu, chuyển quản lý dự án vào, rồi nhận ra wiki cũng nên ở đây. Sự hợp nhất này không phải tính năng chúng tôi thiết kế. Đó là hành vi tự nhiên xuất hiện khi không gian làm việc đủ linh hoạt.\n\nĐiều làm nên tất cả là kiến trúc dựa trên khối. Mọi nội dung — văn bản, cơ sở dữ liệu, nhúng, toggle, callout — là một khối có thể sắp xếp lại, tham chiếu và liên kết. Biên bản họp có thể thành nhiệm vụ. Nhiệm vụ xuất hiện trên lộ trình. Lộ trình nhúng vào báo cáo quý. Không có gì bị cô lập vì không có gì được xây dựng để cô lập.\n\nNhững đội nhận được nhiều giá trị nhất từ Notion không phải đội dùng nhiều tính năng nhất. Họ là những người ngừng chuyển đổi giữa sáu ứng dụng và bắt đầu xây hệ điều hành tại một nơi. Sự chuyển đổi đó — từ người dùng công cụ thành người xây hệ thống — là điểm bẻ ngoặt.`
+  },
+  coindesk:{
+    en:`Bitcoin held steady above $67,000 on Tuesday as markets digested the latest Federal Reserve minutes, which signalled policymakers remain cautious about the pace of rate cuts heading into Q4. The measured tone from the Fed contrasted with growing optimism in crypto markets, where spot Bitcoin ETF inflows have now exceeded $2.1 billion over the past three weeks.\n\nEthereum, meanwhile, continues to underperform relative to Bitcoin, with the ETH/BTC ratio dropping to its lowest level since April 2021. Analysts point to uncertainty around the SEC's timeline for spot Ether ETF approval as the primary drag, though on-chain metrics paint a more nuanced picture: staking deposits have reached an all-time high, and Layer 2 transaction volumes are up 340% year-over-year.\n\nThe divergence between Bitcoin's institutional momentum and Ethereum's regulatory limbo is becoming the defining narrative of this cycle. As one trader put it: "BTC has a product-market fit with TradFi. ETH is still looking for its buyer."`,
+    zh:`比特幣週二穩守在 67,000 美元上方，市場正在消化最新的聯準會會議紀錄。紀錄顯示決策者對第四季降息的步調仍持審慎態度。聯準會的謹慎語調與加密市場日益增長的樂觀情緒形成對比——過去三週，現貨比特幣 ETF 的淨流入已超過 21 億美元。\n\n與此同時，以太坊相對於比特幣持續表現疲軟，ETH/BTC 比率跌至 2021 年 4 月以來的最低水準。分析師指出 SEC 對現貨以太幣 ETF 審批時程的不確定性是主要拖累因素，但鏈上指標呈現更細緻的圖景：質押存款已創歷史新高，Layer 2 交易量年增 340%。\n\n比特幣的機構動能與以太坊的監管僵局之間的分歧，正在成為這輪週期的核心敘事。正如一位交易員所說：「BTC 已經找到了與傳統金融的產品市場契合點。ETH 還在尋找它的買家。」`,
+    zh_cn:`比特币周二稳守在 67,000 美元上方，市场正在消化最新的美联储会议纪要。纪要显示决策者对第四季度降息的步伐仍持谨慎态度。美联储的审慎语调与加密市场日益增长的乐观情绪形成对比——过去三周，现货比特币 ETF 的净流入已超过 21 亿美元。\n\n与此同时，以太坊相对于比特币持续表现疲软，ETH/BTC 比率跌至 2021 年 4 月以来的最低水平。分析师指出 SEC 对现货以太币 ETF 审批时间表的不确定性是主要拖累因素，但链上指标呈现更细致的图景：质押存款已创历史新高，Layer 2 交易量同比增长 340%。\n\n比特币的机构动能与以太坊的监管僵局之间的分歧，正在成为这轮周期的核心叙事。正如一位交易员所说："BTC 已经找到了与传统金融的产品市场契合点。ETH 还在寻找它的买家。"`,
+    ko:`비트코인은 화요일 67,000달러 위에서 안정세를 유지했습니다. 시장은 최신 연준 회의록을 소화하는 중이며, 회의록은 정책입안자들이 4분기 금리 인하 속도에 대해 여전히 신중한 입장임을 시사했습니다. 연준의 신중한 어조는 암호화폐 시장의 낙관론과 대조를 이루었습니다 — 지난 3주간 현물 비트코인 ETF 유입액은 21억 달러를 돌파했습니다.\n\n한편 이더리움은 비트코인 대비 부진을 이어가고 있으며, ETH/BTC 비율은 2021년 4월 이후 최저 수준으로 떨어졌습니다. 분석가들은 SEC의 현물 이더 ETF 승인 일정에 대한 불확실성을 주요 원인으로 지목하지만, 온체인 지표는 더 복잡한 그림을 보여줍니다: 스테이킹 예치금은 사상 최고치를 기록했고 레이어 2 거래량은 전년 대비 340% 증가했습니다.\n\n비트코인의 기관 모멘텀과 이더리움의 규제 교착 상태 사이의 괴리가 이번 사이클의 핵심 내러티브가 되고 있습니다. 한 트레이더의 말처럼: "BTC는 전통 금융과의 제품-시장 적합성을 찾았다. ETH는 아직 구매자를 찾고 있다."`,
+    ja:`ビットコインは火曜日、67,000ドルを超える水準を維持しました。市場は最新のFRB議事録を消化しており、政策立案者がQ4に向けた利下げペースに依然として慎重であることが示されました。FRBの抑制的なトーンは、暗号資産市場の高まる楽観主義と対照的です — 過去3週間で現物ビットコインETFへの流入額は21億ドルを突破しました。\n\n一方、イーサリアムはビットコインに対してアンダーパフォームを続けており、ETH/BTC比率は2021年4月以来の最低水準に低下しました。アナリストはSECの現物イーサETF承認スケジュールの不透明感を主因に挙げていますが、オンチェーン指標はより微妙な状況を示しています：ステーキング預入額は過去最高を記録し、レイヤー2の取引量は前年比340%増加しています。\n\nビットコインの機関投資家モメンタムとイーサリアムの規制の宙ぶらりんの乖離が、今サイクルの決定的なナラティブとなりつつあります。あるトレーダーの言葉を借りれば：「BTCはTradFiとのプロダクト・マーケット・フィットを見つけた。ETHはまだ買い手を探している。」`,
+    th:`บิตคอยน์ยืนเหนือ 67,000 ดอลลาร์อย่างมั่นคงในวันอังคาร ขณะที่ตลาดกำลังย่อยรายงานการประชุมล่าสุดของ Fed ซึ่งส่งสัญญาณว่าผู้กำหนดนโยบายยังคงระมัดระวังเรื่องจังหวะการลดดอกเบี้ยเข้าสู่ไตรมาส 4 โทนที่สุขุมจาก Fed ตัดกับความมองโลกในแง่ดีที่เพิ่มขึ้นในตลาดคริปโต ซึ่งเงินไหลเข้า Bitcoin ETF แบบ spot เกิน 2.1 พันล้านดอลลาร์ในช่วง 3 สัปดาห์ที่ผ่านมา\n\nในขณะเดียวกัน Ethereum ยังคงทำผลงานต่ำกว่า Bitcoin โดย ETH/BTC ratio ลดลงสู่ระดับต่ำสุดนับตั้งแต่เมษายน 2021 นักวิเคราะห์ชี้ว่าความไม่แน่นอนเกี่ยวกับไทม์ไลน์การอนุมัติ Ether ETF แบบ spot ของ SEC เป็นปัจจัยลากหลัก แม้ว่าตัวชี้วัดบนเชนจะให้ภาพที่ละเอียดกว่า: ยอดฝาก staking ทำสถิติสูงสุดใหม่ และปริมาณธุรกรรม Layer 2 เพิ่มขึ้น 340% เมื่อเทียบปีต่อปี\n\nความแตกต่างระหว่างโมเมนตัมสถาบันของ Bitcoin กับสถานะกำกับที่คลุมเครือของ Ethereum กำลังกลายเป็นเรื่องเล่าที่กำหนดรอบนี้ ดังที่เทรดเดอร์คนหนึ่งกล่าว: "BTC มี product-market fit กับ TradFi แล้ว ETH ยังตามหาผู้ซื้ออยู่"`,
+    vi:`Bitcoin giữ vững trên 67.000 USD vào thứ Ba khi thị trường tiêu hóa biên bản cuộc họp mới nhất của Fed, cho thấy các nhà hoạch định chính sách vẫn thận trọng về tốc độ cắt giảm lãi suất tiến vào Q4. Giọng điệu thận trọng của Fed tương phản với sự lạc quan ngày càng tăng trên thị trường crypto — dòng vốn chảy vào Bitcoin ETF giao ngay đã vượt 2,1 tỷ USD trong ba tuần qua.\n\nTrong khi đó, Ethereum tiếp tục kém hiệu quả so với Bitcoin, tỷ lệ ETH/BTC giảm xuống mức thấp nhất kể từ tháng 4/2021. Các nhà phân tích chỉ ra sự không chắc chắn về lịch trình phê duyệt ETF Ether giao ngay của SEC là nguyên nhân chính, dù các chỉ số on-chain cho thấy bức tranh phức tạp hơn: tiền gửi staking đạt mức cao kỷ lục và khối lượng giao dịch Layer 2 tăng 340% so với cùng kỳ.\n\nSự phân kỳ giữa đà tăng trưởng tổ chức của Bitcoin và tình trạng lấp lửng pháp lý của Ethereum đang trở thành câu chuyện định hình chu kỳ này. Như một trader nói: "BTC đã tìm thấy product-market fit với TradFi. ETH vẫn đang tìm người mua."`
+  },
+  runner:{
+    en:`I've been running in the Hoka Clifton 9 for about 400 miles now and I think I finally have enough data to give an honest review. Most running shoe reviews are written after a week. That tells you how the shoe feels fresh. It tells you nothing about how it holds up when your training plan gets real.\n\nThe first 100 miles were great. The midsole felt responsive without being firm, the heel-toe transition was smooth, and the shoe disappeared on easy runs — which is exactly what you want from a daily trainer. I was running 6:45 pace in these and they felt effortless.\n\nAround mile 200, I noticed the outsole wearing unevenly on the lateral edge. By mile 300, the midsole compression was noticeable — that pillowy feel from week one had flattened into something more neutral. Not dead, but different. For a $150 shoe, I'd want 500 miles before that shift happens. The Clifton 9 starts losing its identity around 350.\n\nWould I buy them again? Probably. But I'd rotate them with something firmer from day one to extend the life.`,
+    zh:`我穿 Hoka Clifton 9 跑了大約 650 公里，我覺得終於有足夠的數據來做一個誠實的評測了。大多數跑鞋評測是穿了一週就寫的。那只能告訴你這雙鞋剛開箱的感覺，卻無法告訴你當訓練計畫真正開始加量時它的表現。\n\n前 160 公里非常棒。中底的回彈感恰到好處而不顯硬，後跟到前掌的過渡很流暢，輕鬆跑的時候鞋子幾乎讓人忘記它的存在——這正是你對日常訓練鞋的期待。我穿著它跑到每公里 4 分 10 秒的配速，感覺毫不費力。\n\n大約跑到 320 公里時，我注意到外底的外側邊緣出現不均勻磨損。到 480 公里時，中底的壓縮已經很明顯——第一週那種軟綿綿的腳感已經變得更加中性。不算報廢，但已經不同了。一雙 4,500 元的鞋，我會期待跑到 800 公里才開始出現這種變化。Clifton 9 大約在 560 公里就開始失去它的特色了。\n\n我會再買一雙嗎？大概會。但我會從第一天就搭配一雙更硬的鞋輪替，來延長它的壽命。`,
+    zh_cn:`我穿 Hoka Clifton 9 跑了大约 650 公里，觉得终于有足够的数据来做一个诚实的评测了。大多数跑鞋评测是穿了一周就写的。那只能告诉你这双鞋刚开箱的感觉，却无法告诉你当训练计划真正加量时它的表现。\n\n前 160 公里非常棒。中底的回弹感恰到好处而不显硬，后跟到前掌的过渡很流畅，轻松跑的时候鞋子几乎让人忘记它的存在——这正是你对日常训练鞋的期待。我穿着它跑到每公里 4 分 10 秒的配速，感觉毫不费力。\n\n大约跑到 320 公里时，我注意到外底的外侧边缘出现不均匀磨损。到 480 公里时，中底的压缩已经很明显——第一周那种软绵绵的脚感已经变得更加中性。不算报废，但已经不同了。一双 1000 元的鞋，我会期待跑到 800 公里才开始出现这种变化。Clifton 9 大约在 560 公里就开始失去它的特色了。\n\n我会再买一双吗？大概会。但我会从第一天就搭配一双更硬的鞋轮替，来延长它的寿命。`,
+    ko:`Hoka Clifton 9를 신고 약 650km를 달렸고, 이제 솔직한 리뷰를 할 만큼 충분한 데이터가 쌓였다고 생각합니다. 대부분의 러닝화 리뷰는 일주일 만에 쓰여집니다. 그건 새 신발이 어떤 느낌인지만 알려줄 뿐, 훈련 계획이 본격적으로 시작됐을 때 어떻게 버티는지는 알려주지 않습니다.\n\n처음 160km는 훌륭했습니다. 미드솔은 딱딱하지 않으면서도 반응성이 좋았고, 힐-토 전환이 부드러웠으며, 이지런에서는 신발의 존재를 잊게 만들었습니다 — 데일리 트레이너에게 바라는 바로 그것입니다. 킬로미터당 4분 10초 페이스로 뛰었는데 힘이 들지 않았습니다.\n\n320km 즈음에서 아웃솔 외측 가장자리가 불균일하게 마모되는 걸 발견했습니다. 480km에 이르자 미드솔 압축이 눈에 띄었습니다 — 첫째 주의 폭신한 느낌이 더 중립적인 것으로 평평해졌습니다. 죽은 건 아니지만 달라졌습니다. 20만원짜리 신발이라면 800km까지는 버텨줬으면 합니다. Clifton 9는 약 560km에서 정체성을 잃기 시작합니다.\n\n다시 살까요? 아마도. 하지만 수명을 늘리기 위해 첫날부터 더 단단한 신발과 로테이션할 것입니다.`,
+    ja:`Hoka Clifton 9 を履いて約650km走りました。ようやく正直なレビューをするのに十分なデータが揃ったと思います。ほとんどのランニングシューズレビューは1週間で書かれます。それは新品の履き心地を教えてくれるだけで、トレーニングが本格化したときにどう持つかは何も教えてくれません。\n\n最初の160kmは素晴らしかったです。ミッドソールは硬すぎずレスポンシブで、ヒールからつま先への移行はスムーズで、イージーランではシューズの存在を忘れさせてくれました — デイリートレーナーに求めるまさにそれです。キロ4分10秒ペースで走っても楽に感じました。\n\n320km付近でアウトソールの外側エッジが不均一に摩耗しているのに気づきました。480kmになるとミッドソールの圧縮が顕著になりました — 1週目のふわふわした感触がよりニュートラルなものに平坦化していました。死んではいませんが、違います。18,000円のシューズなら、800kmまではこの変化が起きないことを期待します。Clifton 9 は約560kmでアイデンティティを失い始めます。\n\nまた買うか？おそらく。ただし寿命を延ばすため、初日からもっと硬いシューズとローテーションするでしょう。`,
+    th:`ผมวิ่งด้วย Hoka Clifton 9 มาประมาณ 650 กิโลเมตรแล้ว และคิดว่ามีข้อมูลเพียงพอที่จะรีวิวอย่างตรงไปตรงมาได้แล้ว รีวิวรองเท้าวิ่งส่วนใหญ่เขียนหลังใส่แค่สัปดาห์เดียว มันบอกได้แค่ว่ารองเท้าใหม่ให้ความรู้สึกอย่างไร แต่บอกไม่ได้เลยว่ามันจะทนได้แค่ไหนเมื่อแผนซ้อมเริ่มจริงจัง\n\n160 กิโลเมตรแรกยอดเยี่ยม มิดโซลตอบสนองดีโดยไม่แข็ง การเปลี่ยนผ่านจากส้นถึงปลายเท้าราบรื่น และรองเท้าหายไปเวลาวิ่งเบา ๆ — ซึ่งเป็นสิ่งที่คุณต้องการจากรองเท้าซ้อมประจำวัน ผมวิ่ง pace 4:10 ต่อกิโลเมตรด้วยรองเท้าคู่นี้และรู้สึกไม่ต้องออกแรง\n\nราว 320 กิโลเมตร ผมสังเกตเห็นพื้นนอกสึกไม่สม่ำเสมอที่ขอบด้านข้าง พอถึง 480 กิโลเมตร การยุบตัวของมิดโซลเห็นได้ชัด — ความนุ่มฟูจากสัปดาห์แรกแบนลงเป็นสัมผัสที่เป็นกลางมากขึ้น ไม่ถึงกับตาย แต่เปลี่ยนไป สำหรับรองเท้าราคา 5,500 บาท ผมอยากให้ถึง 800 กิโลเมตรก่อนที่จะเปลี่ยนไป Clifton 9 เริ่มสูญเสียเอกลักษณ์ราว 560 กิโลเมตร\n\nจะซื้ออีกไหม? น่าจะ แต่ผมจะสลับกับรองเท้าที่แข็งกว่าตั้งแต่วันแรกเพื่อยืดอายุการใช้งาน`,
+    vi:`Tôi đã chạy với Hoka Clifton 9 được khoảng 650km và nghĩ rằng cuối cùng cũng đủ dữ liệu để đưa ra đánh giá thành thật. Hầu hết review giày chạy bộ được viết sau một tuần. Điều đó chỉ cho bạn biết đôi giày mới có cảm giác thế nào, chứ không nói gì về khả năng chịu đựng khi kế hoạch tập luyện bắt đầu tăng tốc.\n\n160km đầu tiên rất tuyệt. Đế giữa phản hồi tốt mà không cứng, chuyển tiếp từ gót đến mũi chân mượt mà, và đôi giày như biến mất trong những buổi chạy nhẹ — chính xác những gì bạn muốn từ một đôi giày tập hàng ngày. Tôi chạy pace 4:10/km với đôi này và cảm thấy nhẹ nhàng.\n\nKhoảng 320km, tôi nhận thấy đế ngoài mòn không đều ở mép bên. Đến 480km, độ nén đế giữa đã rõ ràng — cảm giác êm ái từ tuần đầu tiên đã phẳng thành thứ gì đó trung tính hơn. Chưa chết, nhưng khác. Với đôi giày 3,5 triệu đồng, tôi muốn đạt 800km trước khi thay đổi đó xảy ra. Clifton 9 bắt đầu mất bản sắc khoảng 560km.\n\nTôi có mua lại không? Có lẽ. Nhưng tôi sẽ xoay vòng với đôi cứng hơn từ ngày đầu để kéo dài tuổi thọ.`
+  }
+};
+
+function prefill(key){
+  const s=samples[key];
+  textarea.value=s[currentLang]||s['en'];
+  textarea.dispatchEvent(new Event('input'));
+  textarea.scrollTop=0;
+}
+
+// ═══ CAROUSEL ═══
+const brandData=[
+  {n:'Amazon',d:'amazon.com'},
+  {n:'Shopify',d:'shopify.com'},
+  {n:'Stake',d:'stake.com'},
+  {n:'Shuffle',d:'shuffle.com'},
+  {n:'Rainbet',d:'rainbet.com'},
+  {n:'BC.Game',d:'bc.game'},
+  {n:'Binance',d:'binance.com'},
+  {n:'Bybit',d:'bybit.com'},
+  {n:'OKX',d:'okx.com'},
+  {n:'Coinbase',d:'coinbase.com'},
+  {n:'NordVPN',d:'nordvpn.com'},
+  {n:'Semrush',d:'semrush.com'},
+  {n:'Notion',d:'notion.so'},
+  {n:'Canva',d:'canva.com'},
+  {n:'HubSpot',d:'hubspot.com'},
+  {n:'Coursera',d:'coursera.org'},
+  {n:'Nike',d:'nike.com'},
+  {n:'Ledger',d:'ledger.com'},
+  {n:'Trezor',d:'trezor.io'},
+  {n:'ExpressVPN',d:'expressvpn.com'},
+  {n:'Stripe',d:'stripe.com'},
+  {n:'Figma',d:'figma.com'},
+  {n:'Dropbox',d:'dropbox.com'},
+  {n:'Airbnb',d:'airbnb.com'},
+  {n:'Hostinger',d:'hostinger.com'},
+  {n:'Fiverr',d:'fiverr.com'},
+  {n:'Skillshare',d:'skillshare.com'},
+  {n:'Audible',d:'audible.com'},
+  {n:'WP Engine',d:'wpengine.com'},
+  {n:'Microsoft',d:'microsoft.com'},
+];
+(function(){
+  const track=document.getElementById('carouselTrack');
+  [...brandData,...brandData].forEach(b=>{
+    const d=document.createElement('div');d.className='b-item';
+    d.innerHTML=`<div class="b-logo"><img src="https://www.google.com/s2/favicons?domain=${b.d}&sz=128" alt="${b.n}" style="width:52px;height:52px;border-radius:6px;"></div><div class="b-name">${b.n}</div>`;
+    track.appendChild(d);
+  });
+})();
+
+// ═══ DEMO ═══
+let usesLeft=5;const MAX_WORDS=1000;
+const textarea=document.getElementById('inputArea'),wordCountEl=document.getElementById('wordCount'),analyzeBtn=document.getElementById('analyzeBtn'),remainingEl=document.getElementById('remainingCount'),errorEl=document.getElementById('errorMsg'),loadingEl=document.getElementById('loadingState'),resultsArea=document.getElementById('resultsArea');
+function countWords(t){const s=t.trim();if(!s)return 0;const cjk=s.match(/[\u4e00-\u9fff\u3400-\u4dbf\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F]/g);const latin=s.replace(/[\u4e00-\u9fff\u3400-\u4dbf\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F]/g,' ').trim();const wc=(latin?latin.split(/\s+/).length:0)+(cjk?cjk.length:0);return wc;}
+function wordUnit(){const u={zh:'字',zh_cn:'字',ko:'단어',ja:'語',th:'คำ',vi:'từ'};return u[currentLang]||'words';}
+function updateWordCount(){const wc=countWords(textarea.value);wordCountEl.textContent=wc.toLocaleString()+' / 1,000 '+wordUnit();if(wc>MAX_WORDS){wordCountEl.classList.add('over');analyzeBtn.disabled=true;}else{wordCountEl.classList.remove('over');analyzeBtn.disabled=wc<30||usesLeft<=0;}}
+textarea.addEventListener('input',()=>{
+  updateWordCount();
+  errorEl.style.display='none';
+});
+function showError(m){errorEl.textContent=m;errorEl.style.display='block';}
+async function analyze(){
+  const text=textarea.value.trim(),wc=countWords(text);
+  if(wc<30){showError(T.err_min[currentLang]||T.err_min.en);return;}
+  if(wc>MAX_WORDS){showError(T.err_max[currentLang]||T.err_max.en);return;}
+  if(usesLeft<=0){showError(T.err_limit[currentLang]||T.err_limit.en);return;}
+  analyzeBtn.disabled=true;errorEl.style.display='none';loadingEl.classList.add('active');
+  resultsArea.classList.remove('active');resultsArea.innerHTML='';
+  try{
+    const res=await fetch('https://operon.network/api/quill-demo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,lang:currentLang})});
+    const data=await res.json();loadingEl.classList.remove('active');
+    if(!res.ok){showError(data.error||'Agent unavailable. Try again.');analyzeBtn.disabled=false;return;}
+    const raw=data.content.map(b=>b.text||'').join(''),cleaned=raw.replace(/```json|```/g,'').trim();
+    let r;try{r=JSON.parse(cleaned);}catch(e){showError(T.err_format[currentLang]||T.err_format.en);analyzeBtn.disabled=false;return;}
+    usesLeft--;updateRemaining();
+    if(usesLeft<=0){analyzeBtn.disabled=true;}else analyzeBtn.disabled=false;
+    renderResults(r);
+  }catch(err){loadingEl.classList.remove('active');showError(T.err_network[currentLang]||T.err_network.en);analyzeBtn.disabled=usesLeft<=0;}
+}
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+function renderResults(r){
+  const L=currentLang;
+  resultsArea.innerHTML='';resultsArea.classList.add('active');
+  resultsArea.innerHTML=`
+    <div class="result-card" id="rc0"><div class="result-card-head"><div class="result-card-icon" style="background:var(--blue);color:#fff;">Q</div><div class="result-card-label">${T.rc_voice_label[L]}</div></div><div class="result-card-body"><div class="voice-grid">
+      <div><div class="voice-item-label">${T.v_tone[L]}</div><div class="voice-item-value">${esc(r.voice.tone)}</div></div>
+      <div><div class="voice-item-label">${T.v_rhythm[L]}</div><div class="voice-item-value">${esc(r.voice.rhythm)}</div></div>
+      <div><div class="voice-item-label">${T.v_register[L]}</div><div class="voice-item-value">${esc(r.voice.register)}</div></div>
+      <div><div class="voice-item-label">${T.v_perspective[L]}</div><div class="voice-item-value">${esc(r.voice.perspective)}</div></div>
+      <div><div class="voice-item-label">${T.v_data[L]}</div><div class="voice-item-value">${esc(r.voice.data_style)}</div></div>
+      <div><div class="voice-item-label">${T.v_signature[L]}</div><div class="voice-item-value">${esc(r.voice.signature)}</div></div>
+    </div></div></div>
+    <div class="result-card" id="rc1"><div class="result-card-head"><div class="result-card-icon" style="background:var(--glow);color:#fff;">→</div><div class="result-card-label">${T.rc_angle_label[L]}</div></div><div class="result-card-body"><div class="angle-topic">${esc(r.angle.topic)}</div><div class="angle-rationale">${esc(r.angle.rationale)}</div></div></div>
+    <div class="result-card" id="rc2"><div class="result-card-head"><div class="result-card-icon" style="background:var(--green);color:var(--void);">⚡</div><div class="result-card-label">${T.rc_hooks_label[L]}</div></div><div class="result-card-body">
+      <div class="hook-item"><div class="hook-platform"><div class="hook-platform-icon" style="background:#FF6B35;color:#fff;">B</div><div class="hook-platform-name">Blog</div></div><div class="hook-text">${esc(r.hooks.blog)}</div></div>
+      <div class="hook-item"><div class="hook-platform"><div class="hook-platform-icon" style="background:#000;color:#fff;">𝕏</div><div class="hook-platform-name">Thread</div></div><div class="hook-text">${esc(r.hooks.tweet)}</div></div>
+      <div class="hook-item"><div class="hook-platform"><div class="hook-platform-icon" style="background:#0077B5;color:#fff;">in</div><div class="hook-platform-name">LinkedIn</div></div><div class="hook-text">${esc(r.hooks.linkedin)}</div></div>
+      <div class="hook-item"><div class="hook-platform"><div class="hook-platform-icon" style="background:#6366F1;color:#fff;">✉</div><div class="hook-platform-name">${L==='zh'?'電子報':'Newsletter'}</div></div><div class="hook-text">${esc(r.hooks.newsletter)}</div></div>
+    </div></div>
+    <div class="locked-card" id="rc3"><div class="locked-card-title">${T.rc_locked_title[L]}</div><div class="locked-card-list">${T.rc_locked_list[L]}</div><div class="locked-card-lock">${T.rc_locked_lock[L]}</div></div>
+    <div class="reset-wrap"><button class="reset-btn" onclick="resetDemo()">${T.rc_reset[L]}</button></div>`;
+  ['rc0','rc1','rc2','rc3'].forEach((id,i)=>{setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('visible');},i*350);});
+  setTimeout(()=>resultsArea.scrollIntoView({behavior:'smooth',block:'start'}),200);
+}
+function resetDemo(){
+  textarea.value='';updateWordCount();
+  resultsArea.classList.remove('active');resultsArea.innerHTML='';
+  analyzeBtn.disabled=usesLeft<=0;errorEl.style.display='none';
+  document.querySelector('.demo-section').scrollIntoView({behavior:'smooth',block:'start'});
+}
+const obs=new IntersectionObserver(e=>{e.forEach(el=>{if(el.isIntersecting){el.target.style.opacity='1';el.target.style.transform='translateY(0)';}});},{threshold:.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.step-card,.card,.proto-card,.locked-card').forEach(el=>{el.style.opacity='0';el.style.transform='translateY(16px)';el.style.transition='opacity .5s ease,transform .5s ease';obs.observe(el);});
+
+// ═══ i18n ═══
+let currentLang='en';
+const T={
+  // Hero
+  hero_badge:{en:'OPN-202 · Autonomous Content Intelligence',zh:'OPN-202 · 自主內容智能體',zh_cn:'OPN-202 · 自主内容智能体',ko:'OPN-202 · 자율 콘텐츠 인텔리전스',ja:'OPN-202 · 自律型コンテンツインテリジェンス',th:'OPN-202 · ระบบอัจฉริยะด้านคอนเทนต์อัตโนมัติ',vi:'OPN-202 · Trí tuệ nội dung tự chủ'},
+  hero_title_html:{en:'Paste your content.<br><span class="accent">See your voice.</span>',zh:'貼上你的內容。<br><span class="accent">你的風格，一目了然。</span>',zh_cn:'粘贴你的内容。<br><span class="accent">你的风格，一目了然。</span>',ko:'콘텐츠를 붙여넣으세요.<br><span class="accent">당신의 문체가 보입니다.</span>',ja:'コンテンツを貼り付けてください。<br><span class="accent">あなたの文体が、見えてくる。</span>',th:'วางคอนเทนต์ของคุณ<br><span class="accent">สไตล์ของคุณ ชัดเจนทันที</span>',vi:'Dán nội dung của bạn.<br><span class="accent">Phong cách của bạn, rõ ràng ngay.</span>'},
+  hero_sub:{en:"Drop in anything you've written. Quill extracts your voice, identifies your next best angle, and drafts hooks across four platforms — in your tone, live, right now.",zh:'貼入任何你寫過的文字。Quill 即時解析你的寫作風格、找出下一個最佳切入角度，並以你的口吻在四個平台草擬開場文案。',zh_cn:'粘贴任何你写过的文字。Quill 实时解析你的写作风格、找到下一个最佳切入角度，并以你的口吻在四个平台起草开场文案。',ko:'직접 쓴 글이면 무엇이든 붙여넣으세요. Quill이 실시간으로 문체를 분석하고, 다음 최적의 앵글을 찾아, 네 개 플랫폼에 맞는 오프닝 문구를 작성합니다.',ja:'あなたが書いた文章を貼り付けてください。Quill がリアルタイムで文体を抽出し、次の最適なアングルを特定し、4つのプラットフォーム向けのフック文を作成します。',th:'วางสิ่งที่คุณเขียนไว้ Quill จะวิเคราะห์สไตล์การเขียนของคุณ ระบุมุมมองที่ดีที่สุดถัดไป และร่างฮุกสำหรับสี่แพลตฟอร์ม — ในโทนของคุณ แบบเรียลไทม์ ตอนนี้เลย',vi:'Dán bất kỳ nội dung nào bạn đã viết. Quill trích xuất giọng văn, xác định góc tiếp cận tốt nhất tiếp theo, và soạn hook trên bốn nền tảng — đúng giọng văn của bạn, trực tiếp, ngay bây giờ.'},
+  // Demo
+  demo_title:{en:'Paste Your Content',zh:'貼上你的內容',zh_cn:'粘贴你的内容',ko:'콘텐츠 붙여넣기',ja:'コンテンツを貼り付け',th:'วางคอนเทนต์ของคุณ',vi:'Dán nội dung của bạn'},
+  prefill_label:{en:'No text handy?',zh:'手邊沒有文字？',zh_cn:'手边没有文字？',ko:'텍스트가 없으신가요?',ja:'テキストが手元にない場合は？',th:'ไม่มีข้อความพร้อมใช้?',vi:'Chưa có văn bản sẵn?'},
+  prefill_notion:{en:"Try with Notion's blog",zh:'試用 Notion 的文章',zh_cn:'试用 Notion 的文章',ko:'Notion 블로그로 체험',ja:'Notion のブログで試す',th:'ลองกับบล็อกของ Notion',vi:'Thử với blog của Notion'},
+  prefill_coindesk:{en:'Try with CoinDesk',zh:'試用 CoinDesk',zh_cn:'试用 CoinDesk',ko:'CoinDesk로 체험',ja:'CoinDesk で試す',th:'ลองกับ CoinDesk',vi:'Thử với CoinDesk'},
+  prefill_runner:{en:'Try with a running blog',zh:'試用跑步部落格',zh_cn:'试用跑步博客',ko:'러닝 블로그로 체험',ja:'ランニングブログで試す',th:'ลองกับบล็อกวิ่ง',vi:'Thử với blog chạy bộ'},
+  loading_text:{en:'QUILL is analyzing your voice...',zh:'QUILL 正在解析你的寫作風格⋯',zh_cn:'QUILL 正在解析你的写作风格⋯',ko:'QUILL이 문체를 분석하는 중…',ja:'QUILL があなたの文体を分析中…',th:'QUILL กำลังวิเคราะห์สไตล์การเขียนของคุณ...',vi:'QUILL đang phân tích giọng văn của bạn...'},
+  analyze_btn:{en:'Analyze My Voice →',zh:'解析我的風格 →',zh_cn:'解析我的风格 →',ko:'내 문체 분석 →',ja:'文体を分析する →',th:'วิเคราะห์สไตล์ของฉัน →',vi:'Phân tích giọng văn của tôi →'},
+  carousel_label:{en:'Affiliate Partners',zh:'聯盟合作夥伴',zh_cn:'联盟合作伙伴',ko:'제휴 파트너',ja:'アフィリエイトパートナー',th:'พาร์ทเนอร์พันธมิตร',vi:'Đối tác liên kết'},
+  // Loop
+  loop_label:{en:'The Full Agentic Loop',zh:'完整智能體循環',zh_cn:'完整智能体循环',ko:'완전한 에이전트 루프',ja:'完全なエージェントループ',th:'ลูปเอเจนต์แบบครบวงจร',vi:'Vòng lặp Agent hoàn chỉnh'},
+  loop_title_html:{en:'What you just saw is <span>step one.</span>',zh:'你剛才看到的是<span>第一步。</span>',zh_cn:'你刚才看到的是<span>第一步。</span>',ko:'방금 보신 것은 <span>첫 단계일 뿐입니다.</span>',ja:'今ご覧いただいたのは<span>最初のステップに過ぎません。</span>',th:'สิ่งที่คุณเพิ่งเห็นคือ<span>แค่ขั้นตอนแรก</span>',vi:'Những gì bạn vừa thấy chỉ là <span>bước đầu tiên.</span>'},
+  loop_intro:{en:"The demo runs the first half of Quill's cycle — voice extraction and drafting. The full agent runs continuously: research, draft, publish, monitor, learn, repeat.",zh:'剛才的演示是 Quill 循環的前半段——風格解析與草擬。完整智能體持續運行：研究、草擬、發佈、監測、學習、循環。',zh_cn:'刚才的演示是 Quill 循环的前半段——风格解析与起草。完整智能体持续运行：研究、起草、发布、监测、学习、循环。',ko:'데모는 Quill 사이클의 전반부 — 문체 추출과 초안 작성을 보여줍니다. 전체 에이전트는 리서치, 초안, 발행, 모니터링, 학습을 쉬지 않고 반복합니다.',ja:'デモでは Quill サイクルの前半 — 文体抽出とドラフト作成をお見せしました。フルエージェントはリサーチ、ドラフト、公開、モニタリング、学習を継続的に繰り返します。',th:'เดโมแสดงครึ่งแรกของวงจร Quill — การวิเคราะห์สไตล์การเขียนและการร่างคอนเทนต์ เอเจนต์เต็มรูปแบบทำงานต่อเนื่อง: วิจัย ร่าง เผยแพร่ ติดตาม เรียนรู้ วนซ้ำ',vi:'Bản demo chạy nửa đầu chu trình của Quill — trích xuất giọng văn và soạn thảo. Agent đầy đủ chạy liên tục: nghiên cứu, soạn thảo, xuất bản, theo dõi, học hỏi, lặp lại.'},
+  s1_name:{en:'Ingest & Learn',zh:'匯入與學習',zh_cn:'导入与学习',ko:'수집 및 학습',ja:'取り込みと学習',th:'รับข้อมูลและเรียนรู้',vi:'Thu thập & Học hỏi'},s1_desc:{en:'Absorbs your content history. Builds a continuously updating brand voice model: tone, vocabulary, sentence rhythm. A learned fingerprint, not a prompt.',zh:'吸收你的內容歷史，建立持續更新的品牌風格模型：語氣、詞彙、句式節奏。經學習而成的指紋，不是一段提示詞。',zh_cn:'吸收你的内容历史，构建持续更新的品牌风格模型：语气、词汇、句式节奏。经学习而成的指纹，不是一段提示词。',ko:'콘텐츠 이력을 흡수하고, 지속적으로 업데이트되는 브랜드 보이스 모델을 구축합니다 — 톤, 어휘, 문장 리듬. 프롬프트가 아닌 학습된 지문입니다.',ja:'コンテンツ履歴を吸収し、継続的に更新されるブランドボイスモデルを構築します — トーン、語彙、文章リズム。プロンプトではなく、学習されたフィンガープリントです。',th:'ดูดซับประวัติคอนเทนต์ของคุณ สร้างโมเดลสไตล์แบรนด์ที่อัปเดตต่อเนื่อง: โทน คำศัพท์ จังหวะประโยค ลายนิ้วมือที่เรียนรู้มา ไม่ใช่แค่พรอมต์',vi:'Hấp thụ lịch sử nội dung của bạn. Xây dựng mô hình giọng văn thương hiệu liên tục cập nhật: giọng điệu, từ vựng, nhịp câu. Một dấu vân tay được học, không phải một prompt.'},
+  s2_name:{en:'Research & Discover',zh:'研究與發現',zh_cn:'研究与发现',ko:'리서치 및 발굴',ja:'リサーチと発見',th:'วิจัยและค้นพบ',vi:'Nghiên cứu & Khám phá'},s2_desc:{en:'Monitors competitors, tracks trends before they peak, identifies content gaps with high demand but low quality coverage, surfaces revenue opportunities.',zh:'監測競爭者、追蹤尚未爆發的趨勢、找出高需求但低質量供給的內容缺口、發掘收益機會。',zh_cn:'监测竞争对手、追踪尚未爆发的趋势、找到高需求但供给不足的内容缺口、挖掘收益机会。',ko:'경쟁사를 모니터링하고, 트렌드가 정점에 달하기 전에 포착하며, 수요는 높지만 양질의 공급이 부족한 콘텐츠 갭을 찾아 수익 기회를 발굴합니다.',ja:'競合をモニタリングし、トレンドがピークに達する前に捕捉し、需要が高いのに質の高いカバレッジが不足しているコンテンツギャップを特定し、収益機会を発掘します。',th:'ติดตามคู่แข่ง จับเทรนด์ก่อนถึงจุดสูงสุด ระบุช่องว่างคอนเทนต์ที่มีดีมานด์สูงแต่ซัพพลายคุณภาพต่ำ และค้นหาโอกาสสร้างรายได้',vi:'Theo dõi đối thủ, bắt xu hướng trước khi đạt đỉnh, xác định khoảng trống nội dung có nhu cầu cao nhưng chất lượng cung cấp thấp, phát hiện cơ hội doanh thu.'},
+  s3_name:{en:'Draft & Adapt',zh:'草擬與適配',zh_cn:'起草与适配',ko:'초안 및 변환',ja:'ドラフトと最適化',th:'ร่างและปรับแต่ง',vi:'Soạn thảo & Thích ứng'},s3_desc:{en:'One insight becomes a full distribution kit: article, thread, video script, newsletter, carousel — each genuinely adapted to format. A/B variants generated automatically.',zh:'一個洞見變成完整分發套件：文章、推文串、影片腳本、電子報、輪播圖——每一種都真正適配格式。自動生成 A/B 變體。',zh_cn:'一个洞察变成完整的分发套件：文章、推文串、视频脚本、邮件通讯、轮播图——每一种都真正适配格式。自动生成 A/B 变体。',ko:'하나의 인사이트가 완전한 배포 키트로 — 아티클, 스레드, 영상 스크립트, 뉴스레터, 캐러셀. 각 포맷에 맞게 진짜로 최적화됩니다. A/B 변형은 자동 생성.',ja:'1つのインサイトが完全な配信キットになります — 記事、スレッド、動画スクリプト、ニュースレター、カルーセル。各フォーマットに本質的に最適化されます。A/B バリアントは自動生成されます。',th:'อินไซต์หนึ่งกลายเป็นชุดเผยแพร่ครบวงจร: บทความ เธรด สคริปต์วิดีโอ จดหมายข่าว carousel — แต่ละชิ้นปรับให้เข้ากับฟอร์แมตอย่างแท้จริง สร้าง A/B แบบอัตโนมัติ',vi:'Một insight trở thành bộ phân phối hoàn chỉnh: bài viết, thread, kịch bản video, newsletter, carousel — mỗi định dạng được chuyển thể thực sự. Tự động tạo biến thể A/B.'},
+  s4_name:{en:'Approve & Publish',zh:'審核與發佈',zh_cn:'审核与发布',ko:'승인 및 발행',ja:'承認と公開',th:'อนุมัติและเผยแพร่',vi:'Phê duyệt & Xuất bản'},s4_desc:{en:'Human approval gate — or autonomous publishing within guardrails. Adaptive scheduling per platform, timed to when your specific audience is most active.',zh:'人工審核關卡——或在設定範圍內自主發佈。根據每個平台自適應排程，精準對應你的受眾活躍時段。',zh_cn:'人工审核关卡——或在设定范围内自主发布。按平台自适应排期，精准对应你的受众活跃时段。',ko:'사람의 승인 단계 — 또는 가드레일 내에서 자율 발행. 플랫폼별 적응형 스케줄링으로, 오디언스가 가장 활발한 시간대에 맞춥니다.',ja:'人間による承認ゲート、またはガードレール内での自律的な公開。プラットフォームごとの適応型スケジューリングで、オーディエンスが最もアクティブな時間帯に合わせます。',th:'จุดอนุมัติโดยมนุษย์ — หรือเผยแพร่อัตโนมัติภายในขอบเขตที่กำหนด ตั้งเวลาแบบปรับตัวตามแพลตฟอร์ม ตรงกับช่วงที่กลุ่มเป้าหมายของคุณแอคทีฟที่สุด',vi:'Cổng phê duyệt bởi con người — hoặc tự động xuất bản trong khuôn khổ. Lên lịch thích ứng theo từng nền tảng, đúng thời điểm đối tượng của bạn hoạt động nhiều nhất.'},
+  s5_name:{en:'Monitor & Earn',zh:'監測與獲利',zh_cn:'监测与获利',ko:'모니터링 및 수익화',ja:'モニタリングと収益化',th:'ติดตามผลและสร้างรายได้',vi:'Theo dõi & Kiếm thu nhập'},s5_desc:{en:'Tracks engagement, conversions, affiliate revenue, lead attribution. Identifies which formats, angles, and placements drive results.',zh:'追蹤互動、轉化、聯盟收益、潛客歸因。識別哪些格式、角度和位置帶來成效。',zh_cn:'追踪互动、转化、联盟收益、线索归因。识别哪些格式、角度和位置带来了成效。',ko:'인게이지먼트, 전환, 제휴 수익, 리드 기여도를 추적합니다. 어떤 포맷, 각도, 배치가 성과를 내는지 파악합니다.',ja:'エンゲージメント、コンバージョン、アフィリエイト収益、リード帰属を追跡します。どのフォーマット、切り口、配置が成果を生んでいるかを特定します。',th:'ติดตาม engagement, conversion, รายได้จากพันธมิตร และการระบุแหล่งที่มาของลีด วิเคราะห์ว่าฟอร์แมต มุมมอง และตำแหน่งใดสร้างผลลัพธ์',vi:'Theo dõi tương tác, chuyển đổi, doanh thu liên kết, phân bổ lead. Xác định định dạng, góc tiếp cận và vị trí nào mang lại kết quả.'},
+  s6_name:{en:'Learn & Loop',zh:'學習與循環',zh_cn:'学习与循环',ko:'학습 및 순환',ja:'学習とループ',th:'เรียนรู้และวนซ้ำ',vi:'Học hỏi & Lặp lại'},s6_desc:{en:'All performance data feeds back into the voice model, research layer, and scheduling engine. Next cycle begins with sharper intelligence.',zh:'所有成效數據回饋到風格模型、研究層和排程引擎。下一個循環以更精準的智能開始。',zh_cn:'所有成效数据回馈到风格模型、研究层和排期引擎。下一个循环以更精准的智能开始。',ko:'모든 성과 데이터가 문체 모델, 리서치 레이어, 스케줄링 엔진에 피드백됩니다. 다음 사이클은 더 날카로운 인텔리전스로 시작됩니다.',ja:'すべてのパフォーマンスデータが文体モデル、リサーチレイヤー、スケジューリングエンジンにフィードバックされます。次のサイクルはより鋭いインテリジェンスで始まります。',th:'ข้อมูลประสิทธิภาพทั้งหมดถูกป้อนกลับเข้าสู่โมเดลสไตล์การเขียน ชั้นวิจัย และเครื่องมือจัดตาราง วงจรถัดไปเริ่มต้นด้วยความชาญฉลาดที่คมขึ้น',vi:'Toàn bộ dữ liệu hiệu suất được phản hồi vào mô hình giọng văn, tầng nghiên cứu và công cụ lên lịch. Chu trình tiếp theo bắt đầu với trí tuệ sắc bén hơn.'},
+  loop_return:{en:'Cycle restarts — every loop makes the next one better',zh:'循環重啟——每一輪都讓下一輪更精準',zh_cn:'循环重启——每一轮都让下一轮更精准',ko:'사이클 재시작 — 매 루프가 다음 루프를 더 정밀하게 만듭니다',ja:'サイクル再開 — ループを重ねるたびに次のサイクルが向上します',th:'วงจรเริ่มใหม่ — ทุกรอบทำให้รอบถัดไปดีขึ้น',vi:'Chu trình khởi động lại — mỗi vòng lặp đều giúp vòng tiếp theo tốt hơn'},
+  // Pillars
+  p1_num:{en:'Pillar 01',zh:'支柱 01',zh_cn:'支柱 01',ko:'핵심 01',ja:'柱 01',th:'เสาหลัก 01',vi:'Trụ cột 01'},
+  p1_title_html:{en:'Content intelligence that <span style="color:var(--ice)">sharpens with use.</span>',zh:'越用越精準的<span style="color:var(--ice)">內容智能。</span>',zh_cn:'越用越精准的<span style="color:var(--ice)">内容智能。</span>',ko:'쓸수록 <span style="color:var(--ice)">정교해지는</span> 콘텐츠 인텔리전스.',ja:'使うほど<span style="color:var(--ice)">研ぎ澄まされる</span>コンテンツインテリジェンス。',th:'ระบบอัจฉริยะด้านคอนเทนต์ที่<span style="color:var(--ice)">ยิ่งใช้ยิ่งคม</span>',vi:'Trí tuệ nội dung <span style="color:var(--ice)">càng dùng càng sắc bén.</span>'},
+  p1_intro:{en:'Every cycle adds signal. After a hundred cycles, Quill knows your brand better than a new hire ever could.',zh:'每個循環累積訊號。一百個循環之後，Quill 比任何新員工都更了解你的品牌。',zh_cn:'每个循环累积信号。一百个循环之后，Quill 比任何新员工都更了解你的品牌。',ko:'매 사이클마다 시그널이 쌓입니다. 백 번의 사이클 후, Quill은 어떤 신입보다 당신의 브랜드를 더 잘 이해합니다.',ja:'サイクルを重ねるたびにシグナルが蓄積されます。100サイクル後には、Quill は新入社員よりもあなたのブランドを深く理解しています。',th:'ทุกวงจรเพิ่มสัญญาณ หลังจากร้อยวงจร Quill รู้จักแบรนด์ของคุณดีกว่าพนักงานใหม่คนไหนจะทำได้',vi:'Mỗi chu trình tích lũy thêm tín hiệu. Sau một trăm chu trình, Quill hiểu thương hiệu của bạn hơn bất kỳ nhân viên mới nào.'},
+  p1c1_title:{en:'Brand Voice as Living Model',zh:'品牌風格——活的模型',zh_cn:'品牌风格——活的模型',ko:'살아있는 브랜드 보이스 모델',ja:'生きたブランドボイスモデル',th:'สไตล์แบรนด์ในฐานะโมเดลที่มีชีวิต',vi:'Giọng văn thương hiệu — mô hình sống'},p1c1_body:{en:'Ingests your full content corpus and builds a voice fingerprint — vocabulary, rhythm, tone. Updates with every published piece.',zh:'匯入你的完整內容語料庫，建立風格指紋——詞彙、節奏、語氣。每發佈一篇都會更新。',zh_cn:'导入你的全部内容语料，构建风格指纹——词汇、节奏、语气。每发布一篇都会更新。',ko:'전체 콘텐츠를 수집하여 문체 핑거프린트를 구축합니다 — 어휘, 리듬, 톤. 새 글이 발행될 때마다 업데이트됩니다.',ja:'コンテンツ全体を取り込み、文体フィンガープリントを構築します — 語彙、リズム、トーン。新しい記事を公開するたびに更新されます。',th:'นำเข้าคอนเทนต์ทั้งหมดของคุณและสร้างลายนิ้วมือสไตล์การเขียน — คำศัพท์ จังหวะ โทน อัปเดตทุกครั้งที่เผยแพร่ชิ้นงานใหม่',vi:'Thu thập toàn bộ kho nội dung của bạn và xây dựng dấu vân tay giọng văn — từ vựng, nhịp điệu, giọng điệu. Cập nhật với mỗi bài đăng mới.'},
+  p1c2_title:{en:'Performance-Aware Drafting',zh:'成效導向草擬',zh_cn:'成效导向起草',ko:'성과 기반 초안 작성',ja:'パフォーマンス連動型ドラフト',th:'การร่างที่เข้าใจประสิทธิภาพ',vi:'Soạn thảo dựa trên hiệu suất'},p1c2_body:{en:'Learns that data-led openings work on LinkedIn but narrative hooks land on X. Drafts improve because the agent accumulated signal.',zh:'學到數據驅動的開場在 LinkedIn 有效，但敘事開場在 X 更出色。草稿不斷進步，因為智能體持續累積訊號。',zh_cn:'学到数据驱动的开场在 LinkedIn 有效，但叙事开场在 X 更出色。草稿持续进步，因为智能体不断积累信号。',ko:'데이터 중심 오프닝이 LinkedIn에서 효과적이고, 내러티브 훅이 X에서 먹힌다는 걸 학습합니다. 시그널이 쌓일수록 초안 품질이 올라갑니다.',ja:'データ主導の書き出しが LinkedIn で効果的で、ナラティブなフックが X で響くことを学習。シグナルが蓄積されるほど、ドラフトの質が向上します。',th:'เรียนรู้ว่าการเปิดด้วยข้อมูลได้ผลบน LinkedIn แต่ฮุกแบบเล่าเรื่องโดนใจบน X แบบร่างดีขึ้นเพราะเอเจนต์สะสมสัญญาณ',vi:'Học được rằng mở đầu bằng dữ liệu hiệu quả trên LinkedIn nhưng hook kể chuyện lại hút trên X. Bản thảo cải thiện vì agent tích lũy tín hiệu.'},
+  p1c3_title:{en:'Research Beyond Summarisation',zh:'超越摘要的研究',zh_cn:'超越摘要的研究',ko:'요약을 넘어서는 리서치',ja:'要約を超えるリサーチ',th:'วิจัยที่เหนือกว่าการสรุป',vi:'Nghiên cứu vượt xa tóm tắt'},p1c3_body:{en:'Identifies topics with high demand but low quality coverage. Monitors competitors. Surfaces the angle nobody is serving well yet.',zh:'找出高需求但低質量供給的主題。監測競爭者。發掘尚無人充分切入的角度。',zh_cn:'找到高需求但供给不足的主题。监测竞争对手。挖掘还没人充分切入的角度。',ko:'수요는 높지만 양질의 공급이 부족한 주제를 찾아냅니다. 경쟁사를 모니터링하고, 아직 아무도 제대로 다루지 못한 각도를 발굴합니다.',ja:'需要が高いのに質の高いカバレッジが不足しているトピックを特定します。競合をモニタリングし、まだ誰も十分にカバーしていない切り口を発掘します。',th:'ระบุหัวข้อที่มีดีมานด์สูงแต่คอนเทนต์คุณภาพยังน้อย ติดตามคู่แข่ง ค้นหามุมมองที่ยังไม่มีใครทำได้ดี',vi:'Xác định chủ đề có nhu cầu cao nhưng chất lượng bao phủ thấp. Theo dõi đối thủ. Phát hiện góc tiếp cận mà chưa ai khai thác tốt.'},
+  p2_num:{en:'Pillar 02',zh:'支柱 02',zh_cn:'支柱 02',ko:'핵심 02',ja:'柱 02',th:'เสาหลัก 02',vi:'Trụ cột 02'},
+  p2_title_html:{en:'Autonomous operation, <span style="color:var(--ice)">not assisted prompting.</span>',zh:'自主運作，<span style="color:var(--ice)">不是提示詞助手。</span>',zh_cn:'自主运作，<span style="color:var(--ice)">不是提示词助手。</span>',ko:'자율 운영, <span style="color:var(--ice)">프롬프트 보조가 아닙니다.</span>',ja:'自律的な運用。<span style="color:var(--ice)">プロンプト補助ではない。</span>',th:'ทำงานอัตโนมัติ <span style="color:var(--ice)">ไม่ใช่แค่ช่วยเขียนพรอมต์</span>',vi:'Vận hành tự chủ, <span style="color:var(--ice)">không phải hỗ trợ viết prompt.</span>'},
+  p2_intro:{en:"Quill doesn't wait. It identifies this week's best angles, drafts, schedules, tests, measures, and adjusts.",zh:'Quill 不等你下指令。它自己找出本週最佳角度、草擬、排程、測試、衡量、調整。',zh_cn:'Quill 不等你下指令。它自己找到本周最佳角度、起草、排期、测试、衡量、调整。',ko:'Quill은 지시를 기다리지 않습니다. 이번 주 최적의 각도를 찾고, 초안을 쓰고, 스케줄링하고, 테스트하고, 측정하고, 조정합니다.',ja:'Quill は指示を待ちません。今週の最適な切り口を特定し、ドラフトし、スケジュールし、テストし、計測し、調整します。',th:'Quill ไม่รอคำสั่ง มันระบุมุมมองที่ดีที่สุดของสัปดาห์นี้ ร่าง จัดตาราง ทดสอบ วัดผล และปรับแต่ง',vi:'Quill không chờ lệnh của bạn. Nó tự xác định góc tiếp cận tốt nhất tuần này, soạn thảo, lên lịch, thử nghiệm, đo lường và điều chỉnh.'},
+  p2c1_title:{en:'Strategic Content Calendar',zh:'策略內容日曆',zh_cn:'策略内容日历',ko:'전략적 콘텐츠 캘린더',ja:'戦略的コンテンツカレンダー',th:'ปฏิทินคอนเทนต์เชิงกลยุทธ์',vi:'Lịch nội dung chiến lược'},p2c1_body:{en:'"You haven\'t covered this topic in three weeks — it\'s 30% of your audience\'s interest." The calendar recommends; it doesn\'t just fill slots.',zh:'「你已經三週沒寫這個主題——它佔你受眾興趣的 30%。」日曆主動建議方向，不只是填滿時段。',zh_cn:'"你已经三周没写这个主题了——它占你受众兴趣的 30%。"日历主动建议方向，不只是填满时间槽。',ko:'"이 주제를 3주째 다루지 않았습니다 — 오디언스 관심사의 30%인데요." 캘린더는 슬롯을 채우는 게 아니라 방향을 제안합니다.',ja:'「このトピックを3週間カバーしていません — オーディエンスの関心の30%です。」カレンダーは枠を埋めるのではなく、方向性を提案します。',th:'"คุณไม่ได้เขียนหัวข้อนี้มาสามสัปดาห์แล้ว — มันคือ 30% ของความสนใจกลุ่มเป้าหมาย" ปฏิทินแนะนำทิศทาง ไม่ใช่แค่เติมช่องว่าง',vi:'"Bạn chưa viết về chủ đề này suốt ba tuần — nó chiếm 30% sự quan tâm của đối tượng." Lịch đưa ra gợi ý, không chỉ lấp đầy ô trống.'},
+  p2c2_title:{en:'Adaptive Scheduling',zh:'自適應排程',zh_cn:'自适应排期',ko:'적응형 스케줄링',ja:'適応型スケジューリング',th:'การจัดตารางแบบปรับตัว',vi:'Lên lịch thích ứng'},p2c2_body:{en:'Learns when your audience is active per platform. Experiments, measures the delta, adjusts. Genuine hypothesis-action-adaptation.',zh:'學習你的受眾在各平台的活躍時間。實驗、衡量差異、調整。真正的假設-行動-適應循環。',zh_cn:'学习你的受众在各平台的活跃时间。实验、衡量差异、调整。真正的假设-行动-适应循环。',ko:'플랫폼별 오디언스 활동 시간을 학습합니다. 실험하고, 차이를 측정하고, 조정합니다. 진짜 가설-실행-적응 사이클.',ja:'プラットフォームごとのオーディエンスのアクティブ時間を学習します。実験し、差分を測定し、調整します。本物の仮説・実行・適応サイクルです。',th:'เรียนรู้ว่ากลุ่มเป้าหมายแอคทีฟเมื่อไหร่ในแต่ละแพลตฟอร์ม ทดลอง วัดความแตกต่าง ปรับแต่ง วงจรสมมติฐาน-ลงมือทำ-ปรับตัวของจริง',vi:'Học thời điểm đối tượng của bạn hoạt động trên từng nền tảng. Thử nghiệm, đo lường sự khác biệt, điều chỉnh. Chu trình giả thuyết-hành động-thích ứng thực sự.'},
+  p2c3_title:{en:'Autonomous A/B Testing',zh:'自主 A/B 測試',zh_cn:'自主 A/B 测试',ko:'자율 A/B 테스트',ja:'自律型 A/B テスト',th:'A/B Testing อัตโนมัติ',vi:'A/B Testing tự động'},p2c3_body:{en:'Two headlines. Two hooks. Split across platforms. Publishes both, measures which performs, applies patterns to future drafts — every cycle.',zh:'兩個標題、兩個開場。跨平台分組。同時發佈，衡量成效，將規律套用到未來草稿——每個循環。',zh_cn:'两个标题、两个开场。跨平台分组。同时发布，衡量成效，把规律套用到未来草稿——每个循环。',ko:'두 개의 헤드라인, 두 개의 훅. 플랫폼별 분할 발행. 성과를 측정하고, 패턴을 다음 초안에 반영합니다 — 매 사이클.',ja:'2つの見出し、2つのフック。プラットフォーム別に分割配信。どちらが成果を出すか計測し、パターンを次のドラフトに反映します — 毎サイクル。',th:'สองหัวข้อ สองฮุก แบ่งข้ามแพลตฟอร์ม เผยแพร่ทั้งคู่ วัดว่าอันไหนได้ผล นำรูปแบบไปใช้กับแบบร่างในอนาคต — ทุกวงจร',vi:'Hai tiêu đề. Hai hook. Chia đều trên các nền tảng. Xuất bản cả hai, đo lường hiệu quả, áp dụng mẫu hình cho bản thảo tương lai — mỗi chu trình.'},
+  p3_num:{en:'Pillar 03',zh:'支柱 03',zh_cn:'支柱 03',ko:'핵심 03',ja:'柱 03',th:'เสาหลัก 03',vi:'Trụ cột 03'},
+  p3_title_html:{en:'A content agent that <span style="color:var(--ice)">pays for itself.</span>',zh:'一個能<span style="color:var(--ice)">自負盈虧</span>的內容智能體。',zh_cn:'一个能<span style="color:var(--ice)">自负盈亏</span>的内容智能体。',ko:'<span style="color:var(--ice)">스스로 비용을 회수하는</span> 콘텐츠 에이전트.',ja:'<span style="color:var(--ice)">自ら収益を生む</span>コンテンツエージェント。',th:'เอเจนต์คอนเทนต์ที่<span style="color:var(--ice)">คุ้มทุนด้วยตัวเอง</span>',vi:'Một agent nội dung <span style="color:var(--ice)">tự hoàn vốn.</span>'},
+  p3_intro:{en:'Most content tools are cost centres. Quill generates revenue — affiliate, sponsored, lead-gen, social growth.',zh:'大多數內容工具是成本中心。Quill 直接產生收益——聯盟、贊助、潛客開發、社群增長。',zh_cn:'大多数内容工具是成本中心。Quill 直接产生收益——联盟、赞助、线索获取、社交增长。',ko:'대부분의 콘텐츠 도구는 비용만 발생시킵니다. Quill은 수익을 창출합니다 — 제휴, 스폰서, 리드 확보, 소셜 성장.',ja:'ほとんどのコンテンツツールはコストセンターです。Quill は直接収益を生み出します — アフィリエイト、スポンサード、リード獲得、ソーシャル成長。',th:'เครื่องมือคอนเทนต์ส่วนใหญ่เป็นศูนย์ต้นทุน Quill สร้างรายได้โดยตรง — พันธมิตร สปอนเซอร์ สร้างลีด เติบโตบนโซเชียล',vi:'Hầu hết công cụ nội dung là trung tâm chi phí. Quill trực tiếp tạo ra doanh thu — liên kết, tài trợ, tạo lead, tăng trưởng mạng xã hội.'},
+  p3c1_title:{en:'Affiliate Integration',zh:'聯盟整合',zh_cn:'联盟整合',ko:'제휴 통합',ja:'アフィリエイト統合',th:'การผสานระบบพันธมิตร',vi:'Tích hợp liên kết'},p3c1_body:{en:'Identifies natural affiliate opportunities in content. Tracked links woven contextually. Tracks conversions and optimises placement over time.',zh:'在內容中找出自然的聯盟機會。追蹤連結依上下文自然嵌入。持續追蹤轉化並優化位置。',zh_cn:'在内容中找到自然的联盟机会。追踪链接依上下文自然嵌入。持续追踪转化并优化位置。',ko:'콘텐츠 안에서 자연스러운 제휴 기회를 찾아내고, 맥락에 맞게 추적 링크를 삽입합니다. 전환을 추적하며 배치를 지속적으로 최적화합니다.',ja:'コンテンツ内で自然なアフィリエイト機会を特定します。追跡リンクを文脈に沿って組み込み、コンバージョンを追跡し、配置を継続的に最適化します。',th:'ระบุโอกาสพันธมิตรที่เป็นธรรมชาติในคอนเทนต์ แทรกลิงก์ติดตามอย่างเข้ากับบริบท ติดตาม conversion และปรับตำแหน่งให้ดีขึ้นเรื่อยๆ',vi:'Xác định cơ hội liên kết tự nhiên trong nội dung. Link theo dõi được lồng ghép theo ngữ cảnh. Theo dõi chuyển đổi và tối ưu vị trí theo thời gian.'},
+  p3c2_title:{en:'Sponsored Content Matching',zh:'贊助內容匹配',zh_cn:'赞助内容匹配',ko:'스폰서 콘텐츠 매칭',ja:'スポンサードコンテンツマッチング',th:'จับคู่คอนเทนต์สปอนเซอร์',vi:'Ghép nội dung tài trợ'},p3c2_body:{en:'Maintains your audience profile and engagement data. Matches with brands seeking sponsored placement. You approve, Quill executes.',zh:'維護你的受眾資料與互動數據。匹配尋求贊助位置的品牌。你審核，Quill 執行。',zh_cn:'维护你的受众画像与互动数据。匹配寻求赞助位置的品牌。你审核，Quill 执行。',ko:'오디언스 프로필과 인게이지먼트 데이터를 관리합니다. 스폰서 배치를 원하는 브랜드와 매칭합니다. 승인은 당신이, 실행은 Quill이.',ja:'オーディエンスプロフィールとエンゲージメントデータを管理します。スポンサード掲載を求めるブランドとマッチングします。承認はあなた、実行は Quill です。',th:'ดูแลโปรไฟล์กลุ่มเป้าหมายและข้อมูล engagement จับคู่กับแบรนด์ที่ต้องการตำแหน่งสปอนเซอร์ คุณอนุมัติ Quill ดำเนินการ',vi:'Duy trì hồ sơ đối tượng và dữ liệu tương tác. Ghép với các thương hiệu tìm kiếm vị trí tài trợ. Bạn phê duyệt, Quill thực hiện.'},
+  p3c3_title:{en:'Social Presence as Asset',zh:'社群存在即資產',zh_cn:'社交存在即资产',ko:'소셜 존재감이 곧 자산',ja:'ソーシャルプレゼンスを資産に',th:'ตัวตนบนโซเชียลคือสินทรัพย์',vi:'Sự hiện diện trên mạng xã hội là tài sản'},p3c3_body:{en:'Replies to relevant conversations. Engages with comments. Identifies collaboration opportunities. Compounds a social graph with real economic value.',zh:'回覆相關對話、參與評論互動、識別合作機會。累積具有真實經濟價值的社群圖譜。',zh_cn:'回复相关对话、参与评论互动、识别合作机会。积累具有真实经济价值的社交图谱。',ko:'관련 대화에 답하고, 댓글에 참여하고, 협업 기회를 포착합니다. 실질적 경제 가치를 지닌 소셜 그래프를 축적합니다.',ja:'関連する会話に返信し、コメントに反応し、コラボレーションの機会を特定します。実質的な経済価値を持つソーシャルグラフを構築します。',th:'ตอบกลับบทสนทนาที่เกี่ยวข้อง มีส่วนร่วมกับคอมเมนต์ ระบุโอกาสร่วมมือ สะสม social graph ที่มีมูลค่าทางเศรษฐกิจจริง',vi:'Trả lời các cuộc hội thoại liên quan. Tương tác với bình luận. Xác định cơ hội hợp tác. Tích lũy social graph có giá trị kinh tế thực.'},
+  // Protocol
+  proto_label:{en:'Operon-Native',zh:'Operon 原生',zh_cn:'Operon 原生',ko:'Operon 네이티브',ja:'Operon ネイティブ',th:'Operon-Native',vi:'Operon-Native'},
+  proto_title_html:{en:'Protocol-verified. <span>Not just another SaaS.</span>',zh:'協議驗證。<span>不只是另一個 SaaS。</span>',zh_cn:'协议验证。<span>不只是又一个 SaaS。</span>',ko:'프로토콜 검증. <span>또 다른 SaaS가 아닙니다.</span>',ja:'プロトコル検証済み。<span>ただの SaaS ではありません。</span>',th:'ตรวจสอบผ่านโปรโตคอล <span>ไม่ใช่แค่อีก SaaS หนึ่ง</span>',vi:'Xác minh bởi giao thức. <span>Không chỉ là một SaaS khác.</span>'},
+  proto_intro:{en:'Every Quill cycle is logged, verifiable, and composable within the Operon network.',zh:'每個 Quill 循環都在 Operon 網路中被記錄、可驗證、可組合。',zh_cn:'每个 Quill 循环都在 Operon 网络中被记录、可验证、可组合。',ko:'모든 Quill 사이클은 Operon 네트워크에서 기록되고, 검증 가능하며, 조합 가능합니다.',ja:'すべての Quill サイクルは Operon ネットワーク上で記録され、検証可能で、コンポーザブルです。',th:'ทุกวงจรของ Quill ถูกบันทึก ตรวจสอบได้ และประกอบร่วมกันได้ภายในเครือข่าย Operon',vi:'Mọi chu trình của Quill đều được ghi lại, có thể xác minh và kết hợp trong mạng lưới Operon.'},
+  proto1_title:{en:'On-Chain Output Attestation',zh:'鏈上輸出證明',zh_cn:'链上输出证明',ko:'온체인 아웃풋 증명',ja:'オンチェーン出力証明',th:'การรับรองผลลัพธ์บน On-Chain',vi:'Chứng thực đầu ra On-Chain'},proto1_body:{en:'Three-tier on-chain proof that output matched brand voice constraints, accuracy standards, and content guidelines.',zh:'三層鏈上證明，驗證輸出符合品牌調性規範、準確性標準與內容準則。',zh_cn:'三层链上证明，验证输出符合品牌调性规范、准确性标准与内容准则。',ko:'3단계 온체인 증명으로, 아웃풋이 브랜드 보이스 규범, 정확성 기준, 콘텐츠 가이드라인을 충족했음을 검증합니다.',ja:'3層のオンチェーン証明により、出力がブランドボイス制約、正確性基準、コンテンツガイドラインを満たしていることを検証します。',th:'หลักฐาน on-chain สามชั้นยืนยันว่าผลลัพธ์ตรงตามข้อกำหนดสไตล์แบรนด์ มาตรฐานความถูกต้อง และแนวทางคอนเทนต์',vi:'Bằng chứng on-chain ba tầng xác nhận đầu ra phù hợp với ràng buộc giọng văn thương hiệu, tiêu chuẩn chính xác và quy tắc nội dung.'},
+  proto2_title:{en:'Public Performance Index',zh:'公開績效指數',zh_cn:'公开绩效指数',ko:'공개 퍼포먼스 지수',ja:'公開パフォーマンス指数',th:'ดัชนีประสิทธิภาพสาธารณะ',vi:'Chỉ số hiệu suất công khai'},proto2_body:{en:"Scout indexes Quill's metrics publicly. Brands see verified track records in the Agent Reputation Directory.",zh:'Scout 公開索引 Quill 的績效指標。品牌可在智能體信譽目錄中查看經驗證的歷史記錄。',zh_cn:'Scout 公开索引 Quill 的绩效指标。品牌可在智能体信誉目录中查看经验证的历史记录。',ko:'Scout가 Quill의 지표를 공개 인덱싱합니다. 브랜드는 에이전트 평판 디렉토리에서 검증된 실적을 확인할 수 있습니다.',ja:'Scout が Quill の指標を公開インデックスします。ブランドはエージェント評判ディレクトリで検証済みの実績を確認できます。',th:'Scout จัดทำดัชนีตัวชี้วัดของ Quill แบบสาธารณะ แบรนด์สามารถดูประวัติผลงานที่ตรวจสอบแล้วใน Agent Reputation Directory',vi:'Scout lập chỉ mục các chỉ số của Quill một cách công khai. Thương hiệu xem được hồ sơ thành tích đã xác minh trong Agent Reputation Directory.'},
+  proto3_title:{en:'Multi-Agent Composition',zh:'多智能體組合',zh_cn:'多智能体组合',ko:'멀티 에이전트 조합',ja:'マルチエージェント構成',th:'การประกอบร่วมแบบหลายเอเจนต์',vi:'Kết hợp đa Agent'},proto3_body:{en:'Via Relay, Quill pulls research from Pulse, data from Anchor, triggers docs through Scribe. OAMS-native.',zh:'透過 Relay，Quill 從 Pulse 提取研究、從 Anchor 獲取數據、透過 Scribe 觸發文件更新。OAMS 原生支援。',zh_cn:'通过 Relay，Quill 从 Pulse 获取研究、从 Anchor 获取数据、通过 Scribe 触发文档更新。OAMS 原生支持。',ko:'Relay를 통해 Quill은 Pulse에서 리서치를, Anchor에서 데이터를 가져오고, Scribe로 문서를 트리거합니다. OAMS 네이티브.',ja:'Relay を通じて、Quill は Pulse からリサーチを、Anchor からデータを取得し、Scribe でドキュメントをトリガーします。OAMS ネイティブ対応です。',th:'ผ่าน Relay, Quill ดึงงานวิจัยจาก Pulse, ข้อมูลจาก Anchor, ทริกเกอร์เอกสารผ่าน Scribe รองรับ OAMS แบบเนทีฟ',vi:'Thông qua Relay, Quill lấy nghiên cứu từ Pulse, dữ liệu từ Anchor, kích hoạt tài liệu qua Scribe. Hỗ trợ OAMS native.'},
+  proto4_title:{en:'Attribution & Revenue',zh:'歸因與收益',zh_cn:'归因与收益',ko:'기여 추적 및 수익',ja:'アトリビューションと収益',th:'การระบุแหล่งที่มาและรายได้',vi:'Phân bổ & Doanh thu'},proto4_body:{en:'Every cycle, conversion, and placement logged on-chain via Ledger. Node operators earn from every cycle.',zh:'每個循環、轉化和位置都透過 Ledger 記錄在鏈上。節點運營者從每個循環中獲利。',zh_cn:'每个循环、转化和位置都通过 Ledger 记录在链上。节点运营者从每个循环中获利。',ko:'모든 사이클, 전환, 배치가 Ledger를 통해 온체인에 기록됩니다. 노드 운영자는 매 사이클에서 수익을 얻습니다.',ja:'すべてのサイクル、コンバージョン、配置が Ledger を通じてオンチェーンに記録されます。ノードオペレーターは毎サイクルから収益を得ます。',th:'ทุกวงจร conversion และตำแหน่งถูกบันทึก on-chain ผ่าน Ledger ผู้ดำเนินการโหนดได้รับรายได้จากทุกวงจร',vi:'Mọi chu trình, chuyển đổi và vị trí đều được ghi on-chain qua Ledger. Người vận hành node kiếm thu nhập từ mỗi chu trình.'},
+  // Footer
+  footer_note:{en:'Quill is part of the Operon agent ecosystem. Performance indexed by Scout. Output attestable via Verify. Revenue attribution logged via Ledger. Node operators earn from every content cycle.',zh:'Quill 是 Operon 智能體生態系統的一部分。績效由 Scout 索引。輸出可由 Verify 驗證。收益歸因由 Ledger 記錄。節點運營者從每個內容循環中獲利。',zh_cn:'Quill 是 Operon 智能体生态的一部分。绩效由 Scout 索引，输出可由 Verify 验证，收益归因由 Ledger 记录。节点运营者从每个内容循环中获利。',ko:'Quill은 Operon 에이전트 생태계의 일부입니다. 퍼포먼스는 Scout가 인덱싱하고, 아웃풋은 Verify로 증명하며, 수익 기여는 Ledger에 기록됩니다. 노드 운영자는 모든 콘텐츠 사이클에서 수익을 얻습니다.',ja:'Quill は Operon エージェントエコシステムの一部です。パフォーマンスは Scout がインデックスし、出力は Verify で検証可能、収益アトリビューションは Ledger に記録されます。ノードオペレーターはすべてのコンテンツサイクルから収益を得ます。',th:'Quill เป็นส่วนหนึ่งของระบบนิเวศเอเจนต์ Operon ประสิทธิภาพถูกจัดทำดัชนีโดย Scout ผลลัพธ์ตรวจสอบได้ผ่าน Verify การระบุแหล่งรายได้บันทึกผ่าน Ledger ผู้ดำเนินการโหนดได้รับรายได้จากทุกวงจรคอนเทนต์',vi:'Quill là một phần của hệ sinh thái agent Operon. Hiệu suất được Scout lập chỉ mục. Đầu ra có thể xác minh qua Verify. Phân bổ doanh thu được ghi qua Ledger. Người vận hành node kiếm thu nhập từ mỗi chu trình nội dung.'},
+  // Results (used in renderResults)
+  rc_voice_label:{en:'Your Voice Profile',zh:'你的風格側寫',zh_cn:'你的风格侧写',ko:'문체 분석 결과',ja:'あなたの文体プロフィール',th:'โปรไฟล์สไตล์การเขียนของคุณ',vi:'Hồ sơ giọng văn của bạn'},
+  rc_angle_label:{en:'Suggested Next Angle',zh:'建議下一個角度',zh_cn:'建议下一个角度',ko:'추천 다음 주제',ja:'推奨する次の切り口',th:'มุมมองถัดไปที่แนะนำ',vi:'Góc tiếp cận tiếp theo được gợi ý'},
+  rc_hooks_label:{en:'Hooks — In Your Voice',zh:'開場文案——以你的口吻',zh_cn:'开场文案——以你的口吻',ko:'오프닝 문구 — 당신의 톤으로',ja:'フック — あなたの文体で',th:'ฮุก — ในสไตล์ของคุณ',vi:'Hook — Bằng giọng văn của bạn'},
+  rc_locked_title:{en:'Full Content Kit',zh:'完整內容套件',zh_cn:'完整内容套件',ko:'전체 콘텐츠 키트',ja:'フルコンテンツキット',th:'ชุดคอนเทนต์ครบวงจร',vi:'Bộ nội dung đầy đủ'},
+  rc_locked_list:{en:'Complete blog draft · full X thread · LinkedIn article · newsletter section · YouTube Short script · carousel outline — all in your voice with A/B variants.',zh:'完整文章草稿 · 完整推文串 · LinkedIn 文章 · 電子報章節 · YouTube Short 腳本 · 輪播大綱——全部以你的口吻呈現，含 A/B 變體。',zh_cn:'完整文章草稿 · 完整推文串 · LinkedIn 文章 · 邮件通讯章节 · YouTube Short 脚本 · 轮播大纲——全部以你的口吻呈现，含 A/B 变体。',ko:'블로그 초안 · X 스레드 전문 · LinkedIn 아티클 · 뉴스레터 섹션 · YouTube Short 스크립트 · 캐러셀 아웃라인 — 모두 당신의 문체로, A/B 변형 포함.',ja:'ブログ記事の完全ドラフト · X スレッド全文 · LinkedIn 記事 · ニュースレターセクション · YouTube Short スクリプト · カルーセルアウトライン — すべてあなたの文体で、A/B バリアント付き。',th:'แบบร่างบล็อกฉบับเต็ม · เธรด X ฉบับเต็ม · บทความ LinkedIn · ส่วนจดหมายข่าว · สคริปต์ YouTube Short · โครงร่าง carousel — ทั้งหมดในสไตล์ของคุณพร้อม A/B variants',vi:'Bản thảo blog hoàn chỉnh · thread X đầy đủ · bài viết LinkedIn · phần newsletter · kịch bản YouTube Short · dàn ý carousel — tất cả bằng giọng văn của bạn kèm biến thể A/B.'},
+  rc_locked_lock:{en:'🔒 Available to Operon node holders at TGE',zh:'🔒 TGE 後開放予 Operon 節點持有者',zh_cn:'🔒 TGE 后开放予 Operon 节点持有者',ko:'🔒 TGE 후 Operon 노드 홀더에게 개방',ja:'🔒 TGE 後 Operon ノードホルダーに開放',th:'🔒 เปิดให้ผู้ถือโหนด Operon ใช้งานเมื่อ TGE',vi:'🔒 Mở cho người nắm giữ node Operon sau TGE'},
+  rc_reset:{en:'Try another sample ↻',zh:'嘗試另一段文字 ↻',zh_cn:'换一段文字试试 ↻',ko:'다른 샘플로 다시 해보기 ↻',ja:'別のサンプルで試す ↻',th:'ลองตัวอย่างอื่น ↻',vi:'Thử mẫu khác ↻'},
+  v_tone:{en:'Tone',zh:'語氣',zh_cn:'语气',ko:'톤',ja:'トーン',th:'โทน',vi:'Giọng điệu'},v_rhythm:{en:'Rhythm',zh:'節奏',zh_cn:'节奏',ko:'리듬',ja:'リズム',th:'จังหวะ',vi:'Nhịp điệu'},v_register:{en:'Register',zh:'語域',zh_cn:'语域',ko:'레지스터',ja:'レジスター',th:'ระดับภาษา',vi:'Ngữ vực'},
+  v_perspective:{en:'Perspective',zh:'視角',zh_cn:'视角',ko:'시점',ja:'視点',th:'มุมมอง',vi:'Góc nhìn'},v_data:{en:'Data Style',zh:'數據風格',zh_cn:'数据风格',ko:'데이터 스타일',ja:'データスタイル',th:'สไตล์ข้อมูล',vi:'Phong cách dữ liệu'},v_signature:{en:'Signature',zh:'標誌特徵',zh_cn:'标志特征',ko:'시그니처',ja:'シグネチャー',th:'ลายเซ็น',vi:'Dấu ấn riêng'},
+  err_min:{en:'Please paste at least 30 words for voice analysis.',zh:'請貼上至少 30 個字以進行風格解析。',zh_cn:'请粘贴至少 30 个字以进行风格解析。',ko:'문체 분석을 위해 최소 30단어를 붙여넣어 주세요.',ja:'文体分析のために30語以上を貼り付けてください。',th:'กรุณาวางข้อความอย่างน้อย 30 คำเพื่อวิเคราะห์สไตล์การเขียน',vi:'Vui lòng dán ít nhất 30 từ để phân tích giọng văn.'},
+  err_max:{en:'Exceeds 1,000 word limit.',zh:'超過 1,000 字上限。',zh_cn:'超过 1,000 字上限。',ko:'1,000 단어 제한을 초과했습니다.',ja:'1,000 語の上限を超えています。',th:'เกินขีดจำกัด 1,000 คำ',vi:'Vượt quá giới hạn 1.000 từ.'},
+  err_limit:{en:'Demo limit reached. Full access available to node holders.',zh:'演示次數已用完。節點持有者可使用完整功能。',zh_cn:'演示次数已用完。节点持有者可使用完整功能。',ko:'데모 한도에 도달했습니다. 노드 홀더에게 전체 기능이 제공됩니다.',ja:'デモの上限に達しました。ノードホルダーにはフル機能が提供されます。',th:'ครบจำนวนครั้งที่ทดลองได้แล้ว ผู้ถือโหนดสามารถใช้งานเต็มรูปแบบ',vi:'Đã hết lượt dùng thử. Người nắm giữ node có quyền truy cập đầy đủ.'},
+  err_format:{en:'Unexpected format. Try again.',zh:'格式異常，請重試。',zh_cn:'格式异常，请重试。',ko:'예상치 못한 형식입니다. 다시 시도해 주세요.',ja:'予期しない形式です。もう一度お試しください。',th:'รูปแบบไม่ถูกต้อง ลองอีกครั้ง',vi:'Định dạng không mong đợi. Vui lòng thử lại.'},
+  err_network:{en:'Network error.',zh:'網路錯誤。',zh_cn:'网络错误。',ko:'네트워크 오류.',ja:'ネットワークエラー。',th:'ข้อผิดพลาดเครือข่าย',vi:'Lỗi mạng.'},
+};
+
+const langLabels={en:'EN',zh_cn:'简中',zh:'繁中',ko:'한국',ja:'日本',th:'ไทย',vi:'VI'};
+function toggleLangMenu(){document.getElementById('langDropdown').classList.toggle('open');}
+document.addEventListener('click',function(e){if(!document.getElementById('langWrap').contains(e.target))document.getElementById('langDropdown').classList.remove('open');});
+function pickLang(lang){
+  currentLang=lang;
+  document.getElementById('langBtn').textContent=langLabels[lang]||lang;
+  document.getElementById('langDropdown').classList.remove('open');
+  document.querySelectorAll('.lang-option').forEach(o=>o.classList.remove('active'));
+  document.querySelector('.lang-option[onclick*="\''+lang+'\'"]').classList.add('active');
+  const cjk=lang==='zh'||lang==='zh_cn'||lang==='ko'||lang==='ja';
+  document.body.classList.toggle('zh',cjk);
+  // swap text — fallback to en if translation missing
+  document.querySelectorAll('[data-i]').forEach(el=>{
+    const key=el.getAttribute('data-i');
+    if(T[key]){
+      const val=T[key][lang]||T[key]['en'];
+      if(val){if(key.endsWith('_html'))el.innerHTML=val;else el.textContent=val;}
+    }
+  });
+  // swap placeholder
+  const ta=document.getElementById('inputArea');
+  ta.placeholder=ta.getAttribute('data-ph-'+lang)||ta.getAttribute('data-ph-en')||ta.placeholder;
+  updateWordCount();
+  updateRemaining();
+}
+
+function updateRemaining(){
+  const el=document.getElementById('remainingCount'),L=currentLang;
+  if(usesLeft<=0){
+    const m={zh:'演示次數已用完',zh_cn:'演示次数已用完',ko:'데모 한도에 도달했습니다',ja:'デモの上限に達しました',th:'ครบจำนวนครั้งที่ทดลองได้แล้ว',vi:'Đã hết lượt dùng thử'};
+    el.textContent=m[L]||'Demo limit reached';
+  }else{
+    const m={zh:'剩餘 '+usesLeft+' 次解析',zh_cn:'剩余 '+usesLeft+' 次解析',ko:usesLeft+'회 분석 남음',ja:'残り '+usesLeft+' 回分析可能',th:'เหลือ '+usesLeft+' ครั้งในการวิเคราะห์',vi:'Còn '+usesLeft+' lượt phân tích'};
+    el.textContent=m[L]||usesLeft+' analys'+(usesLeft===1?'is':'es')+' remaining';
+  }
+}
+</script>
+</body>
+</html>

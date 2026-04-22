@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zenith 4.0 — Trading Methodology</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ═══ Reset & Tokens ═══ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#060B14;--deep:#0C1424;--card:#111C2E;--edge:#1E2D45;
+  --blue:#2563EB;--glow:#3B82F6;--ice:#93C5FD;--sky:#BFDBFE;
+  --white:#F0F4FF;--soft:#D4DFEF;--dim:#8BA3C7;
+  --mid:rgba(148,185,253,0.3);--faint:rgba(148,185,253,0.10);
+  --green:#34D399;--red:#F87171;
+  /* legacy aliases */
+  --bg:#060B14;--text:#F0F4FF;--text-dim:#8BA3C7;--text-muted:rgba(139,163,199,0.5);
+  --glass-bg:#111C2E;--glass-bg2:rgba(17,28,46,0.8);
+  --glass-border:#1E2D45;--glass-border2:rgba(30,45,69,1.0);
+  --gold:var(--ice);--gold-dim:rgba(147,197,253,0.7);--gold-glow:rgba(37,99,235,0.25);--gold-glow2:rgba(37,99,235,0.08);
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --radius:12px;--radius-sm:8px;
+}
+body{background:var(--void);color:var(--white);font-family:var(--font);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body.lang-zh{font-family:'Noto Sans TC','DM Sans',sans-serif}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 60% 40% at 75% 10%,rgba(37,99,235,0.06) 0%,transparent 70%),radial-gradient(ellipse 50% 35% at 10% 85%,rgba(59,130,246,0.04) 0%,transparent 70%)}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#0a0a0a}
+::-webkit-scrollbar-thumb{background:#222;border-radius:3px}
+
+/* ═══ Layout ═══ */
+.wrap{position:relative;z-index:1;max-width:840px;margin:0 auto;padding:100px 24px 80px}
+
+/* ═══ Badge ═══ */
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(37,99,235,0.15);border:1px solid rgba(147,197,253,0.3);border-radius:30px;padding:6px 18px;margin-bottom:36px}
+.badge span{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:0.18em;text-transform:uppercase;color:var(--ice)}
+.badge .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* ═══ Hero ═══ */
+.hero-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:clamp(28px,5vw,48px);line-height:1.12;margin-bottom:24px;letter-spacing:-0.02em;color:var(--white)}
+.hero-title .gold{color:var(--ice);-webkit-text-fill-color:initial;background:none}
+.hero-sub{font-size:15px;line-height:1.9;color:var(--dim);max-width:700px;margin-bottom:0}
+.lang-zh .hero-title{line-height:1.2}
+.lang-zh .hero-sub{line-height:1.95}
+
+/* ═══ Section Divider ═══ */
+.section-divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--edge),transparent);margin:72px 0}
+
+/* ═══ Section Label ═══ */
+.sec-label{font-family:var(--mono);font-size:11px;letter-spacing:0.20em;color:var(--ice);text-transform:uppercase;margin-bottom:24px;display:flex;align-items:center;gap:12px}
+.sec-label::before{content:'';width:40px;height:1px;background:var(--blue);flex-shrink:0}
+.lang-zh .sec-label{letter-spacing:0.08em}
+
+/* ═══ Glass Card ═══ */
+.glass{background:var(--card);border:1px solid var(--edge);border-radius:var(--radius)}
+
+/* ═══ Section spacing ═══ */
+.section{margin-bottom:0}
+
+/* ═══ Body Text ═══ */
+.body-text{font-size:14px;line-height:1.85;color:var(--dim)}
+.body-text strong{color:var(--white);font-weight:600}
+.body-text em{color:var(--ice);font-style:italic}
+
+/* ═══ Agent Intro ═══ */
+.agent-intro{padding:32px}
+.agent-intro .body-text+.body-text{margin-top:16px}
+
+/* ═══ Pillar Card ═══ */
+.pillar{background:var(--card);border:1px solid var(--edge);border-radius:var(--radius);cursor:pointer;position:relative;overflow:hidden;margin-bottom:16px;opacity:0;transform:translateY(24px);transition:all 0.65s cubic-bezier(0.22,1,0.36,1)}
+.pillar.visible{opacity:1;transform:translateY(0)}
+.pillar.open{border-color:rgba(59,130,246,0.4)}
+.pillar .accent{position:absolute;top:0;left:0;width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--blue),var(--ice),transparent);opacity:0;transition:opacity 0.4s}
+.pillar.open .accent{opacity:1}
+
+.pillar-top{padding:28px 28px 24px}
+.pillar-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:14px}
+.pillar-num{font-family:var(--mono);font-size:20px;font-weight:600;color:var(--ice);opacity:0.35;line-height:1;padding-top:2px;flex-shrink:0}
+.pillar-tag{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:600;color:var(--white);opacity:0.9;margin-bottom:4px}
+.pillar-subtitle{font-size:12px;font-weight:600;letter-spacing:0.03em;color:var(--text-dim)}
+.pillar-toggle{margin-left:auto;font-family:var(--mono);font-size:16px;color:var(--text-muted);transition:transform 0.3s;display:inline-block;flex-shrink:0;padding-top:4px}
+.pillar.open .pillar-toggle{transform:rotate(45deg)}
+
+.pillar-desc{font-size:14px;line-height:1.85;color:var(--text-dim);padding:0 28px 24px;padding-left:64px}
+.pillar-caps{max-height:0;opacity:0;overflow:hidden;transition:all 0.5s cubic-bezier(0.22,1,0.36,1)}
+.pillar.open .pillar-caps{max-height:600px;opacity:1}
+.pillar-caps-inner{border-top:1px solid var(--glass-border);padding:20px 28px 24px;padding-left:64px}
+.cap-item{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+.cap-dot{color:var(--ice);font-size:6px;margin-top:8px;flex-shrink:0;opacity:0.5}
+.cap-text{font-size:13px;line-height:1.75;color:var(--text-dim)}
+
+/* ═══ RL Section ═══ */
+.rl-card{padding:32px}
+.rl-card .body-text+.body-text{margin-top:16px}
+.rl-items{margin-top:24px;display:flex;flex-direction:column;gap:0;background:rgba(17,28,46,0.5);border:1px solid var(--edge);border-radius:var(--radius-sm);padding:4px 0}
+.rl-item{display:flex;gap:16px;align-items:flex-start;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.rl-item:last-child{border-bottom:none}
+.rl-item-label{font-size:13px;font-weight:600;color:var(--ice);min-width:150px;flex-shrink:0;font-family:var(--mono)}
+.rl-item-desc{font-size:13px;color:var(--text-dim);line-height:1.65}
+.rl-outro{margin-top:24px}
+
+/* ═══ Agent Loop ═══ */
+.loop-intro{font-size:14px;line-height:1.85;color:var(--text-dim);margin-bottom:20px}
+.loop-card{padding:0;overflow:hidden}
+.loop-step{display:grid;grid-template-columns:140px 1fr;align-items:start;gap:20px;padding:22px 28px;border-bottom:1px solid var(--glass-border);position:relative;opacity:0;transform:translateY(12px);transition:all 0.5s cubic-bezier(0.22,1,0.36,1)}
+.loop-step.visible{opacity:1;transform:translateY(0)}
+.loop-step:last-child{border-bottom:none}
+.loop-step:hover{background:rgba(255,255,255,0.015)}
+.loop-left{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.loop-num{font-family:var(--mono);font-size:12px;color:var(--ice);opacity:0.5;font-weight:500}
+.loop-label{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;letter-spacing:0.01em}
+.loop-detail{font-size:13.5px;color:var(--text-dim);line-height:1.75}
+.loop-outro{font-size:14px;line-height:1.85;color:var(--text-dim);margin-top:20px}
+
+/* ═══ Timeline ═══ */
+.timeline{position:relative;padding-left:0}
+.tl-item{display:grid;grid-template-columns:140px 1fr;gap:24px;padding:20px 0;border-bottom:1px solid var(--glass-border);opacity:0;transition:opacity 0.5s ease}
+.tl-item.visible{opacity:1}
+.tl-item:last-child{border-bottom:none}
+.tl-item.current{background:rgba(37,99,235,0.08);border-radius:var(--radius-sm);border:1px solid rgba(37,99,235,0.2);padding:20px 20px;margin:0 -20px}
+.tl-meta{display:flex;flex-direction:column;gap:6px}
+.tl-year{font-family:var(--mono);font-size:12px;color:var(--text-muted)}
+.tl-ver{display:inline-block;font-size:12px;font-weight:700;color:var(--text);font-family:var(--mono);background:var(--glass-bg2);border:1px solid var(--glass-border);border-radius:4px;padding:2px 8px;width:fit-content}
+.tl-item.current .tl-ver{color:var(--ice);background:rgba(37,99,235,0.15);border-color:rgba(147,197,253,0.3)}
+.tl-note{font-size:13.5px;color:var(--text-dim);line-height:1.75}
+.tl-summary{margin-top:24px}
+
+/* ═══ Asset Table ═══ */
+.asset-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.asset-card{background:var(--card);border:1px solid var(--edge);border-radius:var(--radius-sm);padding:20px 16px;text-align:center;transition:border-color 0.2s}
+.asset-card:hover{border-color:rgba(59,130,246,0.4)}
+.asset-name{font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text);margin-bottom:6px}
+.asset-type{font-size:11px;color:var(--text-muted);font-family:var(--mono);letter-spacing:0.06em;text-transform:uppercase}
+
+/* ═══ Footer ═══ */
+.footer{border-top:1px solid var(--edge);padding-top:28px;margin-top:64px}
+.footer p{font-size:12px;line-height:1.75;color:var(--text-muted);font-style:italic}
+
+/* ═══ Navbar ═══ */
+.lang-bar{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(6,11,20,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--mid);display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:56px}
+.nav-back{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--dim);text-decoration:none;display:flex;align-items:center;gap:8px;transition:color 0.2s}
+.nav-back:hover{color:var(--ice)}
+.nav-back::before{content:'←';margin-right:2px}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-tag{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--ice);border:1px solid rgba(147,197,253,0.3);padding:5px 14px;border-radius:20px;background:rgba(37,99,235,0.15)}
+.nav-tag::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;animation:blink 2s ease infinite}
+/* Lang dropdown — reuse lang-sw wrapper */
+.lang-sw{position:relative}
+.lang-btn{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:0.08em;padding:5px 28px 5px 12px;border-radius:20px;cursor:pointer;border:1px solid rgba(147,197,253,0.3);color:var(--ice);background:rgba(37,99,235,0.15);transition:all 0.2s;outline:none;position:relative;display:flex;align-items:center;gap:6px}
+.lang-btn:hover,.lang-btn.open{background:rgba(37,99,235,0.25);border-color:rgba(147,197,253,0.5)}
+.lang-btn svg{display:none}
+.lang-btn::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;pointer-events:none;color:var(--ice)}
+.lang-btn.open::after{content:'▴'}
+.lang-dd{display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:140px;background:var(--card);border:1px solid var(--edge);border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:300}
+.lang-dd.open{display:block}
+.lang-opt{display:block;width:100%;padding:10px 16px;font-family:var(--mono);font-size:11px;letter-spacing:0.04em;color:var(--soft);background:transparent;cursor:pointer;text-align:left;transition:background 0.15s,color 0.15s}
+.lang-opt:hover{background:rgba(37,99,235,0.15);color:var(--ice)}
+.lang-opt.active{color:var(--ice);background:rgba(37,99,235,0.2)}
+.lang-code{font-family:var(--mono);font-weight:700;font-size:12px;margin-right:6px}
+
+/* ═══ Responsive ═══ */
+@media(max-width:640px){
+  .lang-bar{padding:0 16px}
+  .nav-tag{display:none}
+  .wrap{padding:80px 16px 60px}
+  .hero-title{font-size:24px!important}
+  .hero-sub{font-size:13px!important}
+  .pillar-desc{padding-left:28px}
+  .pillar-caps-inner{padding-left:28px}
+  .pillar-head{flex-wrap:wrap}
+  .loop-step{grid-template-columns:1fr;gap:8px;padding:16px 20px}
+  .tl-item{grid-template-columns:1fr;gap:8px}
+  .tl-meta{flex-direction:row;align-items:center;gap:12px}
+  .asset-grid{grid-template-columns:repeat(3,1fr);gap:8px}
+  .agent-intro,.rl-card{padding:24px 20px}
+  .rl-item{flex-direction:column;gap:4px}
+  .rl-item-label{min-width:0}
+}
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<div class="lang-bar">
+  <a href="https://operon.network/" style="text-decoration:none;display:flex;align-items:center;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 433.1 112.0" style="height:28px;width:auto;display:block;">
+      <g transform="translate(20,0)">
+        <path d="M482 -16Q349 -16 248.5 33.0Q148 82 92.5 170.0Q37 258 37 375Q37 492 92.5 580.0Q148 668 248.5 717.0Q349 766 482 766Q616 766 716.0 717.0Q816 668 872.0 580.0Q928 492 928 375Q928 258 872.0 170.0Q816 82 716.0 33.0Q616 -16 482 -16ZM482 169Q555 169 608.0 194.0Q661 219 689.5 265.0Q718 311 718 375Q718 439 689.5 485.0Q661 531 608.0 556.0Q555 581 482 581Q410 581 357.0 556.0Q304 531 275.0 485.0Q246 439 246 375Q246 311 275.0 265.0Q304 219 357.0 194.0Q410 169 482 169Z" fill="#F0F4FF" transform="translate(0.00,76.16) scale(0.072000,-0.072000)"/>
+        <path d="M491 750Q585 750 653.5 718.0Q722 686 758.0 627.5Q794 569 794 491Q794 414 758.0 355.5Q722 297 653.5 265.0Q585 233 491 233H166V399H478Q528 399 556.0 423.5Q584 448 584 491Q584 535 556.0 559.5Q528 584 478 584H184L277 680V0H70V750Z" fill="#F0F4FF" transform="translate(70.92,76.16) scale(0.072000,-0.072000)"/>
+        <path d="M711 450V300H162V450ZM303 375 254 74 170 168H744V0H47L104 375L47 750H739V582H170L254 676Z" fill="#F0F4FF" transform="translate(130.97,76.16) scale(0.072000,-0.072000)"/>
+        <path d="M213 422H486Q536 422 564.0 445.0Q592 468 592 509Q592 551 564.0 573.5Q536 596 486 596H184L277 695V0H70V750H515Q601 750 665.0 719.5Q729 689 765.0 635.5Q801 582 801 509Q801 438 765.0 384.0Q729 330 665.0 300.0Q601 270 515 270H213ZM325 351H558L827 0H587Z" fill="#F0F4FF" transform="translate(189.58,76.16) scale(0.072000,-0.072000)"/>
+        <path d="M482 -16Q349 -16 248.5 33.0Q148 82 92.5 170.0Q37 258 37 375Q37 492 92.5 580.0Q148 668 248.5 717.0Q349 766 482 766Q616 766 716.0 717.0Q816 668 872.0 580.0Q928 492 928 375Q928 258 872.0 170.0Q816 82 716.0 33.0Q616 -16 482 -16ZM482 169Q555 169 608.0 194.0Q661 219 689.5 265.0Q718 311 718 375Q718 439 689.5 485.0Q661 531 608.0 556.0Q555 581 482 581Q410 581 357.0 556.0Q304 531 275.0 485.0Q246 439 246 375Q246 311 275.0 265.0Q304 219 357.0 194.0Q410 169 482 169Z" fill="#93C5FD" transform="translate(252.22,76.16) scale(0.072000,-0.072000)"/>
+        <path d="M765 145 701 132V750H902V0H641L208 617L271 630V0H70V750H338Z" fill="#93C5FD" transform="translate(323.14,76.16) scale(0.072000,-0.072000)"/>
+      </g>
+    </svg>
+  </a>
+  <div class="nav-right">
+    <div class="nav-tag">TRADING METHODOLOGY</div>
+    <a id="nav-back" href="/zenith/" class="nav-back">Back to Zenith</a>
+    <div class="lang-sw">
+      <button class="lang-btn" id="lang-toggle" onclick="document.getElementById('lang-dd').classList.toggle('open');this.classList.toggle('open')">
+        <span id="lang-current">EN</span>
+      </button>
+      <div class="lang-dd" id="lang-dd">
+        <div class="lang-opt active" id="opt-en" onclick="switchLang('en')"><span class="lang-code">EN</span>English</div>
+        <div class="lang-opt" id="opt-zh-CN" onclick="switchLang('zh-CN')"><span class="lang-code">简</span>简体中文</div>
+        <div class="lang-opt" id="opt-zh" onclick="switchLang('zh')"><span class="lang-code">繁</span>繁體中文</div>
+        <div class="lang-opt" id="opt-ko" onclick="switchLang('ko')"><span class="lang-code">한</span>한국어</div>
+        <div class="lang-opt" id="opt-ja" onclick="switchLang('ja')"><span class="lang-code">日</span>日本語</div>
+        <div class="lang-opt" id="opt-th" onclick="switchLang('th')"><span class="lang-code">ไทย</span>ภาษาไทย</div>
+        <div class="lang-opt" id="opt-vi" onclick="switchLang('vi')"><span class="lang-code">VI</span>Tiếng Việt</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ENGLISH CONTENT
+     ═══════════════════════════════════════════════════════════ -->
+<div id="content-en" class="wrap">
+
+  <div class="badge"><span class="dot"></span><span>OPN-201 · TRADING METHODOLOGY</span></div>
+
+  <h1 class="hero-title">
+    Zenith 4.0<br><span class="gold">Trading Methodology</span>
+  </h1>
+  <p class="hero-sub">A fully autonomous AI agent for crypto derivatives trading. Zenith perceives market state, reasons about regime and risk, makes its own trading decisions, and learns from every outcome — running continuously without human intervention.</p>
+
+  <div class="section-divider"></div>
+
+  <!-- What Makes Zenith an Agent -->
+  <div class="section">
+    <div class="sec-label">What Makes Zenith an Agent</div>
+    <div class="glass agent-intro">
+      <p class="body-text">The difference between a trading bot and a trading agent is <strong>autonomy of judgment</strong>.</p>
+      <p class="body-text">A bot executes rules: if indicator crosses threshold, buy. If stop-loss hit, sell. The logic is static. A human wrote the rules, and the bot follows them. When market conditions change, the bot doesn't know — it keeps executing the same rules until a human updates them.</p>
+      <p class="body-text">Zenith operates differently. It continuously perceives its environment across multiple data streams — price action, technical indicators, social sentiment, news, liquidity depth. It forms its own assessment of what kind of market it is in. It decides whether to act or to stand aside. It manages positions through their full lifecycle. And after every trade, it feeds the outcome back into a reinforcement learning layer that adjusts its own decision parameters — getting better at distinguishing conditions that favour action from conditions that favour restraint.</p>
+      <p class="body-text">This is what makes it agentic: Zenith does not wait for instructions. It sets its own operational rhythm, makes its own risk judgments, and improves its own performance over time. The system has been running autonomously since January 2026 — every trade on the live dashboard was identified, sized, entered, managed, and exited by the agent without human input.</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- Three Core Pillars -->
+  <div class="section">
+    <div class="sec-label">Three Core Pillars</div>
+
+    <div class="pillar" data-delay="0">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">01</span>
+          <div>
+            <div class="pillar-tag">Regime Classification</div>
+            <div class="pillar-subtitle">Determining market state before trading.</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">The foundation of every decision Zenith makes is a regime classification: is the current market trending or mean-reverting? The answer determines the entire strategy — trend-following setups in trending markets, reversion entries in range-bound conditions.<br><br>This classification is built from price action analysis and a battery of technical indicators evaluated across multiple timeframes. Zenith does not use a single indicator or a fixed rule set — it synthesises directional, momentum, and volatility signals to form a probabilistic regime assessment that updates continuously.</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Multi-timeframe price action analysis for directional structure</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Momentum and volatility indicators for regime probability scoring</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Dynamic regime switching — the system adapts its strategy type as market conditions evolve</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="120">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">02</span>
+          <div>
+            <div class="pillar-tag">Sentiment & Macro Screening</div>
+            <div class="pillar-subtitle">Filtering trades against real-world risk.</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Technical signals operate in a vacuum. Markets do not. Before committing to any position, Zenith screens real-time sentiment from social channels, news sources, and on-chain activity to assess whether macro conditions support the trade thesis.<br><br>This is a risk filter, not a signal generator. Zenith uses sentiment to <em>avoid</em> bad trades — identifying macro headwinds, sudden narrative shifts, or event-driven risk that technical analysis alone would miss. If sentiment contradicts the technical setup, the system stands aside.</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Real-time sentiment analysis across social media, news feeds, and crypto-native channels</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Macro risk detection — regulatory events, major liquidation cascades, narrative regime breaks</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Directional sentiment cross-check — ensures technical signals are not fighting the prevailing macro environment</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="240">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">03</span>
+          <div>
+            <div class="pillar-tag">Liquidity-Aware Risk Management</div>
+            <div class="pillar-subtitle">Structuring every trade around defined risk.</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Every position Zenith takes has a pre-defined stop-loss, take-profit, and position size — determined before entry, not adjusted after the fact. These parameters are calculated from technical levels, risk-reward ratios, and liquidity heatmap data.<br><br>Liquidity heatmaps show where resting orders cluster — where stops are likely stacked, where large bids or asks sit. Zenith uses this information to place stops at structurally sound levels rather than arbitrary percentages, and to target exits where liquidity is sufficient to absorb the position.</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Stop-loss and take-profit levels set by technical structure, not fixed percentages</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Risk-reward ratio evaluation before every entry — minimum threshold required to proceed</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Liquidity heatmap integration — position sizing and exit targeting informed by observable order depth</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Per-trade risk budgeting — no single position exceeds defined exposure limits</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- Reinforcement Learning -->
+  <div class="section">
+    <div class="sec-label">Reinforcement Learning — How the Agent Learns</div>
+    <div class="glass rl-card">
+      <p class="body-text"><strong>The difference between automation and agency is the ability to improve.</strong></p>
+      <p class="body-text">A static system trades the same way on day one and day three hundred. Zenith does not. A reinforcement learning layer continuously evaluates trading outcomes and adjusts the agent's decision parameters — not the core logic, but the calibration of that logic against current market reality.</p>
+      <p class="body-text">After every trade, the RL layer asks: did this parameter configuration produce a good risk-adjusted outcome? It rewards configurations that worked and penalises those that didn't. Over time, this shapes the agent's behaviour — it learns which regime signals to weight more heavily, how aggressive to size in different conditions, how sensitive to make the sentiment filter, and how strong a signal needs to be before committing capital.</p>
+      <div class="rl-items">
+        <div class="rl-item"><span class="rl-item-label">Signal weights</span><span class="rl-item-desc">Which indicators matter more under current conditions</span></div>
+        <div class="rl-item"><span class="rl-item-label">Entry thresholds</span><span class="rl-item-desc">How strong a signal must be before the agent commits capital</span></div>
+        <div class="rl-item"><span class="rl-item-label">Sizing parameters</span><span class="rl-item-desc">How aggressively to size given recent regime stability</span></div>
+        <div class="rl-item"><span class="rl-item-label">Filter sensitivity</span><span class="rl-item-desc">How much weight sentiment carries relative to technical conviction</span></div>
+      </div>
+      <p class="body-text rl-outro">This is what separates Zenith from a trading bot with fixed parameters. The core logic — regime classification, sentiment screening, structured risk management — remains stable and interpretable. But the calibration of that logic evolves continuously, driven by the agent's own experience. No human recalibration required.</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- The Agent Loop -->
+  <div class="section">
+    <div class="sec-label">The Agent Loop</div>
+    <p class="loop-intro">Zenith runs a continuous perception-judgment-action-learning cycle. This is not a pipeline that fires once per signal — it is an ongoing cognitive loop that the agent runs 24/7, deciding at every iteration whether to act, hold, or stand aside.</p>
+    <div class="glass loop-card">
+      <div class="loop-step" data-delay="0"><div class="loop-left"><span class="loop-num">01</span><span class="loop-label">Perceive</span></div><span class="loop-detail">Continuously ingest price action, technical indicators, sentiment data, and liquidity depth across all traded assets.</span></div>
+      <div class="loop-step" data-delay="80"><div class="loop-left"><span class="loop-num">02</span><span class="loop-label">Judge</span></div><span class="loop-detail">Classify market regime (trending or mean-reverting). Screen sentiment for macro risk. Determine whether conditions warrant a new position, require adjusting an existing one, or favour doing nothing.</span></div>
+      <div class="loop-step" data-delay="160"><div class="loop-left"><span class="loop-num">03</span><span class="loop-label">Size</span></div><span class="loop-detail">If acting: calculate position size, stop-loss, and take-profit from technical levels, risk-reward ratio, and liquidity heatmap.</span></div>
+      <div class="loop-step" data-delay="240"><div class="loop-left"><span class="loop-num">04</span><span class="loop-label">Execute</span></div><span class="loop-detail">Route order autonomously. Monitor the position through its full lifecycle — adjusting or closing based on evolving conditions and predefined exit logic.</span></div>
+      <div class="loop-step" data-delay="320"><div class="loop-left"><span class="loop-num">05</span><span class="loop-label">Learn</span></div><span class="loop-detail">Feed the trade outcome back to the RL layer. Update parameter weights. The agent's next iteration of this loop is informed by everything it has done before.</span></div>
+    </div>
+    <p class="loop-outro">The loop runs continuously. Most iterations result in no action — the agent is perceiving and judging but choosing to wait. This is a feature, not a limitation. The ability to decide <em>not</em> to trade is as important as the ability to decide <em>when</em> to trade.</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- Development Timeline -->
+  <div class="section">
+    <div class="sec-label">Development Timeline</div>
+    <div class="timeline">
+      <div class="tl-item" data-delay="0"><div class="tl-meta"><span class="tl-year">Jun — Aug 2024</span><span class="tl-ver">Prototype</span></div><span class="tl-note">Core technical analysis engine built. Backtesting framework. Rule-based entries with basic risk management.</span></div>
+      <div class="tl-item" data-delay="60"><div class="tl-meta"><span class="tl-year">Sep — Nov 2024</span><span class="tl-ver">v1.0</span></div><span class="tl-note">Regime classification introduced — system determines market state (trending vs mean-reverting) before selecting strategy. First live trades.</span></div>
+      <div class="tl-item" data-delay="120"><div class="tl-meta"><span class="tl-year">Dec 2024 — Feb 2025</span><span class="tl-ver">v2.0</span></div><span class="tl-note">Sentiment screening layer added. Technical signals filtered against social and news sentiment. Liquidity heatmap integration for stop/target placement.</span></div>
+      <div class="tl-item" data-delay="180"><div class="tl-meta"><span class="tl-year">Mar — Nov 2025</span><span class="tl-ver">v3.0</span></div><span class="tl-note">Reinforcement learning refinement layer added. System self-optimises signal weights, entry thresholds, and sizing parameters against live performance. Expanded asset coverage.</span></div>
+      <div class="tl-item current" data-delay="240"><div class="tl-meta"><span class="tl-year">Jan 2026</span><span class="tl-ver">v4.0</span></div><span class="tl-note">Public launch on Operon Network. Full autonomous operation with live dashboard and transparent trade history.</span></div>
+    </div>
+    <p class="body-text tl-summary">Zenith was built from scratch starting in June 2024. Each version addressed a specific limitation of its predecessor — from static rules to regime-aware strategy selection to RL-driven adaptation.</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- What Zenith Trades -->
+  <div class="section">
+    <div class="sec-label">What Zenith Trades</div>
+    <div class="asset-grid">
+      <div class="asset-card"><div class="asset-name">BTC</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">ETH</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">XRP</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">SOL</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">BNB</div><div class="asset-type">Perpetual</div></div>
+    </div>
+    <p class="body-text">Strategy period: January 2026 — present. All trades executed autonomously. Full trade history with entry/exit prices available on the live dashboard.</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;padding:48px 0 0;">
+    <a href="/zenith/" style="display:inline-flex;align-items:center;gap:8px;padding:14px 36px;border:1px solid var(--glass-border2);border-radius:100px;color:var(--text-dim);font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.06em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,204,0,0.3)';this.style.color='var(--gold)';this.style.background='rgba(255,204,0,0.04)'" onmouseout="this.style.borderColor='var(--glass-border2)';this.style.color='var(--text-dim)';this.style.background='transparent'">
+      ← Back to Zenith
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>Past performance does not indicate future results. Cryptocurrency trading involves substantial risk and may result in loss of principal.</p>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CHINESE CONTENT
+     ═══════════════════════════════════════════════════════════ -->
+<div id="content-zh" class="wrap" style="display:none;">
+
+  <div class="badge"><span class="dot"></span><span>OPN-201 · 交易方法論</span></div>
+
+  <h1 class="hero-title">
+    Zenith 4.0<br><span class="gold">交易方法論</span>
+  </h1>
+  <p class="hero-sub">加密貨幣衍生品全自主 AI 交易智能體。Zenith 持續感知市場狀態、自主判斷市場結構與風險、做出交易決策，並從每一筆交易結果中學習——全程無需人工介入。</p>
+
+  <div class="section-divider"></div>
+
+  <!-- 為什麼 Zenith 是智能體 -->
+  <div class="section">
+    <div class="sec-label">為什麼 Zenith 是智能體，而不是交易機器人</div>
+    <div class="glass agent-intro">
+      <p class="body-text">交易機器人與交易智能體的根本區別在於：<strong>判斷的自主性</strong>。</p>
+      <p class="body-text">機器人執行規則：指標突破閾值就買入，觸及止損就賣出。邏輯是靜態的。人類編寫了規則，機器人照著執行。當市場條件改變時，機器人無從得知——它會繼續執行相同的規則，直到人類手動更新。</p>
+      <p class="body-text">Zenith 的運作方式截然不同。它持續從多重數據流感知環境——價格走勢、技術指標、社群情緒、新聞、流動性深度。它自主形成對當前市場狀態的判斷。它決定是否行動，還是選擇觀望。它管理部位的完整生命週期。而在每筆交易結束後，它將結果回饋至強化學習層，調整自身的決策參數——不斷提升對「何時該行動、何時該等待」的判斷能力。</p>
+      <p class="body-text">這就是它的智能體特質：Zenith 不等待指令。它設定自己的運行節奏，做出自己的風險判斷，並隨時間推移持續改進自身表現。系統自 2026 年 1 月起全自主運行——即時儀表板上的每一筆交易，皆由智能體獨立識別、計算規模、進場、管理並出場，全程無人工介入。</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- 三大核心支柱 -->
+  <div class="section">
+    <div class="sec-label">三大核心支柱</div>
+
+    <div class="pillar" data-delay="0">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">01</span>
+          <div>
+            <div class="pillar-tag">技術面市場狀態分類</div>
+            <div class="pillar-subtitle">在交易之前，先判斷市場狀態。</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Zenith 每一個決策的基礎是市場狀態分類：當前市場是趨勢行情還是均值回歸？答案決定整體策略方向——趨勢市場採用順勢策略，區間震盪市場採用回歸進場。<br><br>此分類建構於價格走勢分析與多重技術指標之上，跨多個時間框架進行評估。Zenith 不依賴單一指標或固定規則組——而是綜合方向性、動能與波動率訊號，形成持續更新的機率性狀態評估。</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">多時間框架價格走勢分析，判斷方向結構</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">動能與波動率指標用於狀態機率評分</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">動態狀態切換——系統隨市場條件演變調整策略類型</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="120">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">02</span>
+          <div>
+            <div class="pillar-tag">情緒面與宏觀篩選</div>
+            <div class="pillar-subtitle">過濾交易以對抗現實世界風險。</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">技術訊號在真空中運作，但市場不是。在確認任何部位之前，Zenith 會即時篩選社群媒體、新聞來源及鏈上活動的情緒，評估宏觀條件是否支持交易論點。<br><br>這是風險過濾器，而非訊號產生器。Zenith 利用情緒分析來<em>避免</em>不良交易——識別宏觀逆風、突發敘事轉變或技術分析本身無法捕捉的事件驅動風險。若情緒與技術面設定矛盾，系統選擇觀望。</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">即時情緒分析，涵蓋社群媒體、新聞頻道及加密貨幣原生社群</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">宏觀風險偵測——監管事件、大規模清算連鎖、敘事結構性轉變</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">方向性情緒交叉驗證——確保技術訊號未與主流宏觀環境對抗</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="240">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">03</span>
+          <div>
+            <div class="pillar-tag">流動性感知風險管理</div>
+            <div class="pillar-subtitle">圍繞已定義風險構建每一筆交易。</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Zenith 的每一個部位都有預先設定的止損、止盈與部位規模——在進場前確定，而非事後調整。這些參數由技術位階、風險報酬比及流動性熱圖數據計算而得。<br><br>流動性熱圖顯示掛單聚集之處——止損可能堆疊的位置、大額買賣盤所在。Zenith 利用此資訊將止損設置在結構性合理的位階，而非任意百分比，並將出場目標設定在流動性足以吸收部位的區域。</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">止損與止盈位階由技術結構決定，非固定百分比</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">每筆進場前進行風險報酬比評估——需達最低門檻方可執行</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">流動性熱圖整合——部位規模與出場目標基於可觀察的訂單深度</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">單筆交易風險預算——任何單一部位均不超過定義的曝險限額</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- 強化學習 -->
+  <div class="section">
+    <div class="sec-label">強化學習——智能體如何學習</div>
+    <div class="glass rl-card">
+      <p class="body-text"><strong>自動化與智能體的區別在於：能否自我改進。</strong></p>
+      <p class="body-text">靜態系統在第一天和第三百天的交易方式完全相同。Zenith 不是如此。強化學習層持續評估交易結果，並調整智能體的決策參數——調校的不是核心邏輯本身，而是核心邏輯在當前市場現實中的校準。</p>
+      <p class="body-text">每筆交易結束後，強化學習層會自問：這組參數配置是否產生了良好的風險調整後結果？它獎勵有效的配置，懲罰無效的配置。隨時間推移，這塑造了智能體的行為模式——它學會在不同條件下該更重視哪些狀態訊號、如何調整部位積極程度、情緒篩選器該設多敏感、以及訊號需達多強才值得投入資金。</p>
+      <div class="rl-items">
+        <div class="rl-item"><span class="rl-item-label">訊號權重</span><span class="rl-item-desc">各指標在當前條件下的重要程度</span></div>
+        <div class="rl-item"><span class="rl-item-label">進場門檻</span><span class="rl-item-desc">訊號需達多強，智能體才投入資金</span></div>
+        <div class="rl-item"><span class="rl-item-label">部位參數</span><span class="rl-item-desc">根據近期狀態穩定性決定部位積極程度</span></div>
+        <div class="rl-item"><span class="rl-item-label">篩選敏感度</span><span class="rl-item-desc">情緒篩選相對於技術確信度的權重比例</span></div>
+      </div>
+      <p class="body-text rl-outro">這是 Zenith 與固定參數交易機器人的根本差異。核心邏輯——狀態分類、情緒篩選、結構化風險管理——保持穩定且可解讀。但邏輯的校準基於智能體自身的經驗持續演進。無需人工重新校準。</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- 智能體迴路 -->
+  <div class="section">
+    <div class="sec-label">智能體迴路</div>
+    <p class="loop-intro">Zenith 運行持續不斷的感知—判斷—行動—學習循環。這不是每次訊號觸發一次的流水線——而是智能體全天候 24/7 運行的認知迴路，在每一次迭代中決定是行動、持有，還是觀望。</p>
+    <div class="glass loop-card">
+      <div class="loop-step" data-delay="0"><div class="loop-left"><span class="loop-num">01</span><span class="loop-label">感知</span></div><span class="loop-detail">持續攝取所有交易資產的價格走勢、技術指標、情緒數據及流動性深度。</span></div>
+      <div class="loop-step" data-delay="80"><div class="loop-left"><span class="loop-num">02</span><span class="loop-label">判斷</span></div><span class="loop-detail">分類市場狀態（趨勢或均值回歸）。篩選情緒以評估宏觀風險。判斷當前條件是否適合建立新部位、需要調整既有部位，還是適合按兵不動。</span></div>
+      <div class="loop-step" data-delay="160"><div class="loop-left"><span class="loop-num">03</span><span class="loop-label">計算</span></div><span class="loop-detail">若決定行動：依據技術位階、風險報酬比及流動性熱圖計算部位規模、止損與止盈。</span></div>
+      <div class="loop-step" data-delay="240"><div class="loop-left"><span class="loop-num">04</span><span class="loop-label">執行</span></div><span class="loop-detail">自主路由訂單。管理部位的完整生命週期——依據持續演變的市場條件與預設出場邏輯進行調整或平倉。</span></div>
+      <div class="loop-step" data-delay="320"><div class="loop-left"><span class="loop-num">05</span><span class="loop-label">學習</span></div><span class="loop-detail">將交易結果回饋至強化學習層。更新參數權重。智能體下一次迭代的決策，建立在過去所有經驗之上。</span></div>
+    </div>
+    <p class="loop-outro">迴路持續運行。大多數迭代的結果是不採取行動——智能體正在感知和判斷，但選擇等待。這是特性，而非局限。決定<em>不交易</em>的能力，與決定<em>何時交易</em>的能力同等重要。</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- 技術演進 -->
+  <div class="section">
+    <div class="sec-label">技術演進</div>
+    <div class="timeline">
+      <div class="tl-item" data-delay="0"><div class="tl-meta"><span class="tl-year">2024 年 6–8 月</span><span class="tl-ver">原型</span></div><span class="tl-note">建構核心技術分析引擎。回測框架。規則式進場搭配基礎風險管理。</span></div>
+      <div class="tl-item" data-delay="60"><div class="tl-meta"><span class="tl-year">2024 年 9–11 月</span><span class="tl-ver">v1.0</span></div><span class="tl-note">引入市場狀態分類——系統在選擇策略前先判斷市場狀態（趨勢 vs 均值回歸）。首次實盤交易。</span></div>
+      <div class="tl-item" data-delay="120"><div class="tl-meta"><span class="tl-year">2024/12–2025/02</span><span class="tl-ver">v2.0</span></div><span class="tl-note">新增情緒篩選層。技術訊號與社群及新聞情緒交叉篩選。整合流動性熱圖用於止損/止盈設置。</span></div>
+      <div class="tl-item" data-delay="180"><div class="tl-meta"><span class="tl-year">2025 年 3–11 月</span><span class="tl-ver">v3.0</span></div><span class="tl-note">新增強化學習優化層。系統依據實際表現自動優化訊號權重、進場門檻與部位參數。擴展資產覆蓋。</span></div>
+      <div class="tl-item current" data-delay="240"><div class="tl-meta"><span class="tl-year">2026 年 1 月</span><span class="tl-ver">v4.0</span></div><span class="tl-note">於 Operon Network 正式上線。全自主運行，搭配即時儀表板與透明交易紀錄。</span></div>
+    </div>
+    <p class="body-text tl-summary">Zenith 自 2024 年 6 月從零開始建構。每一個版本解決了前一版本的特定限制——從靜態規則到狀態感知策略選擇，再到強化學習驅動的自適應系統。</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- 交易標的 -->
+  <div class="section">
+    <div class="sec-label">交易標的</div>
+    <div class="asset-grid">
+      <div class="asset-card"><div class="asset-name">BTC</div><div class="asset-type">永續合約</div></div>
+      <div class="asset-card"><div class="asset-name">ETH</div><div class="asset-type">永續合約</div></div>
+      <div class="asset-card"><div class="asset-name">XRP</div><div class="asset-type">永續合約</div></div>
+      <div class="asset-card"><div class="asset-name">SOL</div><div class="asset-type">永續合約</div></div>
+      <div class="asset-card"><div class="asset-name">BNB</div><div class="asset-type">永續合約</div></div>
+    </div>
+    <p class="body-text">策略週期：2026 年 1 月至今。所有交易全自主執行。完整交易紀錄含進出場價格，可於即時儀表板查閱。</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;padding:48px 0 0;">
+    <a href="/zenith/" style="display:inline-flex;align-items:center;gap:8px;padding:14px 36px;border:1px solid var(--glass-border2);border-radius:100px;color:var(--text-dim);font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.06em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,204,0,0.3)';this.style.color='var(--gold)';this.style.background='rgba(255,204,0,0.04)'" onmouseout="this.style.borderColor='var(--glass-border2)';this.style.color='var(--text-dim)';this.style.background='transparent'">
+      ← 返回 Zenith
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>過往績效不代表未來表現。加密貨幣交易涉及高度風險，可能導致本金損失。</p>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SIMPLIFIED CHINESE CONTENT
+     ═══════════════════════════════════════════════════════════ -->
+<div id="content-zh-CN" class="wrap" style="display:none;">
+
+  <div class="badge"><span class="dot"></span><span>OPN-201 · 交易方法论</span></div>
+
+  <h1 class="hero-title">
+    Zenith 4.0<br><span class="gold">交易方法论</span>
+  </h1>
+  <p class="hero-sub">加密货币衍生品全自主 AI 交易智能体。Zenith 持续感知市场状态、自主判断市场结构与风险、做出交易决策，并从每一笔交易结果中学习——全程无需人工介入。</p>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">为什么 Zenith 是智能体，而不是交易机器人</div>
+    <div class="glass agent-intro">
+      <p class="body-text">交易机器人与交易智能体的根本区别在于：<strong>判断的自主性</strong>。</p>
+      <p class="body-text">机器人执行规则：指标突破阈值就买入，触及止损就卖出。逻辑是静态的。人类编写了规则，机器人照着执行。当市场条件改变时，机器人无从得知——它会继续执行相同的规则，直到人类手动更新。</p>
+      <p class="body-text">Zenith 的运作方式截然不同。它持续从多重数据流感知环境——价格走势、技术指标、社群情绪、新闻、流动性深度。它自主形成对当前市场状态的判断。它决定是否行动，还是选择观望。它管理仓位的完整生命周期。而在每笔交易结束后，它将结果回馈至强化学习层，调整自身的决策参数——不断提升对「何时该行动、何时该等待」的判断能力。</p>
+      <p class="body-text">这就是它的智能体特质：Zenith 不等待指令。它设定自己的运行节奏，做出自己的风险判断，并随时间推移持续改进自身表现。系统自 2026 年 1 月起全自主运行——即时仪表板上的每一笔交易，皆由智能体独立识别、计算规模、进场、管理并出场，全程无人工介入。</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">三大核心支柱</div>
+
+    <div class="pillar" data-delay="0">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">01</span>
+          <div>
+            <div class="pillar-tag">技术面市场状态分类</div>
+            <div class="pillar-subtitle">在交易之前，先判断市场状态。</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Zenith 每一个决策的基础是市场状态分类：当前市场是趋势行情还是均值回归？答案决定整体策略方向——趋势市场采用顺势策略，区间震荡市场采用回归进场。<br><br>此分类建构于价格走势分析与多重技术指标之上，跨多个时间框架进行评估。Zenith 不依赖单一指标或固定规则组——而是综合方向性、动能与波动率信号，形成持续更新的概率性状态评估。</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">多时间框架价格走势分析，判断方向结构</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">动能与波动率指标用于状态概率评分</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">动态状态切换——系统随市场条件演变调整策略类型</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="120">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">02</span>
+          <div>
+            <div class="pillar-tag">情绪面与宏观筛选</div>
+            <div class="pillar-subtitle">过滤交易以对抗现实世界风险。</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">技术信号在真空中运作，但市场不是。在确认任何仓位之前，Zenith 会即时筛选社群媒体、新闻来源及链上活动的情绪，评估宏观条件是否支持交易论点。<br><br>这是风险过滤器，而非信号产生器。Zenith 利用情绪分析来<em>避免</em>不良交易——识别宏观逆风、突发叙事转变或技术分析本身无法捕捉的事件驱动风险。若情绪与技术面设定矛盾，系统选择观望。</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">即时情绪分析，涵盖社群媒体、新闻频道及加密货币原生社群</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">宏观风险侦测——监管事件、大规模清算连锁、叙事结构性转变</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">方向性情绪交叉验证——确保技术信号未与主流宏观环境对抗</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="240">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">03</span>
+          <div>
+            <div class="pillar-tag">流动性感知风险管理</div>
+            <div class="pillar-subtitle">围绕已定义风险构建每一笔交易。</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Zenith 的每一个仓位都有预先设定的止损、止盈与仓位规模——在进场前确定，而非事后调整。这些参数由技术位阶、风险报酬比及流动性热图数据计算而得。<br><br>流动性热图显示挂单聚集之处——止损可能堆叠的位置、大额买卖盘所在。Zenith 利用此信息将止损设置在结构性合理的位阶，而非任意百分比，并将出场目标设定在流动性足以吸收仓位的区域。</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">止损与止盈位阶由技术结构决定，非固定百分比</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">每笔进场前进行风险报酬比评估——需达最低门槛方可执行</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">流动性热图整合——仓位规模与出场目标基于可观察的订单深度</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">单笔交易风险预算——任何单一仓位均不超过定义的曝险限额</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">强化学习——智能体如何学习</div>
+    <div class="glass rl-card">
+      <p class="body-text"><strong>自动化与智能体的区别在于：能否自我改进。</strong></p>
+      <p class="body-text">静态系统在第一天和第三百天的交易方式完全相同。Zenith 不是如此。强化学习层持续评估交易结果，并调整智能体的决策参数——调校的不是核心逻辑本身，而是核心逻辑在当前市场现实中的校准。</p>
+      <p class="body-text">每笔交易结束后，强化学习层会自问：这组参数配置是否产生了良好的风险调整后结果？它奖励有效的配置，惩罚无效的配置。随时间推移，这塑造了智能体的行为模式——它学会在不同条件下该更重视哪些状态信号、如何调整仓位积极程度、情绪筛选器该设多敏感、以及信号需达多强才值得投入资金。</p>
+      <div class="rl-items">
+        <div class="rl-item"><span class="rl-item-label">信号权重</span><span class="rl-item-desc">各指标在当前条件下的重要程度</span></div>
+        <div class="rl-item"><span class="rl-item-label">进场门槛</span><span class="rl-item-desc">信号需达多强，智能体才投入资金</span></div>
+        <div class="rl-item"><span class="rl-item-label">仓位参数</span><span class="rl-item-desc">根据近期状态稳定性决定仓位积极程度</span></div>
+        <div class="rl-item"><span class="rl-item-label">筛选敏感度</span><span class="rl-item-desc">情绪筛选相对于技术确信度的权重比例</span></div>
+      </div>
+      <p class="body-text rl-outro">这是 Zenith 与固定参数交易机器人的根本差异。核心逻辑——状态分类、情绪筛选、结构化风险管理——保持稳定且可解读。但逻辑的校准基于智能体自身的经验持续演进。无需人工重新校准。</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">智能体回路</div>
+    <p class="loop-intro">Zenith 运行持续不断的感知—判断—行动—学习循环。这不是每次信号触发一次的流水线——而是智能体全天候 24/7 运行的认知回路，在每一次迭代中决定是行动、持有，还是观望。</p>
+    <div class="glass loop-card">
+      <div class="loop-step" data-delay="0"><div class="loop-left"><span class="loop-num">01</span><span class="loop-label">感知</span></div><span class="loop-detail">持续摄取所有交易资产的价格走势、技术指标、情绪数据及流动性深度。</span></div>
+      <div class="loop-step" data-delay="80"><div class="loop-left"><span class="loop-num">02</span><span class="loop-label">判断</span></div><span class="loop-detail">分类市场状态（趋势或均值回归）。筛选情绪以评估宏观风险。判断当前条件是否适合建立新仓位、需要调整既有仓位，还是适合按兵不动。</span></div>
+      <div class="loop-step" data-delay="160"><div class="loop-left"><span class="loop-num">03</span><span class="loop-label">计算</span></div><span class="loop-detail">若决定行动：依据技术位阶、风险报酬比及流动性热图计算仓位规模、止损与止盈。</span></div>
+      <div class="loop-step" data-delay="240"><div class="loop-left"><span class="loop-num">04</span><span class="loop-label">执行</span></div><span class="loop-detail">自主路由订单。管理仓位的完整生命周期——依据持续演变的市场条件与预设出场逻辑进行调整或平仓。</span></div>
+      <div class="loop-step" data-delay="320"><div class="loop-left"><span class="loop-num">05</span><span class="loop-label">学习</span></div><span class="loop-detail">将交易结果回馈至强化学习层。更新参数权重。智能体下一次迭代的决策，建立在过去所有经验之上。</span></div>
+    </div>
+    <p class="loop-outro">回路持续运行。大多数迭代的结果是不采取行动——智能体正在感知和判断，但选择等待。这是特性，而非局限。决定<em>不交易</em>的能力，与决定<em>何时交易</em>的能力同等重要。</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">技术演进</div>
+    <div class="timeline">
+      <div class="tl-item" data-delay="0"><div class="tl-meta"><span class="tl-year">2024 年 6–8 月</span><span class="tl-ver">原型</span></div><span class="tl-note">构建核心技术分析引擎。回测框架。规则式进场搭配基础风险管理。</span></div>
+      <div class="tl-item" data-delay="60"><div class="tl-meta"><span class="tl-year">2024 年 9–11 月</span><span class="tl-ver">v1.0</span></div><span class="tl-note">引入市场状态分类——系统在选择策略前先判断市场状态（趋势 vs 均值回归）。首次实盘交易。</span></div>
+      <div class="tl-item" data-delay="120"><div class="tl-meta"><span class="tl-year">2024/12–2025/02</span><span class="tl-ver">v2.0</span></div><span class="tl-note">新增情绪筛选层。技术信号与社群及新闻情绪交叉筛选。整合流动性热图用于止损/止盈设置。</span></div>
+      <div class="tl-item" data-delay="180"><div class="tl-meta"><span class="tl-year">2025 年 3–11 月</span><span class="tl-ver">v3.0</span></div><span class="tl-note">新增强化学习优化层。系统依据实际表现自动优化信号权重、进场门槛与仓位参数。扩展资产覆盖。</span></div>
+      <div class="tl-item current" data-delay="240"><div class="tl-meta"><span class="tl-year">2026 年 1 月</span><span class="tl-ver">v4.0</span></div><span class="tl-note">于 Operon Network 正式上线。全自主运行，搭配即时仪表板与透明交易记录。</span></div>
+    </div>
+    <p class="body-text tl-summary">Zenith 自 2024 年 6 月从零开始构建。每一个版本解决了前一版本的特定限制——从静态规则到状态感知策略选择，再到强化学习驱动的自适应系统。</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">交易标的</div>
+    <div class="asset-grid">
+      <div class="asset-card"><div class="asset-name">BTC</div><div class="asset-type">永续合约</div></div>
+      <div class="asset-card"><div class="asset-name">ETH</div><div class="asset-type">永续合约</div></div>
+      <div class="asset-card"><div class="asset-name">XRP</div><div class="asset-type">永续合约</div></div>
+      <div class="asset-card"><div class="asset-name">SOL</div><div class="asset-type">永续合约</div></div>
+      <div class="asset-card"><div class="asset-name">BNB</div><div class="asset-type">永续合约</div></div>
+    </div>
+    <p class="body-text">策略周期：2026 年 1 月至今。所有交易全自主执行。完整交易记录含进出场价格，可于即时仪表板查阅。</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;padding:48px 0 0;">
+    <a href="/zenith/" style="display:inline-flex;align-items:center;gap:8px;padding:14px 36px;border:1px solid var(--glass-border2);border-radius:100px;color:var(--text-dim);font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.06em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,204,0,0.3)';this.style.color='var(--gold)';this.style.background='rgba(255,204,0,0.04)'" onmouseout="this.style.borderColor='var(--glass-border2)';this.style.color='var(--text-dim)';this.style.background='transparent'">
+      ← 返回 Zenith
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>过往绩效不代表未来表现。加密货币交易涉及高度风险，可能导致本金损失。</p>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     KOREAN CONTENT
+     ═══════════════════════════════════════════════════════════ -->
+<div id="content-ko" class="wrap" style="display:none;">
+
+  <div class="badge"><span class="dot"></span><span>OPN-201 · 트레이딩 방법론</span></div>
+
+  <h1 class="hero-title">
+    Zenith 4.0<br><span class="gold">트레이딩 방법론</span>
+  </h1>
+  <p class="hero-sub">암호화폐 파생상품을 위한 완전 자율 AI 트레이딩 에이전트. Zenith는 시장 상태를 인지하고, 레짐과 리스크를 스스로 판단하며, 독자적으로 거래 결정을 내리고, 모든 결과로부터 학습합니다 — 사람의 개입 없이 지속적으로 운영됩니다.</p>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">Zenith가 에이전트인 이유</div>
+    <div class="glass agent-intro">
+      <p class="body-text">트레이딩 봇과 트레이딩 에이전트의 차이는 <strong>판단의 자율성</strong>에 있습니다.</p>
+      <p class="body-text">봇은 규칙을 실행합니다: 지표가 임계값을 넘으면 매수, 손절가에 도달하면 매도. 로직은 고정되어 있습니다. 사람이 규칙을 작성하면 봇은 그대로 따릅니다. 시장 환경이 바뀌어도 봇은 알지 못합니다 — 사람이 업데이트할 때까지 동일한 규칙을 계속 실행할 뿐입니다.</p>
+      <p class="body-text">Zenith는 다르게 작동합니다. 프라이스 액션, 기술적 지표, 소셜 심리, 뉴스, 유동성 깊이 등 여러 데이터 스트림을 통해 환경을 지속적으로 인지합니다. 현재 어떤 종류의 시장인지 스스로 판단합니다. 행동할지, 관망할지 결정합니다. 포지션의 전체 라이프사이클을 관리합니다. 그리고 매 거래 이후 결과를 강화학습 레이어에 피드백하여 자체 의사결정 파라미터를 조정합니다 — 행동이 유리한 조건과 자제가 유리한 조건을 구분하는 능력이 지속적으로 향상됩니다.</p>
+      <p class="body-text">이것이 Zenith를 에이전트로 만드는 핵심입니다: Zenith는 지시를 기다리지 않습니다. 스스로 운영 리듬을 설정하고, 독자적으로 리스크를 판단하며, 시간이 지남에 따라 성과를 개선합니다. 2026년 1월부터 완전 자율 운영 중이며 — 라이브 대시보드의 모든 거래는 에이전트가 직접 식별, 사이징, 진입, 관리, 청산한 것으로, 사람의 입력은 없었습니다.</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">세 가지 핵심 축</div>
+
+    <div class="pillar" data-delay="0">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">01</span>
+          <div>
+            <div class="pillar-tag">레짐 분류</div>
+            <div class="pillar-subtitle">거래 전에 시장 상태를 먼저 판단합니다.</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Zenith의 모든 의사결정 기반은 레짐 분류입니다: 현재 시장이 추세 구간인지 평균 회귀 구간인지? 그 답이 전체 전략을 결정합니다 — 추세 시장에서는 추세 추종 전략을, 레인지 시장에서는 회귀 진입을 사용합니다.<br><br>이 분류는 프라이스 액션 분석과 다수의 기술적 지표를 여러 타임프레임에 걸쳐 평가하여 구축됩니다. Zenith는 단일 지표나 고정 규칙에 의존하지 않습니다 — 방향성, 모멘텀, 변동성 시그널을 종합하여 지속적으로 업데이트되는 확률적 레짐 평가를 형성합니다.</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">멀티 타임프레임 프라이스 액션 분석으로 방향 구조 판단</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">모멘텀 및 변동성 지표를 활용한 레짐 확률 평가</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">동적 레짐 전환 — 시장 환경 변화에 따라 전략 유형을 조정</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="120">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">02</span>
+          <div>
+            <div class="pillar-tag">심리 및 매크로 스크리닝</div>
+            <div class="pillar-subtitle">실제 리스크에 대비하여 거래를 필터링합니다.</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">기술적 시그널은 진공 속에서 작동하지만, 시장은 그렇지 않습니다. 포지션을 잡기 전에 Zenith는 소셜 채널, 뉴스, 온체인 활동의 실시간 시장 심리를 스크리닝하여 매크로 환경이 거래 논거를 지지하는지 평가합니다.<br><br>이것은 시그널 생성기가 아닌 리스크 필터입니다. Zenith는 시장 심리를 활용하여 나쁜 거래를 <em>회피</em>합니다 — 매크로 역풍, 갑작스러운 내러티브 전환, 기술적 분석만으로는 포착할 수 없는 이벤트 드리븐 리스크를 식별합니다. 심리가 기술적 셋업과 모순되면 시스템은 관망합니다.</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">소셜 미디어, 뉴스 피드, 크립토 네이티브 채널 전반의 실시간 시장 심리 분석</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">매크로 리스크 감지 — 규제 이벤트, 대규모 청산 캐스케이드, 내러티브 레짐 전환</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">방향성 심리 교차 검증 — 기술적 시그널이 매크로 환경에 역행하지 않는지 확인</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="240">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">03</span>
+          <div>
+            <div class="pillar-tag">유동성 기반 리스크 관리</div>
+            <div class="pillar-subtitle">정의된 리스크를 중심으로 모든 거래를 설계합니다.</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Zenith의 모든 포지션에는 사전 정의된 손절가, 익절가, 포지션 사이즈가 있습니다 — 진입 전에 결정되며 사후 조정되지 않습니다. 이 파라미터들은 기술적 레벨, 손익비, 유동성 히트맵 데이터로 산출됩니다.<br><br>유동성 히트맵은 대기 주문이 집중된 곳 — 손절 주문이 쌓여 있을 가능성이 높은 곳, 대량 매수/매도 벽이 위치한 곳 — 을 보여줍니다. Zenith는 이 정보를 활용하여 임의의 퍼센티지가 아닌 구조적으로 합리적인 레벨에 손절을 설정하고, 유동성이 포지션을 소화할 수 있는 지점을 청산 목표로 삼습니다.</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">손절 및 익절 레벨은 기술적 구조에 기반하며, 고정 퍼센티지가 아님</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">모든 진입 전 손익비 평가 — 최소 기준 충족 시에만 진행</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">유동성 히트맵 통합 — 관측 가능한 호가 깊이에 기반한 포지션 사이징 및 청산 타겟팅</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">거래별 리스크 버짓 — 단일 포지션이 정의된 노출 한도를 초과하지 않음</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">강화학습 — 에이전트의 학습 방식</div>
+    <div class="glass rl-card">
+      <p class="body-text"><strong>자동화와 에이전트의 차이는 스스로 개선할 수 있는가에 있습니다.</strong></p>
+      <p class="body-text">고정된 시스템은 첫날과 300일째에 동일한 방식으로 거래합니다. Zenith는 다릅니다. 강화학습 레이어가 거래 결과를 지속적으로 평가하고 에이전트의 의사결정 파라미터를 조정합니다 — 핵심 로직 자체가 아니라, 현재 시장 현실에 대한 그 로직의 보정값을 조정합니다.</p>
+      <p class="body-text">매 거래 후 강화학습 레이어는 묻습니다: 이 파라미터 구성이 좋은 위험 조정 수익을 만들었는가? 효과적인 구성에는 보상을, 그렇지 않은 구성에는 페널티를 부여합니다. 시간이 지나면서 이것이 에이전트의 행동 패턴을 형성합니다 — 어떤 레짐 시그널에 더 큰 가중치를 두어야 하는지, 조건에 따라 얼마나 공격적으로 사이징할지, 심리 필터의 민감도를 어떻게 설정할지, 자본을 투입하기 전에 시그널이 얼마나 강해야 하는지를 학습합니다.</p>
+      <div class="rl-items">
+        <div class="rl-item"><span class="rl-item-label">시그널 가중치</span><span class="rl-item-desc">현재 조건에서 어떤 지표가 더 중요한지</span></div>
+        <div class="rl-item"><span class="rl-item-label">진입 기준</span><span class="rl-item-desc">자본을 투입하기 전 시그널이 얼마나 강해야 하는지</span></div>
+        <div class="rl-item"><span class="rl-item-label">사이징 파라미터</span><span class="rl-item-desc">최근 레짐 안정성에 기반한 포지션 사이즈의 공격성 정도</span></div>
+        <div class="rl-item"><span class="rl-item-label">필터 민감도</span><span class="rl-item-desc">기술적 확신 대비 시장 심리의 가중치 비율</span></div>
+      </div>
+      <p class="body-text rl-outro">이것이 Zenith를 고정 파라미터 트레이딩 봇과 구분짓는 핵심입니다. 핵심 로직 — 레짐 분류, 심리 스크리닝, 구조화된 리스크 관리 — 은 안정적이고 해석 가능한 상태를 유지합니다. 하지만 그 로직의 보정값은 에이전트 자신의 경험에 의해 지속적으로 진화합니다. 사람의 재보정은 필요 없습니다.</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">에이전트 루프</div>
+    <p class="loop-intro">Zenith는 인지-판단-행동-학습의 연속적 사이클을 운영합니다. 시그널당 한 번 실행되는 파이프라인이 아닙니다 — 에이전트가 24/7 가동하며 매 반복마다 행동할지, 보유할지, 관망할지를 결정하는 지속적 인지 루프입니다.</p>
+    <div class="glass loop-card">
+      <div class="loop-step" data-delay="0"><div class="loop-left"><span class="loop-num">01</span><span class="loop-label">인지</span></div><span class="loop-detail">모든 거래 자산의 프라이스 액션, 기술적 지표, 시장 심리 데이터, 유동성 깊이를 지속적으로 수집합니다.</span></div>
+      <div class="loop-step" data-delay="80"><div class="loop-left"><span class="loop-num">02</span><span class="loop-label">판단</span></div><span class="loop-detail">시장 레짐을 분류합니다 (추세 또는 평균 회귀). 매크로 리스크에 대해 심리를 스크리닝합니다. 신규 포지션이 필요한지, 기존 포지션 조정이 필요한지, 아무것도 하지 않는 것이 나은지 판단합니다.</span></div>
+      <div class="loop-step" data-delay="160"><div class="loop-left"><span class="loop-num">03</span><span class="loop-label">산출</span></div><span class="loop-detail">행동하기로 결정한 경우: 기술적 레벨, 손익비, 유동성 히트맵에서 포지션 사이즈, 손절가, 익절가를 산출합니다.</span></div>
+      <div class="loop-step" data-delay="240"><div class="loop-left"><span class="loop-num">04</span><span class="loop-label">실행</span></div><span class="loop-detail">자율적으로 주문을 라우팅합니다. 포지션의 전체 라이프사이클을 모니터링하며 — 변화하는 조건과 사전 정의된 청산 로직에 따라 조정하거나 청산합니다.</span></div>
+      <div class="loop-step" data-delay="320"><div class="loop-left"><span class="loop-num">05</span><span class="loop-label">학습</span></div><span class="loop-detail">거래 결과를 강화학습 레이어에 피드백합니다. 파라미터 가중치를 업데이트합니다. 에이전트의 다음 루프 반복은 이전의 모든 경험을 기반으로 합니다.</span></div>
+    </div>
+    <p class="loop-outro">루프는 지속적으로 운영됩니다. 대부분의 반복은 아무 행동도 하지 않는 것으로 결론납니다 — 에이전트는 인지하고 판단하지만 기다리기를 선택합니다. 이것은 제한이 아닌 기능입니다. 거래하지 <em>않겠다</em>는 결정을 내리는 능력은 <em>언제</em> 거래할지를 결정하는 능력만큼 중요합니다.</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">개발 타임라인</div>
+    <div class="timeline">
+      <div class="tl-item" data-delay="0"><div class="tl-meta"><span class="tl-year">2024년 6–8월</span><span class="tl-ver">Prototype</span></div><span class="tl-note">핵심 기술적 분석 엔진 구축. 백테스팅 프레임워크. 기본 리스크 관리가 포함된 규칙 기반 진입.</span></div>
+      <div class="tl-item" data-delay="60"><div class="tl-meta"><span class="tl-year">2024년 9–11월</span><span class="tl-ver">v1.0</span></div><span class="tl-note">레짐 분류 도입 — 전략 선택 전 시장 상태(추세 vs 평균 회귀)를 먼저 판별. 첫 라이브 거래 실행.</span></div>
+      <div class="tl-item" data-delay="120"><div class="tl-meta"><span class="tl-year">2024/12–2025/02</span><span class="tl-ver">v2.0</span></div><span class="tl-note">심리 스크리닝 레이어 추가. 소셜 및 뉴스 심리 대비 기술적 시그널 필터링. 손절/익절 배치를 위한 유동성 히트맵 통합.</span></div>
+      <div class="tl-item" data-delay="180"><div class="tl-meta"><span class="tl-year">2025년 3–11월</span><span class="tl-ver">v3.0</span></div><span class="tl-note">강화학습 정제 레이어 추가. 실제 성과 대비 시그널 가중치, 진입 기준, 사이징 파라미터를 시스템이 자체 최적화. 거래 자산 범위 확대.</span></div>
+      <div class="tl-item current" data-delay="240"><div class="tl-meta"><span class="tl-year">2026년 1월</span><span class="tl-ver">v4.0</span></div><span class="tl-note">Operon Network에 정식 런칭. 라이브 대시보드와 투명한 거래 내역을 갖춘 완전 자율 운영.</span></div>
+    </div>
+    <p class="body-text tl-summary">Zenith는 2024년 6월부터 처음부터 구축되었습니다. 각 버전은 이전 버전의 특정 한계를 해결했습니다 — 고정 규칙에서 레짐 인지 전략 선택으로, 다시 강화학습 기반 적응 시스템으로.</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">거래 대상</div>
+    <div class="asset-grid">
+      <div class="asset-card"><div class="asset-name">BTC</div><div class="asset-type">무기한 선물</div></div>
+      <div class="asset-card"><div class="asset-name">ETH</div><div class="asset-type">무기한 선물</div></div>
+      <div class="asset-card"><div class="asset-name">XRP</div><div class="asset-type">무기한 선물</div></div>
+      <div class="asset-card"><div class="asset-name">SOL</div><div class="asset-type">무기한 선물</div></div>
+      <div class="asset-card"><div class="asset-name">BNB</div><div class="asset-type">무기한 선물</div></div>
+    </div>
+    <p class="body-text">전략 기간: 2026년 1월 — 현재. 모든 거래는 자율적으로 실행됩니다. 진입/청산 가격이 포함된 전체 거래 내역은 라이브 대시보드에서 확인 가능합니다.</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;padding:48px 0 0;">
+    <a href="/zenith/" style="display:inline-flex;align-items:center;gap:8px;padding:14px 36px;border:1px solid var(--glass-border2);border-radius:100px;color:var(--text-dim);font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.06em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,204,0,0.3)';this.style.color='var(--gold)';this.style.background='rgba(255,204,0,0.04)'" onmouseout="this.style.borderColor='var(--glass-border2)';this.style.color='var(--text-dim)';this.style.background='transparent'">
+      ← Zenith로 돌아가기
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>과거 실적은 미래 수익을 보장하지 않습니다. 암호화폐 거래는 높은 위험을 수반하며 원금 손실이 발생할 수 있습니다.</p>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAPANESE CONTENT
+     ═══════════════════════════════════════════════════════════ -->
+<div id="content-ja" class="wrap" style="display:none;">
+
+  <div class="badge"><span class="dot"></span><span>OPN-201 · トレーディング手法</span></div>
+
+  <h1 class="hero-title">
+    Zenith 4.0<br><span class="gold">トレーディング手法</span>
+  </h1>
+  <p class="hero-sub">暗号資産デリバティブの完全自律AI取引エージェント。Zenithは市場状態を継続的に認知し、レジームとリスクを独自に判断し、いつどのように取引するかを自ら決定——あらゆる結果から学習し、人間の介入なしに運用を続けます。</p>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">Zenithがエージェントである理由</div>
+    <div class="glass agent-intro">
+      <p class="body-text">トレーディングボットとトレーディングエージェントの違いは、<strong>判断の自律性</strong>にあります。</p>
+      <p class="body-text">ボットはルールを実行します：指標が閾値を超えれば買い、損切りラインに達すれば売り。ロジックは固定です。人間がルールを書き、ボットはそれに従います。市場環境が変わっても、ボットはそれを認識できません——人間がルールを更新するまで、同じロジックを実行し続けるだけです。</p>
+      <p class="body-text">Zenithは異なる仕組みで動作します。プライスアクション、テクニカル指標、ソーシャルセンチメント、ニュース、流動性の厚みなど、複数のデータストリームから環境を継続的に認知します。現在どのような市場なのかを自ら判断します。行動すべきか、見送るべきかを決定します。ポジションのライフサイクル全体を管理します。そして毎回の取引後、結果を強化学習レイヤーにフィードバックし、自らの意思決定パラメータを調整します——行動が有利な条件と自制が有利な条件を見分ける能力が継続的に向上します。</p>
+      <p class="body-text">これがZenithをエージェントたらしめる核心です：Zenithは指示を待ちません。自ら運用リズムを設定し、独自にリスクを判断し、時間の経過とともにパフォーマンスを改善します。2026年1月から完全自律運用中であり——ライブダッシュボード上のすべての取引は、エージェントが自ら識別、サイジング、エントリー、管理、決済したもので、人間の入力は一切ありません。</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">3つのコアピラー</div>
+
+    <div class="pillar" data-delay="0">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">01</span>
+          <div>
+            <div class="pillar-tag">レジーム分類</div>
+            <div class="pillar-subtitle">取引の前に、まず市場状態を判断する。</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Zenithのあらゆる意思決定の基盤はレジーム分類です：現在の市場はトレンド相場か、平均回帰相場か？その答えが戦略全体を決定します——トレンド相場ではトレンドフォロー、レンジ相場ではリバーサルエントリーを採用します。<br><br>この分類はプライスアクション分析と多数のテクニカル指標を複数のタイムフレームにわたって評価して構築されます。Zenithは単一の指標や固定ルールに依存しません——方向性、モメンタム、ボラティリティのシグナルを総合し、継続的にアップデートされる確率的レジーム評価を形成します。</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">マルチタイムフレームのプライスアクション分析で方向構造を判断</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">モメンタム・ボラティリティ指標によるレジーム確率評価</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">動的レジーム切替——市場環境の変化に応じて戦略タイプを調整</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="120">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">02</span>
+          <div>
+            <div class="pillar-tag">センチメント＆マクロスクリーニング</div>
+            <div class="pillar-subtitle">現実のリスクに対して取引をフィルタリングする。</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">テクニカルシグナルは真空の中で機能しますが、市場はそうではありません。ポジションを取る前に、Zenithはソーシャルチャネル、ニュース、オンチェーン活動のリアルタイムセンチメントをスクリーニングし、マクロ環境が取引根拠を支持するかを評価します。<br><br>これはシグナル生成器ではなく、リスクフィルターです。Zenithはセンチメントを活用して悪い取引を<em>回避</em>します——マクロの逆風、突発的なナラティブの転換、テクニカル分析だけでは捉えられないイベントドリブンリスクを識別します。センチメントがテクニカルセットアップと矛盾する場合、システムは見送ります。</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">ソーシャルメディア、ニュースフィード、クリプトネイティブチャネル全体のリアルタイムセンチメント分析</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">マクロリスク検知——規制イベント、大規模清算カスケード、ナラティブレジーム転換</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">方向性センチメントのクロスチェック——テクニカルシグナルがマクロ環境に逆行していないかを確認</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="240">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">03</span>
+          <div>
+            <div class="pillar-tag">流動性を考慮したリスク管理</div>
+            <div class="pillar-subtitle">定義されたリスクを中心にすべての取引を設計する。</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Zenithのすべてのポジションには、事前に定義されたストップロス、テイクプロフィット、ポジションサイズがあります——エントリー前に決定され、事後に調整されることはありません。これらのパラメータはテクニカルレベル、リスクリワード比、リクイディティヒートマップのデータから算出されます。<br><br>リクイディティヒートマップは待機注文が集中する場所——ストップが積み上がっている可能性の高いポイント、大口の買い板・売り板の位置——を表示します。Zenithはこの情報を活用し、任意のパーセンテージではなく構造的に合理的なレベルにストップを設定し、流動性がポジションを消化できるポイントを決済目標とします。</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">ストップロス・テイクプロフィットのレベルはテクニカル構造に基づき、固定パーセンテージではない</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">すべてのエントリー前にリスクリワード比を評価——最低基準を満たす場合のみ実行</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">リクイディティヒートマップ統合——観測可能な板の厚みに基づくポジションサイジングと決済ターゲティング</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">取引ごとのリスクバジェット——単一ポジションが定義されたエクスポージャー限度を超過しない</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">強化学習——エージェントの学習方法</div>
+    <div class="glass rl-card">
+      <p class="body-text"><strong>自動化とエージェントの違いは、自ら改善できるかどうかにあります。</strong></p>
+      <p class="body-text">固定されたシステムは初日と300日目で同じ取引をします。Zenithは違います。強化学習レイヤーが取引結果を継続的に評価し、エージェントの意思決定パラメータを調整します——コアロジックそのものではなく、現在の市場現実に対するそのロジックの較正値を調整します。</p>
+      <p class="body-text">毎回の取引後、強化学習レイヤーは問います：このパラメータ構成は良好なリスク調整後リターンを生み出したか？効果的な構成には報酬を、そうでない構成にはペナルティを与えます。時間の経過とともに、これがエージェントの行動パターンを形成します——どのレジームシグナルにより大きな重みを置くべきか、条件に応じてどの程度アグレッシブにサイジングするか、センチメントフィルターの感度をどう設定するか、資本を投入する前にシグナルがどの程度強くあるべきかを学習します。</p>
+      <div class="rl-items">
+        <div class="rl-item"><span class="rl-item-label">シグナル加重</span><span class="rl-item-desc">現在の条件下でどの指標がより重要か</span></div>
+        <div class="rl-item"><span class="rl-item-label">エントリー閾値</span><span class="rl-item-desc">資本を投入する前にシグナルがどの程度強くあるべきか</span></div>
+        <div class="rl-item"><span class="rl-item-label">サイジングパラメータ</span><span class="rl-item-desc">直近のレジーム安定性に基づくポジションサイズのアグレッシブさ</span></div>
+        <div class="rl-item"><span class="rl-item-label">フィルター感度</span><span class="rl-item-desc">テクニカルの確信度に対するセンチメントの加重比率</span></div>
+      </div>
+      <p class="body-text rl-outro">これがZenithを固定パラメータのトレーディングボットと分ける核心です。コアロジック——レジーム分類、センチメントスクリーニング、構造化されたリスク管理——は安定的かつ解釈可能な状態を維持します。しかしそのロジックの較正値は、エージェント自身の経験によって継続的に進化します。人間による再較正は不要です。</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">エージェントループ</div>
+    <p class="loop-intro">Zenithは認知-判断-行動-学習の連続サイクルを運用しています。シグナルごとに1回発火するパイプラインではありません——エージェントが24時間365日稼働し、毎回のイテレーションで行動するか、保有するか、見送るかを判断する継続的な認知ループです。</p>
+    <div class="glass loop-card">
+      <div class="loop-step" data-delay="0"><div class="loop-left"><span class="loop-num">01</span><span class="loop-label">認知</span></div><span class="loop-detail">すべての取引対象資産のプライスアクション、テクニカル指標、センチメントデータ、流動性の厚みを継続的に取得します。</span></div>
+      <div class="loop-step" data-delay="80"><div class="loop-left"><span class="loop-num">02</span><span class="loop-label">判断</span></div><span class="loop-detail">市場レジームを分類します（トレンドまたは平均回帰）。マクロリスクに対してセンチメントをスクリーニングします。新規ポジションが必要か、既存ポジションの調整が必要か、何もしないのが最善かを判断します。</span></div>
+      <div class="loop-step" data-delay="160"><div class="loop-left"><span class="loop-num">03</span><span class="loop-label">算出</span></div><span class="loop-detail">行動する場合：テクニカルレベル、リスクリワード比、リクイディティヒートマップからポジションサイズ、ストップロス、テイクプロフィットを算出します。</span></div>
+      <div class="loop-step" data-delay="240"><div class="loop-left"><span class="loop-num">04</span><span class="loop-label">執行</span></div><span class="loop-detail">自律的に注文をルーティングします。ポジションのライフサイクル全体をモニタリングし——変化する条件と事前定義された決済ロジックに基づいて調整または決済します。</span></div>
+      <div class="loop-step" data-delay="320"><div class="loop-left"><span class="loop-num">05</span><span class="loop-label">学習</span></div><span class="loop-detail">取引結果を強化学習レイヤーにフィードバックします。パラメータ加重を更新します。エージェントの次のループイテレーションは、過去のすべての経験に基づきます。</span></div>
+    </div>
+    <p class="loop-outro">ループは継続的に運用されます。大半のイテレーションは何も行動しないという結論になります——エージェントは認知し判断していますが、待つことを選択しています。これは制限ではなく機能です。取引<em>しない</em>と決断する能力は、<em>いつ</em>取引するかを決断する能力と同等に重要です。</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">開発タイムライン</div>
+    <div class="timeline">
+      <div class="tl-item" data-delay="0"><div class="tl-meta"><span class="tl-year">2024年 6〜8月</span><span class="tl-ver">プロトタイプ</span></div><span class="tl-note">コアとなるテクニカル分析エンジンを構築。バックテストフレームワーク。基本的なリスク管理を備えたルールベースのエントリー。</span></div>
+      <div class="tl-item" data-delay="60"><div class="tl-meta"><span class="tl-year">2024年 9〜11月</span><span class="tl-ver">v1.0</span></div><span class="tl-note">レジーム分類を導入——戦略選択の前にまず市場状態（トレンド vs 平均回帰）を判別。初のライブ取引を実行。</span></div>
+      <div class="tl-item" data-delay="120"><div class="tl-meta"><span class="tl-year">2024/12〜2025/02</span><span class="tl-ver">v2.0</span></div><span class="tl-note">センチメントスクリーニングレイヤーを追加。ソーシャル・ニュースセンチメントに対してテクニカルシグナルをフィルタリング。ストップ/ターゲット配置のためのリクイディティヒートマップを統合。</span></div>
+      <div class="tl-item" data-delay="180"><div class="tl-meta"><span class="tl-year">2025年 3〜11月</span><span class="tl-ver">v3.0</span></div><span class="tl-note">強化学習精緻化レイヤーを追加。実際のパフォーマンスに対してシグナル加重、エントリー閾値、サイジングパラメータをシステムが自己最適化。取引対象資産を拡大。</span></div>
+      <div class="tl-item current" data-delay="240"><div class="tl-meta"><span class="tl-year">2026年 1月</span><span class="tl-ver">v4.0</span></div><span class="tl-note">Operon Networkに正式ローンチ。ライブダッシュボードと透明な取引履歴を備えた完全自律運用。</span></div>
+    </div>
+    <p class="body-text tl-summary">Zenithは2024年6月からゼロベースで構築されました。各バージョンは前バージョンの特定の限界を解決しました——固定ルールからレジーム認識型戦略選択へ、さらに強化学習ベースの適応システムへ。</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">取引対象</div>
+    <div class="asset-grid">
+      <div class="asset-card"><div class="asset-name">BTC</div><div class="asset-type">無期限先物</div></div>
+      <div class="asset-card"><div class="asset-name">ETH</div><div class="asset-type">無期限先物</div></div>
+      <div class="asset-card"><div class="asset-name">XRP</div><div class="asset-type">無期限先物</div></div>
+      <div class="asset-card"><div class="asset-name">SOL</div><div class="asset-type">無期限先物</div></div>
+      <div class="asset-card"><div class="asset-name">BNB</div><div class="asset-type">無期限先物</div></div>
+    </div>
+    <p class="body-text">戦略期間：2026年1月〜現在。すべての取引は自律的に執行。エントリー・決済価格を含む完全な取引履歴はライブダッシュボードで確認可能です。</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;padding:48px 0 0;">
+    <a href="/zenith/" style="display:inline-flex;align-items:center;gap:8px;padding:14px 36px;border:1px solid var(--glass-border2);border-radius:100px;color:var(--text-dim);font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.06em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,204,0,0.3)';this.style.color='var(--gold)';this.style.background='rgba(255,204,0,0.04)'" onmouseout="this.style.borderColor='var(--glass-border2)';this.style.color='var(--text-dim)';this.style.background='transparent'">
+      ← Zenith に戻る
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>過去の実績は将来の成果を保証するものではありません。暗号資産取引には高いリスクが伴い、元本を失う可能性があります。</p>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     THAI CONTENT
+     ═══════════════════════════════════════════════════════════ -->
+<div id="content-th" class="wrap" style="display:none;">
+
+  <div class="badge"><span class="dot"></span><span>OPN-201 · วิธีการเทรด</span></div>
+
+  <h1 class="hero-title">
+    Zenith 4.0<br><span class="gold">วิธีการเทรด</span>
+  </h1>
+  <p class="hero-sub">AI Trading Agent อัตโนมัติเต็มรูปแบบสำหรับ Crypto Derivatives Zenith ติดตามตลาดอย่างต่อเนื่อง ประเมิน Regime และความเสี่ยงด้วยตัวเอง ตัดสินใจว่าจะเทรดเมื่อใดและอย่างไร — และเรียนรู้จากทุกผลลัพธ์ โดยไม่ต้องมีคนเข้ามาแทรกแซง</p>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">ทำไม Zenith ถึงเป็น Agent ไม่ใช่แค่บอทเทรด</div>
+    <div class="glass agent-intro">
+      <p class="body-text">ความแตกต่างระหว่าง Trading Bot กับ Trading Agent คือ<strong>ความสามารถในการตัดสินใจด้วยตัวเอง</strong></p>
+      <p class="body-text">บอทดำเนินการตามกฎ: ถ้าอินดิเคเตอร์ข้ามเกณฑ์ก็ซื้อ ถ้าแตะ Stop Loss ก็ขาย ลอจิกเป็นแบบตายตัว คนเขียนกฎ บอทก็ทำตาม เมื่อสภาวะตลาดเปลี่ยนไป บอทไม่รู้ — มันจะยังคงดำเนินตามกฎเดิมต่อไปจนกว่าคนจะมาอัปเดต</p>
+      <p class="body-text">Zenith ทำงานต่างออกไป มันรับรู้สภาพแวดล้อมอย่างต่อเนื่องจากข้อมูลหลายสาย — Price Action, อินดิเคเตอร์ทางเทคนิค, Sentiment ของตลาด, ข่าว, ความลึกของสภาพคล่อง มันประเมินด้วยตัวเองว่าตลาดตอนนี้เป็นแบบไหน ตัดสินใจว่าจะเข้าเทรดหรือรอดู บริหารจัดการทุกโพซิชันตลอดวงจรชีวิต และหลังจากทุกเทรด มันจะป้อนผลลัพธ์กลับเข้าชั้น Reinforcement Learning เพื่อปรับพารามิเตอร์การตัดสินใจ — ทำให้แยกแยะได้ดีขึ้นเรื่อย ๆ ว่าสภาวะไหนควรเข้าเทรดและสภาวะไหนควรรอ</p>
+      <p class="body-text">นี่คือสิ่งที่ทำให้ Zenith เป็น Agent: Zenith ไม่รอคำสั่ง มันกำหนดจังหวะการทำงานเอง ตัดสินความเสี่ยงเอง และปรับปรุงผลงานอย่างต่อเนื่อง ระบบทำงานแบบอัตโนมัติเต็มรูปแบบตั้งแต่เดือนธันวาคม 2025 — ทุกเทรดบนแดชบอร์ดสด ถูกระบุ กำหนดขนาด เปิด บริหาร และปิด โดย Agent เองทั้งหมด ไม่มีการป้อนข้อมูลจากคน</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">สามเสาหลัก</div>
+
+    <div class="pillar" data-delay="0">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">01</span>
+          <div>
+            <div class="pillar-tag">การจำแนก Regime ของตลาด</div>
+            <div class="pillar-subtitle">ประเมินสภาวะตลาดก่อนเทรด</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">พื้นฐานของทุกการตัดสินใจของ Zenith คือการจำแนก Regime: ตลาดตอนนี้เป็น Trend หรือ Mean Reversion? คำตอบกำหนดกลยุทธ์ทั้งหมด — ตลาด Trend ใช้กลยุทธ์ Trend Following ตลาด Sideways ใช้ Reversion Entry<br><br>การจำแนกนี้สร้างจากการวิเคราะห์ Price Action และอินดิเคเตอร์ทางเทคนิคหลายตัวข้ามหลาย Timeframe Zenith ไม่พึ่งพาอินดิเคเตอร์ตัวเดียวหรือกฎตายตัว — แต่สังเคราะห์สัญญาณด้านทิศทาง โมเมนตัม และความผันผวน เพื่อสร้างการประเมิน Regime แบบความน่าจะเป็นที่อัปเดตอย่างต่อเนื่อง</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">วิเคราะห์ Price Action หลาย Timeframe เพื่อประเมินโครงสร้างทิศทาง</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">อินดิเคเตอร์โมเมนตัมและความผันผวนสำหรับการให้คะแนนความน่าจะเป็นของ Regime</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">การสลับ Regime แบบไดนามิก — ระบบปรับประเภทกลยุทธ์ตามสภาวะตลาดที่เปลี่ยนไป</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="120">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">02</span>
+          <div>
+            <div class="pillar-tag">การกรอง Sentiment และ Macro</div>
+            <div class="pillar-subtitle">กรองเทรดเพื่อรับมือกับความเสี่ยงในโลกจริง</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">สัญญาณทางเทคนิคทำงานในสุญญากาศ แต่ตลาดไม่ใช่ ก่อนเปิดโพซิชัน Zenith จะกรอง Sentiment แบบเรียลไทม์จากโซเชียล ข่าว และกิจกรรม On-chain เพื่อประเมินว่าสภาวะ Macro สนับสนุนเหตุผลในการเทรดหรือไม่<br><br>นี่คือตัวกรองความเสี่ยง ไม่ใช่ตัวสร้างสัญญาณ Zenith ใช้ Sentiment เพื่อ<em>หลีกเลี่ยง</em>เทรดที่ไม่ดี — ระบุลมต้าน Macro การเปลี่ยน Narrative อย่างกะทันหัน หรือความเสี่ยงจากเหตุการณ์ที่การวิเคราะห์ทางเทคนิคเพียงอย่างเดียวจับไม่ได้ ถ้า Sentiment ขัดแย้งกับ Setup ทางเทคนิค ระบบจะเลือกรอดู</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">วิเคราะห์ Sentiment แบบเรียลไทม์ทั่วโซเชียลมีเดีย ฟีดข่าว และช่องทาง Crypto โดยเฉพาะ</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">ตรวจจับความเสี่ยง Macro — เหตุการณ์ด้านกฎระเบียบ, Liquidation Cascade ขนาดใหญ่, การเปลี่ยน Narrative Regime</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">ตรวจสอบ Sentiment ทิศทาง — ยืนยันว่าสัญญาณทางเทคนิคไม่ได้สวนทางกับสภาวะ Macro</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="240">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">03</span>
+          <div>
+            <div class="pillar-tag">การบริหารความเสี่ยงบนฐานสภาพคล่อง</div>
+            <div class="pillar-subtitle">ออกแบบทุกเทรดรอบความเสี่ยงที่กำหนดไว้</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">ทุกโพซิชันของ Zenith มี Stop Loss, Take Profit และขนาดโพซิชันที่กำหนดไว้ล่วงหน้า — ตัดสินก่อนเข้าเทรด ไม่ได้ปรับหลังจากนั้น พารามิเตอร์เหล่านี้คำนวณจากระดับทางเทคนิค, อัตราส่วน Risk-Reward และข้อมูล Liquidity Heatmap<br><br>Liquidity Heatmap แสดงจุดที่ออร์เดอร์สะสมกัน — จุดที่ Stop น่าจะกองอยู่ จุดที่มี Bid/Ask ขนาดใหญ่ Zenith ใช้ข้อมูลนี้วาง Stop ที่ระดับที่สมเหตุสมผลทางโครงสร้าง ไม่ใช่เปอร์เซ็นต์ตายตัว และตั้งเป้าปิดโพซิชันที่จุดที่สภาพคล่องเพียงพอจะรองรับได้</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">ระดับ Stop Loss และ Take Profit อิงจากโครงสร้างทางเทคนิค ไม่ใช่เปอร์เซ็นต์ตายตัว</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">ประเมิน Risk-Reward ก่อนเข้าเทรดทุกครั้ง — ต้องผ่านเกณฑ์ขั้นต่ำจึงจะดำเนินการ</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">รวม Liquidity Heatmap — ขนาดโพซิชันและเป้าหมายปิดอิงจากความลึกของออร์เดอร์ที่สังเกตได้</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">งบความเสี่ยงต่อเทรด — โพซิชันเดียวจะไม่เกินวงเงินความเสี่ยงที่กำหนด</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">Reinforcement Learning — วิธีที่ Agent เรียนรู้</div>
+    <div class="glass rl-card">
+      <p class="body-text"><strong>ความแตกต่างระหว่างระบบอัตโนมัติกับ Agent คือความสามารถในการปรับปรุงตัวเอง</strong></p>
+      <p class="body-text">ระบบตายตัวจะเทรดแบบเดียวกันทั้งวันแรกและวันที่สามร้อย Zenith ไม่เป็นเช่นนั้น ชั้น Reinforcement Learning ประเมินผลการเทรดอย่างต่อเนื่องและปรับพารามิเตอร์การตัดสินใจของ Agent — ไม่ได้ปรับลอจิกหลัก แต่ปรับการสอบเทียบของลอจิกนั้นกับความเป็นจริงของตลาดปัจจุบัน</p>
+      <p class="body-text">หลังทุกเทรด ชั้น RL จะถามว่า: การตั้งค่าพารามิเตอร์ชุดนี้ให้ผลตอบแทนหลังปรับความเสี่ยงที่ดีหรือไม่? ให้รางวัลกับการตั้งค่าที่ได้ผลและลงโทษการตั้งค่าที่ไม่ได้ผล เมื่อเวลาผ่านไป สิ่งนี้จะกำหนดรูปแบบพฤติกรรมของ Agent — มันเรียนรู้ว่าควรให้น้ำหนักสัญญาณ Regime ไหนมากกว่า ควรกำหนดขนาดอย่าง Aggressive แค่ไหนในแต่ละสภาวะ ตัวกรอง Sentiment ควรไวแค่ไหน และสัญญาณต้องแรงแค่ไหนก่อนจะลงทุน</p>
+      <div class="rl-items">
+        <div class="rl-item"><span class="rl-item-label">น้ำหนักสัญญาณ</span><span class="rl-item-desc">อินดิเคเตอร์ตัวไหนสำคัญกว่าภายใต้สภาวะปัจจุบัน</span></div>
+        <div class="rl-item"><span class="rl-item-label">เกณฑ์เข้าเทรด</span><span class="rl-item-desc">สัญญาณต้องแรงแค่ไหนก่อนที่ Agent จะลงทุน</span></div>
+        <div class="rl-item"><span class="rl-item-label">พารามิเตอร์ขนาด</span><span class="rl-item-desc">ควร Aggressive แค่ไหนในการกำหนดขนาดตาม Regime ล่าสุด</span></div>
+        <div class="rl-item"><span class="rl-item-label">ความไวของตัวกรอง</span><span class="rl-item-desc">Sentiment ควรมีน้ำหนักเท่าไรเมื่อเทียบกับความมั่นใจทางเทคนิค</span></div>
+      </div>
+      <p class="body-text rl-outro">นี่คือสิ่งที่แยก Zenith ออกจากบอทเทรดที่มีพารามิเตอร์ตายตัว ลอจิกหลัก — การจำแนก Regime, การกรอง Sentiment, การบริหารความเสี่ยงแบบมีโครงสร้าง — คงเสถียรและตีความได้ แต่การสอบเทียบของลอจิกนั้นวิวัฒนาการอย่างต่อเนื่องจากประสบการณ์ของ Agent เอง ไม่ต้องมีคนมาปรับเทียบใหม่</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">Agent Loop</div>
+    <p class="loop-intro">Zenith ดำเนินวงจรรับรู้-ตัดสิน-ดำเนินการ-เรียนรู้อย่างต่อเนื่อง นี่ไม่ใช่ Pipeline ที่ทำงานครั้งเดียวต่อสัญญาณ — แต่เป็นลูปการรับรู้ที่ Agent ทำงาน 24/7 ตัดสินใจในทุกรอบว่าจะเข้าเทรด ถือต่อ หรือรอดู</p>
+    <div class="glass loop-card">
+      <div class="loop-step" data-delay="0"><div class="loop-left"><span class="loop-num">01</span><span class="loop-label">รับรู้</span></div><span class="loop-detail">รับข้อมูล Price Action, อินดิเคเตอร์ทางเทคนิค, Sentiment และความลึกของสภาพคล่องของสินทรัพย์ที่เทรดทั้งหมดอย่างต่อเนื่อง</span></div>
+      <div class="loop-step" data-delay="80"><div class="loop-left"><span class="loop-num">02</span><span class="loop-label">ตัดสิน</span></div><span class="loop-detail">จำแนก Regime ของตลาด (Trend หรือ Mean Reversion) กรอง Sentiment เพื่อประเมินความเสี่ยง Macro ตัดสินว่าควรเปิดโพซิชันใหม่ ปรับโพซิชันเดิม หรือไม่ทำอะไร</span></div>
+      <div class="loop-step" data-delay="160"><div class="loop-left"><span class="loop-num">03</span><span class="loop-label">คำนวณ</span></div><span class="loop-detail">ถ้าตัดสินใจเข้าเทรด: คำนวณขนาดโพซิชัน, Stop Loss, Take Profit จากระดับทางเทคนิค, อัตราส่วน Risk-Reward และ Liquidity Heatmap</span></div>
+      <div class="loop-step" data-delay="240"><div class="loop-left"><span class="loop-num">04</span><span class="loop-label">ดำเนินการ</span></div><span class="loop-detail">ส่งคำสั่งซื้อขายโดยอัตโนมัติ ติดตามโพซิชันตลอดวงจรชีวิต — ปรับหรือปิดตามสภาวะที่เปลี่ยนไปและลอจิกการปิดที่กำหนดไว้</span></div>
+      <div class="loop-step" data-delay="320"><div class="loop-left"><span class="loop-num">05</span><span class="loop-label">เรียนรู้</span></div><span class="loop-detail">ป้อนผลลัพธ์ของเทรดกลับเข้าชั้น RL อัปเดตน้ำหนักพารามิเตอร์ รอบถัดไปของลูป Agent จะอิงจากประสบการณ์ทั้งหมดที่ผ่านมา</span></div>
+    </div>
+    <p class="loop-outro">ลูปทำงานอย่างต่อเนื่อง รอบส่วนใหญ่จบลงด้วยการไม่ดำเนินการ — Agent กำลังรับรู้และตัดสินแต่เลือกที่จะรอ นี่คือฟีเจอร์ ไม่ใช่ข้อจำกัด ความสามารถในการตัดสินใจ<em>ไม่เทรด</em>สำคัญเท่ากับความสามารถในการตัดสินใจว่า<em>เมื่อไหร่</em>ควรเทรด</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">ไทม์ไลน์การพัฒนา</div>
+    <div class="timeline">
+      <div class="tl-item" data-delay="0"><div class="tl-meta"><span class="tl-year">มิ.ย. — ส.ค. 2024</span><span class="tl-ver">Prototype</span></div><span class="tl-note">สร้างเอนจิ้นวิเคราะห์ทางเทคนิคหลัก กรอบงาน Backtest เข้าเทรดแบบกฎตายตัวพร้อมการบริหารความเสี่ยงพื้นฐาน</span></div>
+      <div class="tl-item" data-delay="60"><div class="tl-meta"><span class="tl-year">ก.ย. — พ.ย. 2024</span><span class="tl-ver">v1.0</span></div><span class="tl-note">เพิ่มการจำแนก Regime — ระบบประเมินสภาวะตลาด (Trend vs Mean Reversion) ก่อนเลือกกลยุทธ์ เทรดจริงครั้งแรก</span></div>
+      <div class="tl-item" data-delay="120"><div class="tl-meta"><span class="tl-year">ธ.ค. 2024 — ก.พ. 2025</span><span class="tl-ver">v2.0</span></div><span class="tl-note">เพิ่มชั้นกรอง Sentiment กรองสัญญาณทางเทคนิคกับ Sentiment จากโซเชียลและข่าว รวม Liquidity Heatmap สำหรับวาง Stop/Target</span></div>
+      <div class="tl-item" data-delay="180"><div class="tl-meta"><span class="tl-year">มี.ค. — พ.ย. 2025</span><span class="tl-ver">v3.0</span></div><span class="tl-note">เพิ่มชั้น Reinforcement Learning ระบบปรับน้ำหนักสัญญาณ เกณฑ์เข้าเทรด และพารามิเตอร์ขนาดโดยอัตโนมัติตามผลงานจริง ขยายสินทรัพย์ที่เทรด</span></div>
+      <div class="tl-item current" data-delay="240"><div class="tl-meta"><span class="tl-year">ธ.ค. 2025</span><span class="tl-ver">v4.0</span></div><span class="tl-note">เปิดตัวบน Operon Network อย่างเป็นทางการ ดำเนินการอัตโนมัติเต็มรูปแบบพร้อมแดชบอร์ดสดและประวัติการเทรดที่โปร่งใส</span></div>
+    </div>
+    <p class="body-text tl-summary">Zenith ถูกสร้างจากศูนย์ตั้งแต่เดือนมิถุนายน 2024 แต่ละเวอร์ชันแก้ไขข้อจำกัดเฉพาะของเวอร์ชันก่อนหน้า — จากกฎตายตัวไปสู่การเลือกกลยุทธ์แบบรับรู้ Regime แล้วสู่ระบบปรับตัวด้วย Reinforcement Learning</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">สินทรัพย์ที่เทรด</div>
+    <div class="asset-grid">
+      <div class="asset-card"><div class="asset-name">BTC</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">ETH</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">XRP</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">SOL</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">BNB</div><div class="asset-type">Perpetual</div></div>
+    </div>
+    <p class="body-text">ช่วงกลยุทธ์: ธันวาคม 2025 — ปัจจุบัน ทุกเทรดดำเนินการโดยอัตโนมัติ ประวัติการเทรดทั้งหมดพร้อมราคาเข้า/ออกดูได้ที่แดชบอร์ดสด</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;padding:48px 0 0;">
+    <a href="/zenith/" style="display:inline-flex;align-items:center;gap:8px;padding:14px 36px;border:1px solid var(--glass-border2);border-radius:100px;color:var(--text-dim);font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.06em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,204,0,0.3)';this.style.color='var(--gold)';this.style.background='rgba(255,204,0,0.04)'" onmouseout="this.style.borderColor='var(--glass-border2)';this.style.color='var(--text-dim)';this.style.background='transparent'">
+      ← กลับไป Zenith
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>ผลการดำเนินงานในอดีตไม่ได้รับประกันผลลัพธ์ในอนาคต การซื้อขายสกุลเงินดิจิทัลมีความเสี่ยงสูงและอาจสูญเสียเงินต้น</p>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     VIETNAMESE CONTENT
+     ═══════════════════════════════════════════════════════════ -->
+<div id="content-vi" class="wrap" style="display:none;">
+
+  <div class="badge"><span class="dot"></span><span>OPN-201 · PHƯƠNG PHÁP GIAO DỊCH</span></div>
+
+  <h1 class="hero-title">
+    Zenith 4.0<br><span class="gold">Phương pháp Giao dịch</span>
+  </h1>
+  <p class="hero-sub">AI Trading Agent tự chủ hoàn toàn cho giao dịch phái sinh crypto. Zenith liên tục theo dõi thị trường, tự đánh giá regime và rủi ro, tự quyết định khi nào và cách giao dịch — và học hỏi từ mọi kết quả, vận hành liên tục mà không cần sự can thiệp của con người.</p>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">Tại sao Zenith là Agent, không phải bot giao dịch</div>
+    <div class="glass agent-intro">
+      <p class="body-text">Sự khác biệt giữa trading bot và trading agent nằm ở <strong>khả năng tự phán đoán</strong>.</p>
+      <p class="body-text">Bot thực thi quy tắc: chỉ báo vượt ngưỡng thì mua, chạm stop loss thì bán. Logic là cố định. Con người viết quy tắc, bot làm theo. Khi điều kiện thị trường thay đổi, bot không biết — nó tiếp tục thực thi cùng quy tắc cho đến khi con người cập nhật.</p>
+      <p class="body-text">Zenith hoạt động khác. Nó liên tục nhận thức môi trường qua nhiều luồng dữ liệu — price action, chỉ báo kỹ thuật, tâm lý thị trường, tin tức, độ sâu thanh khoản. Nó tự đánh giá thị trường đang ở trạng thái nào. Nó quyết định nên hành động hay đứng ngoài. Nó quản lý vị thế qua toàn bộ vòng đời. Và sau mỗi giao dịch, nó đưa kết quả phản hồi vào lớp reinforcement learning để điều chỉnh các tham số quyết định — ngày càng phân biệt tốt hơn giữa điều kiện nên hành động và điều kiện nên kiềm chế.</p>
+      <p class="body-text">Đây là điều khiến Zenith trở thành agent: Zenith không chờ chỉ thị. Nó tự thiết lập nhịp vận hành, tự đánh giá rủi ro, và cải thiện hiệu suất theo thời gian. Hệ thống vận hành tự chủ hoàn toàn từ tháng 12/2025 — mọi giao dịch trên dashboard trực tiếp đều được agent tự nhận diện, định cỡ, vào lệnh, quản lý và đóng lệnh, không có bất kỳ đầu vào nào từ con người.</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">Ba trụ cột cốt lõi</div>
+
+    <div class="pillar" data-delay="0">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">01</span>
+          <div>
+            <div class="pillar-tag">Phân loại Regime thị trường</div>
+            <div class="pillar-subtitle">Đánh giá trạng thái thị trường trước khi giao dịch.</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Nền tảng của mọi quyết định Zenith đưa ra là phân loại regime: thị trường hiện tại đang trend hay mean reversion? Câu trả lời quyết định toàn bộ chiến lược — thị trường trend dùng trend following, thị trường sideway dùng reversion entry.<br><br>Phân loại này được xây dựng từ phân tích price action và nhiều chỉ báo kỹ thuật đánh giá trên nhiều khung thời gian. Zenith không phụ thuộc vào một chỉ báo hay bộ quy tắc cố định — mà tổng hợp tín hiệu hướng, momentum và biến động để hình thành đánh giá regime dạng xác suất, cập nhật liên tục.</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Phân tích price action đa khung thời gian để đánh giá cấu trúc hướng</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Chỉ báo momentum và biến động để chấm điểm xác suất regime</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Chuyển đổi regime động — hệ thống điều chỉnh loại chiến lược theo điều kiện thị trường</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="120">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">02</span>
+          <div>
+            <div class="pillar-tag">Lọc Sentiment & Macro</div>
+            <div class="pillar-subtitle">Lọc giao dịch trước rủi ro thực tế.</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Tín hiệu kỹ thuật hoạt động trong chân không, nhưng thị trường thì không. Trước khi mở vị thế, Zenith lọc sentiment thời gian thực từ mạng xã hội, nguồn tin và hoạt động on-chain để đánh giá liệu điều kiện macro có hỗ trợ luận điểm giao dịch hay không.<br><br>Đây là bộ lọc rủi ro, không phải bộ tạo tín hiệu. Zenith dùng sentiment để <em>tránh</em> các giao dịch tệ — nhận diện gió ngược macro, chuyển đổi narrative đột ngột, hoặc rủi ro sự kiện mà phân tích kỹ thuật đơn thuần không nắm bắt được. Nếu sentiment mâu thuẫn với setup kỹ thuật, hệ thống chọn đứng ngoài.</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Phân tích sentiment thời gian thực trên mạng xã hội, feed tin tức và kênh crypto</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Phát hiện rủi ro macro — sự kiện pháp lý, chuỗi thanh lý lớn, chuyển đổi narrative regime</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Kiểm chứng chéo sentiment theo hướng — đảm bảo tín hiệu kỹ thuật không đi ngược môi trường macro</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillar" data-delay="240">
+      <div class="accent"></div>
+      <div class="pillar-top">
+        <div class="pillar-head">
+          <span class="pillar-num">03</span>
+          <div>
+            <div class="pillar-tag">Quản lý rủi ro dựa trên thanh khoản</div>
+            <div class="pillar-subtitle">Thiết kế mọi giao dịch quanh rủi ro đã xác định.</div>
+          </div>
+          <span class="pillar-toggle">+</span>
+        </div>
+      </div>
+      <div class="pillar-desc">Mọi vị thế của Zenith đều có stop loss, take profit và kích thước vị thế được xác định trước — quyết định trước khi vào lệnh, không điều chỉnh sau. Các tham số này được tính từ mức kỹ thuật, tỷ lệ risk-reward và dữ liệu liquidity heatmap.<br><br>Liquidity heatmap cho thấy nơi lệnh chờ tập trung — nơi stop có thể chồng chất, nơi có bid/ask lớn. Zenith sử dụng thông tin này để đặt stop tại mức hợp lý về mặt cấu trúc thay vì phần trăm tùy ý, và nhắm mục tiêu đóng lệnh tại nơi thanh khoản đủ để hấp thụ vị thế.</div>
+      <div class="pillar-caps">
+        <div class="pillar-caps-inner">
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Mức stop loss và take profit dựa trên cấu trúc kỹ thuật, không phải phần trăm cố định</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Đánh giá tỷ lệ risk-reward trước mỗi lệnh — chỉ thực hiện khi đạt ngưỡng tối thiểu</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Tích hợp liquidity heatmap — định cỡ vị thế và mục tiêu đóng lệnh dựa trên độ sâu lệnh quan sát được</span></div>
+          <div class="cap-item"><span class="cap-dot">●</span><span class="cap-text">Ngân sách rủi ro mỗi lệnh — không vị thế đơn lẻ nào vượt giới hạn exposure đã định</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">Reinforcement Learning — Cách Agent học hỏi</div>
+    <div class="glass rl-card">
+      <p class="body-text"><strong>Sự khác biệt giữa tự động hóa và agent là khả năng tự cải thiện.</strong></p>
+      <p class="body-text">Hệ thống cố định giao dịch cùng cách vào ngày đầu và ngày thứ ba trăm. Zenith thì không. Lớp reinforcement learning liên tục đánh giá kết quả giao dịch và điều chỉnh các tham số quyết định của agent — không phải logic cốt lõi, mà là việc hiệu chỉnh logic đó với thực tế thị trường hiện tại.</p>
+      <p class="body-text">Sau mỗi giao dịch, lớp RL hỏi: cấu hình tham số này có tạo ra kết quả tốt sau khi điều chỉnh rủi ro không? Nó thưởng cho cấu hình hiệu quả và phạt cấu hình kém. Theo thời gian, điều này định hình hành vi của agent — nó học được nên đặt trọng số lớn hơn cho tín hiệu regime nào, nên định cỡ aggressive tới đâu trong các điều kiện khác nhau, bộ lọc sentiment nên nhạy cỡ nào, và tín hiệu cần mạnh tới đâu trước khi đưa vốn vào.</p>
+      <div class="rl-items">
+        <div class="rl-item"><span class="rl-item-label">Trọng số tín hiệu</span><span class="rl-item-desc">Chỉ báo nào quan trọng hơn trong điều kiện hiện tại</span></div>
+        <div class="rl-item"><span class="rl-item-label">Ngưỡng vào lệnh</span><span class="rl-item-desc">Tín hiệu cần mạnh bao nhiêu trước khi agent đưa vốn vào</span></div>
+        <div class="rl-item"><span class="rl-item-label">Tham số định cỡ</span><span class="rl-item-desc">Nên aggressive tới đâu dựa trên độ ổn định regime gần đây</span></div>
+        <div class="rl-item"><span class="rl-item-label">Độ nhạy bộ lọc</span><span class="rl-item-desc">Sentiment nên có trọng số bao nhiêu so với xác tín kỹ thuật</span></div>
+      </div>
+      <p class="body-text rl-outro">Đây là điều phân biệt Zenith với bot giao dịch có tham số cố định. Logic cốt lõi — phân loại regime, lọc sentiment, quản lý rủi ro có cấu trúc — vẫn ổn định và có thể diễn giải. Nhưng việc hiệu chỉnh logic đó tiến hóa liên tục, được thúc đẩy bởi kinh nghiệm của chính agent. Không cần con người tái hiệu chỉnh.</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">Agent Loop</div>
+    <p class="loop-intro">Zenith vận hành chu trình nhận thức-phán đoán-hành động-học hỏi liên tục. Đây không phải pipeline chạy một lần mỗi tín hiệu — mà là vòng lặp nhận thức mà agent chạy 24/7, quyết định mỗi vòng lặp nên hành động, giữ vị thế, hay đứng ngoài.</p>
+    <div class="glass loop-card">
+      <div class="loop-step" data-delay="0"><div class="loop-left"><span class="loop-num">01</span><span class="loop-label">Nhận thức</span></div><span class="loop-detail">Liên tục thu thập price action, chỉ báo kỹ thuật, dữ liệu sentiment và độ sâu thanh khoản của tất cả tài sản giao dịch.</span></div>
+      <div class="loop-step" data-delay="80"><div class="loop-left"><span class="loop-num">02</span><span class="loop-label">Phán đoán</span></div><span class="loop-detail">Phân loại regime thị trường (trend hay mean reversion). Lọc sentiment để đánh giá rủi ro macro. Xác định nên mở vị thế mới, điều chỉnh vị thế hiện có, hay không làm gì.</span></div>
+      <div class="loop-step" data-delay="160"><div class="loop-left"><span class="loop-num">03</span><span class="loop-label">Tính toán</span></div><span class="loop-detail">Nếu quyết định hành động: tính kích thước vị thế, stop loss, take profit từ mức kỹ thuật, tỷ lệ risk-reward và liquidity heatmap.</span></div>
+      <div class="loop-step" data-delay="240"><div class="loop-left"><span class="loop-num">04</span><span class="loop-label">Thực thi</span></div><span class="loop-detail">Tự động đặt lệnh. Theo dõi vị thế qua toàn bộ vòng đời — điều chỉnh hoặc đóng dựa trên điều kiện thay đổi và logic thoát lệnh đã định.</span></div>
+      <div class="loop-step" data-delay="320"><div class="loop-left"><span class="loop-num">05</span><span class="loop-label">Học hỏi</span></div><span class="loop-detail">Đưa kết quả giao dịch phản hồi vào lớp RL. Cập nhật trọng số tham số. Vòng lặp tiếp theo của agent dựa trên toàn bộ kinh nghiệm trước đó.</span></div>
+    </div>
+    <p class="loop-outro">Vòng lặp chạy liên tục. Phần lớn các vòng lặp kết thúc với việc không hành động — agent đang nhận thức và phán đoán nhưng chọn chờ đợi. Đây là tính năng, không phải hạn chế. Khả năng quyết định <em>không giao dịch</em> quan trọng ngang với khả năng quyết định <em>khi nào</em> nên giao dịch.</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">Lịch trình phát triển</div>
+    <div class="timeline">
+      <div class="tl-item" data-delay="0"><div class="tl-meta"><span class="tl-year">Thg 6 — Thg 8, 2024</span><span class="tl-ver">Prototype</span></div><span class="tl-note">Xây dựng engine phân tích kỹ thuật cốt lõi. Framework backtest. Vào lệnh theo quy tắc với quản lý rủi ro cơ bản.</span></div>
+      <div class="tl-item" data-delay="60"><div class="tl-meta"><span class="tl-year">Thg 9 — Thg 11, 2024</span><span class="tl-ver">v1.0</span></div><span class="tl-note">Đưa vào phân loại regime — hệ thống xác định trạng thái thị trường (trend vs mean reversion) trước khi chọn chiến lược. Giao dịch thực đầu tiên.</span></div>
+      <div class="tl-item" data-delay="120"><div class="tl-meta"><span class="tl-year">Thg 12/2024 — Thg 2/2025</span><span class="tl-ver">v2.0</span></div><span class="tl-note">Thêm lớp lọc sentiment. Lọc tín hiệu kỹ thuật đối chiếu với sentiment từ mạng xã hội và tin tức. Tích hợp liquidity heatmap cho vị trí stop/target.</span></div>
+      <div class="tl-item" data-delay="180"><div class="tl-meta"><span class="tl-year">Thg 3 — Thg 11, 2025</span><span class="tl-ver">v3.0</span></div><span class="tl-note">Thêm lớp tinh chỉnh reinforcement learning. Hệ thống tự tối ưu trọng số tín hiệu, ngưỡng vào lệnh và tham số định cỡ dựa trên hiệu suất thực. Mở rộng danh mục tài sản.</span></div>
+      <div class="tl-item current" data-delay="240"><div class="tl-meta"><span class="tl-year">Thg 12, 2025</span><span class="tl-ver">v4.0</span></div><span class="tl-note">Ra mắt chính thức trên Operon Network. Vận hành tự chủ hoàn toàn với dashboard trực tiếp và lịch sử giao dịch minh bạch.</span></div>
+    </div>
+    <p class="body-text tl-summary">Zenith được xây dựng từ đầu bắt đầu từ tháng 6/2024. Mỗi phiên bản giải quyết một hạn chế cụ thể của phiên bản trước — từ quy tắc cố định đến lựa chọn chiến lược nhận biết regime, rồi đến hệ thống thích ứng dựa trên reinforcement learning.</p>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="sec-label">Tài sản giao dịch</div>
+    <div class="asset-grid">
+      <div class="asset-card"><div class="asset-name">BTC</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">ETH</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">XRP</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">SOL</div><div class="asset-type">Perpetual</div></div>
+      <div class="asset-card"><div class="asset-name">BNB</div><div class="asset-type">Perpetual</div></div>
+    </div>
+    <p class="body-text">Giai đoạn chiến lược: Tháng 12/2025 — hiện tại. Mọi giao dịch được thực hiện tự chủ. Lịch sử giao dịch đầy đủ với giá vào/ra có sẵn trên dashboard trực tiếp.</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;padding:48px 0 0;">
+    <a href="/zenith/" style="display:inline-flex;align-items:center;gap:8px;padding:14px 36px;border:1px solid var(--glass-border2);border-radius:100px;color:var(--text-dim);font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.06em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,204,0,0.3)';this.style.color='var(--gold)';this.style.background='rgba(255,204,0,0.04)'" onmouseout="this.style.borderColor='var(--glass-border2)';this.style.color='var(--text-dim)';this.style.background='transparent'">
+      ← Quay lại Zenith
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>Hiệu suất trong quá khứ không đảm bảo kết quả trong tương lai. Giao dịch tiền mã hóa có rủi ro cao và có thể dẫn đến mất vốn.</p>
+  </div>
+
+</div>
+
+<script>
+/* ═══ Language Switch ═══ */
+var LANG_CFG = {
+  'en':    { label: 'EN', htmlLang: 'en',      title: 'Zenith 4.0 — Trading Methodology', back: '← Back to Zenith',  cjk: false },
+  'zh-CN': { label: '简', htmlLang: 'zh-Hans',  title: 'Zenith 4.0 — 交易方法论',           back: '← 返回 Zenith',     cjk: true },
+  'zh':    { label: '繁', htmlLang: 'zh-Hant',  title: 'Zenith 4.0 — 交易方法論',           back: '← 返回 Zenith',     cjk: true },
+  'ko':    { label: '한', htmlLang: 'ko',       title: 'Zenith 4.0 — 트레이딩 방법론',       back: '← Zenith로 돌아가기', cjk: false },
+  'ja':    { label: '日', htmlLang: 'ja',       title: 'Zenith 4.0 — トレーディング手法',     back: '← Zenith に戻る',   cjk: true },
+  'th':    { label: 'ไทย', htmlLang: 'th',      title: 'Zenith 4.0 — วิธีการเทรด',         back: '← กลับไป Zenith',  cjk: false },
+  'vi':    { label: 'VI', htmlLang: 'vi',       title: 'Zenith 4.0 — Phương pháp Giao dịch', back: '← Quay lại Zenith', cjk: false },
+};
+var ALL_LANGS = Object.keys(LANG_CFG);
+var CONTENT_IDS = { 'en': 'content-en', 'zh': 'content-zh', 'zh-CN': 'content-zh-CN', 'ko': 'content-ko', 'ja': 'content-ja', 'th': 'content-th', 'vi': 'content-vi' };
+
+function switchLang(lang) {
+  var cfg = LANG_CFG[lang] || LANG_CFG['en'];
+  var contentId = CONTENT_IDS[lang] || CONTENT_IDS[cfg.fallback] || 'content-en';
+
+  // Hide all content divs
+  ALL_LANGS.forEach(function(l) {
+    var id = CONTENT_IDS[l] || CONTENT_IDS[(LANG_CFG[l]||{}).fallback] || 'content-en';
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  // Show target content
+  var target = document.getElementById(contentId);
+  if (target) target.style.display = '';
+
+  // Update nav, title, lang attr
+  document.getElementById('nav-back').textContent = cfg.back;
+  document.getElementById('lang-current').textContent = cfg.label;
+  document.getElementById('html-root').lang = cfg.htmlLang;
+  document.title = cfg.title;
+  document.body.classList.toggle('lang-zh', !!cfg.cjk);
+
+  // Update active state on options
+  ALL_LANGS.forEach(function(l) {
+    var optId = l === 'zh' ? 'opt-zh' : 'opt-' + l;
+    var el = document.getElementById(optId);
+    if (el) el.classList.toggle('active', l === lang);
+  });
+
+  localStorage.setItem('methodology-lang', lang);
+  document.getElementById('lang-dd').classList.remove('open');
+  document.getElementById('lang-toggle').classList.remove('open');
+  initObservers();
+}
+
+/* ═══ IntersectionObserver for scroll animations ═══ */
+var io;
+function initObservers() {
+  if (io) io.disconnect();
+  io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) {
+        var delay = parseInt(e.target.dataset.delay || '0', 10);
+        setTimeout(function() { e.target.classList.add('visible'); }, delay);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  var visibleId = ['content-en','content-zh'].find(function(id) {
+    var el = document.getElementById(id);
+    return el && el.style.display !== 'none';
+  }) || 'content-en';
+  var container = document.getElementById(visibleId);
+  container.querySelectorAll('.pillar, .loop-step, .tl-item').forEach(function(el) {
+    el.classList.remove('visible');
+    io.observe(el);
+  });
+}
+
+/* ═══ Pillar expand / collapse ═══ */
+document.querySelectorAll('.pillar').forEach(function(card) {
+  card.addEventListener('click', function() { card.classList.toggle('open'); });
+});
+
+/* ═══ Close dropdown on outside click ═══ */
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.lang-sw')) {
+    document.getElementById('lang-dd').classList.remove('open');
+    document.getElementById('lang-toggle').classList.remove('open');
+  }
+});
+
+/* ═══ Init ═══ */
+(function() {
+  // 優先讀 methodology 自身設定，再讀 Zenith 主頁設定
+  var saved = localStorage.getItem('methodology-lang');
+  if (!saved || !LANG_CFG[saved]) {
+    var zenithLang = localStorage.getItem('opn301-lang');
+    // Zenith 主頁用 'zh-TW'，methodology 用 'zh'，需映射
+    var langMap = { 'zh-TW': 'zh', 'zh-CN': 'zh-CN', 'ko': 'ko', 'ja': 'ja', 'th': 'th', 'vi': 'vi', 'en': 'en' };
+    saved = zenithLang && langMap[zenithLang] ? langMap[zenithLang] : null;
+  }
+  if (saved && LANG_CFG[saved]) {
+    switchLang(saved);
+  } else {
+    initObservers();
+  }
+})();
+</script>
+</body>
+</html>

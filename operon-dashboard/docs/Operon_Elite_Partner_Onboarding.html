@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Operon — Private Invitation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&family=Unbounded:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--void:#0A1018;--card:#121E2E;--card2:#162436;--edge:#1E2E48;--blue:#2563EB;--glow:#3B82F6;--ice:#93C5FD;--white:#F4F7FC;--soft:#CBD8EA;--dim:#7E95B0;--faint:rgba(147,197,253,0.03);--green:#22C55E;--green-dim:rgba(34,197,94,0.06);--red:#EF4444;--gold:#C9A55C;--gold-dim:rgba(201,165,92,0.12);--gold-line:rgba(201,165,92,0.15);--sf:'Cormorant Garamond',Georgia,serif;--ss:'DM Sans',sans-serif;--mn:'DM Mono',monospace;--dp:'Unbounded',sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--void)}
+body{font-family:var(--ss);background:var(--void);color:var(--soft);-webkit-font-smoothing:antialiased;min-height:100vh;line-height:1.7;overflow-x:hidden}
+
+/* ── AMBIENT ── */
+.ambient{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.ambient .orb1{position:absolute;top:-15%;left:15%;width:500px;height:500px;background:radial-gradient(circle,rgba(37,99,235,0.08) 0%,transparent 65%);animation:float1 30s ease-in-out infinite}
+.ambient .orb2{position:absolute;bottom:-10%;right:10%;width:400px;height:400px;background:radial-gradient(circle,rgba(147,197,253,0.05) 0%,transparent 60%);animation:float2 25s ease-in-out infinite}
+@keyframes float1{0%,100%{transform:translate(0,0)}33%{transform:translate(20px,30px)}66%{transform:translate(-15px,10px)}}
+@keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-25px,-15px)}}
+
+.app{max-width:580px;margin:0 auto;padding:24px 20px 60px;position:relative;z-index:1}
+
+/* ── HEADER ── */
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 0 32px}
+.logo{font-family:var(--dp);font-weight:700;font-size:13px;color:var(--white);letter-spacing:0.06em}
+.logo span{color:var(--ice)}
+
+/* ── PROGRESS ── */
+.pw{display:flex;gap:8px;margin-bottom:8px}
+.pg{height:1px;flex:1;background:var(--edge);transition:background 0.6s}
+.pg.on{background:var(--ice)}
+.pg.done{background:rgba(147,197,253,0.35)}
+
+/* ── STEPS ── */
+.step{display:none}
+.step.active{display:block}
+
+/* ── LETTER CONTAINER ── */
+.letter-wrap{position:relative;margin-top:32px;animation:letterReveal 1s ease forwards}
+@keyframes letterReveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* Top decorative line */
+.letter-top{height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,0.25),var(--ice),rgba(147,197,253,0.15),transparent);margin-bottom:48px;position:relative}
+.letter-top::after{content:'';position:absolute;top:-3px;left:50%;transform:translateX(-50%);width:7px;height:7px;background:var(--void);border:1px solid var(--gold);border-radius:50%}
+
+/* Monogram */
+.mark{display:flex;align-items:center;justify-content:center;margin:0 auto 40px}
+
+.inv-label{font-family:var(--mn);font-size:9px;letter-spacing:0.22em;color:var(--gold);text-transform:uppercase;text-align:center;margin-bottom:12px}
+.inv-exp{font-family:var(--mn);font-size:10px;color:var(--dim);text-align:center;margin-bottom:52px}
+.inv-exp strong{color:var(--soft)}
+
+/* ── LETTER CONTENT ── */
+.greeting{font-family:var(--sf);font-size:36px;font-weight:300;color:var(--white);margin-bottom:40px;line-height:1.2;animation:fadeUp 0.8s 0.2s ease both}
+.greeting em{font-style:italic;color:var(--ice)}
+
+.lp{font-family:var(--sf);font-size:20px;font-weight:300;color:var(--soft);line-height:1.85;margin-bottom:24px;letter-spacing:0.005em}
+.lp:nth-child(1){animation:fadeUp 0.8s 0.3s ease both}
+.lp:nth-child(2){animation:fadeUp 0.8s 0.4s ease both}
+.lp:nth-child(3){animation:fadeUp 0.8s 0.5s ease both}
+.lp:nth-child(4){animation:fadeUp 0.8s 0.6s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* Separator ornament */
+.lsep{display:flex;align-items:center;gap:16px;margin:48px 0;animation:fadeUp 0.8s 0.7s ease both}
+.lsep-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(201,165,92,0.12),transparent)}
+.lsep-line:last-child{background:linear-gradient(90deg,transparent,rgba(201,165,92,0.12))}
+.lsep-diamond{width:5px;height:5px;background:var(--gold);opacity:0.4;transform:rotate(45deg);flex-shrink:0}
+
+/* Summary block */
+.lsum{margin:0 0 48px;padding:28px;background:linear-gradient(135deg,var(--card),rgba(10,18,32,0.6));border:1px solid var(--edge);border-radius:8px;position:relative;overflow:hidden;animation:fadeUp 0.8s 0.8s ease both}
+.lsum::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,165,92,0.12),transparent)}
+.lsum-label{font-family:var(--mn);font-size:9px;letter-spacing:0.16em;color:var(--dim);text-transform:uppercase;margin-bottom:16px}
+.lsum-items{font-size:14px;color:var(--soft);line-height:1.6}
+.lsum-items .si{display:flex;align-items:baseline;gap:10px;padding:6px 0}
+.lsum-items .si::before{content:'·';color:var(--gold);font-size:18px;line-height:1;flex-shrink:0}
+.lsum-note{font-size:12px;color:var(--dim);margin-top:18px;padding-top:18px;border-top:1px solid var(--edge);line-height:1.7;font-style:italic}
+
+.lclose{font-family:var(--sf);font-size:18px;font-weight:300;font-style:italic;color:var(--dim);margin-bottom:4px}
+.lsig{font-family:var(--sf);font-size:20px;font-weight:500;color:var(--soft);margin-bottom:48px}
+
+/* Bottom decorative line */
+.letter-bottom{height:1px;background:linear-gradient(90deg,transparent,rgba(201,165,92,0.1),transparent);margin-bottom:32px}
+
+
+
+/* ── BUTTONS ── */
+.btn{display:block;width:100%;padding:15px 24px;border:none;border-radius:6px;font-family:var(--ss);font-size:14px;font-weight:500;cursor:pointer;transition:all 0.25s;text-align:center;letter-spacing:0.02em}
+.bp{background:var(--blue);color:#fff;position:relative;overflow:hidden}
+.bp::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent);transition:left 0.5s}
+.bp:hover::before{left:100%}
+.bp:hover{background:var(--glow);box-shadow:0 4px 20px rgba(37,99,235,0.2)}
+.bp:disabled{background:var(--edge);color:var(--dim);cursor:not-allowed}
+.bp:disabled::before{display:none}
+.bs{background:transparent;color:var(--ice);border:1px solid var(--edge)}
+.bs:hover{border-color:rgba(147,197,253,0.2);background:rgba(147,197,253,0.03)}
+.bb{background:none;color:var(--dim);font-size:13px;padding:14px;border:none;cursor:pointer;font-family:var(--ss);width:100%;text-align:center;margin-top:2px}
+.bb:hover{color:var(--ice)}
+
+/* ── T&C ── */
+.ey{font-family:var(--mn);font-size:9px;letter-spacing:0.18em;color:var(--dim);text-transform:uppercase;margin-bottom:20px}
+.tc-t{font-family:var(--sf);font-size:30px;font-weight:300;color:var(--white);margin-bottom:8px}
+.tc-t em{font-style:italic;color:var(--ice)}
+.sub{font-size:14px;color:var(--dim);margin-bottom:28px;line-height:1.7}
+.accordion{display:flex;flex-direction:column;margin-bottom:20px;max-height:44vh;overflow-y:auto;border:1px solid var(--edge);border-radius:6px;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
+.accordion::-webkit-scrollbar{width:3px}
+.accordion::-webkit-scrollbar-thumb{background:var(--edge);border-radius:3px}
+.ai{border-bottom:1px solid var(--edge)}.ai:last-child{border-bottom:none}
+.ah{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--white);background:var(--card);transition:background 0.15s;user-select:none}
+.ah:hover{background:var(--card2)}
+.an{font-family:var(--mn);font-size:10px;color:var(--dim);margin-right:10px;min-width:16px}
+.aw{font-size:8px;color:var(--dim);transition:transform 0.25s}
+.ai.open .aw{transform:rotate(180deg);color:var(--ice)}
+.ab{display:none;padding:4px 16px 14px;font-size:13px;color:var(--dim);line-height:1.8;background:var(--card)}
+.ai.open .ab{display:block}
+.checks{display:flex;flex-direction:column;gap:10px;margin:24px 0;padding-top:20px;border-top:1px solid var(--edge)}
+.ck{display:flex;align-items:flex-start;gap:12px;cursor:pointer}
+.ck input{display:none}
+.cb{width:18px;height:18px;border:1.5px solid var(--edge);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;margin-top:3px}
+.ck input:checked+.cb{background:var(--blue);border-color:var(--blue)}
+.ck input:checked+.cb::after{content:'✓';color:#fff;font-size:10px;font-weight:700}
+
+/* ── FORM ── */
+.form-t{font-family:var(--sf);font-size:30px;font-weight:300;color:var(--white);margin-bottom:8px}
+.form-t em{font-style:italic;color:var(--ice)}
+.fg{margin-bottom:24px}
+.fl{display:block;font-size:12px;font-weight:500;color:var(--white);margin-bottom:8px}
+.fl span{color:var(--dim);font-weight:400}
+.fi{width:100%;padding:13px 16px;background:var(--card);border:1px solid var(--edge);border-radius:6px;color:var(--white);font-family:var(--mn);font-size:14px;outline:none;transition:border-color 0.25s,box-shadow 0.25s}
+.fi::placeholder{color:var(--dim);font-family:var(--ss);font-size:13px}
+.fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,0.06)}
+.fi.err{border-color:var(--red)}
+.fe{font-size:11px;color:var(--red);margin-top:6px;display:none}
+.fh{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.5}
+.csel{display:flex;gap:8px;margin-bottom:24px}
+.co{flex:1;padding:14px 12px;background:var(--card);border:1.5px solid var(--edge);border-radius:6px;cursor:pointer;text-align:center;transition:all 0.2s}
+.co:hover{border-color:rgba(147,197,253,0.12)}
+.co.sel{border-color:var(--blue);background:rgba(37,99,235,0.03)}
+.co-n{font-family:var(--dp);font-size:12px;font-weight:600;color:var(--white);margin-bottom:2px}
+.co-s{font-size:11px;color:var(--dim)}
+
+/* ── CONFIRMATION ── */
+.conf{padding:32px 0 0;animation:letterReveal 0.8s ease forwards}
+.conf-seal{width:64px;height:64px;border-radius:50%;border:1px solid var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 32px;position:relative;animation:sealIn 0.7s 0.2s cubic-bezier(0.34,1.56,0.64,1) both}
+.conf-seal::before{content:'';position:absolute;inset:-5px;border:1px solid rgba(34,197,94,0.08);border-radius:50%}
+.conf-seal::after{content:'✓';font-size:22px;color:var(--green)}
+@keyframes sealIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+
+.conf-label{font-family:var(--mn);font-size:9px;letter-spacing:0.18em;color:var(--dim);text-transform:uppercase;margin-bottom:20px;text-align:center}
+.conf-t{font-family:var(--sf);font-size:30px;font-weight:300;color:var(--white);margin-bottom:44px;text-align:center}
+.conf-t em{font-style:italic;color:var(--ice)}
+
+.code-block{background:var(--card);border:1px solid var(--edge);border-radius:8px;padding:32px 24px;margin-bottom:8px;text-align:center;position:relative;overflow:hidden}
+.code-block::before{content:'';position:absolute;top:0;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,rgba(201,165,92,0.15),transparent)}
+.code-block-label{font-family:var(--mn);font-size:9px;letter-spacing:0.16em;color:var(--dim);text-transform:uppercase;margin-bottom:12px}
+.code-block-value{font-family:var(--dp);font-size:36px;font-weight:800;color:var(--white);letter-spacing:0.05em;margin-bottom:10px}
+.code-block-link{font-family:var(--mn);font-size:11px;color:var(--dim);word-break:break-all}
+
+.conf-actions{display:flex;gap:8px;margin:28px 0 36px}
+.conf-actions .btn{flex:1;padding:12px;font-size:13px}
+
+.conf-email{background:var(--card);border-left:2px solid var(--edge);border-radius:0 6px 6px 0;padding:16px 20px;margin-bottom:36px;font-size:13px;color:var(--dim);line-height:1.7}
+.conf-email strong{color:var(--soft);font-weight:500}
+
+.conf-next{margin:0 0 36px}
+.conf-next p{font-size:13px;color:var(--soft);line-height:1.7;margin-bottom:8px;padding-left:14px;position:relative}
+.conf-next p::before{content:'—';position:absolute;left:0;color:var(--dim)}
+
+.foot{padding:28px 0 0;border-top:1px solid var(--edge);margin-top:32px}
+.foot p{font-size:11px;color:var(--dim);line-height:1.7}
+.foot a{color:var(--dim);text-decoration:none}
+.foot a:hover{color:var(--ice)}
+.foot .m{font-family:var(--mn);color:var(--ice)}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--green);color:var(--green);font-size:13px;font-weight:500;padding:10px 24px;border-radius:6px;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);z-index:100;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+
+.lang-bar{display:flex;justify-content:center;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.lang-pill{font-family:var(--mn);font-size:10px;letter-spacing:0.06em;color:var(--dim);background:none;border:1px solid var(--edge);border-radius:4px;padding:5px 12px;cursor:pointer;transition:all 0.2s}
+.lang-pill:hover{border-color:rgba(147,197,253,0.2);color:var(--soft)}
+.lang-pill.active{border-color:var(--gold);color:var(--gold)}
+[data-lang="zh-tw"] .greeting,[data-lang="zh-tw"] .lp,[data-lang="zh-tw"] .tc-t,[data-lang="zh-tw"] .form-t,[data-lang="zh-tw"] .conf-t{font-family:'Noto Sans TC',var(--sf),serif}
+[data-lang="zh-cn"] .greeting,[data-lang="zh-cn"] .lp,[data-lang="zh-cn"] .tc-t,[data-lang="zh-cn"] .form-t,[data-lang="zh-cn"] .conf-t{font-family:'Noto Sans SC',var(--sf),serif}
+[data-lang="ko"] .greeting,[data-lang="ko"] .lp,[data-lang="ko"] .tc-t,[data-lang="ko"] .form-t,[data-lang="ko"] .conf-t{font-family:'Noto Sans KR',var(--sf),serif}
+[data-lang="vi"] .greeting,[data-lang="vi"] .lp,[data-lang="vi"] .tc-t,[data-lang="vi"] .form-t,[data-lang="vi"] .conf-t{font-family:'Noto Sans',var(--sf),serif}
+@media(min-width:640px){.app{padding:40px 48px 80px}.greeting{font-size:42px}.code-block-value{font-size:44px}}
+@media(min-width:1024px){.app{padding:60px 48px 100px}.lp{font-size:22px;line-height:1.9}.greeting{font-size:48px}.lsum-items{font-size:15px}.lsum-note{font-size:13px}.lclose{font-size:20px}.lsig{font-size:22px}.tc-t,.form-t,.conf-t{font-size:34px}.sub{font-size:15px}.ambient .orb1{width:700px;height:700px;background:radial-gradient(circle,rgba(37,99,235,0.09) 0%,transparent 65%)}.ambient .orb2{width:600px;height:600px;background:radial-gradient(circle,rgba(147,197,253,0.06) 0%,transparent 60%)}.inv-label{font-size:10px;letter-spacing:0.26em;margin-bottom:14px}.letter-top{margin-bottom:56px}.monogram,.mark{margin-bottom:48px}.code-block-value{font-size:48px}}
+</style>
+</head>
+<body>
+<div class="ambient"><div class="orb1"></div><div class="orb2"></div></div>
+<div class="app">
+<div class="header"><div class="logo">OPER<span>ON</span></div></div>
+<div class="lang-bar" id="lang-bar">
+<button class="lang-pill active" onclick="setLang('en')">EN</button>
+<button class="lang-pill" onclick="setLang('zh-tw')">繁中</button>
+<button class="lang-pill" onclick="setLang('zh-cn')">简中</button>
+<button class="lang-pill" onclick="setLang('ko')">한국어</button>
+<button class="lang-pill" onclick="setLang('vi')">Tiếng Việt</button>
+</div>
+<div class="pw"><div class="pg on" id="p0"></div><div class="pg" id="p1"></div><div class="pg" id="p2"></div><div class="pg" id="p3"></div></div>
+
+<!-- ═══ STEP 0: THE LETTER ═══ -->
+<div class="step active" id="s0">
+<div class="letter-wrap">
+
+<div class="letter-top"></div>
+
+<div class="mark"><svg width="28" height="32" viewBox="0 0 28 32" fill="none"><path d="M14 0L27.856 8V24L14 32L0.144 24V8L14 0Z" fill="none" stroke="var(--gold)" stroke-width="0.75" opacity="0.6"/><path d="M14 6L23.526 11.5V22.5L14 28L4.474 22.5V11.5L14 6Z" fill="none" stroke="var(--gold)" stroke-width="0.5" opacity="0.35"/></svg></div>
+
+<div class="inv-label">By Invitation Only</div>
+<div class="inv-exp">This invitation expires in <strong id="show-exp">14 days</strong></div>
+
+<div class="greeting">Dear <em id="partner-name">David</em>,</div>
+
+<div>
+<p class="lp">Operon is preparing its Genesis Node Sale — 100,000 network participation licences across 40 price tiers. Before the sale opens to the public, we are assembling a private partner network to represent the project.</p>
+
+<p class="lp">We would like to invite you to the Elite Partner Programme.</p>
+
+<p class="lp">As a partner, your referral code provides two distinct advantages. First, your buyers gain access to the whitelist sale — the earliest tiers, before the public sale opens. Second, every purchase through your code receives a preferential discount, applied at any tier, at any time during the sale.</p>
+
+<p class="lp">You earn commission on every attributed sale across multiple referral levels. The programme includes structured tier advancement, stipends at qualifying thresholds, milestone bonuses, and ongoing participation in post-TGE token rewards.</p>
+</div>
+
+<div class="lsep"><div class="lsep-line"></div><div class="lsep-diamond"></div><div class="lsep-line"></div></div>
+
+<div class="lsum">
+  <div class="lsum-label">Programme Overview</div>
+  <div class="lsum-items">
+    <div class="si">Whitelist access for your network</div>
+    <div class="si">Preferential buyer discount</div>
+    <div class="si">Multi-level commission structure</div>
+    <div class="si">Monthly stipend at qualifying tiers</div>
+    <div class="si">Milestone bonuses</div>
+    <div class="si">Post-TGE reward participation</div>
+  </div>
+  <div class="lsum-note">Full programme documentation — including the rate schedule, tier thresholds, and commission structure — will be provided upon acceptance.</div>
+</div>
+
+<div class="lclose">With regards,</div>
+<div class="lsig">The Operon Team</div>
+
+<div class="letter-bottom"></div>
+
+<button class="btn bp" onclick="goTo(1)">Review programme terms</button>
+</div>
+</div>
+
+<!-- ═══ STEP 1: TERMS ═══ -->
+<div class="step" id="s1">
+<div class="ey">Programme Terms</div>
+<div class="tc-t">Terms & <em>Conditions</em></div>
+<p class="sub">Full rate schedule provided upon acceptance.</p>
+<div class="accordion" id="acc"></div>
+<div class="checks">
+<label class="ck"><input type="checkbox" id="c1" onchange="chkAll()"><div class="cb"></div><div style="font-size:13px;color:var(--soft);line-height:1.5">I accept the Elite Partner Programme Terms & Conditions (v1.0)</div></label>
+<label class="ck"><input type="checkbox" id="c2" onchange="chkAll()"><div class="cb"></div><div style="font-size:13px;color:var(--soft);line-height:1.5">I confirm I am not a US person and am not acting on behalf of any US person</div></label>
+<label class="ck"><input type="checkbox" id="c3" onchange="chkAll()"><div class="cb"></div><div style="font-size:13px;color:var(--soft);line-height:1.5">I understand that Operon Nodes are network participation licences, not securities or investments</div></label>
+</div>
+<button class="btn bp" id="btn-tc" disabled onclick="goTo(2)">Accept and continue</button>
+<button class="bb" onclick="goTo(0)">Back</button>
+</div>
+
+<!-- ═══ STEP 2: DETAILS ═══ -->
+<div class="step" id="s2">
+<div class="ey">Account Setup</div>
+<div class="form-t">Partner <em>details</em></div>
+<p class="sub">These will be used to create your account and route commission payouts.</p>
+<div class="fg"><label class="fl">Email address</label><input type="email" class="fi" id="i-em" placeholder="you@example.com" oninput="vf()"><div class="fe" id="e-em">Enter a valid email address</div></div>
+<div class="fg"><label class="fl">Payout chain</label><div class="csel"><div class="co sel" id="ch-b" onclick="sc('b')"><div class="co-n">BNB Chain</div><div class="co-s">BEP-20</div></div><div class="co" id="ch-a" onclick="sc('a')"><div class="co-n">Arbitrum</div><div class="co-s">ERC-20</div></div></div></div>
+<div class="fg"><label class="fl">Wallet address <span id="cl">— BNB Chain</span></label><input type="text" class="fi" id="i-wa" placeholder="0x..." oninput="vf()" spellcheck="false" autocomplete="off" autocapitalize="off"><div class="fe" id="e-wa">Enter a valid EVM address (0x followed by 40 hex characters)</div><div class="fh">Commission payouts will be sent to this address. Changes require contacting support.</div></div>
+<div class="fg"><label class="fl">Telegram <span>— optional</span></label><input type="text" class="fi" id="i-tg" placeholder="@handle" style="font-family:var(--ss);font-size:14px"></div>
+<button class="btn bp" id="btn-sub" disabled onclick="sub()">Create partner account</button>
+<button class="bb" onclick="goTo(1)">Back</button>
+</div>
+
+<!-- ═══ STEP 3: CONFIRMATION ═══ -->
+<div class="step" id="s3">
+<div class="conf">
+<div class="conf-seal"></div>
+<div class="conf-label">Account Created</div>
+<div class="conf-t">Welcome to the programme, <em id="conf-name">David</em>.</div>
+
+<div class="code-block">
+  <div class="code-block-label">Your Referral Code</div>
+  <div class="code-block-value" id="fc">OPRN-XXXX</div>
+  <div class="code-block-link" id="fl2">operon.network/node?ref=OPRN-XXXX</div>
+</div>
+
+<div class="conf-actions">
+  <button class="btn bp" onclick="cp('c')">Copy code</button>
+  <button class="btn bs" onclick="cp('l')">Copy link</button>
+  <button class="btn bs" onclick="sh()">Share</button>
+</div>
+
+<div style="font-family:var(--ss);font-size:13px;color:var(--dim);text-align:center;margin-bottom:32px;line-height:1.7;">Your dashboard contains the full programme details — commission rates, tier thresholds, milestone bonuses, and resources.</div>
+
+<button class="btn bp" onclick="window.location.href='dashboard.html?code='+window._c" style="margin-bottom:12px;">Log in to your dashboard</button>
+
+<div class="foot"><p>Commission payouts to <span class="m" id="fw">0x...</span> on <span class="m" id="fch">BNB Chain</span><br><br><a href="#">Terms & Conditions</a> &nbsp;·&nbsp; <a href="#">Support</a></p></div>
+</div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var chain='b';
+var SEC=[
+{n:'1',t:'Acceptance and Scope',b:'<p>By completing this onboarding process, you accept these Terms in full. The Programme is invitation-only. These Terms incorporate the Schedule of Rates, which may be updated with 14 days\' written notice.</p>'},
+{n:'2',t:'Definitions',b:'<p><strong>$OPRN</strong> — the native utility token of the Operon Network, with a fixed total supply of 42,000,000,000. <strong>Node</strong> — an ERC-721 or BEP-721 NFT representing a network participation licence. <strong>Credited Amount</strong> — the cumulative dollar value of Node purchases attributed to the Partner, weighted by cascade level.</p>'},
+{n:'3',t:'Programme Tiers and Advancement',b:'<p>The Programme consists of six tiers with automatic advancement based on Credited Amount. Partners who do not maintain 10% of their tier threshold annually may be moved down one tier with 30 days\' written notice.</p>'},
+{n:'4',t:'Commissions and Payment',b:'<p>Pre-TGE commissions are paid in ETH or USDC within 14 days of each biweekly Merkle root publication. Post-TGE commissions are paid in $OPRN from the Referral and Distribution Pool. Commission rates are provided in the programme documentation sent upon acceptance.</p>'},
+{n:'5',t:'Stipend and Milestone Bonuses',b:'<p>Partners at qualifying tiers receive a monthly stipend paid biweekly in USDC, subject to a minimum sales activity gate. One-time milestone bonuses are payable upon reaching Credited Amount thresholds. Full schedule provided upon acceptance.</p>'},
+{n:'6',t:'Partner Obligations',b:'<p>Partners shall describe Nodes as network participation licences. No guaranteed returns shall be communicated. US persons shall not be targeted for the token component. Programme terms are confidential. All marketing materials must use approved branding.</p>'},
+{n:'7',t:'Content, Data Protection, and Confidentiality',b:'<p>Partners retain ownership of content created for the Programme. Operon receives a perpetual licence to use such content. Partners shall handle prospect data in compliance with applicable privacy laws. All programme details remain confidential for two years following deactivation.</p>'},
+{n:'8',t:'Modification, Deactivation, and Governing Law',b:'<p>Programme Terms may be modified with 30 days\' notice. The Schedule of Rates may be modified with 14 days\' notice. Deactivation for cause terminates cascade earnings immediately. Deactivation without cause provides a six-month wind-down. Governing law: Republic of Singapore. Disputes: SIAC arbitration.</p>'}
+];
+function init(){var u=new URLSearchParams(location.search),name=u.get('name')||'Partner';document.getElementById('partner-name').textContent=name;document.getElementById('conf-name').textContent=name;document.getElementById('acc').innerHTML=SEC.map(function(s,i){return '<div class="ai'+(i===0?' open':'')+'" onclick="this.classList.toggle(\'open\')"><div class="ah"><div><span class="an">'+s.n+'</span>'+s.t+'</div><div class="aw">▼</div></div><div class="ab">'+s.b+'</div></div>'}).join('')}
+function goTo(n){document.querySelectorAll('.step').forEach(function(s){s.classList.remove('active')});document.getElementById('s'+n).classList.add('active');document.querySelectorAll('.pg').forEach(function(d,i){d.className='pg';if(i<n)d.classList.add('done');if(i===n)d.classList.add('on')});window.scrollTo({top:0,behavior:'smooth'})}
+function chkAll(){document.getElementById('btn-tc').disabled=!(document.getElementById('c1').checked&&document.getElementById('c2').checked&&document.getElementById('c3').checked)}
+function sc(c){chain=c;document.getElementById('ch-b').classList.toggle('sel',c==='b');document.getElementById('ch-a').classList.toggle('sel',c==='a');document.getElementById('cl').textContent=c==='b'?'— BNB Chain':'— Arbitrum';vf()}
+function vf(){var em=document.getElementById('i-em').value.trim(),wa=document.getElementById('i-wa').value.trim(),eo=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em),wo=/^0x[a-fA-F0-9]{40}$/.test(wa);if(em&&!eo){document.getElementById('e-em').style.display='block';document.getElementById('i-em').classList.add('err')}else{document.getElementById('e-em').style.display='none';document.getElementById('i-em').classList.remove('err')}if(wa&&!wo){document.getElementById('e-wa').style.display='block';document.getElementById('i-wa').classList.add('err')}else{document.getElementById('e-wa').style.display='none';document.getElementById('i-wa').classList.remove('err')}document.getElementById('btn-sub').disabled=!(eo&&wo)}
+function sub(){var em=document.getElementById('i-em').value.trim(),wa=document.getElementById('i-wa').value.trim(),ch='ABCDEFGHJKMNPQRSTUVWXYZ23456789',code='OPRN-';for(var i=0;i<4;i++)code+=ch[Math.floor(Math.random()*ch.length)];document.getElementById('fc').textContent=code;document.getElementById('fl2').textContent='operon.network/node?ref='+code;document.getElementById('fw').textContent=wa.slice(0,6)+'...'+wa.slice(-4);document.getElementById('fch').textContent=chain==='b'?'BNB Chain':'Arbitrum';window._c=code;window._l='https://operon.network/node?ref='+code;goTo(3)}
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2000)}
+function cp(w){navigator.clipboard.writeText(w==='c'?window._c:window._l).then(function(){toast(w==='c'?'Code copied':'Link copied')})}
+function sh(){if(navigator.share)navigator.share({title:'Operon Node Sale',text:'Referral code '+window._c+':',url:window._l}).catch(function(){});else cp('l')}
+
+
+var LANG = {
+en: {
+  invLabel: 'By Invitation Only',
+  invExp: 'This invitation expires in',
+  invExpDays: '14 days',
+  greeting: 'Dear',
+  p1: 'Operon is preparing its Genesis Node Sale — 100,000 network participation licences across 40 price tiers. Before the sale opens to the public, we are assembling a private partner network to represent the project.',
+  p2: 'We would like to invite you to the Elite Partner Programme.',
+  p3: 'As a partner, your referral code provides two distinct advantages. First, your buyers gain access to the whitelist sale — the earliest tiers, before the public sale opens. Second, every purchase through your code receives a preferential discount, applied at any tier, at any time during the sale.',
+  p4: 'You earn commission on every attributed sale across multiple referral levels. The programme includes structured tier advancement, stipends at qualifying thresholds, milestone bonuses, and ongoing participation in post-TGE token rewards.',
+  sumLabel: 'Programme Overview',
+  sumItems: 'Whitelist access for your network · Preferential buyer discount · Multi-level commission structure · Monthly stipend at qualifying tiers · Milestone bonuses · Post-TGE reward participation',
+  sumNote: 'Full programme documentation — including the rate schedule, tier thresholds, and commission structure — will be provided upon acceptance.',
+  close: 'With regards,',
+  sig: 'The Operon Team',
+  btnReview: 'Review programme terms',
+  // T&C
+  tcEy: 'Programme Terms',
+  tcTitle: 'Terms & Conditions',
+  tcSub: 'Full rate schedule provided upon acceptance.',
+  chk1: 'I accept the Elite Partner Programme Terms & Conditions (v1.0)',
+  chk2: 'I confirm I am not a US person and am not acting on behalf of any US person',
+  chk3: 'I understand that Operon Nodes are network participation licences, not securities or investments',
+  btnAccept: 'Accept and continue',
+  btnBack: 'Back',
+  // Form
+  formEy: 'Account Setup',
+  formTitle: 'Partner details',
+  formSub: 'These will be used to create your account and route commission payouts.',
+  labelEmail: 'Email address',
+  labelChain: 'Payout chain',
+  labelWallet: 'Wallet address',
+  labelWalletChain: '— BNB Chain',
+  labelTg: 'Telegram',
+  labelTgOpt: '— optional',
+  errEmail: 'Enter a valid email address',
+  errWallet: 'Enter a valid EVM address (0x followed by 40 hex characters)',
+  hintWallet: 'Commission payouts will be sent to this address. Changes require contacting support.',
+  btnCreate: 'Create partner account',
+  // Confirmation
+  confLabel: 'Account Created',
+  confTitle: 'Welcome to the programme,',
+  codeLabel: 'Your Referral Code',
+  btnCopy: 'Copy code',
+  btnLink: 'Copy link',
+  btnShare: 'Share',
+  confInfo: 'Your dashboard contains the full programme details — commission rates, tier thresholds, milestone bonuses, and resources.',
+  btnDash: 'Log in to your dashboard',
+  footPayout: 'Commission payouts to',
+  footOn: 'on',
+  // T&C sections
+  sec: [
+    {n:'1',t:'Acceptance and Scope',b:'By completing this onboarding process, you accept these Terms in full. The Programme is invitation-only. These Terms incorporate the Schedule of Rates, which may be updated with 14 days\' written notice.'},
+    {n:'2',t:'Definitions',b:'<strong>$OPRN</strong> — the native utility token of the Operon Network, with a fixed total supply of 42,000,000,000. <strong>Node</strong> — an ERC-721 or BEP-721 NFT representing a network participation licence. <strong>Credited Amount</strong> — the cumulative dollar value of Node purchases attributed to the Partner, weighted by cascade level.'},
+    {n:'3',t:'Programme Tiers and Advancement',b:'The Programme consists of six tiers with automatic advancement based on Credited Amount. Partners who do not maintain 10% of their tier threshold annually may be moved down one tier with 30 days\' written notice.'},
+    {n:'4',t:'Commissions and Payment',b:'Pre-TGE commissions are paid in ETH or USDC within 14 days of each biweekly Merkle root publication. Post-TGE commissions are paid in $OPRN from the Referral and Distribution Pool. Commission rates are provided in the programme documentation sent upon acceptance.'},
+    {n:'5',t:'Stipend and Milestone Bonuses',b:'Partners at qualifying tiers receive a monthly stipend paid biweekly in USDC, subject to a minimum sales activity gate. One-time milestone bonuses are payable upon reaching Credited Amount thresholds. Full schedule provided upon acceptance.'},
+    {n:'6',t:'Partner Obligations',b:'Partners shall describe Nodes as network participation licences. No guaranteed returns shall be communicated. US persons shall not be targeted for the token component. Programme terms are confidential. All marketing materials must use approved branding.'},
+    {n:'7',t:'Content, Data Protection, and Confidentiality',b:'Partners retain ownership of content created for the Programme. Operon receives a perpetual licence to use such content. Partners shall handle prospect data in compliance with applicable privacy laws. All programme details remain confidential for two years following deactivation.'},
+    {n:'8',t:'Modification, Deactivation, and Governing Law',b:'Programme Terms may be modified with 30 days\' notice. The Schedule of Rates may be modified with 14 days\' notice. Deactivation for cause terminates cascade earnings immediately. Deactivation without cause provides a six-month wind-down. Governing law: Republic of Singapore. Disputes: SIAC arbitration.'}
+  ]
+},
+
+'zh-tw': {
+  invLabel: '僅限受邀者',
+  invExp: '此邀請將於',
+  invExpDays: '14 天後到期',
+  greeting: '親愛的',
+  p1: 'Operon 正在籌備創世節點銷售——共計 100,000 個網路參與許可，分佈於 40 個價格層級。在公開銷售啟動之前，我們正在組建一個私人合作夥伴網路，以代表本項目進行推廣。',
+  p2: '我們誠摯邀請您加入菁英合作夥伴計畫。',
+  p3: '作為合作夥伴，您的推薦碼將提供兩項獨立優勢。第一，您的買家可提前參與白名單銷售——在公開銷售啟動前以最早期的層級價格購買。第二，所有透過您推薦碼完成的購買均享有優惠折扣，適用於任何層級、銷售期間的任何時段。',
+  p4: '您將在多層推薦結構中，就每一筆歸屬於您的銷售獲得佣金。計畫包含結構化的層級晉升機制、達標後的定期津貼、里程碑獎金，以及 TGE 後持續的代幣獎勵分潤。',
+  sumLabel: '計畫概覽',
+  sumItems: '為您的網路提供白名單資格 · 優惠買家折扣 · 多層佣金結構 · 達標層級每月津貼 · 里程碑獎金 · TGE 後獎勵分潤',
+  sumNote: '完整計畫文件——包括費率表、層級門檻及佣金結構——將在您接受邀請後提供。',
+  close: '謹致問候，',
+  sig: 'Operon 團隊',
+  btnReview: '檢閱計畫條款',
+  tcEy: '計畫條款',
+  tcTitle: '條款與細則',
+  tcSub: '完整費率表將在接受後提供。',
+  chk1: '我接受菁英合作夥伴計畫條款與細則（v1.0）',
+  chk2: '我確認本人並非美國公民，亦非代表任何美國公民行事',
+  chk3: '我了解 Operon 節點為網路參與許可，並非證券或投資產品',
+  btnAccept: '接受並繼續',
+  btnBack: '返回',
+  formEy: '帳戶設定',
+  formTitle: '合作夥伴資料',
+  formSub: '以下資料將用於建立您的帳戶並設定佣金付款路徑。',
+  labelEmail: '電子郵件地址',
+  labelChain: '佣金付款鏈',
+  labelWallet: '錢包地址',
+  labelWalletChain: '— BNB Chain',
+  labelTg: 'Telegram',
+  labelTgOpt: '— 選填',
+  errEmail: '請輸入有效的電子郵件地址',
+  errWallet: '請輸入有效的 EVM 地址（0x 開頭，後接 40 位十六進制字符）',
+  hintWallet: '佣金將發送至此地址。如需更改，請聯繫客服。',
+  btnCreate: '建立合作夥伴帳戶',
+  confLabel: '帳戶已建立',
+  confTitle: '歡迎加入計畫，',
+  codeLabel: '您的推薦碼',
+  btnCopy: '複製代碼',
+  btnLink: '複製連結',
+  btnShare: '分享',
+  confInfo: '您的儀表板包含完整計畫細節——佣金費率、層級門檻、里程碑獎金及相關資源。',
+  btnDash: '登入儀表板',
+  footPayout: '佣金付款至',
+  footOn: '，鏈：',
+  sec: [
+    {n:'1',t:'接受與適用範圍',b:'完成本入職流程即表示您完全接受本條款。本計畫僅限受邀者參與。本條款納入費率表，費率表可在提前 14 天書面通知後更新。'},
+    {n:'2',t:'定義',b:'<strong>$OPRN</strong>——Operon 網路的原生實用代幣，固定總供應量為 42,000,000,000。<strong>節點</strong>——代表網路參與許可的 ERC-721 或 BEP-721 NFT。<strong>累計金額</strong>——歸屬於合作夥伴的節點購買累計美元價值，按推薦層級加權計算。'},
+    {n:'3',t:'計畫層級與晉升',b:'本計畫設有六個層級，根據累計金額自動晉升。連續 12 個月未達到層級門檻 10% 的合作夥伴，可能在提前 30 天書面通知後被降級一層。'},
+    {n:'4',t:'佣金與付款',b:'TGE 前佣金以 ETH 或 USDC 支付，於每兩週 Merkle 根公佈後 14 天內發放。TGE 後佣金以 $OPRN 從推薦與分配池中支付。佣金費率將在接受後的計畫文件中提供。'},
+    {n:'5',t:'津貼與里程碑獎金',b:'達標層級的合作夥伴可獲得每月津貼，以 USDC 每兩週發放，需達到最低銷售活動門檻。達到累計金額門檻時可獲一次性里程碑獎金。完整時間表將在接受後提供。'},
+    {n:'6',t:'合作夥伴義務',b:'合作夥伴應將節點描述為網路參與許可。不得傳達任何保證收益。不得針對美國公民推廣代幣相關內容。計畫條款屬機密資訊。所有行銷材料須使用經核准的品牌素材。'},
+    {n:'7',t:'內容、資料保護與保密',b:'合作夥伴保留為本計畫創作的內容之所有權。Operon 獲得永久許可使用此類內容。合作夥伴應依適用隱私法規處理潛在客戶資料。所有計畫細節在退出後兩年內仍屬機密。'},
+    {n:'8',t:'修改、停用與管轄法律',b:'計畫條款可在提前 30 天通知後修改。費率表可在提前 14 天通知後修改。因故停用將立即終止級聯收益。無故停用則提供六個月的緩衝期。管轄法律：新加坡共和國。爭議解決：SIAC 仲裁。'}
+  ]
+},
+
+'zh-cn': {
+  invLabel: '仅限受邀者',
+  invExp: '此邀请将于',
+  invExpDays: '14 天后到期',
+  greeting: '尊敬的',
+  p1: 'Operon 正在筹备创世节点销售——共计 100,000 个网络参与许可，分布于 40 个价格层级。在公开销售启动之前，我们正在组建一个私人合作伙伴网络，以代表本项目进行推广。',
+  p2: '我们诚挚邀请您加入精英合作伙伴计划。',
+  p3: '作为合作伙伴，您的推荐码将提供两项独立优势。第一，您的买家可提前参与白名单销售——在公开销售启动前以最早期的层级价格购买。第二，所有通过您推荐码完成的购买均享有优惠折扣，适用于任何层级、销售期间的任何时段。',
+  p4: '您将在多层推荐结构中，就每一笔归属于您的销售获得佣金。计划包含结构化的层级晋升机制、达标后的定期津贴、里程碑奖金，以及 TGE 后持续的代币奖励分润。',
+  sumLabel: '计划概览',
+  sumItems: '为您的网络提供白名单资格 · 优惠买家折扣 · 多层佣金结构 · 达标层级每月津贴 · 里程碑奖金 · TGE 后奖励分润',
+  sumNote: '完整计划文件——包括费率表、层级门槛及佣金结构——将在您接受邀请后提供。',
+  close: '此致敬礼，',
+  sig: 'Operon 团队',
+  btnReview: '查阅计划条款',
+  tcEy: '计划条款',
+  tcTitle: '条款与细则',
+  tcSub: '完整费率表将在接受后提供。',
+  chk1: '我接受精英合作伙伴计划条款与细则（v1.0）',
+  chk2: '我确认本人并非美国公民，亦非代表任何美国公民行事',
+  chk3: '我了解 Operon 节点为网络参与许可，并非证券或投资产品',
+  btnAccept: '接受并继续',
+  btnBack: '返回',
+  formEy: '账户设置',
+  formTitle: '合作伙伴资料',
+  formSub: '以下资料将用于创建您的账户并设置佣金支付路径。',
+  labelEmail: '电子邮件地址',
+  labelChain: '佣金支付链',
+  labelWallet: '钱包地址',
+  labelWalletChain: '— BNB Chain',
+  labelTg: 'Telegram',
+  labelTgOpt: '— 选填',
+  errEmail: '请输入有效的电子邮件地址',
+  errWallet: '请输入有效的 EVM 地址（0x 开头，后接 40 位十六进制字符）',
+  hintWallet: '佣金将发送至此地址。如需更改，请联系客服。',
+  btnCreate: '创建合作伙伴账户',
+  confLabel: '账户已创建',
+  confTitle: '欢迎加入计划，',
+  codeLabel: '您的推荐码',
+  btnCopy: '复制代码',
+  btnLink: '复制链接',
+  btnShare: '分享',
+  confInfo: '您的仪表板包含完整计划细节——佣金费率、层级门槛、里程碑奖金及相关资源。',
+  btnDash: '登录仪表板',
+  footPayout: '佣金支付至',
+  footOn: '，链：',
+  sec: [
+    {n:'1',t:'接受与适用范围',b:'完成本入职流程即表示您完全接受本条款。本计划仅限受邀者参与。本条款纳入费率表，费率表可在提前 14 天书面通知后更新。'},
+    {n:'2',t:'定义',b:'<strong>$OPRN</strong>——Operon 网络的原生实用代币，固定总供应量为 42,000,000,000。<strong>节点</strong>——代表网络参与许可的 ERC-721 或 BEP-721 NFT。<strong>累计金额</strong>——归属于合作伙伴的节点购买累计美元价值，按推荐层级加权计算。'},
+    {n:'3',t:'计划层级与晋升',b:'本计划设有六个层级，根据累计金额自动晋升。连续 12 个月未达到层级门槛 10% 的合作伙伴，可能在提前 30 天书面通知后被降级一层。'},
+    {n:'4',t:'佣金与支付',b:'TGE 前佣金以 ETH 或 USDC 支付，于每两周 Merkle 根公布后 14 天内发放。TGE 后佣金以 $OPRN 从推荐与分配池中支付。佣金费率将在接受后的计划文件中提供。'},
+    {n:'5',t:'津贴与里程碑奖金',b:'达标层级的合作伙伴可获得每月津贴，以 USDC 每两周发放，需达到最低销售活动门槛。达到累计金额门槛时可获一次性里程碑奖金。完整时间表将在接受后提供。'},
+    {n:'6',t:'合作伙伴义务',b:'合作伙伴应将节点描述为网络参与许可。不得传达任何保证收益。不得针对美国公民推广代币相关内容。计划条款属机密信息。所有营销材料须使用经核准的品牌素材。'},
+    {n:'7',t:'内容、数据保护与保密',b:'合作伙伴保留为本计划创作的内容之所有权。Operon 获得永久许可使用此类内容。合作伙伴应依适用隐私法规处理潜在客户数据。所有计划细节在退出后两年内仍属机密。'},
+    {n:'8',t:'修改、停用与管辖法律',b:'计划条款可在提前 30 天通知后修改。费率表可在提前 14 天通知后修改。因故停用将立即终止级联收益。无故停用则提供六个月的缓冲期。管辖法律：新加坡共和国。争议解决：SIAC 仲裁。'}
+  ]
+},
+
+ko: {
+  invLabel: '초대자 한정',
+  invExp: '본 초대는',
+  invExpDays: '14일 후 만료됩니다',
+  greeting: '안녕하세요,',
+  p1: 'Operon은 제네시스 노드 세일을 준비하고 있습니다. 40개 가격 등급에 걸쳐 총 100,000개의 네트워크 참여 라이선스가 제공됩니다. 공개 판매가 시작되기 전, 본 프로젝트를 대표할 비공개 파트너 네트워크를 구성하고 있습니다.',
+  p2: '엘리트 파트너 프로그램에 귀하를 초대드립니다.',
+  p3: '파트너로서 귀하의 추천 코드는 두 가지 독립적인 혜택을 제공합니다. 첫째, 귀하의 구매자들은 화이트리스트 세일에 접근할 수 있습니다 — 공개 판매 이전에 가장 초기 등급의 가격으로 구매할 수 있습니다. 둘째, 귀하의 코드를 통한 모든 구매에는 우대 할인이 적용되며, 이는 판매 기간 중 어떤 등급에서든, 언제든 적용됩니다.',
+  p4: '귀하는 다중 추천 레벨에 걸쳐 귀속된 모든 판매에 대해 커미션을 수령합니다. 본 프로그램에는 체계적인 등급 승급, 자격 달성 시 정기 수당, 마일스톤 보너스, 그리고 TGE 이후 지속적인 토큰 보상 참여가 포함됩니다.',
+  sumLabel: '프로그램 개요',
+  sumItems: '귀하의 네트워크를 위한 화이트리스트 접근 · 우대 구매자 할인 · 다중 레벨 커미션 구조 · 자격 등급 월간 수당 · 마일스톤 보너스 · TGE 이후 보상 참여',
+  sumNote: '전체 프로그램 문서 — 수수료율표, 등급 기준, 커미션 구조 포함 — 는 수락 후 제공됩니다.',
+  close: '감사합니다,',
+  sig: 'Operon 팀',
+  btnReview: '프로그램 약관 검토',
+  tcEy: '프로그램 약관',
+  tcTitle: '이용약관',
+  tcSub: '전체 수수료율표는 수락 후 제공됩니다.',
+  chk1: '엘리트 파트너 프로그램 이용약관(v1.0)에 동의합니다',
+  chk2: '본인은 미국인이 아니며 미국인을 대리하여 행동하지 않음을 확인합니다',
+  chk3: 'Operon 노드가 네트워크 참여 라이선스이며 증권이나 투자 상품이 아님을 이해합니다',
+  btnAccept: '동의 및 계속',
+  btnBack: '뒤로',
+  formEy: '계정 설정',
+  formTitle: '파트너 정보',
+  formSub: '계정 생성 및 커미션 지급 경로 설정에 사용됩니다.',
+  labelEmail: '이메일 주소',
+  labelChain: '커미션 지급 체인',
+  labelWallet: '지갑 주소',
+  labelWalletChain: '— BNB Chain',
+  labelTg: 'Telegram',
+  labelTgOpt: '— 선택사항',
+  errEmail: '유효한 이메일 주소를 입력하세요',
+  errWallet: '유효한 EVM 주소를 입력하세요 (0x + 40자리 16진수)',
+  hintWallet: '커미션이 이 주소로 지급됩니다. 변경 시 고객지원에 문의하세요.',
+  btnCreate: '파트너 계정 생성',
+  confLabel: '계정이 생성되었습니다',
+  confTitle: '프로그램에 오신 것을 환영합니다,',
+  codeLabel: '귀하의 추천 코드',
+  btnCopy: '코드 복사',
+  btnLink: '링크 복사',
+  btnShare: '공유',
+  confInfo: '대시보드에서 전체 프로그램 세부사항 — 커미션 비율, 등급 기준, 마일스톤 보너스 및 자료를 확인하실 수 있습니다.',
+  btnDash: '대시보드에 로그인',
+  footPayout: '커미션 지급 주소:',
+  footOn: ', 체인:',
+  sec: [
+    {n:'1',t:'수락 및 적용 범위',b:'본 온보딩 절차를 완료함으로써 본 약관에 완전히 동의하게 됩니다. 본 프로그램은 초대자 한정입니다. 본 약관에는 수수료율표가 포함되며, 14일 전 서면 통지로 업데이트될 수 있습니다.'},
+    {n:'2',t:'정의',b:'<strong>$OPRN</strong> — Operon 네트워크의 기본 유틸리티 토큰, 고정 총 공급량 42,000,000,000. <strong>노드</strong> — 네트워크 참여 라이선스를 나타내는 ERC-721 또는 BEP-721 NFT. <strong>누적 금액</strong> — 추천 레벨별 가중치가 적용된, 파트너에게 귀속된 노드 구매 누적 달러 금액.'},
+    {n:'3',t:'프로그램 등급 및 승급',b:'본 프로그램은 6개 등급으로 구성되며, 누적 금액에 따라 자동 승급됩니다. 연간 등급 기준의 10%를 유지하지 못하는 파트너는 30일 전 서면 통지 후 한 등급 하향될 수 있습니다.'},
+    {n:'4',t:'커미션 및 지급',b:'TGE 전 커미션은 격주 Merkle 루트 게시 후 14일 이내에 ETH 또는 USDC로 지급됩니다. TGE 후 커미션은 추천 및 분배 풀에서 $OPRN으로 지급됩니다. 커미션 비율은 수락 후 제공되는 프로그램 문서에 포함됩니다.'},
+    {n:'5',t:'수당 및 마일스톤 보너스',b:'자격 등급의 파트너는 USDC로 격주 지급되는 월간 수당을 받을 수 있으며, 최소 판매 활동 기준을 충족해야 합니다. 누적 금액 기준 달성 시 일회성 마일스톤 보너스가 지급됩니다. 전체 일정은 수락 후 제공됩니다.'},
+    {n:'6',t:'파트너 의무',b:'파트너는 노드를 네트워크 참여 라이선스로 설명해야 합니다. 보장된 수익을 전달해서는 안 됩니다. 토큰 관련 내용으로 미국인을 대상으로 해서는 안 됩니다. 프로그램 조건은 기밀입니다. 모든 마케팅 자료는 승인된 브랜드 소재를 사용해야 합니다.'},
+    {n:'7',t:'콘텐츠, 데이터 보호 및 기밀 유지',b:'파트너는 프로그램을 위해 제작한 콘텐츠의 소유권을 유지합니다. Operon은 해당 콘텐츠에 대한 영구 라이선스를 부여받습니다. 파트너는 관련 개인정보 보호법에 따라 잠재 고객 데이터를 처리해야 합니다. 모든 프로그램 세부사항은 비활성화 후 2년간 기밀로 유지됩니다.'},
+    {n:'8',t:'수정, 비활성화 및 준거법',b:'프로그램 약관은 30일 전 통지로 수정될 수 있습니다. 수수료율표는 14일 전 통지로 수정될 수 있습니다. 사유 있는 비활성화는 캐스케이드 수익을 즉시 종료합니다. 사유 없는 비활성화는 6개월의 전환 기간을 제공합니다. 준거법: 싱가포르 공화국. 분쟁 해결: SIAC 중재.'}
+  ]
+},
+
+vi: {
+  invLabel: 'Chỉ Dành Cho Người Được Mời',
+  invExp: 'Lời mời này hết hạn sau',
+  invExpDays: '14 ngày',
+  greeting: 'Kính gửi',
+  p1: 'Operon đang chuẩn bị đợt Bán Node Khởi Nguyên — 100.000 giấy phép tham gia mạng lưới, phân bổ trên 40 mức giá. Trước khi mở bán công khai, chúng tôi đang xây dựng một mạng lưới đối tác riêng để đại diện cho dự án.',
+  p2: 'Chúng tôi trân trọng mời bạn tham gia Chương Trình Đối Tác Tinh Hoa.',
+  p3: 'Với tư cách đối tác, mã giới thiệu của bạn mang lại hai lợi thế riêng biệt. Thứ nhất, người mua của bạn được quyền tham gia đợt bán whitelist — mua ở các mức giá sớm nhất, trước khi mở bán công khai. Thứ hai, mọi giao dịch mua qua mã của bạn đều nhận chiết khấu ưu đãi, áp dụng ở bất kỳ mức giá nào, bất kỳ thời điểm nào trong suốt đợt bán.',
+  p4: 'Bạn nhận hoa hồng trên mọi giao dịch được ghi nhận qua nhiều tầng giới thiệu. Chương trình bao gồm cơ chế thăng hạng có cấu trúc, trợ cấp định kỳ khi đạt ngưỡng, thưởng cột mốc, và quyền tham gia nhận thưởng token liên tục sau TGE.',
+  sumLabel: 'Tổng Quan Chương Trình',
+  sumItems: 'Quyền whitelist cho mạng lưới của bạn · Chiết khấu ưu đãi cho người mua · Cấu trúc hoa hồng đa tầng · Trợ cấp hàng tháng ở hạng đủ điều kiện · Thưởng cột mốc · Quyền nhận thưởng sau TGE',
+  sumNote: 'Tài liệu chương trình đầy đủ — bao gồm bảng phí, ngưỡng hạng và cấu trúc hoa hồng — sẽ được cung cấp sau khi bạn chấp nhận.',
+  close: 'Trân trọng,',
+  sig: 'Đội ngũ Operon',
+  btnReview: 'Xem điều khoản chương trình',
+  tcEy: 'Điều Khoản Chương Trình',
+  tcTitle: 'Điều Khoản & Điều Kiện',
+  tcSub: 'Bảng phí đầy đủ được cung cấp sau khi chấp nhận.',
+  chk1: 'Tôi chấp nhận Điều Khoản & Điều Kiện Chương Trình Đối Tác Tinh Hoa (v1.0)',
+  chk2: 'Tôi xác nhận tôi không phải công dân Hoa Kỳ và không hành động thay mặt công dân Hoa Kỳ',
+  chk3: 'Tôi hiểu rằng Operon Node là giấy phép tham gia mạng lưới, không phải chứng khoán hay sản phẩm đầu tư',
+  btnAccept: 'Chấp nhận và tiếp tục',
+  btnBack: 'Quay lại',
+  formEy: 'Thiết Lập Tài Khoản',
+  formTitle: 'Thông tin đối tác',
+  formSub: 'Thông tin này sẽ được sử dụng để tạo tài khoản và thiết lập kênh thanh toán hoa hồng.',
+  labelEmail: 'Địa chỉ email',
+  labelChain: 'Chuỗi thanh toán hoa hồng',
+  labelWallet: 'Địa chỉ ví',
+  labelWalletChain: '— BNB Chain',
+  labelTg: 'Telegram',
+  labelTgOpt: '— không bắt buộc',
+  errEmail: 'Vui lòng nhập địa chỉ email hợp lệ',
+  errWallet: 'Vui lòng nhập địa chỉ EVM hợp lệ (0x theo sau bởi 40 ký tự hex)',
+  hintWallet: 'Hoa hồng sẽ được gửi đến địa chỉ này. Thay đổi yêu cầu liên hệ hỗ trợ.',
+  btnCreate: 'Tạo tài khoản đối tác',
+  confLabel: 'Tài Khoản Đã Được Tạo',
+  confTitle: 'Chào mừng bạn đến với chương trình,',
+  codeLabel: 'Mã Giới Thiệu Của Bạn',
+  btnCopy: 'Sao chép mã',
+  btnLink: 'Sao chép liên kết',
+  btnShare: 'Chia sẻ',
+  confInfo: 'Bảng điều khiển của bạn chứa đầy đủ chi tiết chương trình — tỷ lệ hoa hồng, ngưỡng hạng, thưởng cột mốc và tài liệu.',
+  btnDash: 'Đăng nhập bảng điều khiển',
+  footPayout: 'Thanh toán hoa hồng đến',
+  footOn: ', chuỗi:',
+  sec: [
+    {n:'1',t:'Chấp Nhận và Phạm Vi',b:'Hoàn thành quy trình đăng ký này đồng nghĩa với việc bạn chấp nhận toàn bộ các Điều Khoản. Chương trình chỉ dành cho người được mời. Các Điều Khoản này bao gồm Bảng Phí, có thể được cập nhật với thông báo trước 14 ngày bằng văn bản.'},
+    {n:'2',t:'Định Nghĩa',b:'<strong>$OPRN</strong> — token tiện ích gốc của Mạng lưới Operon, tổng cung cố định 42.000.000.000. <strong>Node</strong> — NFT ERC-721 hoặc BEP-721 đại diện cho giấy phép tham gia mạng lưới. <strong>Số Tiền Tích Lũy</strong> — tổng giá trị đô la mua node được ghi nhận cho Đối tác, có trọng số theo tầng giới thiệu.'},
+    {n:'3',t:'Hạng Chương Trình và Thăng Hạng',b:'Chương trình gồm sáu hạng với thăng hạng tự động dựa trên Số Tiền Tích Lũy. Đối tác không duy trì 10% ngưỡng hạng hàng năm có thể bị hạ một hạng với thông báo trước 30 ngày bằng văn bản.'},
+    {n:'4',t:'Hoa Hồng và Thanh Toán',b:'Hoa hồng trước TGE được thanh toán bằng ETH hoặc USDC trong vòng 14 ngày sau mỗi đợt công bố Merkle root hai tuần một lần. Hoa hồng sau TGE được thanh toán bằng $OPRN từ Quỹ Giới Thiệu và Phân Phối. Tỷ lệ hoa hồng được cung cấp trong tài liệu chương trình sau khi chấp nhận.'},
+    {n:'5',t:'Trợ Cấp và Thưởng Cột Mốc',b:'Đối tác ở hạng đủ điều kiện nhận trợ cấp hàng tháng, thanh toán hai tuần một lần bằng USDC, với điều kiện đạt ngưỡng hoạt động bán hàng tối thiểu. Thưởng cột mốc một lần được chi trả khi đạt ngưỡng Số Tiền Tích Lũy. Lịch trình đầy đủ được cung cấp sau khi chấp nhận.'},
+    {n:'6',t:'Nghĩa Vụ Đối Tác',b:'Đối tác phải mô tả Node là giấy phép tham gia mạng lưới. Không được truyền đạt bất kỳ cam kết lợi nhuận nào. Không được nhắm mục tiêu công dân Hoa Kỳ cho thành phần token. Điều khoản chương trình là thông tin bảo mật. Tất cả tài liệu tiếp thị phải sử dụng tài sản thương hiệu được phê duyệt.'},
+    {n:'7',t:'Nội Dung, Bảo Vệ Dữ Liệu và Bảo Mật',b:'Đối tác giữ quyền sở hữu nội dung tạo ra cho Chương trình. Operon được cấp giấy phép vĩnh viễn sử dụng nội dung đó. Đối tác phải xử lý dữ liệu khách hàng tiềm năng theo luật bảo mật hiện hành. Mọi chi tiết chương trình được bảo mật trong hai năm sau khi ngừng hoạt động.'},
+    {n:'8',t:'Sửa Đổi, Ngừng Hoạt Động và Luật Áp Dụng',b:'Điều Khoản Chương Trình có thể được sửa đổi với thông báo trước 30 ngày. Bảng Phí có thể được sửa đổi với thông báo trước 14 ngày. Ngừng hoạt động có lý do sẽ chấm dứt thu nhập liên tầng ngay lập tức. Ngừng hoạt động không có lý do cung cấp giai đoạn chuyển tiếp sáu tháng. Luật áp dụng: Cộng hòa Singapore. Giải quyết tranh chấp: Trọng tài SIAC.'}
+  ]
+}
+};
+
+var curLang = 'en';
+
+function setLang(lang) {
+  curLang = lang;
+  document.documentElement.setAttribute('data-lang', lang);
+  var L = LANG[lang];
+  if (!L) return;
+
+  // Update pills
+  document.querySelectorAll('.lang-pill').forEach(function(p) {
+    p.classList.remove('active');
+    if ((lang === 'en' && p.textContent === 'EN') ||
+        (lang === 'zh-tw' && p.textContent === '繁中') ||
+        (lang === 'zh-cn' && p.textContent === '简中') ||
+        (lang === 'ko' && p.textContent === '한국어') ||
+        (lang === 'vi' && p.textContent === 'Tiếng Việt'))
+      p.classList.add('active');
+  });
+
+  // Step 0
+  document.querySelector('.inv-label').textContent = L.invLabel;
+  document.querySelector('.inv-exp').innerHTML = L.invExp + ' <strong id="show-exp">' + L.invExpDays + '</strong>';
+
+  var name = new URLSearchParams(location.search).get('name') || (lang === 'ko' ? '파트너' : lang.startsWith('zh') ? '合作夥伴' : lang === 'vi' ? 'Đối tác' : 'Partner');
+  document.getElementById('partner-name').textContent = name;
+  document.querySelector('.greeting').innerHTML = L.greeting + ' <em id="partner-name">' + name + '</em>,';
+
+  var ps = document.querySelectorAll('.lp');
+  if (ps[0]) ps[0].textContent = L.p1;
+  if (ps[1]) ps[1].textContent = L.p2;
+  if (ps[2]) ps[2].textContent = L.p3;
+  if (ps[3]) ps[3].textContent = L.p4;
+
+  document.querySelector('.lsum-label').textContent = L.sumLabel;
+  document.querySelector('.lsum-items').innerHTML = L.sumItems.split(' · ').map(function(item) { return '<div class="si">' + item + '</div>'; }).join('');
+  document.querySelector('.lsum-note').textContent = L.sumNote;
+  document.querySelector('.lclose').textContent = L.close;
+  document.querySelector('.lsig').textContent = L.sig;
+  document.querySelector('#s0 .bp').textContent = L.btnReview;
+
+  // Step 1
+  document.querySelector('#s1 .ey').textContent = L.tcEy;
+  var tcT = document.querySelector('.tc-t');
+  tcT.innerHTML = L.tcTitle.replace('&', '& <em>');
+  if (!tcT.innerHTML.includes('</em>')) {
+    var parts = L.tcTitle.split(/[&＆·]/);
+    tcT.innerHTML = parts[0] + (parts[1] ? '<em>' + parts[1].trim() + '</em>' : '');
+  }
+  document.querySelector('#s1 .sub').textContent = L.tcSub;
+
+  // Rebuild accordion
+  document.getElementById('acc').innerHTML = L.sec.map(function(s, i) {
+    return '<div class="ai' + (i === 0 ? ' open' : '') + '" onclick="this.classList.toggle(\'open\')"><div class="ah"><div><span class="an">' + s.n + '</span>' + s.t + '</div><div class="aw">▼</div></div><div class="ab"><p>' + s.b + '</p></div></div>';
+  }).join('');
+
+  // Checkboxes
+  var chks = document.querySelectorAll('.ck');
+  chks[0].querySelector('div:last-child').textContent = L.chk1;
+  chks[1].querySelector('div:last-child').textContent = L.chk2;
+  chks[2].querySelector('div:last-child').textContent = L.chk3;
+
+  document.getElementById('btn-tc').textContent = L.btnAccept;
+  document.querySelector('#s1 .bb').textContent = L.btnBack;
+
+  // Step 2
+  document.querySelector('#s2 .ey').textContent = L.formEy;
+  var ft = document.querySelector('.form-t');
+  var ftParts = L.formTitle.split(' ');
+  ft.innerHTML = ftParts.slice(0,-1).join(' ') + ' <em>' + ftParts[ftParts.length-1] + '</em>';
+  document.querySelector('#s2 .sub').textContent = L.formSub;
+
+  var labels = document.querySelectorAll('.fl');
+  labels[0].textContent = L.labelEmail;
+  labels[1].textContent = L.labelChain;
+  labels[2].innerHTML = L.labelWallet + ' <span id="cl">' + L.labelWalletChain + '</span>';
+  labels[3].innerHTML = L.labelTg + ' <span>' + L.labelTgOpt + '</span>';
+
+  document.getElementById('e-em').textContent = L.errEmail;
+  document.getElementById('e-wa').textContent = L.errWallet;
+  document.querySelector('.fh').textContent = L.hintWallet;
+  document.getElementById('btn-sub').textContent = L.btnCreate;
+  document.querySelector('#s2 .bb').textContent = L.btnBack;
+
+  // Step 3
+  document.querySelector('.conf-label').textContent = L.confLabel;
+  document.querySelector('.conf-t').innerHTML = L.confTitle + ' <em id="conf-name">' + name + '</em>.';
+  document.querySelector('.code-block-label').textContent = L.codeLabel;
+
+  var cbtns = document.querySelectorAll('.conf-actions .btn');
+  cbtns[0].textContent = L.btnCopy;
+  cbtns[1].textContent = L.btnLink;
+  cbtns[2].textContent = L.btnShare;
+
+  // Update confirmation info text
+  var confInfoEl = document.querySelector('#s3 div[style*="text-align:center"]');
+  if (confInfoEl) confInfoEl.textContent = L.confInfo;
+
+  // Update dashboard button
+  var dashBtns = document.querySelectorAll('#s3 .bp');
+  if (dashBtns.length > 1) dashBtns[1].textContent = L.btnDash;
+}
+
+init();
+// Check URL for lang param
+var urlLang = new URLSearchParams(location.search).get("lang");
+if (urlLang && LANG[urlLang]) setLang(urlLang);
+</script>
+</body>
+</html>

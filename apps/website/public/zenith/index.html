@@ -1,0 +1,4650 @@
+<!DOCTYPE html>
+<html lang="zh-TW" id="html-root">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPN-201 · AI 自動交易智能體 — Operon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script src="https://s3.tradingview.com/tv.js"></script>
+<style>
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --void:         #060B14;
+  --deep:         #0C1424;
+  --card:         #111C2E;
+  --edge:         #1E2D45;
+  --blue:         #2563EB;
+  --glow:         #3B82F6;
+  --ice:          #93C5FD;
+  --sky:          #BFDBFE;
+  --white:        #F0F4FF;
+  --soft:         #D4DFEF;
+  --dim:          #8BA3C7;
+  --mid:          rgba(148,185,253,0.3);
+  --faint:        rgba(148,185,253,0.10);
+  --red:          #F87171;
+  --red-glow:     rgba(248,113,113,0.15);
+  --green:        #34D399;
+  --glass-bg:     rgba(17,28,46,0.5);
+  --glass-bg2:    rgba(17,28,46,0.8);
+  --glass-border: rgba(30,45,69,0.8);
+  --glass-border2:rgba(30,45,69,1.0);
+  /* legacy aliases */
+  --bg:           #060B14;
+  --bg2:          #0C1424;
+  --text:         #F0F4FF;
+  --text-dim:     #8BA3C7;
+  --text-muted:   rgba(139,163,199,0.5);
+  --font:         'DM Sans', sans-serif;
+  --mono:         'DM Mono', monospace;
+  --radius:       12px;
+  --radius-sm:    8px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--void);
+  color: var(--white);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+body.zh .hero-title, body.zh .section-title { font-family: 'Noto Sans TC', 'Unbounded', sans-serif; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0a0a; }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+
+/* Background radial gradients */
+body::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 70% 15%, rgba(37,99,235,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 35% at 10% 80%, rgba(59,130,246,0.04) 0%, transparent 70%);
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+#app {
+  position: relative; z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px 16px;
+}
+
+section { margin-bottom: 40px; }
+
+.section-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--ice);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-title::before {
+  content: '';
+  width: 40px;
+  height: 1px;
+  background: var(--blue);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   GLASS CARD
+   ============================================================ */
+.glass {
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.hero {
+  position: relative;
+  overflow: hidden;
+  /* full-width — outside #app container */
+  border-bottom: 1px solid var(--edge);
+}
+
+.hero-bg {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 70% at 20% 60%, rgba(37,99,235,0.16) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 50% at 75% 30%, rgba(59,130,246,0.08) 0%, transparent 65%);
+}
+
+.hero-grid {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.045) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 70% 100% at 25% 50%, black 10%, transparent 80%);
+}
+
+.hero-orb {
+  position: absolute; z-index: 0; pointer-events: none;
+  width: 560px; height: 560px;
+  background: radial-gradient(circle, rgba(37,99,235,0.13) 0%, transparent 65%);
+  border-radius: 50%;
+  top: 50%; left: 8%;
+  transform: translateY(-50%);
+  animation: orbPulse 6s ease-in-out infinite;
+}
+
+@keyframes orbPulse {
+  0%, 100% { transform: translateY(-50%) scale(1); opacity: 0.7; }
+  50% { transform: translateY(-50%) scale(1.12); opacity: 1; }
+}
+
+.hero-content-wrap {
+  position: relative; z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 56px 24px 72px;
+}
+
+.hero-inner {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 18px;
+  max-width: 680px;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  border: 1px solid rgba(147,197,253,0.3);
+  border-radius: 30px;
+  background: rgba(37,99,235,0.15);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ice);
+  font-family: var(--mono);
+}
+
+.hero-badge span.dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.hero-title {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--white);
+}
+
+.hero-title .highlight {
+  color: var(--ice);
+}
+
+.hero-subtitle {
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--dim);
+  max-width: 640px;
+  font-weight: 400;
+}
+
+.hero-meta {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.hero-meta-item {
+  font-size: 12px;
+  color: var(--dim);
+  font-family: var(--mono);
+}
+
+.hero-meta-item span {
+  color: var(--ice);
+}
+
+/* ============================================================
+   MARKET PANEL
+   ============================================================ */
+.market-panel-card {
+  padding: 20px 24px;
+}
+
+.market-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.live-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 5px var(--green);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.market-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.market-table th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  text-align: right;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.market-table th:first-child { text-align: left; }
+
+.market-table td {
+  padding: 12px 12px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.market-table td:first-child {
+  text-align: left;
+  font-family: var(--font);
+  font-weight: 600;
+}
+
+.market-table tr:last-child td { border-bottom: none; }
+.market-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+.coin-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coin-icon {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  font-family: var(--mono);
+}
+
+.coin-icon.btc { background: rgba(247,147,26,0.15); color: #F7931A; }
+.coin-icon.eth { background: rgba(98,126,234,0.15); color: #627EEA; }
+.coin-icon.xrp { background: rgba(0,170,228,0.15);  color: #00AAE4; }
+.coin-icon.sol { background: rgba(20,241,149,0.15); color: #14F195; }
+.coin-icon.bnb { background: rgba(243,186,47,0.15);  color: #F3BA2F; }
+
+.change-positive { color: var(--ice); }
+.change-negative { color: var(--red); }
+
+/* ============================================================
+   STATS CARDS
+   ============================================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.stat-card {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--blue), transparent);
+  opacity: 0.5;
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--mono);
+  line-height: 1;
+}
+
+.stat-value.positive {
+  color: var(--ice);
+  text-shadow: 0 0 20px rgba(37,99,235,0.25);
+}
+
+.stat-value.negative {
+  color: var(--red);
+  text-shadow: 0 0 20px var(--red-glow);
+}
+
+.stat-value.neutral { color: var(--text); }
+
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+/* ============================================================
+   CHART
+   ============================================================ */
+.chart-card {
+  padding: 24px;
+}
+
+.chart-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.chart-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chart-period {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  margin-top: 4px;
+}
+
+.chart-wrapper {
+  position: relative;
+  height: 240px;
+}
+
+/* ============================================================
+   TRADES TABLE
+   ============================================================ */
+.trades-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.trades-header {
+  padding: 20px 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.trades-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.trades-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  background: var(--glass-bg2);
+  padding: 3px 10px;
+  border-radius: 100px;
+  border: 1px solid var(--glass-border);
+}
+
+.trades-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.trades-table th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 10px 20px;
+  text-align: left;
+  border-bottom: 1px solid var(--glass-border);
+  white-space: nowrap;
+}
+
+.trades-table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+}
+
+.trades-table tr:last-child td { border-bottom: none; }
+.trades-table tr:hover td { background: rgba(255,255,255,0.02); cursor: pointer; }
+
+.pair-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.dir-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+
+.dir-badge.long {
+  background: rgba(0,230,118,0.1);
+  color: var(--green);
+  border: 1px solid rgba(0,230,118,0.2);
+}
+
+.dir-badge.short {
+  background: rgba(255,68,68,0.1);
+  color: var(--red);
+  border: 1px solid rgba(255,68,68,0.2);
+}
+
+.price-cell {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.pnl-cell {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--mono);
+}
+
+.status-badge.closed {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  border: 1px solid var(--glass-border);
+}
+
+.status-badge.holding {
+  background: rgba(37,99,235,0.12);
+  color: var(--ice);
+  border: 1px solid rgba(147,197,253,0.25);
+}
+
+.status-badge.holding::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--ice);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.analysis-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--glass-bg2);
+  border: 1px solid var(--glass-border2);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.analysis-btn:hover {
+  background: rgba(37,99,235,0.08);
+  border-color: rgba(147,197,253,0.3);
+  color: rgba(147,197,253,0.7);
+}
+
+.analysis-btn svg {
+  width: 13px; height: 13px;
+  transition: transform 0.2s;
+}
+
+.analysis-btn:hover svg { transform: translateX(2px); }
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(5,8,15,0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modal {
+  width: 100%;
+  max-width: 760px;
+  max-height: 90vh;
+  background: #0b0f1c;
+  border: 1px solid var(--glass-border2);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(16px) scale(0.98);
+  transition: transform 0.25s;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(37,99,235,0.05);
+}
+
+.modal-overlay.open .modal {
+  transform: translateY(0) scale(1);
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.modal-trade-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.modal-pair {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.modal-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.modal-close {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg2);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.modal-close:hover {
+  border-color: var(--glass-border2);
+  color: var(--text);
+  background: rgba(255,255,255,0.08);
+}
+
+/* Tabs */
+.modal-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--glass-border);
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  padding: 12px 18px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover { color: var(--text-dim); }
+
+.tab-btn.active {
+  color: var(--ice);
+  border-bottom-color: var(--ice);
+}
+
+/* Tab content */
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  min-height: 0;
+}
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ============================================================
+   ANALYSIS CONTENT
+   ============================================================ */
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.analysis-item {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+
+.analysis-item-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.analysis-item-value {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.analysis-item-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.analysis-section {
+  margin-bottom: 20px;
+}
+
+.analysis-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.analysis-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.analysis-row:last-child { border-bottom: none; }
+
+.analysis-row-label {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.analysis-row-value {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.signal-tag {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+
+.signal-tag.bullish { background: rgba(0,230,118,0.1); color: var(--green); }
+.signal-tag.bearish { background: rgba(255,68,68,0.1); color: var(--red); }
+.signal-tag.neutral { background: rgba(255,255,255,0.07); color: var(--text-muted); }
+
+/* OPN-301 tab button styling */
+.tab-btn-opn301 {
+  color: rgba(147,197,253,0.6) !important;
+  border-bottom-color: transparent !important;
+}
+
+.tab-btn-opn301:hover { color: var(--ice) !important; }
+
+.tab-btn-opn301.active {
+  color: var(--ice) !important;
+  border-bottom-color: var(--ice) !important;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+#tab-opn301 {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-dim);
+}
+
+.opn301-kp {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  gap: 8px;
+}
+
+.opn301-kp-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.opn301-kp-label { font-size: 13px; font-weight: 600; color: var(--text); }
+.opn301-kp-value { font-family: var(--mono); font-size: 11px; color: var(--ice); line-height: 1.5; word-break: break-word; overflow-wrap: break-word; }
+.opn301-kp-insight { font-size: 12px; color: var(--text-dim); line-height: 1.7; }
+
+.opn301-kp-left { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+
+.opn301-summary {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: rgba(37,99,235,0.04);
+  border: 1px solid rgba(37,99,235,0.12);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-dim);
+}
+
+/* AI analysis text stream */
+.ai-analysis-box {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  min-height: 120px;
+}
+
+.ai-analysis-box .cursor {
+  display: inline-block;
+  width: 2px; height: 14px;
+  background: var(--ice);
+  vertical-align: middle;
+  animation: blink 0.8s step-end infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* News list */
+.news-list { display: flex; flex-direction: column; gap: 10px; }
+
+.news-item {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.news-item-title {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.news-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+/* ============================================================
+   SKELETON / PLACEHOLDER
+   ============================================================ */
+.skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.placeholder-block {
+  background: rgba(255,255,255,0.04);
+  border-radius: 6px;
+}
+
+/* ============================================================
+   FLOAT ANIMATION
+   ============================================================ */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* K線圖面板 */
+.kc-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(248,250,255,0.45);
+  border-radius: 4px;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-family: var(--mono);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.kc-btn:hover { background: rgba(255,255,255,0.08); color: rgba(248,250,255,0.85); }
+.kc-btn.kc-active {
+  background: rgba(37,99,235,0.15);
+  border-color: rgba(147,197,253,0.35);
+  color: var(--ice);
+}
+.market-row { cursor: pointer; transition: background 0.15s; }
+.market-row:hover { background: rgba(255,255,255,0.025); }
+.market-row.kc-row-active { background: rgba(37,99,235,0.04); }
+.market-row.kc-row-active td:first-child { border-left: 2px solid var(--ice); padding-left: 14px; }
+#kc-main, #kc-sub1, #kc-sub2 { background: transparent; }
+
+@keyframes flashUp {
+  0%   { color: var(--green); }
+  100% { color: inherit; }
+}
+@keyframes flashDown {
+  0%   { color: var(--red); }
+  100% { color: inherit; }
+}
+.flash-up   { animation: flashUp   0.6s ease-out; }
+.flash-down { animation: flashDown 0.6s ease-out; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .analysis-grid { grid-template-columns: 1fr; }
+  .market-table th:nth-child(n+4),
+  .market-table td:nth-child(n+4) { display: none; }
+}
+
+@media (max-width: 640px) {
+  #app { padding: 0 12px 8px; }
+  .hero { padding-top: 16px; }
+  .hero-title { font-size: 28px !important; }
+  .hero-subtitle { font-size: 13px !important; }
+  .hero-meta { flex-direction: column; gap: 8px; font-size: 11px; }
+  .hero-badge { font-size: 11px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stat-card { padding: 14px 12px; }
+  .stat-value { font-size: 20px; }
+  .stat-label { font-size: 10px; }
+  .stat-sub { font-size: 9px; }
+  .chart-card { padding: 16px 8px; }
+  /* trades table: 手機只顯示 日期、幣對、方向、報酬率 */
+  .trades-table th:nth-child(4),
+  .trades-table td:nth-child(4),
+  .trades-table th:nth-child(5),
+  .trades-table td:nth-child(5),
+  .trades-table th:nth-child(6),
+  .trades-table td:nth-child(6),
+  .trades-table th:nth-child(8),
+  .trades-table td:nth-child(8),
+  .trades-table th:nth-child(9),
+  .trades-table td:nth-child(9) { display: none; }
+  .trades-table th { padding: 8px 10px; font-size: 9px; }
+  .trades-table td { padding: 10px 10px; font-size: 12px; }
+  .trades-header { padding: 14px 12px; }
+  .trades-title { font-size: 15px; }
+  .modal { max-height: 95vh; width: 95vw; margin: 10px; }
+  .modal-tabs { overflow-x: auto; gap: 12px; }
+  .modal-tab { font-size: 11px; white-space: nowrap; }
+}
+
+/* ============================================================
+   NAV BAR
+   ============================================================ */
+.lang-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  background: rgba(6,11,20,0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--mid);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px; height: 56px;
+}
+
+.nav-tag {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  color: var(--ice); border: 1px solid rgba(147,197,253,0.3);
+  padding: 5px 14px; border-radius: 20px; background: rgba(37,99,235,0.15);
+}
+
+.nav-tag::before {
+  content: ''; width: 6px; height: 6px;
+  background: var(--green); border-radius: 50%;
+  animation: blink 2s ease infinite;
+}
+
+.lang-select-wrap { position: relative; }
+
+.lang-select-btn {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  letter-spacing: 0.08em; padding: 5px 28px 5px 12px; border-radius: 20px;
+  cursor: pointer; border: 1px solid rgba(147,197,253,0.3);
+  color: var(--ice); background: rgba(37,99,235,0.15);
+  transition: all 0.2s; outline: none;
+}
+
+.lang-select-btn:hover, .lang-select-btn.open {
+  background: rgba(37,99,235,0.25);
+  border-color: rgba(147,197,253,0.5);
+}
+
+.lang-select-btn::after {
+  content: '▾'; position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%); font-size: 10px; pointer-events: none; color: var(--ice);
+}
+
+.lang-select-btn.open::after { content: '▴'; }
+
+.lang-dropdown {
+  display: none;
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--card); border: 1px solid var(--edge);
+  border-radius: 12px; overflow: hidden; min-width: 140px;
+  z-index: 300; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.lang-dropdown.open { display: block; }
+
+.lang-option {
+  display: block; width: 100%; padding: 10px 16px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+  color: var(--soft); background: transparent; border: none;
+  cursor: pointer; text-align: left; transition: background 0.15s, color 0.15s;
+}
+
+.lang-option:hover { background: rgba(37,99,235,0.15); color: var(--ice); }
+.lang-option.active { color: var(--ice); background: rgba(37,99,235,0.2); }
+
+@media (max-width: 640px) {
+  .lang-bar { padding: 0 16px; }
+  .lang-dropdown { min-width: 120px; }
+  .lang-option { padding: 8px 12px; font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Navbar -->
+<div class="lang-bar">
+  <a href="https://operon.network/" style="text-decoration:none;display:flex;align-items:center;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 433.1 112.0" style="height:28px;width:auto;display:block;">
+      <g transform="translate(20,0)">
+        <path d="M482 -16Q349 -16 248.5 33.0Q148 82 92.5 170.0Q37 258 37 375Q37 492 92.5 580.0Q148 668 248.5 717.0Q349 766 482 766Q616 766 716.0 717.0Q816 668 872.0 580.0Q928 492 928 375Q928 258 872.0 170.0Q816 82 716.0 33.0Q616 -16 482 -16ZM482 169Q555 169 608.0 194.0Q661 219 689.5 265.0Q718 311 718 375Q718 439 689.5 485.0Q661 531 608.0 556.0Q555 581 482 581Q410 581 357.0 556.0Q304 531 275.0 485.0Q246 439 246 375Q246 311 275.0 265.0Q304 219 357.0 194.0Q410 169 482 169Z" fill="#F0F4FF" transform="translate(0.00,76.16) scale(0.072000,-0.072000)"/>
+        <path d="M491 750Q585 750 653.5 718.0Q722 686 758.0 627.5Q794 569 794 491Q794 414 758.0 355.5Q722 297 653.5 265.0Q585 233 491 233H166V399H478Q528 399 556.0 423.5Q584 448 584 491Q584 535 556.0 559.5Q528 584 478 584H184L277 680V0H70V750Z" fill="#F0F4FF" transform="translate(70.92,76.16) scale(0.072000,-0.072000)"/>
+        <path d="M711 450V300H162V450ZM303 375 254 74 170 168H744V0H47L104 375L47 750H739V582H170L254 676Z" fill="#F0F4FF" transform="translate(130.97,76.16) scale(0.072000,-0.072000)"/>
+        <path d="M213 422H486Q536 422 564.0 445.0Q592 468 592 509Q592 551 564.0 573.5Q536 596 486 596H184L277 695V0H70V750H515Q601 750 665.0 719.5Q729 689 765.0 635.5Q801 582 801 509Q801 438 765.0 384.0Q729 330 665.0 300.0Q601 270 515 270H213ZM325 351H558L827 0H587Z" fill="#F0F4FF" transform="translate(189.58,76.16) scale(0.072000,-0.072000)"/>
+        <path d="M482 -16Q349 -16 248.5 33.0Q148 82 92.5 170.0Q37 258 37 375Q37 492 92.5 580.0Q148 668 248.5 717.0Q349 766 482 766Q616 766 716.0 717.0Q816 668 872.0 580.0Q928 492 928 375Q928 258 872.0 170.0Q816 82 716.0 33.0Q616 -16 482 -16ZM482 169Q555 169 608.0 194.0Q661 219 689.5 265.0Q718 311 718 375Q718 439 689.5 485.0Q661 531 608.0 556.0Q555 581 482 581Q410 581 357.0 556.0Q304 531 275.0 485.0Q246 439 246 375Q246 311 275.0 265.0Q304 219 357.0 194.0Q410 169 482 169Z" fill="#93C5FD" transform="translate(252.22,76.16) scale(0.072000,-0.072000)"/>
+        <path d="M765 145 701 132V750H902V0H641L208 617L271 630V0H70V750H338Z" fill="#93C5FD" transform="translate(323.14,76.16) scale(0.072000,-0.072000)"/>
+      </g>
+    </svg>
+  </a>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="nav-tag">OPN-201 · ZENITH</div>
+    <div class="lang-select-wrap">
+      <button class="lang-select-btn" id="lang-toggle" onclick="toggleLangDropdown()"><span id="lang-current">繁</span></button>
+      <div class="lang-dropdown" id="lang-dropdown">
+        <button class="lang-option" data-lang="en" onclick="selectLang('en')">English</button>
+        <button class="lang-option" data-lang="zh-CN" onclick="selectLang('zh-CN')">简体中文</button>
+        <button class="lang-option" data-lang="zh-TW" onclick="selectLang('zh-TW')">繁體中文</button>
+        <button class="lang-option" data-lang="ko" onclick="selectLang('ko')">한국어</button>
+        <button class="lang-option" data-lang="ja" onclick="selectLang('ja')">日本語</button>
+        <button class="lang-option" data-lang="th" onclick="selectLang('th')">ภาษาไทย</button>
+        <button class="lang-option" data-lang="vi" onclick="selectLang('vi')">Tiếng Việt</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hero (full-width, outside max-width container) -->
+<div style="padding-top:56px;">
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-grid"></div>
+    <div class="hero-orb"></div>
+    <div class="hero-content-wrap">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          <span class="dot"></span>
+          OPN-201 · ZENITH
+        </div>
+        <h1 class="hero-title" data-i18n-html="hero_title">
+          AI 自動交易<br><span class="highlight">智能體</span>
+        </h1>
+        <p class="hero-subtitle" data-i18n="hero_subtitle">
+          全自主 AI 加密貨幣衍生品交易智能體。Zenith 持續監測市場、自主判斷市場結構與風險、決定何時及如何交易——並從每一筆交易結果中學習，持續優化自身決策。
+        </p>
+        <div class="hero-meta">
+          <span class="hero-meta-item" data-i18n-html="hero_meta_period">策略週期 <span>2026/01 — 至今</span></span>
+          <span class="hero-meta-item" data-i18n-html="hero_meta_pairs">交易標的 <span>BTC · ETH · XRP · SOL · BNB</span></span>
+          <span class="hero-meta-item" data-i18n-html="hero_meta_model">核心模型 <span>ZENITH v4.0</span></span>
+        </div>
+        <a href="/zenith/methodology/" data-i18n="btn_methodology" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;padding:10px 24px;background:rgba(37,99,235,0.15);border:1px solid rgba(147,197,253,0.3);border-radius:20px;color:var(--ice);font-family:var(--mono);font-size:12px;letter-spacing:0.06em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='rgba(37,99,235,0.25)';this.style.borderColor='rgba(147,197,253,0.5)'" onmouseout="this.style.background='rgba(37,99,235,0.15)';this.style.borderColor='rgba(147,197,253,0.3)'">
+          Trading Methodology →
+        </a>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="app">
+
+  <!-- ======================================================
+       LIVE MARKET PANEL
+       ====================================================== -->
+  <section>
+    <div class="section-title" data-i18n="section_live_market">即時市場</div>
+    <div class="glass market-panel-card">
+      <div class="market-panel-header">
+        <div style="font-size:13px;font-weight:600;" data-i18n="market_overview">加密貨幣市場概覽</div>
+        <div class="live-indicator">
+          <span class="live-dot"></span>
+          <span id="last-update" data-i18n="live_update">即時更新</span>
+        </div>
+      </div>
+      <table class="market-table">
+        <thead>
+          <tr>
+            <th data-i18n="th_pair">幣種</th>
+            <th data-i18n="th_price">現價</th>
+            <th data-i18n="th_24h_change">24h 漲跌</th>
+            <th data-i18n="th_funding_rate">資金費率</th>
+            <th data-i18n="th_open_interest">未平倉量</th>
+            <th data-i18n="th_ls_ratio">多空比</th>
+          </tr>
+        </thead>
+        <tbody id="market-tbody">
+          <tr class="market-row" data-sym="BTCUSDT">
+            <td><div class="coin-label"><div class="coin-icon btc">BTC</div><span>Bitcoin</span></div></td>
+            <td id="mp-btc-price"><div class="skeleton" style="height:14px;width:80px;margin-left:auto;"></div></td>
+            <td id="mp-btc-change"><div class="skeleton" style="height:14px;width:50px;margin-left:auto;"></div></td>
+            <td id="mp-btc-fr"><div class="skeleton" style="height:14px;width:60px;margin-left:auto;"></div></td>
+            <td id="mp-btc-oi"><div class="skeleton" style="height:14px;width:70px;margin-left:auto;"></div></td>
+            <td id="mp-btc-ls"><div class="skeleton" style="height:14px;width:55px;margin-left:auto;"></div></td>
+          </tr>
+          <tr class="market-row" data-sym="ETHUSDT">
+            <td><div class="coin-label"><div class="coin-icon eth">ETH</div><span>Ethereum</span></div></td>
+            <td id="mp-eth-price"><div class="skeleton" style="height:14px;width:80px;margin-left:auto;"></div></td>
+            <td id="mp-eth-change"><div class="skeleton" style="height:14px;width:50px;margin-left:auto;"></div></td>
+            <td id="mp-eth-fr"><div class="skeleton" style="height:14px;width:60px;margin-left:auto;"></div></td>
+            <td id="mp-eth-oi"><div class="skeleton" style="height:14px;width:70px;margin-left:auto;"></div></td>
+            <td id="mp-eth-ls"><div class="skeleton" style="height:14px;width:55px;margin-left:auto;"></div></td>
+          </tr>
+          <tr class="market-row" data-sym="XRPUSDT">
+            <td><div class="coin-label"><div class="coin-icon xrp">XRP</div><span>XRP</span></div></td>
+            <td id="mp-xrp-price"><div class="skeleton" style="height:14px;width:80px;margin-left:auto;"></div></td>
+            <td id="mp-xrp-change"><div class="skeleton" style="height:14px;width:50px;margin-left:auto;"></div></td>
+            <td id="mp-xrp-fr"><div class="skeleton" style="height:14px;width:60px;margin-left:auto;"></div></td>
+            <td id="mp-xrp-oi"><div class="skeleton" style="height:14px;width:70px;margin-left:auto;"></div></td>
+            <td id="mp-xrp-ls"><div class="skeleton" style="height:14px;width:55px;margin-left:auto;"></div></td>
+          </tr>
+          <tr class="market-row" data-sym="SOLUSDT">
+            <td><div class="coin-label"><div class="coin-icon sol">SOL</div><span>Solana</span></div></td>
+            <td id="mp-sol-price"><div class="skeleton" style="height:14px;width:80px;margin-left:auto;"></div></td>
+            <td id="mp-sol-change"><div class="skeleton" style="height:14px;width:50px;margin-left:auto;"></div></td>
+            <td id="mp-sol-fr"><div class="skeleton" style="height:14px;width:60px;margin-left:auto;"></div></td>
+            <td id="mp-sol-oi"><div class="skeleton" style="height:14px;width:70px;margin-left:auto;"></div></td>
+            <td id="mp-sol-ls"><div class="skeleton" style="height:14px;width:55px;margin-left:auto;"></div></td>
+          </tr>
+          <tr class="market-row" data-sym="BNBUSDT">
+            <td><div class="coin-label"><div class="coin-icon bnb">BNB</div><span>BNB</span></div></td>
+            <td id="mp-bnb-price"><div class="skeleton" style="height:14px;width:80px;margin-left:auto;"></div></td>
+            <td id="mp-bnb-change"><div class="skeleton" style="height:14px;width:50px;margin-left:auto;"></div></td>
+            <td id="mp-bnb-fr"><div class="skeleton" style="height:14px;width:60px;margin-left:auto;"></div></td>
+            <td id="mp-bnb-oi"><div class="skeleton" style="height:14px;width:70px;margin-left:auto;"></div></td>
+            <td id="mp-bnb-ls"><div class="skeleton" style="height:14px;width:55px;margin-left:auto;"></div></td>
+          </tr>
+          <tr id="kc-inline-row" style="display:none;">
+            <td colspan="6" style="padding:0;border-top:1px solid rgba(37,99,235,0.25);">
+              <div id="tradingview_chart" style="height:600px;"></div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       K線圖面板
+       ====================================================== -->
+  <!-- ======================================================
+       STATS CARDS
+       ====================================================== -->
+  <section>
+    <div class="section-title" data-i18n="section_performance">績效總覽</div>
+    <div class="stats-grid">
+      <div class="glass stat-card">
+        <div class="stat-label" data-i18n="stat_cumulative_return">累計報酬率</div>
+        <div class="stat-value positive" id="stat-return">—</div>
+        <div class="stat-sub" data-i18n="stat_since">自 2026/01/01 起</div>
+      </div>
+      <div class="glass stat-card">
+        <div class="stat-label" data-i18n="stat_win_rate">勝率</div>
+        <div class="stat-value neutral" id="stat-winrate">—</div>
+        <div class="stat-sub" id="stat-winrate-sub">— 勝 / — 負（已平倉）</div>
+      </div>
+      <div class="glass stat-card">
+        <div class="stat-label" data-i18n="stat_max_drawdown">最大回撤</div>
+        <div class="stat-value negative" id="stat-mdd">—</div>
+        <div class="stat-sub" id="stat-mdd-sub">—</div>
+      </div>
+      <div class="glass stat-card">
+        <div class="stat-label" data-i18n="stat_total_trades">總交易筆數</div>
+        <div class="stat-value neutral" id="stat-total">—</div>
+        <div class="stat-sub" id="stat-total-sub" data-i18n="stat_all_closed">全數已平倉</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       CUMULATIVE RETURN CHART
+       ====================================================== -->
+  <section>
+    <div class="glass chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title" data-i18n="chart_cumulative_return">累計報酬走勢</div>
+          <div class="chart-period" id="chart-period">—</div>
+          <div style="display:flex;gap:16px;align-items:center;margin-top:6px;">
+            <span style="font-size:11px;color:var(--text-muted);"><span data-i18n="chart_annualized">年化報酬</span> <span id="stat-annualized" style="color:var(--ice);font-family:var(--mono);font-weight:600;">—</span></span>
+            <span style="font-size:11px;color:var(--text-muted);">Sharpe Ratio <span id="stat-sharpe" style="color:var(--ice);font-family:var(--mono);font-weight:600;">—</span></span>
+            <span style="font-size:11px;color:var(--text-muted);">Alpha <span id="stat-alpha" style="color:var(--ice);font-family:var(--mono);font-weight:600;">—</span></span>
+            <button onclick="window._returnChart && window._returnChart.resetZoom()" style="background:none;border:none;color:rgba(248,250,255,0.25);font-size:10px;font-family:var(--mono);cursor:pointer;padding:0;line-height:1;transition:color 0.2s;" onmouseover="this.style.color='rgba(248,250,255,0.6)'" onmouseout="this.style.color='rgba(248,250,255,0.25)'" data-i18n="chart_reset_zoom">⟳ 重置視圖</button>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:var(--mono);font-size:28px;font-weight:700;color:var(--ice);" id="chart-return-num">+0.0%</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;"><span data-i18n="chart_vs_btc">BTC Buy & Hold</span> <span id="chart-btc-diff" style="font-family:var(--mono);color:var(--ice);" data-i18n="chart_calculating">計算中...</span></div>
+        </div>
+      </div>
+      <div class="chart-wrapper" style="position:relative;">
+        <canvas id="return-chart" style="cursor:grab;"></canvas>
+        <div id="chart-pan-hint" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(248,250,255,0.2);pointer-events:none;white-space:nowrap;" data-i18n="chart_drag_hint">← 拖曳查看歷史紀錄 →</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       TRADES TABLE
+       ====================================================== -->
+  <section>
+    <div class="glass trades-card">
+      <div class="trades-header">
+        <div class="trades-title" data-i18n="trades_title">歷史交易紀錄</div>
+        <div class="trades-count" id="trades-count-badge">— 筆</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="trades-table">
+          <thead>
+            <tr>
+              <th data-i18n="th_date">日期</th>
+              <th data-i18n="th_trade_pair">幣對</th>
+              <th data-i18n="th_direction">方向</th>
+              <th data-i18n="th_entry">進場價</th>
+              <th data-i18n="th_exit">出場價</th>
+              <th>PNL</th>
+              <th data-i18n="th_return">報酬率</th>
+              <th data-i18n="th_status">狀態</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="trades-tbody"></tbody>
+        </table>
+      </div>
+      <div id="trades-pagination" style="display:flex;justify-content:center;align-items:center;gap:6px;padding:16px 0;"></div>
+    </div>
+  </section>
+
+</div><!-- end #app -->
+
+<!-- ======================================================
+     ANALYSIS MODAL
+     ====================================================== -->
+<div id="analysis-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-trade-info" id="modal-trade-info"></div>
+      <button class="modal-close" id="modal-close-btn">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="tab-btn active" data-tab="technical" data-i18n="tab_technical">技術面</button>
+      <button class="tab-btn" data-tab="derivatives" data-i18n="tab_derivatives">衍生品</button>
+      <button class="tab-btn" data-tab="sentiment" data-i18n="tab_sentiment">市場情緒</button>
+      <button class="tab-btn" data-tab="news" data-i18n="tab_news">消息</button>
+      <button class="tab-btn tab-btn-opn301" data-tab="opn301">OPN-201</button>
+    </div>
+    <div class="modal-body">
+      <div id="tab-technical" class="tab-pane active"></div>
+      <div id="tab-derivatives" class="tab-pane"></div>
+      <div id="tab-sentiment" class="tab-pane"></div>
+      <div id="tab-news" class="tab-pane"></div>
+      <div id="tab-opn301" class="tab-pane"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — 填入 API Keys 後對應區塊自動解鎖
+   ============================================================ */
+const CFG = {
+  ANTHROPIC_API_KEY:   '',
+};
+
+/* ============================================================
+   I18N — 多語言支援
+   ============================================================ */
+const I18N = {
+  "zh-TW": {
+    // Page title
+    page_title: "OPN-201 · AI 自動交易智能體 — Operon",
+    disclaimer: "過往績效不代表未來表現。加密貨幣交易涉及高度風險，可能導致本金損失。",
+    // Hero
+    hero_title: 'AI 自動交易<br><span class="highlight">智能體</span>',
+    hero_subtitle: "全自主 AI 加密貨幣衍生品交易智能體。Zenith 持續監測市場、自主判斷市場結構與風險、決定何時及如何交易——並從每一筆交易結果中學習，持續優化自身決策。",
+    hero_meta_period: '策略週期 <span>2026/01 — 至今</span>',
+    hero_meta_pairs: '交易標的 <span>BTC · ETH · XRP · SOL · BNB</span>',
+    hero_meta_model: '核心模型 <span>ZENITH v4.0</span>',
+    // Market Panel
+    section_live_market: "即時市場",
+    market_overview: "加密貨幣市場概覽",
+    live_update: "即時更新",
+    updated_at: "更新於",
+    th_pair: "幣種",
+    th_price: "現價",
+    th_24h_change: "24h 漲跌",
+    th_funding_rate: "資金費率",
+    th_open_interest: "未平倉量",
+    th_ls_ratio: "多空比",
+    // Stats
+    section_performance: "績效總覽",
+    stat_cumulative_return: "累計報酬率",
+    stat_since: "自 2026/01/01 起",
+    stat_win_rate: "勝率",
+    stat_win: "勝",
+    stat_loss: "負",
+    stat_closed_parens: "已平倉",
+    stat_max_drawdown: "最大回撤",
+    stat_total_trades: "總交易筆數",
+    stat_all_closed: "全數已平倉",
+    stat_open_count: "筆持倉中",
+    // Chart
+    chart_cumulative_return: "累計報酬走勢",
+    chart_annualized: "年化報酬",
+    chart_reset_zoom: "⟳ 重置視圖",
+    chart_vs_btc: "BTC Buy & Hold",
+    chart_calculating: "計算中...",
+    chart_drag_hint: "← 拖曳查看歷史紀錄 →",
+    chart_no_closed: "尚無平倉紀錄",
+    chart_label_return: "報酬率",
+    chart_label_capital: "資金規模",
+    // Trades Table
+    trades_title: "歷史交易紀錄",
+    trades_unit: "筆",
+    th_date: "日期",
+    th_trade_pair: "幣對",
+    th_direction: "方向",
+    th_entry: "進場價",
+    th_exit: "出場價",
+    th_return: "報酬率",
+    th_status: "狀態",
+    status_open: "持倉中",
+    status_closed: "已平倉",
+    btn_analysis: "查看分析",
+    btn_show_more: "顯示更多",
+    btn_back_grid: "返回智能體總覽",
+    btn_learn_nodes: "了解更多節點資訊",
+    btn_methodology: "交易方法論 →",
+    dir_long: "▲ 多",
+    dir_short: "▼ 空",
+    dir_long_full: "▲ 做多",
+    dir_short_full: "▼ 做空",
+    open_dot: "• 持倉中",
+    // Modal Tabs
+    tab_technical: "技術面",
+    tab_derivatives: "衍生品",
+    tab_sentiment: "市場情緒",
+    tab_news: "消息",
+    // Technical
+    signal_bullish: "多方訊號",
+    signal_bearish: "空方訊號",
+    signal_neutral: "中性",
+    rsi_overbought: "超買區間",
+    rsi_oversold: "超賣區間",
+    rsi_normal: "正常區間",
+    label_rsi: "RSI (14)",
+    label_macd_hist: "MACD 柱狀",
+    label_bollinger: "布林通道",
+    label_bb_position: "布林帶位置",
+    label_volume: "成交量",
+    label_avg_vol: "均量",
+    label_vs_20d_vol: "相對 20 日均量",
+    label_ma_alignment: "均線排列",
+    ma_bullish: "多頭排列",
+    ma_bearish: "空頭排列",
+    ma_consolidation: "盤整",
+    label_close_vs_ma: "收盤 vs MA20/50",
+    section_ma_values: "均線數值",
+    label_bb_upper: "布林上軌",
+    label_bb_lower: "布林下軌",
+    label_bb_mid: "中軌",
+    label_price_at: "價格位於",
+    section_signal_summary: "訊號摘要",
+    label_rsi_signal: "RSI 訊號",
+    label_macd_signal: "MACD 訊號",
+    label_ma1400_ratio: "1400日均線比例",
+    ma1400_below: "低於長期均線（歷史底部區）",
+    ma1400_above: "大幅超越長期均線（過熱警訊）",
+    ma1400_normal: "正常上升趨勢範圍",
+    // Derivatives
+    section_futures_data: "期貨倉位數據",
+    label_funding_rate: "資金費率",
+    label_funding_rate_trend: "資金費率趨勢",
+    label_oi_change: "未平倉量變化",
+    section_ls_ratio: "多空比",
+    label_global_ls: "全市場多空比",
+    label_top_account_ls: "大戶帳戶多空比",
+    label_top_position_ls: "大戶持倉多空比",
+    section_options: "選擇權市場 (Deribit)",
+    label_pc_ratio: "Put/Call 成交量比",
+    label_avg_iv: "平均隱含波動率",
+    section_bybit: "Bybit 跨交易所對比",
+    label_bybit_fr: "Bybit 資金費率",
+    label_bybit_oi: "Bybit 未平倉量",
+    label_fr_signal: "資金費率訊號",
+    label_rate: "費率",
+    label_trend: "趨勢",
+    label_last5: "近5期",
+    label_10d_avg: "10日均值",
+    // Sentiment
+    label_fear_greed: "恐懼貪婪指數",
+    label_btc_dominance: "BTC 主導率",
+    label_vix: "VIX 恐慌指數",
+    label_dxy: "DXY 美元指數",
+    label_gold: "黃金",
+    label_btc_200w: "BTC 200週線比例",
+    label_near_ma: "接近均線",
+    label_below_ma: "低於均線（歷史底部區）",
+    label_above_ma: "大幅超越均線（過熱警訊）",
+    label_data_days: "資料天數",
+    label_days: "天",
+    section_onchain: "BTC 鏈上數據",
+    label_hashrate: "算力",
+    label_active_addr: "活躍地址數",
+    label_daily_tx: "每日交易筆數",
+    label_defi_tvl: "ETH DEFI 鎖倉量",
+    label_7d_change: "7日變化",
+    section_etf: "比特幣現貨 ETF 價格",
+    label_mempool_fee: "Mempool 快速費率",
+    section_coinmetrics: "BTC 鏈上深度指標 (CoinMetrics)",
+    section_cot: "CFTC COT 聰明錢籌碼",
+    label_report_date: "報告日",
+    label_weekly: "週報",
+    label_asset_mgr_net: "管理基金淨多單",
+    label_weekly_change: "週變化",
+    label_leveraged_net: "槓桿基金淨多單",
+    section_quarterly_basis: "BTC 季度期貨基差",
+    label_annualized_return: "年化報酬",
+    basis_high: "基差偏高：期貨溢價明顯",
+    basis_normal: "基差正常",
+    basis_low: "基差極低或負值（Backwardation）",
+    label_market_cautious: "市場警惕",
+    label_usd_weak: "美元走弱（加密偏多）",
+    label_us_equities: "美股大盤",
+    label_extreme_fear: "Extreme Fear",
+    label_extreme_greed: "Extreme Greed",
+    label_btc_dominant: "BTC 主導，山寨偏弱",
+    label_alt_season: "山寨季特徵",
+    label_market_balanced: "市場均衡",
+    label_data_date: "資料日期：",
+    // News
+    section_news: "相關新聞",
+    // OPN-301
+    label_trade_analysis: "交易分析",
+    label_entry_signal: "進場訊號",
+    label_exit_analysis: "平倉分析",
+    // Errors
+    msg_loading: "資料載入中",
+    msg_sentiment_fail: "情緒數據載入失敗，請稍後重試",
+    msg_after_deploy: "部署至正式伺服器後啟用",
+    msg_ai_unavailable: "AI 分析暫時不可用",
+    // Lang switcher
+    lang_label: "繁",
+  },
+  "en": {
+    // Page title
+    page_title: "OPN-201 · AI Agentic Trading — Operon",
+    disclaimer: "Past performance is not indicative of future results. Cryptocurrency trading involves significant risk and may result in loss of capital.",
+    // Hero
+    hero_title: 'AI Automated Trading<br><span class="highlight">Agentic</span>',
+    hero_subtitle: "A fully autonomous AI trading agent for crypto derivatives. Zenith continuously monitors markets, forms its own view on regime and risk, decides when and how to trade — and learns from every outcome to refine its own decision-making over time.",
+    hero_meta_period: 'Strategy Period <span>2026/01 — Present</span>',
+    hero_meta_pairs: 'Trading Pairs <span>BTC · ETH · XRP · SOL · BNB</span>',
+    hero_meta_model: 'Core Model <span>ZENITH v4.0</span>',
+    // Market Panel
+    section_live_market: "Live Market",
+    market_overview: "Crypto Market Overview",
+    live_update: "Live Update",
+    updated_at: "Updated",
+    th_pair: "Pair",
+    th_price: "Price",
+    th_24h_change: "24h Change",
+    th_funding_rate: "Funding Rate",
+    th_open_interest: "Open Interest",
+    th_ls_ratio: "L/S Ratio",
+    // Stats
+    section_performance: "Performance Overview",
+    stat_cumulative_return: "Cumulative Return",
+    stat_since: "Since 2026/01/01",
+    stat_win_rate: "Win Rate",
+    stat_win: "W",
+    stat_loss: "L",
+    stat_closed_parens: "Closed",
+    stat_max_drawdown: "Max Drawdown",
+    stat_total_trades: "Total Trades",
+    stat_all_closed: "All Closed",
+    stat_open_count: "open",
+    // Chart
+    chart_cumulative_return: "Cumulative Return",
+    chart_annualized: "Annualized Return",
+    chart_reset_zoom: "⟳ Reset Zoom",
+    chart_vs_btc: "BTC Buy & Hold",
+    chart_calculating: "Calculating...",
+    chart_drag_hint: "← Drag to view history →",
+    chart_no_closed: "No closed trades",
+    chart_label_return: "Return",
+    chart_label_capital: "Capital",
+    // Trades Table
+    trades_title: "Trade History",
+    trades_unit: "trades",
+    th_date: "Date",
+    th_trade_pair: "Pair",
+    th_direction: "Direction",
+    th_entry: "Entry",
+    th_exit: "Exit",
+    th_return: "Return",
+    th_status: "Status",
+    status_open: "Open",
+    status_closed: "Closed",
+    btn_analysis: "Analysis →",
+    btn_show_more: "Show More",
+    btn_back_grid: "BACK TO GRID",
+    btn_learn_nodes: "LEARN MORE ABOUT NODES",
+    btn_methodology: "Trading Methodology →",
+    dir_long: "▲ Long",
+    dir_short: "▼ Short",
+    dir_long_full: "▲ Long",
+    dir_short_full: "▼ Short",
+    open_dot: "• Open",
+    // Modal Tabs
+    tab_technical: "Technical",
+    tab_derivatives: "Derivatives",
+    tab_sentiment: "Sentiment",
+    tab_news: "News",
+    // Technical
+    signal_bullish: "Bullish",
+    signal_bearish: "Bearish",
+    signal_neutral: "Neutral",
+    rsi_overbought: "Overbought",
+    rsi_oversold: "Oversold",
+    rsi_normal: "Normal Range",
+    label_rsi: "RSI (14)",
+    label_macd_hist: "MACD Histogram",
+    label_bollinger: "Bollinger Bands",
+    label_bb_position: "Bollinger Position",
+    label_volume: "Volume",
+    label_avg_vol: "Avg Vol",
+    label_vs_20d_vol: "vs 20d Avg Vol",
+    label_ma_alignment: "MA Alignment",
+    ma_bullish: "Bullish Alignment",
+    ma_bearish: "Bearish Alignment",
+    ma_consolidation: "Consolidation",
+    label_close_vs_ma: "Close vs MA20/50",
+    section_ma_values: "MA Values",
+    label_bb_upper: "Upper Band",
+    label_bb_lower: "Lower Band",
+    label_bb_mid: "Middle Band",
+    label_price_at: "Price at",
+    section_signal_summary: "Signal Summary",
+    label_rsi_signal: "RSI Signal",
+    label_macd_signal: "MACD Signal",
+    label_ma1400_ratio: "1400d MA Ratio",
+    ma1400_below: "Below long-term MA (historical bottom)",
+    ma1400_above: "Far above long-term MA (overheated)",
+    ma1400_normal: "Normal uptrend range",
+    // Derivatives
+    section_futures_data: "Futures Data",
+    label_funding_rate: "Funding Rate",
+    label_funding_rate_trend: "Funding Rate Trend",
+    label_oi_change: "OI Change",
+    section_ls_ratio: "L/S Ratio",
+    label_global_ls: "Global L/S Ratio",
+    label_top_account_ls: "Top Trader L/S (Account)",
+    label_top_position_ls: "Top Trader L/S (Position)",
+    section_options: "Options Market (Deribit)",
+    label_pc_ratio: "Put/Call Volume Ratio",
+    label_avg_iv: "Avg Implied Volatility",
+    section_bybit: "Bybit Cross-Exchange",
+    label_bybit_fr: "Bybit Funding Rate",
+    label_bybit_oi: "Bybit Open Interest",
+    label_fr_signal: "Funding Rate Signal",
+    label_rate: "Rate",
+    label_trend: "Trend",
+    label_last5: "Last 5",
+    label_10d_avg: "10d Avg",
+    // Sentiment
+    label_fear_greed: "Fear & Greed Index",
+    label_btc_dominance: "BTC Dominance",
+    label_vix: "VIX Index",
+    label_dxy: "DXY Dollar Index",
+    label_gold: "Gold",
+    label_btc_200w: "BTC 200W MA Ratio",
+    label_near_ma: "Near MA",
+    label_below_ma: "Below MA (historical bottom)",
+    label_above_ma: "Far above MA (overheated)",
+    label_data_days: "Data Days",
+    label_days: "days",
+    section_onchain: "BTC On-Chain Data",
+    label_hashrate: "Hash Rate",
+    label_active_addr: "Active Addresses",
+    label_daily_tx: "Daily Transactions",
+    label_defi_tvl: "ETH DeFi TVL",
+    label_7d_change: "7d Change",
+    section_etf: "Bitcoin Spot ETF Price",
+    label_mempool_fee: "Mempool Fast Fee",
+    section_coinmetrics: "BTC On-Chain Metrics (CoinMetrics)",
+    section_cot: "CFTC COT Smart Money",
+    label_report_date: "Report Date",
+    label_weekly: "Weekly",
+    label_asset_mgr_net: "Asset Manager Net Long",
+    label_weekly_change: "Weekly Change",
+    label_leveraged_net: "Leveraged Fund Net Long",
+    section_quarterly_basis: "BTC Quarterly Basis",
+    label_annualized_return: "Annualized Return",
+    basis_high: "High basis: futures premium",
+    basis_normal: "Normal basis",
+    basis_low: "Very low or negative (Backwardation)",
+    label_market_cautious: "Market Cautious",
+    label_usd_weak: "USD Weak (Crypto Bullish)",
+    label_us_equities: "US Equities",
+    label_extreme_fear: "Extreme Fear",
+    label_extreme_greed: "Extreme Greed",
+    label_btc_dominant: "BTC Dominant, Alts Weak",
+    label_alt_season: "Alt Season",
+    label_market_balanced: "Market Balanced",
+    label_data_date: "Data Date: ",
+    // News
+    section_news: "Related News",
+    // OPN-301
+    label_trade_analysis: "Trade Analysis",
+    label_entry_signal: "Entry Signal",
+    label_exit_analysis: "Exit Analysis",
+    // Errors
+    msg_loading: "Loading data...",
+    msg_sentiment_fail: "Failed to load sentiment data. Please retry.",
+    msg_after_deploy: "Enabled after production deployment",
+    msg_ai_unavailable: "AI analysis temporarily unavailable",
+    // Lang switcher
+    lang_label: "EN",
+  },
+  "zh-CN": {
+    page_title: "OPN-201 · AI 自动交易智能体 — Operon",
+    disclaimer: "过往绩效不代表未来表现。加密货币交易涉及高度风险，可能导致本金损失。",
+    hero_title: 'AI 自动交易<br><span class="highlight">智能体</span>',
+    hero_subtitle: "全自主 AI 加密货币衍生品交易智能体。Zenith 持续监测市场、自主判断市场结构与风险、决定何时及如何交易——并从每一笔交易结果中学习，持续优化自身决策。",
+    hero_meta_period: '策略周期 <span>2026/01 — 至今</span>',
+    hero_meta_pairs: '交易标的 <span>BTC · ETH · XRP · SOL · BNB</span>',
+    hero_meta_model: '核心模型 <span>ZENITH v4.0</span>',
+    section_live_market: "实时市场",
+    market_overview: "加密货币市场概览",
+    live_update: "实时更新",
+    updated_at: "更新于",
+    th_pair: "币种",
+    th_price: "现价",
+    th_24h_change: "24h 涨跌",
+    th_funding_rate: "资金费率",
+    th_open_interest: "未平仓量",
+    th_ls_ratio: "多空比",
+    section_performance: "绩效总览",
+    stat_cumulative_return: "累计收益率",
+    stat_since: "自 2026/01/01 起",
+    stat_win_rate: "胜率",
+    stat_win: "胜",
+    stat_loss: "负",
+    stat_closed_parens: "已平仓",
+    stat_max_drawdown: "最大回撤",
+    stat_total_trades: "总交易笔数",
+    stat_all_closed: "全数已平仓",
+    stat_open_count: "笔持仓中",
+    chart_cumulative_return: "累计收益走势",
+    chart_annualized: "年化收益",
+    chart_reset_zoom: "⟳ 重置视图",
+    chart_vs_btc: "BTC Buy & Hold",
+    chart_calculating: "计算中...",
+    chart_drag_hint: "← 拖拽查看历史记录 →",
+    chart_no_closed: "暂无平仓记录",
+    chart_label_return: "收益率",
+    chart_label_capital: "资金规模",
+    trades_title: "历史交易记录",
+    trades_unit: "笔",
+    th_date: "日期",
+    th_trade_pair: "币对",
+    th_direction: "方向",
+    th_entry: "进场价",
+    th_exit: "出场价",
+    th_return: "收益率",
+    th_status: "状态",
+    status_open: "持仓中",
+    status_closed: "已平仓",
+    btn_analysis: "查看分析",
+    btn_show_more: "显示更多",
+    btn_back_grid: "返回智能体总览",
+    btn_learn_nodes: "了解更多节点信息",
+    btn_methodology: "交易方法论 →",
+    dir_long: "▲ 多",
+    dir_short: "▼ 空",
+    dir_long_full: "▲ 做多",
+    dir_short_full: "▼ 做空",
+    open_dot: "• 持仓中",
+    tab_technical: "技术面",
+    tab_derivatives: "衍生品",
+    tab_sentiment: "市场情绪",
+    tab_news: "消息",
+    signal_bullish: "多方信号",
+    signal_bearish: "空方信号",
+    signal_neutral: "中性",
+    rsi_overbought: "超买区间",
+    rsi_oversold: "超卖区间",
+    rsi_normal: "正常区间",
+    label_rsi: "RSI (14)",
+    label_macd_hist: "MACD 柱状",
+    label_bollinger: "布林通道",
+    label_bb_position: "布林带位置",
+    label_volume: "成交量",
+    label_avg_vol: "均量",
+    label_vs_20d_vol: "相对 20 日均量",
+    label_ma_alignment: "均线排列",
+    ma_bullish: "多头排列",
+    ma_bearish: "空头排列",
+    ma_consolidation: "盘整",
+    label_close_vs_ma: "收盘 vs MA20/50",
+    section_ma_values: "均线数值",
+    label_bb_upper: "布林上轨",
+    label_bb_lower: "布林下轨",
+    label_bb_mid: "中轨",
+    label_price_at: "价格位于",
+    section_signal_summary: "信号摘要",
+    label_rsi_signal: "RSI 信号",
+    label_macd_signal: "MACD 信号",
+    label_ma1400_ratio: "1400日均线比例",
+    ma1400_below: "低于长期均线（历史底部区）",
+    ma1400_above: "大幅超越长期均线（过热警示）",
+    ma1400_normal: "正常上升趋势范围",
+    section_futures_data: "期货仓位数据",
+    label_funding_rate: "资金费率",
+    label_funding_rate_trend: "资金费率趋势",
+    label_oi_change: "未平仓量变化",
+    section_ls_ratio: "多空比",
+    label_global_ls: "全市场多空比",
+    label_top_account_ls: "大户账户多空比",
+    label_top_position_ls: "大户持仓多空比",
+    section_options: "期权市场 (Deribit)",
+    label_pc_ratio: "Put/Call 成交量比",
+    label_avg_iv: "平均隐含波动率",
+    section_bybit: "Bybit 跨交易所对比",
+    label_bybit_fr: "Bybit 资金费率",
+    label_bybit_oi: "Bybit 未平仓量",
+    label_fr_signal: "资金费率信号",
+    label_rate: "费率",
+    label_trend: "趋势",
+    label_last5: "近5期",
+    label_10d_avg: "10日均值",
+    label_fear_greed: "恐惧贪婪指数",
+    label_btc_dominance: "BTC 主导率",
+    label_vix: "VIX 恐慌指数",
+    label_dxy: "DXY 美元指数",
+    label_gold: "黄金",
+    label_btc_200w: "BTC 200周线比例",
+    label_near_ma: "接近均线",
+    label_below_ma: "低于均线（历史底部区）",
+    label_above_ma: "大幅超越均线（过热警示）",
+    label_data_days: "数据天数",
+    label_days: "天",
+    section_onchain: "BTC 链上数据",
+    label_hashrate: "算力",
+    label_active_addr: "活跃地址数",
+    label_daily_tx: "每日交易笔数",
+    label_defi_tvl: "ETH DeFi 锁仓量",
+    label_7d_change: "7日变化",
+    section_etf: "比特币现货 ETF 价格",
+    label_mempool_fee: "Mempool 快速费率",
+    section_coinmetrics: "BTC 链上深度指标 (CoinMetrics)",
+    section_cot: "CFTC COT 聪明钱筹码",
+    label_report_date: "报告日",
+    label_weekly: "周报",
+    label_asset_mgr_net: "管理基金净多单",
+    label_weekly_change: "周变化",
+    label_leveraged_net: "杠杆基金净多单",
+    section_quarterly_basis: "BTC 季度期货基差",
+    label_annualized_return: "年化收益",
+    basis_high: "基差偏高：期货溢价明显",
+    basis_normal: "基差正常",
+    basis_low: "基差极低或负值（Backwardation）",
+    label_market_cautious: "市场警惕",
+    label_usd_weak: "美元走弱（加密偏多）",
+    label_us_equities: "美股大盘",
+    label_extreme_fear: "极度恐惧",
+    label_extreme_greed: "极度贪婪",
+    label_btc_dominant: "BTC 主导，山寨偏弱",
+    label_alt_season: "山寨季特征",
+    label_market_balanced: "市场均衡",
+    label_data_date: "数据日期：",
+    section_news: "相关新闻",
+    label_trade_analysis: "交易分析",
+    label_entry_signal: "进场信号",
+    label_exit_analysis: "平仓分析",
+    msg_loading: "数据加载中",
+    msg_sentiment_fail: "情绪数据加载失败，请稍后重试",
+    msg_after_deploy: "部署至正式服务器后启用",
+    msg_ai_unavailable: "AI 分析暂时不可用",
+    lang_label: "简",
+  },
+  "ko": {
+    page_title: "OPN-201 · AI 자동 거래 에이전트 — Operon",
+    disclaimer: "과거 실적은 미래 수익을 보장하지 않습니다. 암호화폐 거래는 높은 위험을 수반하며 원금 손실이 발생할 수 있습니다.",
+    hero_title: 'AI 자동 거래<br><span class="highlight">에이전트</span>',
+    hero_subtitle: "암호화폐 파생상품을 위한 완전 자율 AI 트레이딩 에이전트. Zenith는 시장을 지속적으로 모니터링하고, regime과 리스크에 대한 독자적 판단을 형성하며, 언제 어떻게 거래할지 결정하고 — 모든 결과로부터 학습하여 의사결정을 지속적으로 개선합니다.",
+    hero_meta_period: '전략 기간 <span>2026/01 — 현재</span>',
+    hero_meta_pairs: '거래 종목 <span>BTC · ETH · XRP · SOL · BNB</span>',
+    hero_meta_model: '핵심 모델 <span>ZENITH v4.0</span>',
+    section_live_market: "실시간 시장",
+    market_overview: "암호화폐 시장 현황",
+    live_update: "실시간 업데이트",
+    updated_at: "업데이트",
+    th_pair: "종목",
+    th_price: "현재가",
+    th_24h_change: "24h 등락률",
+    th_funding_rate: "펀딩 비율",
+    th_open_interest: "미결제약정",
+    th_ls_ratio: "롱/숏 비율",
+    section_performance: "성과 요약",
+    stat_cumulative_return: "누적 수익률",
+    stat_since: "2026/01/01 기준",
+    stat_win_rate: "승률",
+    stat_win: "승",
+    stat_loss: "패",
+    stat_closed_parens: "청산 완료",
+    stat_max_drawdown: "최대 낙폭",
+    stat_total_trades: "총 거래 횟수",
+    stat_all_closed: "전체 청산 완료",
+    stat_open_count: "건 보유 중",
+    chart_cumulative_return: "누적 수익률 추이",
+    chart_annualized: "연환산 수익률",
+    chart_reset_zoom: "⟳ 초기화",
+    chart_vs_btc: "BTC Buy & Hold",
+    chart_calculating: "계산 중...",
+    chart_drag_hint: "← 드래그하여 과거 기록 조회 →",
+    chart_no_closed: "청산된 거래 없음",
+    chart_label_return: "수익률",
+    chart_label_capital: "자산 규모",
+    trades_title: "거래 내역",
+    trades_unit: "건",
+    th_date: "날짜",
+    th_trade_pair: "종목",
+    th_direction: "방향",
+    th_entry: "진입가",
+    th_exit: "청산가",
+    th_return: "수익률",
+    th_status: "상태",
+    status_open: "보유 중",
+    status_closed: "청산 완료",
+    btn_analysis: "분석 보기",
+    btn_show_more: "더 보기",
+    btn_back_grid: "에이전트 그리드로 돌아가기",
+    btn_learn_nodes: "노드에 대해 자세히 알아보기",
+    btn_methodology: "트레이딩 방법론 →",
+    dir_long: "▲ 롱",
+    dir_short: "▼ 숏",
+    dir_long_full: "▲ 롱 포지션",
+    dir_short_full: "▼ 숏 포지션",
+    open_dot: "• 보유 중",
+    tab_technical: "기술적 분석",
+    tab_derivatives: "파생상품",
+    tab_sentiment: "시장 심리",
+    tab_news: "뉴스",
+    signal_bullish: "강세 신호",
+    signal_bearish: "약세 신호",
+    signal_neutral: "중립",
+    rsi_overbought: "과매수 구간",
+    rsi_oversold: "과매도 구간",
+    rsi_normal: "정상 구간",
+    label_rsi: "RSI (14)",
+    label_macd_hist: "MACD 히스토그램",
+    label_bollinger: "볼린저 밴드",
+    label_bb_position: "볼린저 밴드 위치",
+    label_volume: "거래량",
+    label_avg_vol: "평균 거래량",
+    label_vs_20d_vol: "20일 평균 대비",
+    label_ma_alignment: "이동평균 배열",
+    ma_bullish: "정배열 (상승)",
+    ma_bearish: "역배열 (하락)",
+    ma_consolidation: "횡보",
+    label_close_vs_ma: "종가 vs MA20/50",
+    section_ma_values: "이동평균 수치",
+    label_bb_upper: "볼린저 상단",
+    label_bb_lower: "볼린저 하단",
+    label_bb_mid: "중간 밴드",
+    label_price_at: "현재가 위치",
+    section_signal_summary: "신호 요약",
+    label_rsi_signal: "RSI 신호",
+    label_macd_signal: "MACD 신호",
+    label_ma1400_ratio: "1400일 이동평균 비율",
+    ma1400_below: "장기 이동평균 하회 (역사적 저점 구간)",
+    ma1400_above: "장기 이동평균 대폭 상회 (과열 경고)",
+    ma1400_normal: "정상 상승 추세 범위",
+    section_futures_data: "선물 포지션 데이터",
+    label_funding_rate: "펀딩 비율",
+    label_funding_rate_trend: "펀딩 비율 추이",
+    label_oi_change: "미결제약정 변화",
+    section_ls_ratio: "롱/숏 비율",
+    label_global_ls: "전체 시장 롱/숏 비율",
+    label_top_account_ls: "대형 트레이더 계좌 비율",
+    label_top_position_ls: "대형 트레이더 포지션 비율",
+    section_options: "옵션 시장 (Deribit)",
+    label_pc_ratio: "풋/콜 거래량 비율",
+    label_avg_iv: "평균 내재 변동성",
+    section_bybit: "Bybit 교차 비교",
+    label_bybit_fr: "Bybit 펀딩 비율",
+    label_bybit_oi: "Bybit 미결제약정",
+    label_fr_signal: "펀딩 비율 신호",
+    label_rate: "비율",
+    label_trend: "추이",
+    label_last5: "최근 5회",
+    label_10d_avg: "10일 평균",
+    label_fear_greed: "공포·탐욕 지수",
+    label_btc_dominance: "BTC 도미넌스",
+    label_vix: "VIX 공포 지수",
+    label_dxy: "DXY 달러 인덱스",
+    label_gold: "금",
+    label_btc_200w: "BTC 200주 이동평균 비율",
+    label_near_ma: "이동평균 근접",
+    label_below_ma: "이동평균 하회 (역사적 저점)",
+    label_above_ma: "이동평균 대폭 상회 (과열)",
+    label_data_days: "데이터 기간",
+    label_days: "일",
+    section_onchain: "BTC 온체인 데이터",
+    label_hashrate: "해시레이트",
+    label_active_addr: "활성 주소 수",
+    label_daily_tx: "일일 거래 건수",
+    label_defi_tvl: "ETH DeFi TVL",
+    label_7d_change: "7일 변화",
+    section_etf: "비트코인 현물 ETF 가격",
+    label_mempool_fee: "멤풀 빠른 수수료",
+    section_coinmetrics: "BTC 온체인 심층 지표 (CoinMetrics)",
+    section_cot: "CFTC COT 스마트머니 포지션",
+    label_report_date: "보고일",
+    label_weekly: "주간",
+    label_asset_mgr_net: "자산운용사 순매수",
+    label_weekly_change: "주간 변화",
+    label_leveraged_net: "레버리지 펀드 순매수",
+    section_quarterly_basis: "BTC 분기 선물 베이시스",
+    label_annualized_return: "연환산 수익률",
+    basis_high: "베이시스 높음: 선물 프리미엄 뚜렷",
+    basis_normal: "베이시스 정상",
+    basis_low: "베이시스 매우 낮음 또는 음수 (백워데이션)",
+    label_market_cautious: "시장 경계",
+    label_usd_weak: "달러 약세 (암호화폐 강세)",
+    label_us_equities: "미국 주식 시장",
+    label_extreme_fear: "극도의 공포",
+    label_extreme_greed: "극도의 탐욕",
+    label_btc_dominant: "BTC 강세, 알트코인 약세",
+    label_alt_season: "알트코인 시즌",
+    label_market_balanced: "시장 균형",
+    label_data_date: "데이터 기준일: ",
+    section_news: "관련 뉴스",
+    label_trade_analysis: "거래 분석",
+    label_entry_signal: "진입 신호",
+    label_exit_analysis: "청산 분석",
+    msg_loading: "데이터 로딩 중",
+    msg_sentiment_fail: "심리 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    msg_after_deploy: "정식 서버 배포 후 활성화됩니다",
+    msg_ai_unavailable: "AI 분석을 일시적으로 사용할 수 없습니다",
+    lang_label: "한",
+  },
+  "ja": {
+    page_title: "OPN-201 · AI 自動売買エージェント — Operon",
+    disclaimer: "過去の実績は将来の成果を保証するものではありません。暗号資産取引には高いリスクが伴い、元本を失う可能性があります。",
+    hero_title: 'AI 自動売買<br><span class="highlight">エージェント</span>',
+    hero_subtitle: "暗号資産デリバティブの完全自律AI取引エージェント。Zenithは市場を継続的にモニタリングし、regimeとリスクについて独自の判断を形成し、いつどのように取引するかを決定——あらゆる結果から学習し、意思決定を継続的に洗練します。",
+    hero_meta_period: '運用期間 <span>2026/01 — 現在</span>',
+    hero_meta_pairs: '取引銘柄 <span>BTC · ETH · XRP · SOL · BNB</span>',
+    hero_meta_model: 'コアモデル <span>ZENITH v4.0</span>',
+    section_live_market: "リアルタイム市場",
+    market_overview: "暗号資産市場概況",
+    live_update: "リアルタイム更新",
+    updated_at: "更新",
+    th_pair: "銘柄",
+    th_price: "現在値",
+    th_24h_change: "24h 騰落率",
+    th_funding_rate: "資金調達率",
+    th_open_interest: "建玉残高",
+    th_ls_ratio: "ロング/ショート比",
+    section_performance: "パフォーマンス概要",
+    stat_cumulative_return: "累積リターン",
+    stat_since: "2026/01/01 以降",
+    stat_win_rate: "勝率",
+    stat_win: "勝",
+    stat_loss: "負",
+    stat_closed_parens: "決済済み",
+    stat_max_drawdown: "最大ドローダウン",
+    stat_total_trades: "総取引回数",
+    stat_all_closed: "全ポジション決済済み",
+    stat_open_count: "件保有中",
+    chart_cumulative_return: "累積リターン推移",
+    chart_annualized: "年率換算リターン",
+    chart_reset_zoom: "⟳ リセット",
+    chart_vs_btc: "BTC Buy & Hold",
+    chart_calculating: "計算中...",
+    chart_drag_hint: "← ドラッグで過去データを表示 →",
+    chart_no_closed: "決済済み取引なし",
+    chart_label_return: "リターン",
+    chart_label_capital: "資産規模",
+    trades_title: "取引履歴",
+    trades_unit: "件",
+    th_date: "日付",
+    th_trade_pair: "銘柄",
+    th_direction: "方向",
+    th_entry: "エントリー価格",
+    th_exit: "決済価格",
+    th_return: "リターン",
+    th_status: "ステータス",
+    status_open: "保有中",
+    status_closed: "決済済み",
+    btn_analysis: "分析を見る",
+    btn_show_more: "もっと見る",
+    btn_back_grid: "エージェント一覧に戻る",
+    btn_learn_nodes: "ノードについて詳しく見る",
+    btn_methodology: "トレーディング手法 →",
+    dir_long: "▲ ロング",
+    dir_short: "▼ ショート",
+    dir_long_full: "▲ ロングポジション",
+    dir_short_full: "▼ ショートポジション",
+    open_dot: "• 保有中",
+    tab_technical: "テクニカル分析",
+    tab_derivatives: "デリバティブ",
+    tab_sentiment: "市場センチメント",
+    tab_news: "ニュース",
+    signal_bullish: "強気シグナル",
+    signal_bearish: "弱気シグナル",
+    signal_neutral: "中立",
+    rsi_overbought: "買われすぎ",
+    rsi_oversold: "売られすぎ",
+    rsi_normal: "通常レンジ",
+    label_rsi: "RSI (14)",
+    label_macd_hist: "MACDヒストグラム",
+    label_bollinger: "ボリンジャーバンド",
+    label_bb_position: "バンド内位置",
+    label_volume: "出来高",
+    label_avg_vol: "平均出来高",
+    label_vs_20d_vol: "20日平均比",
+    label_ma_alignment: "移動平均の並び",
+    ma_bullish: "上昇配列",
+    ma_bearish: "下降配列",
+    ma_consolidation: "もみ合い",
+    label_close_vs_ma: "終値 vs MA20/50",
+    section_ma_values: "移動平均値",
+    label_bb_upper: "上限バンド",
+    label_bb_lower: "下限バンド",
+    label_bb_mid: "中間バンド",
+    label_price_at: "現在値位置",
+    section_signal_summary: "シグナルまとめ",
+    label_rsi_signal: "RSIシグナル",
+    label_macd_signal: "MACDシグナル",
+    label_ma1400_ratio: "1400日移動平均比率",
+    ma1400_below: "長期移動平均を下回る（歴史的底値圏）",
+    ma1400_above: "長期移動平均を大幅上回る（過熱警告）",
+    ma1400_normal: "通常の上昇トレンド範囲",
+    section_futures_data: "先物ポジションデータ",
+    label_funding_rate: "資金調達率",
+    label_funding_rate_trend: "資金調達率の推移",
+    label_oi_change: "建玉残高の変化",
+    section_ls_ratio: "ロング/ショート比",
+    label_global_ls: "市場全体のロング/ショート比",
+    label_top_account_ls: "大口トレーダー口座比率",
+    label_top_position_ls: "大口トレーダーポジション比率",
+    section_options: "オプション市場 (Deribit)",
+    label_pc_ratio: "プット/コール出来高比",
+    label_avg_iv: "平均インプライドボラティリティ",
+    section_bybit: "Bybit クロス比較",
+    label_bybit_fr: "Bybit 資金調達率",
+    label_bybit_oi: "Bybit 建玉残高",
+    label_fr_signal: "資金調達率シグナル",
+    label_rate: "レート",
+    label_trend: "推移",
+    label_last5: "直近5回",
+    label_10d_avg: "10日平均",
+    label_fear_greed: "恐怖・強欲指数",
+    label_btc_dominance: "BTCドミナンス",
+    label_vix: "VIX恐怖指数",
+    label_dxy: "DXYドル指数",
+    label_gold: "金",
+    label_btc_200w: "BTC 200週移動平均比率",
+    label_near_ma: "移動平均付近",
+    label_below_ma: "移動平均を下回る（歴史的底値）",
+    label_above_ma: "移動平均を大幅上回る（過熱）",
+    label_data_days: "データ期間",
+    label_days: "日",
+    section_onchain: "BTCオンチェーンデータ",
+    label_hashrate: "ハッシュレート",
+    label_active_addr: "アクティブアドレス数",
+    label_daily_tx: "日次取引件数",
+    label_defi_tvl: "ETH DeFi TVL",
+    label_7d_change: "7日変化",
+    section_etf: "ビットコイン現物ETF価格",
+    label_mempool_fee: "メンプール優先手数料",
+    section_coinmetrics: "BTCオンチェーン詳細指標 (CoinMetrics)",
+    section_cot: "CFTC COT スマートマネーポジション",
+    label_report_date: "報告日",
+    label_weekly: "週次",
+    label_asset_mgr_net: "アセットマネージャー純買い",
+    label_weekly_change: "週次変化",
+    label_leveraged_net: "レバレッジファンド純買い",
+    section_quarterly_basis: "BTC 四半期先物ベーシス",
+    label_annualized_return: "年率換算リターン",
+    basis_high: "ベーシス高：先物プレミアム顕著",
+    basis_normal: "ベーシス正常",
+    basis_low: "ベーシス極低またはマイナス（バックワーデーション）",
+    label_market_cautious: "市場警戒",
+    label_usd_weak: "ドル安（暗号資産に強気）",
+    label_us_equities: "米国株式市場",
+    label_extreme_fear: "極度の恐怖",
+    label_extreme_greed: "極度の強欲",
+    label_btc_dominant: "BTC強気、アルトコイン弱気",
+    label_alt_season: "アルトコインシーズン",
+    label_market_balanced: "市場均衡",
+    label_data_date: "データ基準日：",
+    section_news: "関連ニュース",
+    label_trade_analysis: "取引分析",
+    label_entry_signal: "エントリーシグナル",
+    label_exit_analysis: "決済分析",
+    msg_loading: "データ読み込み中",
+    msg_sentiment_fail: "センチメントデータの読み込みに失敗しました。しばらくしてから再試行してください。",
+    msg_after_deploy: "本番サーバーへのデプロイ後に有効化されます",
+    msg_ai_unavailable: "AI分析は一時的にご利用いただけません",
+    lang_label: "日",
+  },
+  "th": {
+    page_title: "OPN-201 · AI เทรดดิ้งอัตโนมัติ — Operon",
+    disclaimer: "ผลการดำเนินงานในอดีตไม่ได้รับประกันผลลัพธ์ในอนาคต การซื้อขายสกุลเงินดิจิทัลมีความเสี่ยงสูงและอาจสูญเสียเงินต้น",
+    hero_title: 'AI เทรดดิ้งอัตโนมัติ<br><span class="highlight">เอเจนต์</span>',
+    hero_subtitle: "AI trading agent อัตโนมัติเต็มรูปแบบสำหรับ crypto derivatives Zenith ตรวจสอบตลาดอย่างต่อเนื่อง สร้างมุมมองของตัวเองเกี่ยวกับ regime และความเสี่ยง ตัดสินใจว่าจะเทรดเมื่อใดและอย่างไร — และเรียนรู้จากทุกผลลัพธ์เพื่อปรับปรุงการตัดสินใจอย่างต่อเนื่อง",
+    hero_meta_period: 'ช่วงกลยุทธ์ <span>2026/01 — ปัจจุบัน</span>',
+    hero_meta_pairs: 'สินทรัพย์ <span>BTC · ETH · XRP · SOL · BNB</span>',
+    hero_meta_model: 'โมเดลหลัก <span>ZENITH v4.0</span>',
+    section_live_market: "ตลาดเรียลไทม์",
+    market_overview: "ภาพรวมตลาดคริปโต",
+    live_update: "อัปเดตเรียลไทม์",
+    updated_at: "อัปเดตเมื่อ",
+    th_pair: "สินทรัพย์",
+    th_price: "ราคาปัจจุบัน",
+    th_24h_change: "เปลี่ยนแปลง 24h",
+    th_funding_rate: "อัตราเงินทุน",
+    th_open_interest: "Open Interest",
+    th_ls_ratio: "Long/Short Ratio",
+    section_performance: "สรุปผลการเทรด",
+    stat_cumulative_return: "ผลตอบแทนสะสม",
+    stat_since: "ตั้งแต่ 2026/01/01",
+    stat_win_rate: "อัตราชนะ",
+    stat_win: "ชนะ",
+    stat_loss: "แพ้",
+    stat_closed_parens: "ปิดแล้ว",
+    stat_max_drawdown: "Max Drawdown",
+    stat_total_trades: "จำนวนเทรดทั้งหมด",
+    stat_all_closed: "ปิดทั้งหมดแล้ว",
+    stat_open_count: "รายการถือครอง",
+    chart_cumulative_return: "แนวโน้มผลตอบแทนสะสม",
+    chart_annualized: "ผลตอบแทนต่อปี",
+    chart_reset_zoom: "⟳ รีเซ็ต",
+    chart_vs_btc: "BTC Buy & Hold",
+    chart_calculating: "กำลังคำนวณ...",
+    chart_drag_hint: "← ลากเพื่อดูข้อมูลย้อนหลัง →",
+    chart_no_closed: "ยังไม่มีการปิดออร์เดอร์",
+    chart_label_return: "ผลตอบแทน",
+    chart_label_capital: "มูลค่าพอร์ต",
+    trades_title: "ประวัติการเทรด",
+    trades_unit: "รายการ",
+    th_date: "วันที่",
+    th_trade_pair: "คู่เทรด",
+    th_direction: "ทิศทาง",
+    th_entry: "ราคาเข้า",
+    th_exit: "ราคาออก",
+    th_return: "ผลตอบแทน",
+    th_status: "สถานะ",
+    status_open: "ถือครอง",
+    status_closed: "ปิดแล้ว",
+    btn_analysis: "ดูการวิเคราะห์",
+    btn_show_more: "แสดงเพิ่มเติม",
+    btn_back_grid: "กลับไปยังภาพรวมเอเจนต์",
+    btn_learn_nodes: "เรียนรู้เพิ่มเติมเกี่ยวกับโหนด",
+    btn_methodology: "วิธีการเทรด →",
+    dir_long: "▲ Long",
+    dir_short: "▼ Short",
+    dir_long_full: "▲ เปิด Long",
+    dir_short_full: "▼ เปิด Short",
+    open_dot: "• ถือครอง",
+    tab_technical: "เทคนิค",
+    tab_derivatives: "อนุพันธ์",
+    tab_sentiment: "อารมณ์ตลาด",
+    tab_news: "ข่าว",
+    signal_bullish: "สัญญาณขาขึ้น",
+    signal_bearish: "สัญญาณขาลง",
+    signal_neutral: "เป็นกลาง",
+    rsi_overbought: "ซื้อมากเกินไป",
+    rsi_oversold: "ขายมากเกินไป",
+    rsi_normal: "ช่วงปกติ",
+    label_rsi: "RSI (14)",
+    label_macd_hist: "MACD Histogram",
+    label_bollinger: "Bollinger Bands",
+    label_bb_position: "ตำแหน่งใน Bollinger",
+    label_volume: "ปริมาณซื้อขาย",
+    label_avg_vol: "ปริมาณเฉลี่ย",
+    label_vs_20d_vol: "เทียบค่าเฉลี่ย 20 วัน",
+    label_ma_alignment: "การเรียงตัวของ MA",
+    ma_bullish: "เรียงตัวขาขึ้น",
+    ma_bearish: "เรียงตัวขาลง",
+    ma_consolidation: "พักตัว",
+    label_close_vs_ma: "ราคาปิด vs MA20/50",
+    section_ma_values: "ค่า Moving Average",
+    label_bb_upper: "แบนด์บน",
+    label_bb_lower: "แบนด์ล่าง",
+    label_bb_mid: "แบนด์กลาง",
+    label_price_at: "ราคาอยู่ที่",
+    section_signal_summary: "สรุปสัญญาณ",
+    label_rsi_signal: "สัญญาณ RSI",
+    label_macd_signal: "สัญญาณ MACD",
+    label_ma1400_ratio: "อัตราส่วน MA 1400 วัน",
+    ma1400_below: "ต่ำกว่า MA ระยะยาว (แถวก้นตลาด)",
+    ma1400_above: "สูงกว่า MA ระยะยาวมาก (ร้อนแรงเกินไป)",
+    ma1400_normal: "ช่วง Uptrend ปกติ",
+    section_futures_data: "ข้อมูลสถานะ Futures",
+    label_funding_rate: "อัตราเงินทุน",
+    label_funding_rate_trend: "แนวโน้มอัตราเงินทุน",
+    label_oi_change: "การเปลี่ยนแปลง OI",
+    section_ls_ratio: "Long/Short Ratio",
+    label_global_ls: "Long/Short Ratio ภาพรวม",
+    label_top_account_ls: "อัตราส่วนบัญชีเทรดเดอร์รายใหญ่",
+    label_top_position_ls: "อัตราส่วนสถานะเทรดเดอร์รายใหญ่",
+    section_options: "ตลาด Options (Deribit)",
+    label_pc_ratio: "Put/Call Volume Ratio",
+    label_avg_iv: "Implied Volatility เฉลี่ย",
+    section_bybit: "เปรียบเทียบกับ Bybit",
+    label_bybit_fr: "อัตราเงินทุน Bybit",
+    label_bybit_oi: "Open Interest Bybit",
+    label_fr_signal: "สัญญาณอัตราเงินทุน",
+    label_rate: "อัตรา",
+    label_trend: "แนวโน้ม",
+    label_last5: "5 ครั้งล่าสุด",
+    label_10d_avg: "ค่าเฉลี่ย 10 วัน",
+    label_fear_greed: "ดัชนีความกลัว-โลภ",
+    label_btc_dominance: "BTC Dominance",
+    label_vix: "ดัชนี VIX",
+    label_dxy: "ดัชนีดอลลาร์ DXY",
+    label_gold: "ทองคำ",
+    label_btc_200w: "BTC MA 200 สัปดาห์",
+    label_near_ma: "ใกล้เส้น MA",
+    label_below_ma: "ต่ำกว่า MA (แถวก้นตลาด)",
+    label_above_ma: "สูงกว่า MA มาก (ร้อนแรงเกินไป)",
+    label_data_days: "จำนวนวันข้อมูล",
+    label_days: "วัน",
+    section_onchain: "ข้อมูล On-Chain BTC",
+    label_hashrate: "Hash Rate",
+    label_active_addr: "ที่อยู่ที่ใช้งานอยู่",
+    label_daily_tx: "ธุรกรรมต่อวัน",
+    label_defi_tvl: "ETH DeFi TVL",
+    label_7d_change: "เปลี่ยนแปลง 7 วัน",
+    section_etf: "ราคา Bitcoin Spot ETF",
+    label_mempool_fee: "ค่าธรรมเนียม Mempool",
+    section_coinmetrics: "ตัวชี้วัด On-Chain BTC เชิงลึก (CoinMetrics)",
+    section_cot: "สถานะ Smart Money CFTC COT",
+    label_report_date: "วันที่รายงาน",
+    label_weekly: "รายสัปดาห์",
+    label_asset_mgr_net: "สุทธิซื้อกองทุนสินทรัพย์",
+    label_weekly_change: "เปลี่ยนแปลงรายสัปดาห์",
+    label_leveraged_net: "สุทธิซื้อ Leveraged Fund",
+    section_quarterly_basis: "Basis สัญญา Futures รายไตรมาส BTC",
+    label_annualized_return: "ผลตอบแทนต่อปี",
+    basis_high: "Basis สูง: Futures ราคาสูงกว่า Spot ชัดเจน",
+    basis_normal: "Basis ปกติ",
+    basis_low: "Basis ต่ำมากหรือติดลบ (Backwardation)",
+    label_market_cautious: "ตลาดระวังตัว",
+    label_usd_weak: "ดอลลาร์อ่อนค่า (หนุนคริปโต)",
+    label_us_equities: "ตลาดหุ้นสหรัฐ",
+    label_extreme_fear: "กลัวสุดขีด",
+    label_extreme_greed: "โลภสุดขีด",
+    label_btc_dominant: "BTC แข็งแกร่ง Altcoin อ่อนแอ",
+    label_alt_season: "ฤดูกาล Altcoin",
+    label_market_balanced: "ตลาดสมดุล",
+    label_data_date: "วันที่ข้อมูล: ",
+    section_news: "ข่าวที่เกี่ยวข้อง",
+    label_trade_analysis: "การวิเคราะห์การเทรด",
+    label_entry_signal: "สัญญาณเข้าเปิด",
+    label_exit_analysis: "การวิเคราะห์การปิด",
+    msg_loading: "กำลังโหลดข้อมูล",
+    msg_sentiment_fail: "โหลดข้อมูลอารมณ์ตลาดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+    msg_after_deploy: "เปิดใช้งานหลังติดตั้งบนเซิร์ฟเวอร์จริง",
+    msg_ai_unavailable: "AI วิเคราะห์ไม่สามารถใช้งานได้ชั่วคราว",
+    lang_label: "ไทย",
+  },
+  "vi": {
+    page_title: "OPN-201 · AI Giao Dịch Tự Động — Operon",
+    disclaimer: "Hiệu suất trong quá khứ không đảm bảo kết quả trong tương lai. Giao dịch tiền mã hóa có rủi ro cao và có thể dẫn đến mất vốn.",
+    hero_title: 'AI Giao Dịch Tự Động<br><span class="highlight">Agent</span>',
+    hero_subtitle: "AI trading agent tự chủ hoàn toàn cho crypto derivatives. Zenith liên tục giám sát thị trường, tự hình thành quan điểm về regime và rủi ro, quyết định khi nào và cách giao dịch — và học hỏi từ mọi kết quả để hoàn thiện quyết định của mình theo thời gian.",
+    hero_meta_period: 'Giai đoạn chiến lược <span>2026/01 — Hiện tại</span>',
+    hero_meta_pairs: 'Tài sản giao dịch <span>BTC · ETH · XRP · SOL · BNB</span>',
+    hero_meta_model: 'Mô hình lõi <span>ZENITH v4.0</span>',
+    section_live_market: "Thị trường thực",
+    market_overview: "Tổng quan thị trường crypto",
+    live_update: "Cập nhật thực",
+    updated_at: "Cập nhật lúc",
+    th_pair: "Tài sản",
+    th_price: "Giá hiện tại",
+    th_24h_change: "Biến động 24h",
+    th_funding_rate: "Funding Rate",
+    th_open_interest: "Open Interest",
+    th_ls_ratio: "Tỷ lệ Long/Short",
+    section_performance: "Tổng quan hiệu suất",
+    stat_cumulative_return: "Lợi nhuận tích lũy",
+    stat_since: "Từ 2026/01/01",
+    stat_win_rate: "Tỷ lệ thắng",
+    stat_win: "Thắng",
+    stat_loss: "Thua",
+    stat_closed_parens: "Đã đóng",
+    stat_max_drawdown: "Drawdown tối đa",
+    stat_total_trades: "Tổng số giao dịch",
+    stat_all_closed: "Tất cả đã đóng",
+    stat_open_count: "lệnh đang giữ",
+    chart_cumulative_return: "Diễn biến lợi nhuận tích lũy",
+    chart_annualized: "Lợi nhuận quy năm",
+    chart_reset_zoom: "⟳ Đặt lại",
+    chart_vs_btc: "BTC Buy & Hold",
+    chart_calculating: "Đang tính toán...",
+    chart_drag_hint: "← Kéo để xem lịch sử →",
+    chart_no_closed: "Chưa có lệnh đóng",
+    chart_label_return: "Lợi nhuận",
+    chart_label_capital: "Quy mô vốn",
+    trades_title: "Lịch sử giao dịch",
+    trades_unit: "lệnh",
+    th_date: "Ngày",
+    th_trade_pair: "Cặp giao dịch",
+    th_direction: "Chiều",
+    th_entry: "Giá vào",
+    th_exit: "Giá ra",
+    th_return: "Lợi nhuận",
+    th_status: "Trạng thái",
+    status_open: "Đang giữ",
+    status_closed: "Đã đóng",
+    btn_analysis: "Xem phân tích",
+    btn_show_more: "Xem thêm",
+    btn_back_grid: "Quay lại tổng quan Agent",
+    btn_learn_nodes: "Tìm hiểu thêm về Node",
+    btn_methodology: "Phương pháp Giao dịch →",
+    dir_long: "▲ Long",
+    dir_short: "▼ Short",
+    dir_long_full: "▲ Vị thế Long",
+    dir_short_full: "▼ Vị thế Short",
+    open_dot: "• Đang giữ",
+    tab_technical: "Kỹ thuật",
+    tab_derivatives: "Phái sinh",
+    tab_sentiment: "Tâm lý thị trường",
+    tab_news: "Tin tức",
+    signal_bullish: "Tín hiệu tăng",
+    signal_bearish: "Tín hiệu giảm",
+    signal_neutral: "Trung lập",
+    rsi_overbought: "Vùng mua quá mức",
+    rsi_oversold: "Vùng bán quá mức",
+    rsi_normal: "Vùng bình thường",
+    label_rsi: "RSI (14)",
+    label_macd_hist: "MACD Histogram",
+    label_bollinger: "Bollinger Bands",
+    label_bb_position: "Vị trí trong Bollinger",
+    label_volume: "Khối lượng giao dịch",
+    label_avg_vol: "Khối lượng trung bình",
+    label_vs_20d_vol: "So với TB 20 ngày",
+    label_ma_alignment: "Sắp xếp đường MA",
+    ma_bullish: "Xếp thuận chiều tăng",
+    ma_bearish: "Xếp nghịch chiều giảm",
+    ma_consolidation: "Tích lũy",
+    label_close_vs_ma: "Giá đóng cửa vs MA20/50",
+    section_ma_values: "Giá trị Moving Average",
+    label_bb_upper: "Dải trên",
+    label_bb_lower: "Dải dưới",
+    label_bb_mid: "Dải giữa",
+    label_price_at: "Giá tại vị trí",
+    section_signal_summary: "Tổng hợp tín hiệu",
+    label_rsi_signal: "Tín hiệu RSI",
+    label_macd_signal: "Tín hiệu MACD",
+    label_ma1400_ratio: "Tỷ lệ MA 1400 ngày",
+    ma1400_below: "Dưới MA dài hạn (vùng đáy lịch sử)",
+    ma1400_above: "Vượt xa MA dài hạn (cảnh báo quá nhiệt)",
+    ma1400_normal: "Vùng uptrend bình thường",
+    section_futures_data: "Dữ liệu vị thế Futures",
+    label_funding_rate: "Funding Rate",
+    label_funding_rate_trend: "Xu hướng Funding Rate",
+    label_oi_change: "Thay đổi Open Interest",
+    section_ls_ratio: "Tỷ lệ Long/Short",
+    label_global_ls: "Tỷ lệ Long/Short toàn thị trường",
+    label_top_account_ls: "Tỷ lệ tài khoản trader lớn",
+    label_top_position_ls: "Tỷ lệ vị thế trader lớn",
+    section_options: "Thị trường Options (Deribit)",
+    label_pc_ratio: "Put/Call Volume Ratio",
+    label_avg_iv: "Implied Volatility trung bình",
+    section_bybit: "So sánh với Bybit",
+    label_bybit_fr: "Funding Rate Bybit",
+    label_bybit_oi: "Open Interest Bybit",
+    label_fr_signal: "Tín hiệu Funding Rate",
+    label_rate: "Tỷ lệ",
+    label_trend: "Xu hướng",
+    label_last5: "5 kỳ gần nhất",
+    label_10d_avg: "TB 10 ngày",
+    label_fear_greed: "Chỉ số sợ hãi & tham lam",
+    label_btc_dominance: "BTC Dominance",
+    label_vix: "Chỉ số VIX",
+    label_dxy: "Chỉ số DXY",
+    label_gold: "Vàng",
+    label_btc_200w: "Tỷ lệ MA 200 tuần BTC",
+    label_near_ma: "Gần đường MA",
+    label_below_ma: "Dưới đường MA (vùng đáy lịch sử)",
+    label_above_ma: "Vượt xa MA (quá nhiệt)",
+    label_data_days: "Số ngày dữ liệu",
+    label_days: "ngày",
+    section_onchain: "Dữ liệu On-Chain BTC",
+    label_hashrate: "Hash Rate",
+    label_active_addr: "Địa chỉ hoạt động",
+    label_daily_tx: "Giao dịch hằng ngày",
+    label_defi_tvl: "ETH DeFi TVL",
+    label_7d_change: "Thay đổi 7 ngày",
+    section_etf: "Giá Bitcoin Spot ETF",
+    label_mempool_fee: "Phí Mempool ưu tiên",
+    section_coinmetrics: "Chỉ số On-Chain BTC chuyên sâu (CoinMetrics)",
+    section_cot: "Vị thế Smart Money CFTC COT",
+    label_report_date: "Ngày báo cáo",
+    label_weekly: "Hàng tuần",
+    label_asset_mgr_net: "Mua ròng quỹ quản lý tài sản",
+    label_weekly_change: "Thay đổi tuần",
+    label_leveraged_net: "Mua ròng quỹ đòn bẩy",
+    section_quarterly_basis: "Basis hợp đồng Futures theo quý BTC",
+    label_annualized_return: "Lợi nhuận quy năm",
+    basis_high: "Basis cao: Futures đang có phần bù rõ ràng",
+    basis_normal: "Basis bình thường",
+    basis_low: "Basis rất thấp hoặc âm (Backwardation)",
+    label_market_cautious: "Thị trường thận trọng",
+    label_usd_weak: "Đô la yếu (hỗ trợ crypto)",
+    label_us_equities: "Chứng khoán Mỹ",
+    label_extreme_fear: "Sợ hãi cực độ",
+    label_extreme_greed: "Tham lam cực độ",
+    label_btc_dominant: "BTC mạnh, Altcoin yếu",
+    label_alt_season: "Mùa Altcoin",
+    label_market_balanced: "Thị trường cân bằng",
+    label_data_date: "Ngày dữ liệu: ",
+    section_news: "Tin tức liên quan",
+    label_trade_analysis: "Phân tích giao dịch",
+    label_entry_signal: "Tín hiệu vào lệnh",
+    label_exit_analysis: "Phân tích đóng lệnh",
+    msg_loading: "Đang tải dữ liệu",
+    msg_sentiment_fail: "Không tải được dữ liệu tâm lý thị trường. Vui lòng thử lại sau.",
+    msg_after_deploy: "Kích hoạt sau khi triển khai lên máy chủ chính thức",
+    msg_ai_unavailable: "Phân tích AI tạm thời không khả dụng",
+    lang_label: "VI",
+  }
+};
+
+function _detectLang() {
+  const saved = localStorage.getItem('opn301-lang');
+  if (saved && I18N[saved]) return saved;
+  const nav = navigator.language || '';
+  if (nav.startsWith('zh-CN') || nav === 'zh-SG') return 'zh-CN';
+  if (nav.startsWith('ko')) return 'ko';
+  if (nav.startsWith('ja')) return 'ja';
+  if (nav.startsWith('th')) return 'th';
+  if (nav.startsWith('vi')) return 'vi';
+  if (nav.startsWith('zh')) return 'zh-TW';
+  return 'en';
+}
+let _currentLang = _detectLang();
+
+function t(key) {
+  const pack = I18N[_currentLang] || I18N['zh-TW'];
+  return pack[key] !== undefined ? pack[key] : (I18N['zh-TW'][key] || key);
+}
+
+function signalLabel(s) {
+  const map = { bullish: 'signal_bullish', bearish: 'signal_bearish', neutral: 'signal_neutral' };
+  return t(map[s] || 'signal_neutral');
+}
+
+function tagHtmlI18n(s) {
+  return `<span class="signal-tag ${s}">${signalLabel(s)}</span>`;
+}
+
+function applyLanguage() {
+  // Update lang attribute
+  const htmlLang = _currentLang === 'en' ? 'en' : _currentLang === 'zh-CN' ? 'zh-CN' : _currentLang === 'ko' ? 'ko-KR' : _currentLang === 'ja' ? 'ja-JP' : _currentLang === 'th' ? 'th-TH' : _currentLang === 'vi' ? 'vi-VN' : 'zh-TW';
+  document.getElementById('html-root').lang = htmlLang;
+  // Page title
+  document.title = t('page_title');
+  // Update lang toggle button label
+  document.getElementById('lang-current').textContent = t('lang_label');
+  // Update active state on dropdown options
+  document.querySelectorAll('.lang-option').forEach(el => {
+    el.classList.toggle('active', el.dataset.lang === _currentLang);
+  });
+  // Static text elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  // HTML elements (with inner HTML like spans)
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    el.innerHTML = t(el.getAttribute('data-i18n-html'));
+  });
+  // Re-render trades table
+  if (typeof renderTable === 'function') renderTable();
+  // Re-render stats
+  if (typeof initChart === 'function' && PERF) updateStatsDisplay();
+  // Re-render modal if open
+  if (currentTrade && document.getElementById('analysis-modal').classList.contains('open')) {
+    loadAnalysisData(currentTrade);
+    // Re-render modal header
+    updateModalHeader(currentTrade);
+  }
+}
+
+function updateStatsDisplay() {
+  document.getElementById('stat-winrate-sub').textContent = `${PERF.wins} ${t('stat_win')} / ${PERF.losses} ${t('stat_loss')} (${t('stat_closed_parens')})`;
+  if (CHART_POINTS.length <= 1) {
+    document.getElementById('chart-period').textContent = t('chart_no_closed');
+  }
+  // Update total-sub based on open trades
+  const openCount = API_TRADES.filter(tr => tr.status === 'open').length;
+  const totalSub = document.getElementById('stat-total-sub');
+  if (totalSub) {
+    if (openCount > 0) {
+      totalSub.textContent = `${openCount} ${t('stat_open_count')}`;
+    } else {
+      totalSub.textContent = t('stat_all_closed');
+    }
+  }
+}
+
+function updateModalHeader(trade) {
+  const pnlHtml = trade.pnl !== null
+    ? `<span style="color:${trade.pnl>=0?'var(--green)':'var(--red)'};font-family:var(--mono);font-weight:700">${trade.pnl>=0?'+':''}${trade.pnl.toFixed(2)}%</span>`
+    : `<span class="status-badge holding" style="font-size:12px">${t('status_open')}</span>`;
+  document.getElementById('modal-trade-info').innerHTML = `
+    <span class="modal-pair">${trade.pair}</span>
+    <span class="dir-badge ${trade.dir}" style="font-size:12px">${trade.dir==='long'?t('dir_long_full'):t('dir_short_full')}</span>
+    ${pnlHtml}
+    <span class="modal-date">${formatDate(trade.date)}</span>
+  `;
+}
+
+function toggleLangDropdown() {
+  const btn = document.getElementById('lang-toggle');
+  const dd  = document.getElementById('lang-dropdown');
+  const isOpen = dd.classList.contains('open');
+  dd.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+}
+
+function selectLang(lang) {
+  _currentLang = lang;
+  localStorage.setItem('opn301-lang', lang);
+  document.getElementById('lang-dropdown').classList.remove('open');
+  document.getElementById('lang-toggle').classList.remove('open');
+  applyLanguage();
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.lang-select-wrap')) {
+    document.getElementById('lang-dropdown').classList.remove('open');
+    document.getElementById('lang-toggle').classList.remove('open');
+  }
+});
+
+/* ============================================================
+   API 交易數據（真實後台）
+   ============================================================ */
+let API_TRADES = [];
+
+
+/* ============================================================
+   CHART DATA & PERFORMANCE STATS（從 API_TRADES 動態計算）
+   ============================================================ */
+function calcPerfStats() {
+  const INITIAL = 1000000;
+  const closed = API_TRADES.filter(t => t.status === 'closed' && t.pnlUsdt != null)
+    .sort((a, b) => new Date(a.exitDate) - new Date(b.exitDate));
+
+  // 累計 PNL（USDT）→ 換算累計報酬率
+  const totalPnlUsdt = closed.reduce((s, t) => s + (t.pnlUsdt || 0), 0);
+  const totalReturn  = parseFloat((totalPnlUsdt / INITIAL * 100).toFixed(2));
+
+  // 勝率（以 pnlUsdt 判斷）
+  const wins   = closed.filter(t => (t.pnlUsdt || 0) > 0).length;
+  const losses = closed.filter(t => (t.pnlUsdt || 0) <= 0).length;
+  const winRate = closed.length > 0 ? parseFloat((wins / closed.length * 100).toFixed(1)) : 0;
+
+  // 最大回撤（以每日 NAV 計算，含當日所有已平倉交易）
+  const dailyPnlMdd = {};
+  closed.forEach(t => {
+    const d = t.exitDate.slice(0, 10);
+    dailyPnlMdd[d] = (dailyPnlMdd[d] || 0) + (t.pnlUsdt || 0);
+  });
+  let mddNav = INITIAL, peakNav = INITIAL, maxDD = 0, ddStart = '', ddEnd = '', ddStartCandidate = '';
+  const mddDates = Object.keys(dailyPnlMdd).sort();
+  mddDates.forEach(d => {
+    mddNav += dailyPnlMdd[d];
+    if (mddNav > peakNav) { peakNav = mddNav; ddStartCandidate = d; }
+    const dd = (mddNav - peakNav) / peakNav * 100;
+    if (dd < maxDD) { maxDD = dd; ddEnd = d; ddStart = ddStartCandidate; }
+  });
+
+  // 年化報酬
+  const startDate  = closed.length > 0 ? new Date(closed[0].exitDate) : new Date();
+  const endDate    = new Date();
+  const days       = Math.max(1, (endDate - startDate) / 86400000);
+  const annualized = parseFloat((totalReturn / days * 365).toFixed(1));
+
+  // Sharpe Ratio（日報酬率序列，√365 年化，Rf=0）
+  let sharpe = 0;
+  if (closed.length > 0 && days > 1) {
+    const dailyPnl = {};
+    closed.forEach(t => {
+      const d = t.exitDate.slice(0, 10);
+      dailyPnl[d] = (dailyPnl[d] || 0) + (t.pnlUsdt || 0);
+    });
+    const start = new Date(closed[0].exitDate.slice(0, 10) + 'T00:00:00Z');
+    const end   = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
+    const dailyReturns = [];
+    let nav = INITIAL;
+    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+      const key = d.toISOString().slice(0, 10);
+      const pnl = dailyPnl[key] || 0;
+      const prevNav = nav;
+      nav += pnl;
+      if (prevNav > 0) dailyReturns.push((nav - prevNav) / prevNav);
+    }
+    if (dailyReturns.length > 1) {
+      const mean = dailyReturns.reduce((s, v) => s + v, 0) / dailyReturns.length;
+      const variance = dailyReturns.reduce((s, v) => s + (v - mean) ** 2, 0) / (dailyReturns.length - 1);
+      const std = Math.sqrt(variance);
+      if (std > 0) sharpe = parseFloat((mean / std * Math.sqrt(365)).toFixed(2));
+    }
+  }
+
+  // 累計報酬走勢（$1,000,000 為起點，每筆平倉後加 pnlUsdt 換算 %）
+  // Build daily chart points (one point per calendar day)
+  const firstDate = closed.length > 0 ? closed[0].exitDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const dailyCum = {};
+  let running = 0;
+  closed.forEach(t => {
+    running += (t.pnlUsdt || 0) / INITIAL * 100;
+    dailyCum[t.exitDate.slice(0, 10)] = parseFloat(running.toFixed(2));
+  });
+  const CHART_POINTS = [];
+  let lastVal = 0;
+  const startD = new Date(firstDate + 'T00:00:00Z');
+  const endD = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
+  for (let d = new Date(startD); d <= endD; d.setUTCDate(d.getUTCDate() + 1)) {
+    const key = d.toISOString().slice(0, 10);
+    if (dailyCum[key] !== undefined) lastVal = dailyCum[key];
+    CHART_POINTS.push({ d: key, v: lastVal });
+  }
+
+  return { totalReturn, totalPnlUsdt: parseFloat(totalPnlUsdt.toFixed(2)),
+           wins, losses, winRate, maxDD: parseFloat(maxDD.toFixed(2)),
+           ddStart, ddEnd, annualized, sharpe, CHART_POINTS, total: closed.length };
+}
+
+let PERF = calcPerfStats();
+let CHART_POINTS = PERF.CHART_POINTS;
+
+/* ============================================================
+   TA CALCULATIONS
+   ============================================================ */
+function calcEMA(data, period) {
+  const k = 2 / (period + 1);
+  const ema = [data[0]];
+  for (let i = 1; i < data.length; i++) {
+    ema.push(data[i] * k + ema[i - 1] * (1 - k));
+  }
+  return ema;
+}
+
+function calcSMA(data, period) {
+  const result = [];
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) { result.push(null); continue; }
+    const slice = data.slice(i - period + 1, i + 1);
+    result.push(slice.reduce((a, b) => a + b, 0) / period);
+  }
+  return result;
+}
+
+function calcRSI(closes, period = 14) {
+  if (closes.length < period + 1) return null;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff > 0) gains += diff; else losses -= diff;
+  }
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+  for (let i = period + 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(diff, 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-diff, 0)) / period;
+  }
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - 100 / (1 + rs);
+}
+
+function calcMACD(closes) {
+  if (closes.length < 26) return null;
+  const ema12 = calcEMA(closes, 12);
+  const ema26 = calcEMA(closes, 26);
+  const macdLine = ema12.map((v, i) => v - ema26[i]);
+  const signal = calcEMA(macdLine.slice(25), 9);
+  const lastMACD = macdLine[macdLine.length - 1];
+  const lastSignal = signal[signal.length - 1];
+  return { macd: lastMACD, signal: lastSignal, hist: lastMACD - lastSignal };
+}
+
+function calcBollinger(closes, period = 20) {
+  if (closes.length < period) return null;
+  const slice = closes.slice(-period);
+  const mean = slice.reduce((a, b) => a + b, 0) / period;
+  const variance = slice.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period;
+  const std = Math.sqrt(variance);
+  return { upper: mean + 2 * std, mid: mean, lower: mean - 2 * std };
+}
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function fmt(n, decimals = 2) {
+  if (n === null || n === undefined) return '—';
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function fmtPrice(n, sym) {
+  if (!n) return '—';
+  const decimals = sym && sym.includes('XRP') ? 4 : sym && (sym.includes('SOL') || sym.includes('BNB')) ? 2 : 0;
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function dateToMs(dateStr) { return new Date(dateStr + 'T00:00:00Z').getTime(); }
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  const locale = _currentLang === 'en' ? 'en-US' : _currentLang === 'zh-CN' ? 'zh-CN' : _currentLang === 'ko' ? 'ko-KR' : _currentLang === 'ja' ? 'ja-JP' : _currentLang === 'th' ? 'th-TH' : _currentLang === 'vi' ? 'vi-VN' : 'zh-TW';
+  return d.toLocaleDateString(locale, { month: '2-digit', day: '2-digit', year: 'numeric' });
+}
+
+function pnlColor(v) {
+  if (v === null) return 'var(--text-muted)';
+  return v >= 0 ? 'var(--ice)' : 'var(--red)';
+}
+
+function placeholder(h = 20, w = '100%') {
+  return `<div class="placeholder-block" style="height:${h}px;width:${w};border-radius:5px;"></div>`;
+}
+
+/* ============================================================
+   API FETCHERS
+   ============================================================ */
+async function safeFetch(url, timeout = 8000) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeout) });
+    if (!res.ok) throw new Error(res.status);
+    return await res.json();
+  } catch { return null; }
+}
+
+
+async function fetchKlines(symbol, date, limit = 250) {
+  const end = dateToMs(date) + 86400000;
+  const start = end - limit * 86400000;
+  const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1d&startTime=${start}&endTime=${end}&limit=${limit}`;
+  return safeFetch(url);
+}
+
+async function fetchFundingRate(symbol, date) {
+  const start = dateToMs(date) - 86400000;
+  const end = dateToMs(date) + 86400000;
+  const url = `https://fapi.binance.com/fapi/v1/fundingRate?symbol=${symbol}&startTime=${start}&endTime=${end}&limit=10`;
+  return safeFetch(url);
+}
+
+async function fetchOI(symbol, date) {
+  const start = dateToMs(date) - 86400000 * 3;
+  const end = dateToMs(date) + 86400000;
+  const url = `https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=1d&startTime=${start}&endTime=${end}&limit=5`;
+  return safeFetch(url);
+}
+
+async function fetchLSRatio(symbol, date) {
+  const start = dateToMs(date) - 86400000;
+  const end = dateToMs(date) + 86400000;
+  const url = `https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=${symbol}&period=1d&startTime=${start}&endTime=${end}&limit=3`;
+  return safeFetch(url);
+}
+
+async function fetchTopTrader(symbol, date) {
+  const start = dateToMs(date) - 86400000;
+  const end = dateToMs(date) + 86400000;
+  const url = `https://fapi.binance.com/futures/data/topLongShortPositionRatio?symbol=${symbol}&period=1d&startTime=${start}&endTime=${end}&limit=3`;
+  return safeFetch(url);
+}
+
+async function fetchFearGreed(date) {
+  // Fetch last 365 days and find closest to date
+  const data = await safeFetch('https://api.alternative.me/fng/?limit=365');
+  if (!data || !data.data) return null;
+  const target = new Date(date).getTime() / 1000;
+  let closest = data.data[0];
+  let minDiff = Infinity;
+  for (const item of data.data) {
+    const diff = Math.abs(parseInt(item.timestamp) - target);
+    if (diff < minDiff) { minDiff = diff; closest = item; }
+  }
+  return closest;
+}
+
+async function fetchGlobal() {
+  return safeFetch('https://api.coingecko.com/api/v3/global');
+}
+
+async function fetchDeribit(currency) {
+  const cur = currency.replace('USDT', '');
+  if (!['BTC', 'ETH'].includes(cur)) return null;
+  return safeFetch(`https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=${cur}&kind=option`);
+}
+
+async function fetchNews(symbol, date) {
+  return null;
+}
+
+async function fetchBybitFunding(symbol) {
+  const url = `https://api.bybit.com/v5/market/funding/history?category=linear&symbol=${symbol}&limit=3`;
+  return safeFetch(url);
+}
+
+async function fetchBybitOI(symbol) {
+  const url = `https://api.bybit.com/v5/market/open-interest?category=linear&symbol=${symbol}&intervalTime=1d&limit=2`;
+  return safeFetch(url);
+}
+
+async function fetchOnChain(symbol, date) {
+  const asset = symbol.replace('USDT', '').toLowerCase();
+  if (!['btc', 'eth'].includes(asset)) return null;
+  const start = new Date(new Date(date).getTime() - 7 * 86400000).toISOString().split('T')[0];
+  const metrics = asset === 'btc' ? 'HashRate,AdrActCnt,NVTAdj,SOPR' : 'AdrActCnt,NVTAdj';
+  const url = `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=${asset}&metrics=${metrics}&start_time=${start}T00:00:00Z&end_time=${date}T23:59:59Z&page_size=10`;
+  return safeFetch(url);
+}
+
+async function fetchMempool() {
+  return safeFetch('https://mempool.space/api/v1/fees/recommended');
+}
+
+// CoinMetrics: NUPL / MVRV / Puell Multiple / 算力環（需 400 天 IssTotUSD 計算 365MA）
+async function fetchCoinMetricsExtended(symbol, date) {
+  const asset = symbol.replace('USDT', '').toLowerCase();
+  if (!['btc', 'eth'].includes(asset)) return null;
+  const days  = asset === 'btc' ? 400 : 30;
+  const start = new Date(new Date(date).getTime() - days * 86400000).toISOString().split('T')[0];
+  const metrics = 'HashRate';
+  const url = `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=${asset}&metrics=${metrics}&start_time=${start}T00:00:00Z&end_time=${date}T23:59:59Z&page_size=400`;
+  return safeFetch(url);
+}
+
+// DeFiLlama: Ethereum DeFi TVL（ETH 交易專用）
+async function fetchDeFiTVL() {
+  return safeFetch('https://api.llama.fi/v2/historicalChainTvl/Ethereum');
+}
+
+async function fetchFRED(series, date) {
+  return null;
+}
+
+async function fetchYahooMacro() {
+  // Yahoo Finance: DXY index + 10Y Treasury yield (no key, CORS-friendly)
+  const [dxyRaw, yldRaw] = await Promise.all([
+    safeFetch('https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?interval=1d&range=5d'),
+    safeFetch('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d'),
+  ]);
+  const dxy = dxyRaw && dxyRaw.chart && dxyRaw.chart.result && dxyRaw.chart.result[0]
+    ? dxyRaw.chart.result[0].meta.regularMarketPrice : null;
+  const yld = yldRaw && yldRaw.chart && yldRaw.chart.result && yldRaw.chart.result[0]
+    ? yldRaw.chart.result[0].meta.regularMarketPrice : null;
+  return { dxy, yld };
+}
+
+/* ============================================================
+   MARKET PANEL
+   ============================================================ */
+async function updateMarketPanel() {
+  const coins = [
+    { sym: 'BTCUSDT', id: 'btc', dec: 0 },
+    { sym: 'ETHUSDT', id: 'eth', dec: 0 },
+    { sym: 'XRPUSDT', id: 'xrp', dec: 4 },
+    { sym: 'SOLUSDT', id: 'sol', dec: 2 },
+    { sym: 'BNBUSDT', id: 'bnb', dec: 2 },
+  ];
+
+  for (const { sym, id, dec } of coins) {
+    // Fetch Binance + Bybit in parallel (Bybit as fallback)
+    const [ticker, premium, oi, ls, bybitTick] = await Promise.all([
+      safeFetch(`https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=${sym}`),
+      safeFetch(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${sym}`),
+      safeFetch(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${sym}`),
+      safeFetch(`https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=${sym}&period=5m&limit=1`),
+      safeFetch(`https://api.bybit.com/v5/market/tickers?category=linear&symbol=${sym}`),
+    ]);
+
+    const bb = bybitTick && bybitTick.result && bybitTick.result.list && bybitTick.result.list[0];
+
+    // ── Price & 24h change (Binance → Bybit fallback) ──
+    const price = ticker ? parseFloat(ticker.lastPrice)
+                         : bb    ? parseFloat(bb.lastPrice)   : null;
+    const chg   = ticker ? parseFloat(ticker.priceChangePercent)
+                         : bb    ? parseFloat(bb.price24hPcnt) * 100 : null;
+    if (price !== null) {
+      document.getElementById(`mp-${id}-price`).innerHTML =
+        `<span style="font-family:var(--mono)">$${price.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec})}</span>`;
+    }
+    if (chg !== null) {
+      document.getElementById(`mp-${id}-change`).innerHTML =
+        `<span style="color:${chg>=0?'var(--green)':'var(--red)'};">${chg>=0?'+':''}${chg.toFixed(2)}%</span>`;
+    }
+
+    // ── Funding rate (Binance → Bybit fallback) ──
+    const fr = premium ? parseFloat(premium.lastFundingRate) * 100
+                       : bb     ? parseFloat(bb.fundingRate)  * 100 : null;
+    if (fr !== null) {
+      document.getElementById(`mp-${id}-fr`).innerHTML =
+        `<span style="color:${fr>=0?'var(--green)':'var(--red)'};font-family:var(--mono)">${fr>=0?'+':''}${fr.toFixed(4)}%</span>`;
+    }
+
+    // ── Open Interest (Binance → Bybit openInterestValue fallback) ──
+    let oiStr = null;
+    if (oi && price) {
+      const v = parseFloat(oi.openInterest) * price;
+      oiStr = v > 1e9 ? '$'+(v/1e9).toFixed(2)+'B' : '$'+(v/1e6).toFixed(1)+'M';
+    } else if (bb && bb.openInterestValue) {
+      const v = parseFloat(bb.openInterestValue);
+      oiStr = v > 1e9 ? '$'+(v/1e9).toFixed(2)+'B' : '$'+(v/1e6).toFixed(1)+'M';
+    }
+    if (oiStr) {
+      document.getElementById(`mp-${id}-oi`).innerHTML =
+        `<span style="font-family:var(--mono)">${oiStr}</span>`;
+    }
+
+    // ── Long/Short ratio (Binance only) ──
+    if (ls && ls.length > 0) {
+      const ratio    = parseFloat(ls[0].longShortRatio);
+      const longPct  = (ratio / (1 + ratio) * 100).toFixed(1);
+      const shortPct = (100 - parseFloat(longPct)).toFixed(1);
+      document.getElementById(`mp-${id}-ls`).innerHTML =
+        `<span style="font-family:var(--mono);color:var(--ice)">${longPct}%</span>`+
+        `<span style="color:var(--text-muted);font-family:var(--mono)"> / </span>`+
+        `<span style="font-family:var(--mono);color:var(--red)">${shortPct}%</span>`;
+    }
+  }
+
+  const now = new Date();
+  const locale = _currentLang === 'en' ? 'en-US' : _currentLang === 'zh-CN' ? 'zh-CN' : _currentLang === 'ko' ? 'ko-KR' : _currentLang === 'ja' ? 'ja-JP' : _currentLang === 'th' ? 'th-TH' : _currentLang === 'vi' ? 'vi-VN' : 'zh-TW';
+  document.getElementById('last-update').textContent =
+    t('updated_at') + ' ' + now.toLocaleTimeString(locale, { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+/* ============================================================
+   WEBSOCKET — 即時價格推送
+   ============================================================ */
+const _mpPrev = {};
+
+function flashCell(el, dir) {
+  el.classList.remove('flash-up', 'flash-down');
+  void el.offsetWidth;
+  el.classList.add(dir === 'up' ? 'flash-up' : 'flash-down');
+}
+
+function initMarketWebSocket() {
+  const streams = ['btcusdt','ethusdt','xrpusdt','solusdt','bnbusdt']
+    .map(s => `${s}@miniTicker`).join('/');
+  const ws = new WebSocket(`wss://fstream.binance.com/stream?streams=${streams}`);
+
+  const decMap = { BTCUSDT:0, ETHUSDT:0, XRPUSDT:4, SOLUSDT:2, BNBUSDT:2 };
+  const idMap  = { BTCUSDT:'btc', ETHUSDT:'eth', XRPUSDT:'xrp', SOLUSDT:'sol', BNBUSDT:'bnb' };
+
+  ws.onmessage = ({ data }) => {
+    const msg = JSON.parse(data).data;
+    if (!msg || !msg.s) return;
+
+    const sym   = msg.s;
+    const id    = idMap[sym];
+    const dec   = decMap[sym];
+    const price = parseFloat(msg.c);
+    const open  = parseFloat(msg.o);
+    const chg   = (price - open) / open * 100;
+    if (!id) return;
+
+    const priceEl = document.getElementById(`mp-${id}-price`);
+    if (priceEl) {
+      const prev = _mpPrev[sym];
+      const dir  = prev === undefined ? null : price > prev ? 'up' : price < prev ? 'down' : null;
+      priceEl.innerHTML =
+        `<span style="font-family:var(--mono)">$${price.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec})}</span>`;
+      if (dir) flashCell(priceEl, dir);
+      _mpPrev[sym] = price;
+    }
+
+    const chgEl = document.getElementById(`mp-${id}-change`);
+    if (chgEl) {
+      chgEl.innerHTML =
+        `<span style="color:${chg>=0?'var(--green)':'var(--red)'};">${chg>=0?'+':''}${chg.toFixed(2)}%</span>`;
+    }
+
+    const wsLocale = _currentLang === 'en' ? 'en-US' : _currentLang === 'zh-CN' ? 'zh-CN' : _currentLang === 'ko' ? 'ko-KR' : _currentLang === 'ja' ? 'ja-JP' : _currentLang === 'th' ? 'th-TH' : _currentLang === 'vi' ? 'vi-VN' : 'zh-TW';
+    document.getElementById('last-update').textContent =
+      t('updated_at') + ' ' + new Date().toLocaleTimeString(wsLocale, { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  };
+
+  ws.onclose = () => setTimeout(initMarketWebSocket, 3000);
+  ws.onerror = () => ws.close();
+  return ws;
+}
+
+/* ============================================================
+   CHART
+   ============================================================ */
+
+// 數字動態滾動
+function animateCounter(el, target, duration=1600, prefix='+', suffix='%') {
+  const start = performance.now();
+  function step(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const val = (target * ease).toFixed(1);
+    el.textContent = (parseFloat(val) >= 0 ? prefix : '') + val + suffix;
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+
+async function initChart() {
+  if (window._returnChart) { window._returnChart.destroy(); window._returnChart = null; }
+  const ctx = document.getElementById('return-chart').getContext('2d');
+
+  // 績效總覽卡片
+  const fmtDate = d => { if(!d) return '—'; const dt=new Date(d); return `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`; };
+  document.getElementById('stat-return').textContent   = (PERF.totalReturn >= 0 ? '+' : '') + PERF.totalReturn.toFixed(1) + '%';
+  document.getElementById('stat-winrate').textContent  = PERF.winRate.toFixed(1) + '%';
+  document.getElementById('stat-winrate-sub').textContent = `${PERF.wins} ${t('stat_win')} / ${PERF.losses} ${t('stat_loss')} (${t('stat_closed_parens')})`;
+  document.getElementById('stat-mdd').textContent      = (PERF.maxDD >= 0 ? '+' : '') + PERF.maxDD.toFixed(1) + '%';
+  document.getElementById('stat-mdd-sub').textContent  = PERF.ddStart ? `${fmtDate(PERF.ddStart)} — ${fmtDate(PERF.ddEnd)}` : '—';
+  document.getElementById('stat-total').textContent    = PERF.total;
+  document.getElementById('stat-annualized').textContent = (PERF.annualized >= 0 ? '+' : '') + PERF.annualized.toFixed(1) + '%';
+  document.getElementById('stat-sharpe').textContent   = PERF.sharpe;
+  // 日期範圍：第一筆平倉 → 今天
+  if (CHART_POINTS.length > 1) {
+    const startD = new Date(CHART_POINTS[0].d);
+    const endD   = new Date();
+    const fmt = d => `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+    document.getElementById('chart-period').textContent = `${fmt(startD)} — ${fmt(endD)}`;
+  } else {
+    document.getElementById('chart-period').textContent = t('chart_no_closed');
+  }
+
+  // 圖表標題動態數字
+  const returnEl = document.getElementById('chart-return-num');
+  animateCounter(returnEl, PERF.totalReturn);
+
+  // 抓 BTC 歷史價格做基準
+  const startMs = new Date('2026-01-01').getTime();
+  const endMs   = new Date().getTime();
+  let btcData = null;
+  try {
+    const raw = await safeFetch(`https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1d&startTime=${startMs}&endTime=${endMs}&limit=200`);
+    if (raw) {
+      const kmap = {};
+      raw.forEach(k => { kmap[new Date(k[0]).toISOString().split('T')[0]] = parseFloat(k[4]); });
+      const firstK = raw.find(k => new Date(k[0]).toISOString().split('T')[0] === '2026-01-01');
+      const base = firstK ? parseFloat(firstK[1]) : (kmap['2026-01-01'] || Object.values(kmap)[0]);
+      btcData = CHART_POINTS.map(p => {
+        const price = kmap[p.d];
+        return price != null ? +((price - base) / base * 100).toFixed(2) : null;
+      });
+      const btcFinal = btcData[btcData.length - 1];
+      document.getElementById('chart-btc-diff').textContent =
+        (btcFinal >= 0 ? '+' : '') + btcFinal.toFixed(1) + '%';
+
+      // Alpha = Strategy Return - BTC Buy & Hold Return (simple excess return)
+      const alpha = PERF.totalReturn - btcFinal;
+      const alphaStr = alpha.toFixed(1);
+      document.getElementById('stat-alpha').textContent =
+        (alpha >= 0 ? '+' : '') + alphaStr + '%';
+    }
+  } catch(e) {}
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+  gradient.addColorStop(0, 'rgba(37,99,235,0.25)');
+  gradient.addColorStop(1, 'rgba(37,99,235,0)');
+
+  // Show last N points by default (for pan support)
+  const PAN_WINDOW = 60; // points visible at once
+  const totalPts = CHART_POINTS.length;
+  const xMinIdx = Math.max(0, totalPts - PAN_WINDOW);
+  const xMaxIdx = totalPts - 1;
+
+  window._returnChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: CHART_POINTS.map(p => {
+        const d = new Date(p.d);
+        return (d.getMonth()+1) + '/' + d.getDate();
+      }),
+      datasets: [{
+        label: t('chart_label_return'),
+        data: CHART_POINTS.map(p => p.v),
+        borderColor: '#93C5FD',
+        borderWidth: 2,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBackgroundColor: '#93C5FD',
+        pointBorderColor: '#060B14',
+        pointBorderWidth: 2,
+        pointHoverRadius: 5,
+        yAxisID: 'y',
+      },{
+        label: t('chart_label_capital'),
+        data: CHART_POINTS.map(p => 1000000 * (1 + p.v / 100)),
+        borderColor: '#BFDBFE',
+        borderWidth: 1.5,
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointBackgroundColor: '#BFDBFE',
+        borderDash: [4, 3],
+        yAxisID: 'y2',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'x',
+            onPanStart: () => {
+              document.getElementById('chart-pan-hint').style.display = 'none';
+              document.getElementById('return-chart').style.cursor = 'grabbing';
+            },
+            onPanComplete: () => { document.getElementById('return-chart').style.cursor = 'grab'; },
+          },
+          limits: {
+            x: { minRange: 10 }
+          }
+        },
+        tooltip: {
+          backgroundColor: '#0b0f1c',
+          borderColor: 'rgba(147,197,253,0.3)',
+          borderWidth: 1,
+          titleColor: 'rgba(248,250,255,0.5)',
+          bodyFont: { family: "'DM Mono', monospace", size: 12, weight: '600' },
+          callbacks: {
+            label: ctx => {
+              if (ctx.datasetIndex === 0) return ' ' + t('chart_label_return') + ': ' + (ctx.raw >= 0 ? '+' : '') + ctx.raw.toFixed(1) + '%';
+              if (ctx.datasetIndex === 1) return ' ' + t('chart_label_capital') + ': $' + Math.round(ctx.raw).toLocaleString() + ' USDT';
+              return null;
+            },
+            labelColor: ctx => {
+              const c = ctx.datasetIndex === 0 ? '#FFCC00' : '#00F2FF';
+              return { borderColor: c, backgroundColor: c };
+            }
+          }
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          ticks: { color: 'rgba(139,163,199,0.6)', font: { family: "'DM Mono'", size: 10 }, maxTicksLimit: 7 },
+          border: { display: false },
+          min: (d => (d.getMonth()+1) + '/' + d.getDate())(new Date(CHART_POINTS[xMinIdx].d)),
+          max: (d => (d.getMonth()+1) + '/' + d.getDate())(new Date(CHART_POINTS[xMaxIdx].d)),
+        },
+        y: {
+          position: 'left',
+          grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          ticks: {
+            color: 'rgba(139,163,199,0.6)',
+            font: { family: "'DM Mono'", size: 10 },
+            callback: v => (v >= 0 ? '+' : '') + v + '%'
+          },
+          border: { display: false },
+        },
+        y2: {
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: {
+            color: 'rgba(147,197,253,0.5)',
+            font: { family: "'DM Mono'", size: 10 },
+            callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'K' : v)
+          },
+          border: { display: false },
+        }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   TRADES TABLE
+   ============================================================ */
+const TRADES_PAGE_SIZE = 20;
+let currentPage = 1;
+
+function goToPage(page) {
+  currentPage = page;
+  renderTable();
+  document.querySelector('.trades-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderPagination(total) {
+  const el = document.getElementById('trades-pagination');
+  if (!el) return;
+  const totalPages = Math.ceil(total / TRADES_PAGE_SIZE);
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+  const btnStyle = (active) => `background:${active ? 'rgba(37,99,235,0.25)' : 'rgba(255,255,255,0.06)'};border:1px solid ${active ? 'rgba(147,197,253,0.35)' : 'rgba(255,255,255,0.1)'};color:${active ? 'var(--ice)' : 'var(--text-dim)'};padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--mono);min-width:36px;`;
+  let html = '';
+  // prev
+  if (currentPage > 1) html += `<button onclick="goToPage(${currentPage - 1})" style="${btnStyle(false)}">←</button>`;
+  // page numbers
+  for (let i = 1; i <= totalPages; i++) {
+    if (totalPages <= 7 || i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1) {
+      html += `<button onclick="goToPage(${i})" style="${btnStyle(i === currentPage)}">${i}</button>`;
+    } else if (i === currentPage - 2 || i === currentPage + 2) {
+      html += `<span style="color:var(--text-muted);font-size:12px;">…</span>`;
+    }
+  }
+  // next
+  if (currentPage < totalPages) html += `<button onclick="goToPage(${currentPage + 1})" style="${btnStyle(false)}">→</button>`;
+  el.innerHTML = html;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('trades-tbody');
+  const all = getAllTrades();
+  const badge = document.getElementById('trades-count-badge');
+  if (badge) badge.textContent = all.length + ' ' + t('trades_unit');
+  const open = all.filter(tr => tr.status === 'open').sort((a,b) => new Date(b.date) - new Date(a.date));
+  const closed = all.filter(tr => tr.status !== 'open').sort((a,b) => new Date(b.date) - new Date(a.date));
+  const sorted = [...open, ...closed];
+  const start = (currentPage - 1) * TRADES_PAGE_SIZE;
+  const visible = sorted.slice(start, start + TRADES_PAGE_SIZE);
+  renderPagination(sorted.length);
+  tbody.innerHTML = visible.map(tr => {
+    const pnlHtml = tr.pnl !== null
+      ? `<span style="color:${tr.pnl>=0?'var(--green)':'var(--red)'}">${tr.pnl>=0?'+':''}${tr.pnl.toFixed(2)}%</span>`
+      : `<span style="color:var(--text-muted)">—</span>`;
+
+    const statusHtml = tr.status === 'open' || tr.status === 'holding'
+      ? `<span class="status-badge holding">${t('status_open')}</span>`
+      : `<span class="status-badge closed">${t('status_closed')}</span>`;
+
+    const exitHtml = tr.exit !== null ? fmtPrice(tr.exit, tr.symbol) : '—';
+
+    if (tr.status === 'open') {
+      return `
+      <tr onclick="openModal('${tr.id}')">
+        <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">
+          ${formatDate(tr.date)}
+        </td>
+        <td><div class="pair-cell"><span style="font-size:13px">${tr.pair}</span></div></td>
+        <td><span class="dir-badge ${tr.dir}">${tr.dir === 'long' ? t('dir_long') : t('dir_short')}</span></td>
+        <td></td><td></td><td></td><td></td>
+        <td>${statusHtml}</td>
+        <td>
+          <button class="analysis-btn" onclick="event.stopPropagation();openModal('${tr.id}')">
+            ${t('btn_analysis')}
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 8h10M9 4l4 4-4 4"/>
+            </svg>
+          </button>
+        </td>
+      </tr>`;
+    }
+
+    return `
+      <tr onclick="openModal('${tr.id}')">
+        <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">
+          ${formatDate(tr.date)}
+          ${tr.exitDate ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">→ ${formatDate(tr.exitDate)}</div>` : ''}
+        </td>
+        <td><div class="pair-cell">
+          <span style="font-size:13px">${tr.pair}</span>
+        </div></td>
+        <td><span class="dir-badge ${tr.dir}">${tr.dir === 'long' ? t('dir_long') : t('dir_short')}</span></td>
+        <td class="price-cell">${fmtPrice(tr.entry, tr.symbol)}</td>
+        <td class="price-cell">${exitHtml}</td>
+        <td class="price-cell" style="font-family:var(--mono);font-size:12px;">${tr.pnlUsdt != null ? `<span style="color:${tr.pnlUsdt>=0?'var(--green)':'var(--red)'}">${tr.pnlUsdt>=0?'+':''}${tr.pnlUsdt.toLocaleString()} USDT</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td class="pnl-cell">${pnlHtml}</td>
+        <td>${statusHtml}</td>
+        <td>
+          <button class="analysis-btn" onclick="event.stopPropagation();openModal('${tr.id}')">
+            ${t('btn_analysis')}
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 8h10M9 4l4 4-4 4"/>
+            </svg>
+          </button>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+let currentTrade = null;
+
+function openModal(tradeId) {
+  currentTrade = getAllTrades().find(t => String(t.id) === String(tradeId));
+  if (!currentTrade) return;
+
+  // Header info
+  updateModalHeader(currentTrade);
+
+  // Reset tabs
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelector('.tab-btn[data-tab="technical"]').classList.add('active');
+  document.getElementById('tab-technical').classList.add('active');
+  document.getElementById('tab-opn301').innerHTML = '';
+
+  // Show loading skeletons
+  showSkeletons();
+
+  // Open overlay
+  document.getElementById('analysis-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Fetch all data in parallel
+  loadAnalysisData(currentTrade);
+}
+
+function closeModal() {
+  document.getElementById('analysis-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
+  document.getElementById(`tab-${tabName}`).classList.add('active');
+}
+
+function showSkeletons() {
+  document.getElementById('tab-technical').innerHTML = skeletonTech();
+  document.getElementById('tab-derivatives').innerHTML = skeletonBlock();
+  document.getElementById('tab-sentiment').innerHTML = skeletonBlock();
+  document.getElementById('tab-news').innerHTML = skeletonBlock();
+  document.getElementById('tab-opn301').innerHTML = skeletonBlock();
+}
+
+function skeletonTech() {
+  return `<div class="analysis-grid">
+    ${[1,2,3,4,5,6].map(()=>`<div class="skeleton" style="height:72px;border-radius:8px;"></div>`).join('')}
+  </div>
+  <div class="skeleton" style="height:16px;width:40%;margin-bottom:12px;"></div>
+  ${[1,2,3].map(()=>`<div class="skeleton" style="height:36px;margin-bottom:8px;border-radius:6px;"></div>`).join('')}`;
+}
+
+function skeletonBlock() {
+  return `<div class="skeleton" style="height:16px;width:40%;margin-bottom:16px;border-radius:6px;"></div>
+  ${[1,2,3,4].map(()=>`<div class="skeleton" style="height:44px;margin-bottom:8px;border-radius:6px;"></div>`).join('')}`;
+}
+
+/* ============================================================
+   SNAPSHOT-BASED RENDERING（API trades — reads from DB）
+   ============================================================ */
+
+function loadFromSnapshot(trade) {
+  let snapshot = {};
+  try { snapshot = JSON.parse(trade.marketSnapshot); } catch(e) {}
+  const symData = snapshot[trade.symbol] || {};
+  const dateNote = `<div style="font-size:11px;color:var(--text-muted);text-align:right;margin-bottom:12px;opacity:0.7;">${t('label_data_date')}${trade.date}</div>`;
+  renderTechnicalTabFromSnapshot(trade, symData, dateNote);
+  renderDerivativesTabFromSnapshot(trade, symData, snapshot, dateNote);
+  renderSentimentTabFromSnapshot(trade, snapshot, dateNote);
+  renderNewsTabFromSnapshot(trade, dateNote);
+  renderOPN301Section(trade);
+}
+
+function renderTechnicalTabFromSnapshot(trade, d, dateNote) {
+  const price = d.price, rsi = d.rsi, macd = d.macd, bb = d.bollinger;
+  const ma20 = d.ma20, ma50 = d.ma50, ma200 = d.ma200;
+  const vol = d.volume, avgVol20 = d.avg_volume_20;
+  const volRatio = vol && avgVol20 ? vol / avgVol20 : null;
+
+  function rsiSignal(v) {
+    if (v == null) return 'neutral';
+    if (v > 70) return 'bearish'; if (v < 30) return 'bullish';
+    if (v > 55) return 'bullish'; if (v < 45) return 'bearish';
+    return 'neutral';
+  }
+  function maSignal() {
+    if (!ma20 || !ma50 || !price) return 'neutral';
+    if (price > ma20 && price > ma50) return 'bullish';
+    if (price < ma20 && price < ma50) return 'bearish';
+    return 'neutral';
+  }
+  function macdSignal() {
+    if (!macd) return 'neutral';
+    return macd.macd > 0 ? 'bullish' : macd.macd < 0 ? 'bearish' : 'neutral';
+  }
+  function bbSignal() {
+    if (!bb || !price) return 'neutral';
+    if (price < bb.lower) return 'bullish';
+    if (price > bb.upper) return 'bearish';
+    return 'neutral';
+  }
+  function sc(s) { return s==='bullish'?'var(--ice)':s==='bearish'?'var(--red)':'var(--text-dim)'; }
+  const bbPos = bb && price ? ((price - bb.lower) / (bb.upper - bb.lower) * 100).toFixed(1) : '—';
+
+  document.getElementById('tab-technical').innerHTML = dateNote + `
+    <div class="analysis-grid">
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_rsi')}</div>
+        <div class="analysis-item-value" style="color:${sc(rsiSignal(rsi))}">${rsi ?? '—'}</div>
+        <div class="analysis-item-sub">${rsi > 70 ? t('rsi_overbought') : rsi < 30 ? t('rsi_oversold') : t('rsi_normal')}</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_macd_hist')}</div>
+        <div class="analysis-item-value" style="color:${macd&&macd.macd>0?'var(--green)':'var(--red)'}">${macd ? macd.macd : '—'}</div>
+        <div class="analysis-item-sub">DIF ${macd?macd.dif:'—'} | DEA ${macd?macd.dea:'—'}</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_bb_upper')}</div>
+        <div class="analysis-item-value">${bb ? fmtPrice(bb.upper, trade.symbol) : '—'}</div>
+        <div class="analysis-item-sub">${t('label_price_at')} ${bbPos}%</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_bb_lower')}</div>
+        <div class="analysis-item-value">${bb ? fmtPrice(bb.lower, trade.symbol) : '—'}</div>
+        <div class="analysis-item-sub">${t('label_bb_mid')} ${bb ? fmtPrice(bb.mid, trade.symbol) : '—'}</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_volume')}</div>
+        <div class="analysis-item-value" style="color:${volRatio&&volRatio>1.5?'var(--ice)':'var(--text)'}">${volRatio ? (volRatio*100).toFixed(0)+'%' : '—'}</div>
+        <div class="analysis-item-sub">${t('label_vs_20d_vol')}</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_ma_alignment')}</div>
+        <div class="analysis-item-value" style="font-size:13px;color:${sc(maSignal())}">
+          ${price>(ma20||0)&&price>(ma50||0)?t('ma_bullish'):price<(ma20||Infinity)&&price<(ma50||Infinity)?t('ma_bearish'):t('ma_consolidation')}
+        </div>
+        <div class="analysis-item-sub">${t('label_close_vs_ma')}</div>
+      </div>
+    </div>
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_ma_values')}</div>
+      <div class="analysis-row"><span class="analysis-row-label">MA20</span>
+        <span class="analysis-row-value" style="color:${price>(ma20||0)?'var(--green)':'var(--red)'}">${ma20 ? fmtPrice(ma20, trade.symbol) : '—'}</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">MA50</span>
+        <span class="analysis-row-value" style="color:${price>(ma50||0)?'var(--green)':'var(--red)'}">${ma50 ? fmtPrice(ma50, trade.symbol) : '—'}</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">MA200</span>
+        <span class="analysis-row-value" style="color:${price>(ma200||0)?'var(--green)':'var(--red)'}">${ma200 ? fmtPrice(ma200, trade.symbol) : '—'}</span></div>
+    </div>
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_signal_summary')}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_rsi_signal')}</span>${tagHtmlI18n(rsiSignal(rsi))}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_macd_signal')}</span>${tagHtmlI18n(macdSignal())}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_bollinger')}</span>${tagHtmlI18n(bbSignal())}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_ma_alignment')}</span>${tagHtmlI18n(maSignal())}</div>
+    </div>`;
+}
+
+function renderDerivativesTabFromSnapshot(trade, d, snapshot, dateNote) {
+  const fr = d.funding_rate, oi = d.open_interest;
+  const lsRatio = d.long_short_ratio;
+  const taRatioRaw = d.top_account_ratio;
+  const tpRatioRaw = d.top_position_ratio;
+  const taRatio = Array.isArray(taRatioRaw) && taRatioRaw.length > 0 ? taRatioRaw[taRatioRaw.length - 1].ratio : (typeof taRatioRaw === 'number' ? taRatioRaw : null);
+  const tpRatio = Array.isArray(tpRatioRaw) && tpRatioRaw.length > 0 ? tpRatioRaw[tpRatioRaw.length - 1].ratio : (typeof tpRatioRaw === 'number' ? tpRatioRaw : null);
+  const deribit = d.deribit;
+  const frColor = fr != null ? (fr >= 0 ? 'var(--ice)' : 'var(--red)') : 'var(--text)';
+  const frSignal = fr > 0.05 ? 'bearish' : fr < -0.01 ? 'bullish' : 'neutral';
+  const oiStr = oi ? (oi > 1e9 ? (oi/1e9).toFixed(2)+'B' : (oi/1e6).toFixed(1)+'M') : '—';
+  const lsPct = lsRatio ? (lsRatio/(1+lsRatio)*100).toFixed(1) : null;
+  const taPct = taRatio  ? (taRatio/(1+taRatio)*100).toFixed(1)  : null;
+  const tpPct = tpRatio  ? (tpRatio/(1+tpRatio)*100).toFixed(1)  : null;
+
+  // Taker ratio (最新一筆)
+  const takerRaw = d.taker_ratio;
+  const taker = Array.isArray(takerRaw) && takerRaw.length > 0 ? takerRaw[takerRaw.length - 1] : null;
+  const takerSignal = taker ? (taker.buySellRatio > 1.05 ? 'bullish' : taker.buySellRatio < 0.95 ? 'bearish' : 'neutral') : null;
+
+  // Funding history trend
+  const fhArr = d.funding_history;
+  const fhHtml = Array.isArray(fhArr) && fhArr.length > 0
+    ? fhArr.map(x => `<span style="color:${x.rate>=0?'var(--green)':'var(--red)'}">${x.rate>=0?'+':''}${x.rate.toFixed(4)}%</span>`).join(' → ')
+    : null;
+
+  document.getElementById('tab-derivatives').innerHTML = dateNote + `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_futures_data')}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_funding_rate')}</span>
+        <span class="analysis-row-value" style="color:${frColor}">${fr != null ? (fr>=0?'+':'')+fr.toFixed(4)+'%' : '—'}</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('th_open_interest')}</span>
+        <span class="analysis-row-value">${oiStr}</span></div>
+    </div>
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_ls_ratio')}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_global_ls')}</span>
+        ${lsPct ? `<span class="analysis-row-value"><span style="color:var(--ice)">${lsPct}%</span> / <span style="color:var(--red)">${(100-parseFloat(lsPct)).toFixed(1)}%</span></span>` : '—'}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_top_account_ls')}</span>
+        ${taPct ? `<span class="analysis-row-value"><span style="color:var(--ice)">${taPct}%</span> / <span style="color:var(--red)">${(100-parseFloat(taPct)).toFixed(1)}%</span></span>` : '—'}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_top_position_ls')}</span>
+        ${tpPct ? `<span class="analysis-row-value"><span style="color:var(--ice)">${tpPct}%</span> / <span style="color:var(--red)">${(100-parseFloat(tpPct)).toFixed(1)}%</span></span>` : '—'}</div>
+    </div>
+    ${taker ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">Taker Ratio</div>
+      <div class="analysis-row"><span class="analysis-row-label">Buy/Sell Ratio</span>
+        <span class="analysis-row-value" style="color:${taker.buySellRatio>1?'var(--green)':'var(--red)'}">${taker.buySellRatio.toFixed(4)}</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">Buy Vol</span>
+        <span class="analysis-row-value">${(taker.buyVol/1e6).toFixed(2)}M</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">Sell Vol</span>
+        <span class="analysis-row-value">${(taker.sellVol/1e6).toFixed(2)}M</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">Signal</span>${tagHtmlI18n(takerSignal)}</div>
+    </div>` : ''}
+    ${['BTC','ETH'].some(c => trade.symbol.includes(c)) && deribit ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_options')}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_pc_ratio')}</span>
+        ${deribit.put_call_ratio != null ? `<span class="analysis-row-value" style="color:${deribit.put_call_ratio>1?'var(--red)':'var(--ice)'}">${deribit.put_call_ratio}</span>` : '—'}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_avg_iv')}</span>
+        ${deribit.avg_iv ? `<span class="analysis-row-value">${deribit.avg_iv}%</span>` : '—'}</div>
+      <div class="analysis-row"><span class="analysis-row-label">Call Vol</span>
+        <span class="analysis-row-value">${deribit.call_volume != null ? deribit.call_volume.toFixed(0) : '—'}</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">Put Vol</span>
+        <span class="analysis-row-value">${deribit.put_volume != null ? deribit.put_volume.toFixed(0) : '—'}</span></div>
+    </div>` : ''}
+    ${d.basis ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">Basis</div>
+      <div class="analysis-row"><span class="analysis-row-label">Basis</span>
+        <span class="analysis-row-value" style="color:${d.basis.basis_pct>0?'var(--ice)':d.basis.basis_pct<0?'var(--red)':'var(--text)'}">${d.basis.basis_pct>=0?'+':''}${d.basis.basis_pct.toFixed(4)}%</span></div>
+    </div>` : ''}
+    ${snapshot.quarterly_basis ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_quarterly_basis')}</div>
+      <div class="analysis-row"><span class="analysis-row-label">Contract</span>
+        <span class="analysis-row-value" style="color:var(--text-muted);font-size:12px;">${snapshot.quarterly_basis.symbol} (${snapshot.quarterly_basis.days_to_expiry} ${t('label_days')})</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">Basis</span>
+        <span class="analysis-row-value" style="color:${snapshot.quarterly_basis.basis_pct>=0?'var(--green)':'var(--red)'}">${snapshot.quarterly_basis.basis_pct>=0?'+':''}${snapshot.quarterly_basis.basis_pct}%</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_annualized_return')}</span>
+        <span class="analysis-row-value" style="color:${snapshot.quarterly_basis.annualized_pct>5?'var(--ice)':snapshot.quarterly_basis.annualized_pct<0?'var(--red)':'var(--text)'}">${snapshot.quarterly_basis.annualized_pct>=0?'+':''}${snapshot.quarterly_basis.annualized_pct}%</span></div>
+    </div>` : ''}`;
+}
+
+function renderSentimentTabFromSnapshot(trade, snapshot, dateNote) {
+  const fg = snapshot.fear_greed;
+  const fgValue = fg ? parseInt(fg.value) : null;
+  const fgLabel = fg ? fg.classification : null;
+  const btcDom = snapshot.btc_dominance;
+  const macro = snapshot.macro || {};
+  const fred = snapshot.fred || {};
+  const onchain = snapshot.btc_onchain || {};
+  const mempool = snapshot.mempool || {};
+  const tvl = snapshot.defi_tvl;
+  const btc200w = snapshot.btc_200w;
+  const cm = snapshot.coinmetrics || {};
+  const etf = snapshot.etf || {};
+  const cot = snapshot.cot;
+
+  function fgColor(v) {
+    if (v == null) return 'var(--text)';
+    return v>=75?'var(--red)':v>=55?'var(--ice)':v>=45?'var(--text)':v>=25?'#FF8C00':'var(--red)';
+  }
+  function fgSignal(v) {
+    if (v == null) return 'neutral';
+    return v>=75?'bearish':v>=55?'bullish':v<=25?'bullish':'neutral';
+  }
+  function nuplLabel(v) {
+    return v>0.75?'極度貪婪':v>0.5?'樂觀/貪婪':v>0.25?'希望':v>0?'中性':v>-0.25?'恐懼/投降':'極度悲觀';
+  }
+  function mvrvLabel(v) {
+    return v>3.5?'高估區（歷史頂部）':v>2?'偏高':v>1?'正常':v<1?'低估區（歷史底部）':'—';
+  }
+  function soprLabel(v) {
+    return v>1.02?'市場整體獲利了結':v<0.98?'恐慌性虧損拋售':'接近盈虧平衡';
+  }
+  function pullLabel(v) {
+    return v>2?'礦工超額獲利（歷史賣壓）':v<0.5?'礦工虧損（歷史買點）':'正常區間';
+  }
+
+  const hasMacro = macro.vix || macro.spx || macro.dxy || macro.gold || fred.yield_10y || fred.m2 || fred.cpi;
+  const hasOnchain = onchain.hash_rate_eh || onchain.active_addresses || onchain.tx_count;
+  const hasMempool = mempool.fastestFee != null;
+  const hasCM = cm.nupl != null || cm.mvrv != null || cm.sopr != null || cm.puell_multiple != null || cm.hashrate_ribbon_pct != null || cm.inactive_1yr_pct != null || cm.flow_net_btc != null;
+  const hasETF = Object.values(etf).some(v => v != null);
+
+  document.getElementById('tab-sentiment').innerHTML = dateNote + `
+    <div class="analysis-grid">
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_fear_greed')}</div>
+        <div class="analysis-item-value" style="color:${fgColor(fgValue)}">${fgValue ?? '—'}</div>
+        <div class="analysis-item-sub">${fgLabel || '—'}</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_btc_dominance')}</div>
+        <div class="analysis-item-value">${btcDom != null ? btcDom+'%' : '—'}</div>
+        <div class="analysis-item-sub">${btcDom != null ? (btcDom>55?t('label_btc_dominant'):btcDom>45?t('label_market_balanced'):t('label_alt_season')) : '—'}</div>
+      </div>
+      ${macro.vix != null ? `<div class="analysis-item">
+        <div class="analysis-item-label">${t('label_vix')}</div>
+        <div class="analysis-item-value" style="color:${macro.vix>30?'var(--red)':macro.vix>20?'#FF8C00':'var(--ice)'}">${macro.vix}</div>
+        <div class="analysis-item-sub">${macro.vix>30?t('label_extreme_fear'):macro.vix>20?t('label_market_cautious'):macro.vix>15?t('signal_neutral'):t('label_market_balanced')}</div>
+      </div>` : ''}
+      ${macro.dxy != null ? `<div class="analysis-item">
+        <div class="analysis-item-label">${t('label_dxy')}</div>
+        <div class="analysis-item-value" style="color:${macro.dxy>105?'var(--red)':macro.dxy>100?'#FF8C00':'var(--ice)'}">${macro.dxy}</div>
+        <div class="analysis-item-sub">${macro.dxy>105?'USD Strong':macro.dxy>100?'USD Neutral':t('label_usd_weak')}</div>
+      </div>` : ''}
+      ${macro.spx != null ? `<div class="analysis-item">
+        <div class="analysis-item-label">S&P 500</div>
+        <div class="analysis-item-value">${macro.spx.toLocaleString()}</div>
+        <div class="analysis-item-sub">${t('label_us_equities')}</div>
+      </div>` : ''}
+      ${btc200w ? `<div class="analysis-item">
+        <div class="analysis-item-label">${t('label_btc_200w')}</div>
+        <div class="analysis-item-value" style="color:${btc200w.ratio>2.5?'var(--red)':btc200w.ratio>1.5?'var(--ice)':btc200w.ratio<1?'var(--red)':'var(--text)'}">${btc200w.ratio}x</div>
+        <div class="analysis-item-sub">${btc200w.ratio>3?'嚴重高估':btc200w.ratio>2?'偏高':btc200w.ratio>1.2?'正常溢價':btc200w.ratio>0.9?'接近均線':'跌破均線'}</div>
+      </div>` : ''}
+      ${cm.nupl != null ? `<div class="analysis-item">
+        <div class="analysis-item-label">NUPL</div>
+        <div class="analysis-item-value" style="color:${cm.nupl>0.5?'var(--ice)':cm.nupl<0?'var(--red)':'var(--text)'}">${cm.nupl}</div>
+        <div class="analysis-item-sub">${nuplLabel(cm.nupl)}</div>
+      </div>` : ''}
+      ${cm.mvrv != null ? `<div class="analysis-item">
+        <div class="analysis-item-label">MVRV 比率</div>
+        <div class="analysis-item-value" style="color:${cm.mvrv>3.5?'var(--red)':cm.mvrv<1?'var(--ice)':'var(--text)'}">${cm.mvrv}</div>
+        <div class="analysis-item-sub">${mvrvLabel(cm.mvrv)}</div>
+      </div>` : ''}
+      ${cm.sopr != null ? `<div class="analysis-item">
+        <div class="analysis-item-label">SOPR</div>
+        <div class="analysis-item-value" style="color:${cm.sopr>1.02?'var(--ice)':cm.sopr<0.98?'var(--red)':'var(--text)'}">${cm.sopr}</div>
+        <div class="analysis-item-sub">${soprLabel(cm.sopr)}</div>
+      </div>` : ''}
+      ${cm.puell_multiple != null ? `<div class="analysis-item">
+        <div class="analysis-item-label">皮勒乘數</div>
+        <div class="analysis-item-value" style="color:${cm.puell_multiple>2?'var(--red)':cm.puell_multiple<0.5?'var(--ice)':'var(--text)'}">${cm.puell_multiple}</div>
+        <div class="analysis-item-sub">${pullLabel(cm.puell_multiple)}</div>
+      </div>` : ''}
+    </div>
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_signal_summary')}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_fear_greed')} Signal</span>
+        ${fgValue != null ? tagHtmlI18n(fgSignal(fgValue)) : '—'}</div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_btc_dominance')} Signal</span>
+        ${btcDom != null ? tagHtmlI18n(btcDom>55?'bearish':btcDom<45?'bullish':'neutral') : '—'}</div>
+      ${macro.vix != null ? `<div class="analysis-row"><span class="analysis-row-label">${t('label_vix')} Signal</span>
+        ${tagHtmlI18n(macro.vix>30?'bearish':macro.vix<15?'bullish':'neutral')}</div>` : ''}
+      ${macro.dxy != null ? `<div class="analysis-row"><span class="analysis-row-label">${t('label_dxy')} Signal</span>
+        ${tagHtmlI18n(macro.dxy>105?'bearish':macro.dxy<100?'bullish':'neutral')}</div>` : ''}
+      ${cm.nupl != null ? `<div class="analysis-row"><span class="analysis-row-label">NUPL Signal</span>
+        ${tagHtmlI18n(cm.nupl>0.75?'bearish':cm.nupl<0?'bullish':'neutral')}</div>` : ''}
+      ${cm.mvrv != null ? `<div class="analysis-row"><span class="analysis-row-label">MVRV Signal</span>
+        ${tagHtmlI18n(cm.mvrv>3.5?'bearish':cm.mvrv<1?'bullish':'neutral')}</div>` : ''}
+      ${cm.sopr != null ? `<div class="analysis-row"><span class="analysis-row-label">SOPR Signal</span>
+        ${tagHtmlI18n(cm.sopr>1.02?'bearish':cm.sopr<0.98?'bullish':'neutral')}</div>` : ''}
+    </div>
+    ${hasMacro && (fred.yield_10y || fred.m2 || fred.cpi || macro.gold) ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">Macro</div>
+      ${macro.gold != null ? `<div class="analysis-row"><span class="analysis-row-label">${t('label_gold')}</span>
+        <span class="analysis-row-value">${macro.gold.toLocaleString()} USD/oz</span></div>` : ''}
+      ${fred.yield_10y != null ? `<div class="analysis-row"><span class="analysis-row-label">10Y 美債殖利率</span>
+        <span class="analysis-row-value" style="color:${fred.yield_10y>4.5?'var(--red)':fred.yield_10y>4?'#FF8C00':'var(--ice)'}">${fred.yield_10y}%</span></div>` : ''}
+      ${fred.m2 != null ? `<div class="analysis-row"><span class="analysis-row-label">M2 貨幣供應</span>
+        <span class="analysis-row-value">$${(fred.m2/1000).toFixed(1)}T</span></div>` : ''}
+      ${fred.cpi != null ? `<div class="analysis-row"><span class="analysis-row-label">CPI 指數</span>
+        <span class="analysis-row-value">${fred.cpi}</span></div>` : ''}
+    </div>` : ''}
+    ${hasCM && (cm.mvrv_z != null || cm.issuance_usd != null || cm.hashrate_ribbon_pct != null || cm.inactive_1yr_pct != null || cm.flow_net_btc != null) ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_coinmetrics')}</div>
+      ${cm.mvrv_z != null ? `<div class="analysis-row"><span class="analysis-row-label">MVRV-Z Score</span>
+        <span class="analysis-row-value" style="color:${cm.mvrv_z>7?'var(--red)':cm.mvrv_z<0?'var(--ice)':'var(--text)'}">${cm.mvrv_z}
+        <span style="color:var(--text-muted);font-size:11px;">(>7 top, <0 bottom)</span></span></div>` : ''}
+      ${cm.hashrate_ribbon_pct != null ? `<div class="analysis-row"><span class="analysis-row-label">Hashrate Ribbon (30/60d)</span>
+        <span class="analysis-row-value" style="color:${cm.hashrate_ribbon_pct>=0?'var(--green)':'var(--red)'}">${cm.hashrate_ribbon_pct>=0?'+':''}${cm.hashrate_ribbon_pct}%</span></div>` : ''}
+      ${cm.issuance_usd != null ? `<div class="analysis-row"><span class="analysis-row-label">Daily Issuance</span>
+        <span class="analysis-row-value">$${cm.issuance_usd.toLocaleString()} USD</span></div>` : ''}
+      ${cm.inactive_1yr_pct != null ? `<div class="analysis-row"><span class="analysis-row-label">Inactive >1yr Supply</span>
+        <span class="analysis-row-value" style="color:${cm.inactive_1yr_pct>60?'var(--ice)':'var(--text)'}">${cm.inactive_1yr_pct}%</span></div>` : ''}
+      ${cm.active_90d_pct != null ? `<div class="analysis-row"><span class="analysis-row-label">Active 90d Supply</span>
+        <span class="analysis-row-value">${cm.active_90d_pct}%</span></div>` : ''}
+      ${cm.flow_net_btc != null ? `<div class="analysis-row"><span class="analysis-row-label">Exchange Net Flow</span>
+        <span class="analysis-row-value" style="color:${cm.flow_net_btc>0?'var(--green)':'var(--red)'}">${cm.flow_net_btc>0?'+':''}${cm.flow_net_btc.toFixed(0)} BTC</span></div>` : ''}
+      ${cm.flow_in_btc != null ? `<div class="analysis-row"><span class="analysis-row-label">Inflow / Outflow</span>
+        <span class="analysis-row-value" style="font-size:12px;"><span style="color:var(--red)">${cm.flow_in_btc.toFixed(0)} BTC</span> / <span style="color:var(--ice)">${cm.flow_out_btc.toFixed(0)} BTC</span></span></div>` : ''}
+    </div>` : ''}
+    ${btc200w ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('label_btc_200w')}</div>
+      <div class="analysis-row"><span class="analysis-row-label">1400日均線</span>
+        <span class="analysis-row-value">$${btc200w.ma1400.toLocaleString()}</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">現價 / 均線</span>
+        <span class="analysis-row-value" style="color:${btc200w.ratio>2.5?'var(--red)':btc200w.ratio<1?'var(--red)':'var(--ice)'}">${btc200w.ratio}x</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_data_days')}</span>
+        <span class="analysis-row-value" style="color:var(--text-muted)">${btc200w.days} ${t('label_days')}</span></div>
+    </div>` : ''}
+    ${hasOnchain || hasMempool ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_onchain')}</div>
+      ${onchain.hash_rate_eh != null ? `<div class="analysis-row"><span class="analysis-row-label">${t('label_hashrate')}</span>
+        <span class="analysis-row-value">${onchain.hash_rate_eh} EH/s</span></div>` : ''}
+      ${onchain.active_addresses != null ? `<div class="analysis-row"><span class="analysis-row-label">${t('label_active_addr')}</span>
+        <span class="analysis-row-value">${onchain.active_addresses.toLocaleString()}</span></div>` : ''}
+      ${onchain.tx_count != null ? `<div class="analysis-row"><span class="analysis-row-label">${t('label_daily_tx')}</span>
+        <span class="analysis-row-value">${onchain.tx_count.toLocaleString()}</span></div>` : ''}
+      ${hasMempool ? `<div class="analysis-row"><span class="analysis-row-label">${t('label_mempool_fee')}</span>
+        <span class="analysis-row-value">${mempool.fastestFee} sat/vB</span></div>` : ''}
+    </div>` : ''}
+    ${tvl ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('label_defi_tvl')}</div>
+      <div class="analysis-row"><span class="analysis-row-label">ETH TVL</span>
+        <span class="analysis-row-value">$${(tvl.tvl/1e9).toFixed(2)}B</span></div>
+      ${tvl.change_7d != null ? `<div class="analysis-row"><span class="analysis-row-label">${t('label_7d_change')}</span>
+        <span class="analysis-row-value" style="color:${tvl.change_7d>=0?'var(--green)':'var(--red)'}">${tvl.change_7d>=0?'+':''}${tvl.change_7d.toFixed(1)}%</span></div>` : ''}
+    </div>` : ''}
+    ${hasETF ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_etf')}</div>
+      ${Object.entries(etf).filter(([,v])=>v!=null).map(([ticker,price])=>`
+      <div class="analysis-row"><span class="analysis-row-label">${ticker}</span>
+        <span class="analysis-row-value">$${price}</span></div>`).join('')}
+    </div>` : ''}
+    ${cot ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_cot')} <span style="color:var(--text-muted);font-size:11px;font-weight:normal;">${t('label_report_date')}${cot.report_date}（${t('label_weekly')}）</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_asset_mgr_net')}</span>
+        <span class="analysis-row-value" style="color:${cot.asset_manager_net>0?'var(--green)':'var(--red)'}">${cot.asset_manager_net>0?'+':''}${cot.asset_manager_net.toLocaleString()}
+        ${cot.prev_asset_manager_net!=null?`<span style="color:var(--text-muted);font-size:11px;">${t('label_weekly_change')} ${(cot.asset_manager_net-cot.prev_asset_manager_net)>0?'+':''}${(cot.asset_manager_net-cot.prev_asset_manager_net).toLocaleString()}</span>`:''}</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">Long / Short</span>
+        <span class="analysis-row-value" style="font-size:12px;"><span style="color:var(--ice)">${cot.asset_manager_long.toLocaleString()}</span> / <span style="color:var(--red)">${cot.asset_manager_short.toLocaleString()}</span></span></div>
+      <div class="analysis-row"><span class="analysis-row-label">${t('label_leveraged_net')}</span>
+        <span class="analysis-row-value" style="color:${cot.leveraged_fund_net>0?'var(--green)':'var(--red)'}">${cot.leveraged_fund_net>0?'+':''}${cot.leveraged_fund_net.toLocaleString()}
+        ${cot.prev_leveraged_fund_net!=null?`<span style="color:var(--text-muted);font-size:11px;">${t('label_weekly_change')} ${(cot.leveraged_fund_net-cot.prev_leveraged_fund_net)>0?'+':''}${(cot.leveraged_fund_net-cot.prev_leveraged_fund_net).toLocaleString()}</span>`:''}</span></div>
+      <div class="analysis-row"><span class="analysis-row-label">Long / Short</span>
+        <span class="analysis-row-value" style="font-size:12px;"><span style="color:var(--ice)">${cot.leveraged_fund_long.toLocaleString()}</span> / <span style="color:var(--red)">${cot.leveraged_fund_short.toLocaleString()}</span></span></div>
+      <div class="analysis-row"><span class="analysis-row-label">Smart Money Signal</span>
+        ${cot.asset_manager_net>0&&cot.leveraged_fund_net>0?`<span class="signal-tag bullish">${t('signal_bullish')}</span>`:cot.asset_manager_net<0&&cot.leveraged_fund_net<0?`<span class="signal-tag bearish">${t('signal_bearish')}</span>`:`<span class="signal-tag neutral">${t('signal_neutral')}</span>`}
+      </div>
+    </div>` : ''}`;
+}
+
+function renderNewsTabFromSnapshot(trade, dateNote) {
+  let newsData = null;
+  try { newsData = JSON.parse(trade.newsSnapshot); } catch(e) {}
+  const articles = newsData && newsData.results && newsData.results.length > 0 ? newsData.results : null;
+  if (articles) {
+    document.getElementById('tab-news').innerHTML = dateNote + `
+      <div class="analysis-section">
+        <div class="analysis-section-title">${t('section_news')}</div>
+        <div class="news-list">
+          ${articles.slice(0, 8).map(n => {
+            const nloc = _currentLang === 'en' ? 'en-US' : _currentLang === 'zh-CN' ? 'zh-CN' : _currentLang === 'ko' ? 'ko-KR' : _currentLang === 'ja' ? 'ja-JP' : _currentLang === 'th' ? 'th-TH' : _currentLang === 'vi' ? 'vi-VN' : 'zh-TW';
+            const dateStr = n.published_at ? new Date(n.published_at).toLocaleDateString(nloc, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+            const link = n.url ? `href="${n.url}" target="_blank"` : '';
+            return `<div class="news-item">
+              <a ${link} style="text-decoration:none;color:inherit;cursor:${n.url?'pointer':'default'};">
+                <div class="news-item-title">${n.title}</div>
+                <div class="news-item-meta">
+                  <span>${n.source ? n.source.title : (n.domain || '')}</span>
+                  <span style="color:var(--text-muted);font-size:11px;">${dateStr}</span>
+                </div>
+              </a>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  } else {
+    document.getElementById('tab-news').innerHTML = dateNote + `
+      <div class="analysis-section">
+        <div class="analysis-section-title">${t('section_news')}</div>
+        <div style="color:var(--text-muted);font-size:12px;padding:12px 0;">—</div>
+      </div>`;
+  }
+}
+
+/* ============================================================
+   LOAD ANALYSIS DATA
+   ============================================================ */
+async function loadAnalysisData(trade) {
+  loadFromSnapshot(trade);
+}
+
+/* ============================================================
+   TAB 1 — TECHNICAL
+   ============================================================ */
+function renderTechnicalTab(trade, klines) {
+  if (!klines || klines.length < 30) {
+    document.getElementById('tab-technical').innerHTML =
+      `<div style="color:var(--text-muted);text-align:center;padding:40px 0;font-size:13px;">${t('msg_loading')}</div>`;
+    return;
+  }
+
+  const closes  = klines.map(k => parseFloat(k[4]));
+  const highs   = klines.map(k => parseFloat(k[2]));
+  const lows    = klines.map(k => parseFloat(k[3]));
+  const volumes = klines.map(k => parseFloat(k[5]));
+
+  const lastClose = closes[closes.length - 1];
+  const rsi    = calcRSI(closes);
+  const macd   = calcMACD(closes);
+  const bb     = calcBollinger(closes);
+  const ma20   = calcSMA(closes, 20);
+  const ma50   = calcSMA(closes, 50);
+  const ma200  = calcSMA(closes, 200);
+
+  const lastMA20   = ma20.filter(Boolean).pop();
+  const lastMA50   = ma50.filter(Boolean).pop();
+  const lastMA200  = ma200.filter(Boolean).pop();
+  const ma1400     = closes.length >= 1400 ? calcSMA(closes, 1400) : null;
+  const lastMA1400 = ma1400 ? ma1400.filter(Boolean).pop() : null;
+  const ratio1400  = lastMA1400 ? (lastClose / lastMA1400).toFixed(2) : null;
+
+  const avgVol20 = volumes.slice(-21,-1).reduce((a,b)=>a+b,0)/20;
+  const lastVol  = volumes[volumes.length-1];
+  const volRatio = lastVol / avgVol20;
+
+  function rsiSignal(v) {
+    if (v === null) return 'neutral';
+    if (v > 70) return 'bearish';
+    if (v < 30) return 'bullish';
+    if (v > 55) return 'bullish';
+    if (v < 45) return 'bearish';
+    return 'neutral';
+  }
+
+  function maSignal() {
+    if (!lastMA20 || !lastMA50) return 'neutral';
+    if (lastClose > lastMA20 && lastClose > lastMA50) return 'bullish';
+    if (lastClose < lastMA20 && lastClose < lastMA50) return 'bearish';
+    return 'neutral';
+  }
+
+  function macdSignal() {
+    if (!macd) return 'neutral';
+    if (macd.hist > 0 && macd.macd > macd.signal) return 'bullish';
+    if (macd.hist < 0 && macd.macd < macd.signal) return 'bearish';
+    return 'neutral';
+  }
+
+  function bbSignal() {
+    if (!bb) return 'neutral';
+    if (lastClose < bb.lower) return 'bullish';
+    if (lastClose > bb.upper) return 'bearish';
+    return 'neutral';
+  }
+
+  function signalTextColor(signal) {
+    return signal === 'bullish' ? 'var(--ice)' : signal === 'bearish' ? 'var(--red)' : 'var(--text-dim)';
+  }
+
+  const bbPos = bb ? ((lastClose - bb.lower) / (bb.upper - bb.lower) * 100).toFixed(1) : '—';
+
+  document.getElementById('tab-technical').innerHTML = `
+    <div class="analysis-grid">
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_rsi')}</div>
+        <div class="analysis-item-value" style="color:${signalTextColor(rsiSignal(rsi))}">${rsi !== null ? rsi.toFixed(1) : '—'}</div>
+        <div class="analysis-item-sub">${rsi > 70 ? t('rsi_overbought') : rsi < 30 ? t('rsi_oversold') : t('rsi_normal')}</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">MACD DIF</div>
+        <div class="analysis-item-value" style="color:${macd&&macd.hist>0?'var(--green)':'var(--red)'}">${macd ? fmt(macd.macd, 1) : '—'}</div>
+        <div class="analysis-item-sub">DEA ${macd ? fmt(macd.signal,1) : '—'} | Hist ${macd ? fmt(macd.hist,1) : '—'}</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_bb_upper')}</div>
+        <div class="analysis-item-value">${bb ? fmtPrice(bb.upper, trade.symbol) : '—'}</div>
+        <div class="analysis-item-sub">${t('label_price_at')} ${bbPos}%</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_bb_lower')}</div>
+        <div class="analysis-item-value">${bb ? fmtPrice(bb.lower, trade.symbol) : '—'}</div>
+        <div class="analysis-item-sub">${t('label_bb_mid')} ${bb ? fmtPrice(bb.mid, trade.symbol) : '—'}</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_volume')}</div>
+        <div class="analysis-item-value" style="color:${volRatio>1.5?'var(--ice)':'var(--text)'}">${(volRatio*100).toFixed(0)}%</div>
+        <div class="analysis-item-sub">${t('label_vs_20d_vol')}</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_ma_alignment')}</div>
+        <div class="analysis-item-value" style="font-size:13px;color:${signalTextColor(maSignal())}">
+          ${lastClose > (lastMA20||0) && lastClose > (lastMA50||0) ? t('ma_bullish') : lastClose < (lastMA20||Infinity) && lastClose < (lastMA50||Infinity) ? t('ma_bearish') : t('ma_consolidation')}
+        </div>
+        <div class="analysis-item-sub">${t('label_close_vs_ma')}</div>
+      </div>
+    </div>
+
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_ma_values')}</div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">MA20</span>
+        <span class="analysis-row-value" style="color:${lastClose>(lastMA20||0)?'var(--green)':'var(--red)'}">${lastMA20 ? fmtPrice(lastMA20, trade.symbol) : '—'}</span>
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">MA50</span>
+        <span class="analysis-row-value" style="color:${lastClose>(lastMA50||0)?'var(--green)':'var(--red)'}">${lastMA50 ? fmtPrice(lastMA50, trade.symbol) : '—'}</span>
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">MA200</span>
+        <span class="analysis-row-value" style="color:${lastClose>(lastMA200||0)?'var(--green)':'var(--red)'}">${lastMA200 ? fmtPrice(lastMA200, trade.symbol) : '—'}</span>
+      </div>
+      ${ratio1400 ? `
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_ma1400_ratio')}</span>
+        <span class="analysis-row-value" style="color:${parseFloat(ratio1400)<1?'var(--ice)':parseFloat(ratio1400)>2.4?'var(--red)':'var(--ice)'}">×${ratio1400}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);padding:0 0 4px 0;">${parseFloat(ratio1400)<1?t('ma1400_below'):parseFloat(ratio1400)>2.4?t('ma1400_above'):t('ma1400_normal')}</div>
+      ` : ''}
+    </div>
+
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_signal_summary')}</div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_rsi_signal')}</span>${tagHtmlI18n(rsiSignal(rsi))}
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_macd_signal')}</span>${tagHtmlI18n(macdSignal())}
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_bollinger')}</span>${tagHtmlI18n(bbSignal())}
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_ma_alignment')}</span>${tagHtmlI18n(maSignal())}
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   TAB 2 — SENTIMENT
+   ============================================================ */
+function renderSentimentTab(trade, fearGreed, global_, fredDXY, fredM2, fredYield, yahooMacro, defiTVL, klines, onChain, mempool, cmExt) {
+  const fgValue = fearGreed ? parseInt(fearGreed.value) : null;
+  const fgLabel = fearGreed ? fearGreed.value_classification : null;
+  const btcDom  = global_ ? (parseFloat(global_.data.market_cap_percentage.btc)).toFixed(1) : null;
+
+  function fgColor(v) {
+    if (v === null) return 'var(--text)';
+    if (v >= 75) return 'var(--red)';
+    if (v >= 55) return 'var(--ice)';
+    if (v >= 45) return 'var(--text)';
+    if (v >= 25) return '#FF8C00';
+    return 'var(--red)';
+  }
+
+  function fgSignal(v) {
+    if (v === null) return 'neutral';
+    if (v >= 75) return 'bearish';
+    if (v >= 55) return 'bullish';
+    if (v <= 25) return 'bullish';
+    return 'neutral';
+  }
+
+  document.getElementById('tab-sentiment').innerHTML = `
+    <div class="analysis-grid">
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_fear_greed')}</div>
+        <div class="analysis-item-value" style="color:${fgColor(fgValue)}">${fgValue !== null ? fgValue : '—'}</div>
+        <div class="analysis-item-sub">${fgLabel || t('msg_loading')}</div>
+      </div>
+      <div class="analysis-item">
+        <div class="analysis-item-label">${t('label_btc_dominance')}</div>
+        <div class="analysis-item-value">${btcDom !== null ? btcDom + '%' : '—'}</div>
+        <div class="analysis-item-sub">${btcDom > 55 ? t('label_btc_dominant') : btcDom > 45 ? t('label_market_balanced') : t('label_alt_season')}</div>
+      </div>
+    </div>
+    ${!fearGreed && !global_ ? `<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px 0;">${t('msg_sentiment_fail')}</div>` : ''}
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_signal_summary')}</div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_fear_greed')} Signal</span>
+        ${fearGreed ? tagHtmlI18n(fgSignal(fgValue)) : `<div class="placeholder-block" style="height:22px;width:80px;border-radius:4px;"></div>`}
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_btc_dominance')} Signal</span>
+        ${global_ ? tagHtmlI18n(btcDom > 55 ? 'bearish' : btcDom < 45 ? 'bullish' : 'neutral') : `<div class="placeholder-block" style="height:22px;width:80px;border-radius:4px;"></div>`}
+      </div>
+    </div>
+    <div class="analysis-section">
+      <div class="analysis-section-title">FRED Macro</div>
+      ${(() => {
+        function fredVal(d) {
+          if (!d || !d.observations) return null;
+          const obs = d.observations.find(o => o.value !== '.');
+          return obs ? parseFloat(obs.value) : null;
+        }
+        // FRED data (requires key + server origin)
+        let dxy = fredVal(fredDXY);
+        let m2  = fredVal(fredM2);
+        let yld = fredVal(fredYield);
+        // Yahoo Finance fallback for DXY & 10Y (no key, browser-compatible)
+        if (dxy === null && yahooMacro && yahooMacro.dxy) dxy = yahooMacro.dxy;
+        if (yld === null && yahooMacro && yahooMacro.yld) yld = yahooMacro.yld;
+
+        const pending = dxy === null && m2 === null && yld === null;
+        const rows = [
+          { label: t('label_dxy'),  val: dxy !== null ? dxy.toFixed(2) : null,
+            sub: dxy !== null ? (dxy > 105 ? 'USD Strong' : dxy < 98 ? t('label_usd_weak') : t('signal_neutral')) : '' },
+          { label:'M2',   val: m2  !== null ? '$' + (m2/1000).toFixed(2) + 'T' : null,
+            sub: '' },
+          { label:'10Y Treasury',val: yld !== null ? yld.toFixed(2) + '%' : null,
+            sub: yld !== null ? (yld > 4.5 ? '高利率環境' : yld < 3.5 ? '寬鬆預期' : '中性') : '' },
+        ];
+        if (pending) return `<div style="font-size:11px;color:var(--text-muted);padding:4px 0;opacity:0.5;">${t('msg_after_deploy')}</div>`;
+        return rows.map(r => `
+          <div class="analysis-row">
+            <span class="analysis-row-label">${r.label}</span>
+            <span class="analysis-row-value" style="color:${r.val !== null ? 'var(--text)' : 'var(--text-muted)'}">${r.val !== null ? r.val : '—'}</span>
+          </div>
+          ${r.sub ? `<div style="font-size:11px;color:var(--text-muted);padding:0 0 4px 0;">${r.sub}</div>` : ''}
+        `).join('');
+      })()}
+    </div>
+    ${trade.symbol === 'ETHUSDT' && defiTVL && defiTVL.length > 0 ? (() => {
+      const latest = defiTVL[defiTVL.length - 1];
+      const prev7  = defiTVL.length > 7 ? defiTVL[defiTVL.length - 8] : null;
+      const tvl = latest.tvl;
+      const tvlStr = tvl > 1e9 ? '$' + (tvl/1e9).toFixed(1) + 'B' : '$' + (tvl/1e6).toFixed(0) + 'M';
+      const change7d = prev7 ? ((tvl - prev7.tvl) / prev7.tvl * 100).toFixed(1) : null;
+      return `<div class="analysis-section">
+        <div class="analysis-section-title">以太坊 DeFi 生態（DeFiLlama）</div>
+        <div class="analysis-row">
+          <span class="analysis-row-label">ETH 鏈總鎖倉量（TVL）</span>
+          <span class="analysis-row-value">${tvlStr}</span>
+        </div>
+        ${change7d ? `<div class="analysis-row">
+          <span class="analysis-row-label">7 日 TVL 變化</span>
+          <span class="analysis-row-value" style="color:${parseFloat(change7d)>=0?'var(--green)':'var(--red)'}">${parseFloat(change7d)>=0?'+':''}${change7d}%</span>
+        </div>` : ''}
+        <div style="font-size:11px;color:var(--text-muted);padding:4px 0;">${tvl > 50e9 ? 'DeFi 生態活躍，ETH 需求支撐強' : tvl > 20e9 ? '鎖倉量正常區間' : 'DeFi 鎖倉偏低，生態活動冷卻'}</div>
+      </div>`;
+    })() : ''}
+    ${(() => {
+      // CVD
+      if (!klines || klines.length < 20) return '';
+      const last20 = klines.slice(-20);
+      let buyVol = 0, sellVol = 0;
+      last20.forEach(k => { const t = parseFloat(k[5]); const b = parseFloat(k[9]); buyVol += b; sellVol += (t-b); });
+      const totalVol = buyVol + sellVol;
+      if (totalVol === 0) return '';
+      const buyPct = (buyVol / totalVol * 100).toFixed(1);
+      const netPct = ((buyVol - sellVol) / totalVol * 100).toFixed(1);
+      const netColor = parseFloat(netPct) >= 0 ? 'var(--ice)' : 'var(--red)';
+      return `<div class="analysis-section">
+        <div class="analysis-section-title">CVD 累積量差（近 20 根 K 棒）</div>
+        <div class="analysis-row">
+          <span class="analysis-row-label">主動買入佔比</span>
+          <span class="analysis-row-value" style="color:var(--ice)">${buyPct}%</span>
+        </div>
+        <div class="analysis-row">
+          <span class="analysis-row-label">主動賣出佔比</span>
+          <span class="analysis-row-value" style="color:var(--red)">${(100 - parseFloat(buyPct)).toFixed(1)}%</span>
+        </div>
+        <div class="analysis-row">
+          <span class="analysis-row-label">淨買壓（CVD）</span>
+          <span class="analysis-row-value" style="color:${netColor}">${parseFloat(netPct) >= 0 ? '+' : ''}${netPct}%</span>
+        </div>
+      </div>`;
+    })()}
+    ${(() => {
+      // On-chain (CoinMetrics)
+      const ocData = onChain && onChain.data;
+      if (!ocData || ocData.length === 0) return '';
+      const latest = ocData[ocData.length - 1];
+      const rows = [];
+      if (latest.HashRate) rows.push({ label:'算力（Hash Rate）', val: (parseFloat(latest.HashRate)/1e18).toFixed(1) + ' EH/s' });
+      if (latest.AdrActCnt) rows.push({ label:'活躍地址數', val: Number(latest.AdrActCnt).toLocaleString() });
+      if (latest.NVTAdj) {
+        const nvt = parseFloat(latest.NVTAdj);
+        rows.push({ label:'NVT 比率', val: nvt.toFixed(1), sub: nvt > 65 ? '偏高（潛在高估）' : nvt < 30 ? '偏低（潛在低估）' : '合理區間' });
+      }
+      if (latest.SOPR) {
+        const sopr = parseFloat(latest.SOPR);
+        rows.push({ label:'SOPR', val: sopr.toFixed(3), sub: sopr > 1 ? '獲利出售為主' : '虧損出售為主' });
+      }
+      if (rows.length === 0) return '';
+      return `<div class="analysis-section">
+        <div class="analysis-section-title">鏈上指標（CoinMetrics）</div>
+        ${rows.map(r => `
+          <div class="analysis-row">
+            <span class="analysis-row-label">${r.label}</span>
+            <span class="analysis-row-value">${r.val}</span>
+          </div>
+          ${r.sub ? `<div style="font-size:11px;color:var(--text-muted);padding:0 0 4px 0;">${r.sub}</div>` : ''}
+        `).join('')}
+      </div>`;
+    })()}
+    ${(() => {
+      // Puell Multiple + 算力環 (BTC)
+      const cmData = cmExt && cmExt.data;
+      if (!cmData || cmData.length === 0 || !trade.symbol.includes('BTC')) return '';
+      const rows = [];
+      if (klines && klines.length >= 365) {
+        const closes365 = klines.slice(-365).map(k => parseFloat(k[4]));
+        const ma365 = closes365.reduce((a,b)=>a+b,0) / 365;
+        const today = closes365[closes365.length-1];
+        const puell = today / ma365;
+        let puellColor = 'var(--text)', puellSub = '正常區間';
+        if (puell < 0.5)      { puellColor = 'var(--ice)'; puellSub = '極低（礦工壓力，歷史底部）'; }
+        else if (puell < 1.0) { puellColor = 'var(--ice)'; puellSub = '偏低（買入區間）'; }
+        else if (puell < 4.0) { puellColor = 'var(--ice)'; puellSub = '偏高（減倉區間）'; }
+        else                  { puellColor = 'var(--red)';  puellSub = '極高（歷史賣出區）'; }
+        rows.push({ label:'Puell Multiple', val: puell.toFixed(2), color: puellColor, sub: puellSub });
+      }
+      const hrSeries = cmData.map(d => d.HashRate ? parseFloat(d.HashRate) : null).filter(Boolean);
+      if (hrSeries.length >= 60) {
+        const ma30 = hrSeries.slice(-30).reduce((a,b)=>a+b,0) / 30;
+        const ma60 = hrSeries.slice(-60).reduce((a,b)=>a+b,0) / 60;
+        const ring = (ma30-ma60)/ma60*100;
+        rows.push({ label:'算力環（MA30−MA60）', val: (ring>=0?'+':'')+ring.toFixed(2)+'%', color: ring>=0?'var(--green)':'var(--red)', sub: ring>=0?'算力向上擴張（礦工信心增強）':'算力向下收縮（礦工壓力）' });
+      }
+      if (rows.length === 0) return '';
+      return `<div class="analysis-section">
+        <div class="analysis-section-title">BTC 鏈上估值（CoinMetrics）</div>
+        ${rows.map(r => `
+          <div class="analysis-row">
+            <span class="analysis-row-label">${r.label}</span>
+            <span class="analysis-row-value" style="color:${r.color}">${r.val}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);padding:0 0 6px 0;">${r.sub}</div>
+        `).join('')}
+      </div>`;
+    })()}
+    ${mempool && trade.symbol === 'BTCUSDT' ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">BTC 網路費用（Mempool.space）</div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">快速確認</span>
+        <span class="analysis-row-value">${mempool.fastestFee} sat/vB</span>
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">半小時確認</span>
+        <span class="analysis-row-value">${mempool.halfHourFee} sat/vB</span>
+      </div>
+    </div>` : ''}`;
+}
+
+/* ============================================================
+   TAB 2 — DERIVATIVES (衍生品)
+   ============================================================ */
+function renderDerivativesTab(trade, funding, oi, ls, topTrader, deribit, bybitFunding, bybitOI) {
+  // Funding rate
+  let frValue = null, frColor = 'var(--text)', frSignal = 'neutral';
+  if (funding && funding.length > 0) {
+    frValue = parseFloat(funding[funding.length - 1].fundingRate) * 100;
+    frColor = frValue >= 0 ? 'var(--ice)' : 'var(--red)';
+    frSignal = frValue > 0.05 ? 'bearish' : frValue < -0.01 ? 'bullish' : 'neutral';
+  }
+
+  // OI
+  let oiValue = null, oiChange = null;
+  if (oi && oi.length >= 2) {
+    oiValue = parseFloat(oi[oi.length-1].sumOpenInterest);
+    const oiPrev = parseFloat(oi[oi.length-2].sumOpenInterest);
+    oiChange = ((oiValue - oiPrev) / oiPrev * 100);
+  }
+
+  // L/S ratio
+  let lsRatio = null;
+  if (ls && ls.length > 0) {
+    lsRatio = parseFloat(ls[ls.length-1].longShortRatio);
+  }
+
+  // Top trader
+  let ttRatio = null;
+  if (topTrader && topTrader.length > 0) {
+    ttRatio = parseFloat(topTrader[topTrader.length-1].longShortRatio);
+  }
+
+  // Deribit options
+  let pcRatio = null, avgIV = null;
+  if (deribit && deribit.result) {
+    const opts = deribit.result;
+    const puts  = opts.filter(o => o.instrument_name.includes('-P'));
+    const calls = opts.filter(o => o.instrument_name.includes('-C'));
+    const putVol  = puts.reduce((a,o) => a + (o.volume||0), 0);
+    const callVol = calls.reduce((a,o) => a + (o.volume||0), 0);
+    if (callVol > 0) pcRatio = (putVol / callVol).toFixed(2);
+    const ivs = opts.filter(o => o.mark_iv > 0).map(o => o.mark_iv);
+    if (ivs.length > 0) avgIV = (ivs.reduce((a,b)=>a+b,0)/ivs.length).toFixed(1);
+  }
+
+  const lsPct  = lsRatio  ? (lsRatio/(1+lsRatio)*100).toFixed(1)  : null;
+  const ttPct  = ttRatio  ? (ttRatio/(1+ttRatio)*100).toFixed(1)  : null;
+  const oiStr  = oiValue  ? (oiValue > 1e9 ? (oiValue/1e9).toFixed(2)+'B' : (oiValue/1e6).toFixed(1)+'M') : '—';
+  const oiChgColor = oiChange >= 0 ? 'var(--ice)' : 'var(--red)';
+
+  document.getElementById('tab-derivatives').innerHTML = `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_futures_data')}</div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_funding_rate')}</span>
+        <span class="analysis-row-value" style="color:${frColor}">
+          ${frValue !== null ? (frValue>=0?'+':'')+frValue.toFixed(4)+'%' : placeholder(18,80)}
+        </span>
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('th_open_interest')}</span>
+        <span class="analysis-row-value">${oiStr}</span>
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_oi_change')}</span>
+        <span class="analysis-row-value" style="color:${oiChange!==null?oiChgColor:'var(--text)'}">
+          ${oiChange !== null ? (oiChange>=0?'+':'')+oiChange.toFixed(2)+'%' : placeholder(18,80)}
+        </span>
+      </div>
+    </div>
+
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_ls_ratio')}</div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_global_ls')}</span>
+        ${lsPct ? `<span class="analysis-row-value"><span style="color:var(--ice)">${lsPct}%</span> / <span style="color:var(--red)">${(100-parseFloat(lsPct)).toFixed(1)}%</span></span>` : placeholder(18, 120)}
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_top_position_ls')}</span>
+        ${ttPct ? `<span class="analysis-row-value"><span style="color:var(--ice)">${ttPct}%</span> / <span style="color:var(--red)">${(100-parseFloat(ttPct)).toFixed(1)}%</span></span>` : placeholder(18, 120)}
+      </div>
+    </div>
+
+    ${['BTC','ETH'].some(c => trade.symbol.includes(c)) ? `
+    <div class="analysis-section">
+      <div class="analysis-section-title">${t('section_options')}</div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_pc_ratio')}</span>
+        ${pcRatio ? `<span class="analysis-row-value" style="color:${parseFloat(pcRatio)>1?'var(--red)':'var(--ice)'}">${pcRatio}</span>` : placeholder(18, 60)}
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-row-label">${t('label_avg_iv')}</span>
+        ${avgIV ? `<span class="analysis-row-value">${avgIV}%</span>` : placeholder(18, 60)}
+      </div>
+    </div>` : ''}
+
+
+    ${(() => {
+      const bList = bybitFunding && bybitFunding.result && bybitFunding.result.list;
+      if (!bList || bList.length === 0) return '';
+      const bFR = (parseFloat(bList[0].fundingRate) * 100).toFixed(4);
+      const bOIList = bybitOI && bybitOI.result && bybitOI.result.list;
+      const bOIVal  = bOIList && bOIList.length > 0 ? parseFloat(bOIList[0].openInterest) : null;
+      const bOIStr  = bOIVal ? (bOIVal > 1e9 ? (bOIVal/1e9).toFixed(2)+'B' : (bOIVal/1e6).toFixed(1)+'M') : '—';
+      return `
+      <div class="analysis-section">
+        <div class="analysis-section-title">${t('section_bybit')}</div>
+        <div class="analysis-row">
+          <span class="analysis-row-label">${t('label_bybit_fr')}</span>
+          <span class="analysis-row-value" style="color:${parseFloat(bFR)>=0?'var(--green)':'var(--red)'}">${parseFloat(bFR)>=0?'+':''}${bFR}%</span>
+        </div>
+        <div class="analysis-row">
+          <span class="analysis-row-label">${t('label_bybit_oi')}</span>
+          <span class="analysis-row-value">${bOIStr}</span>
+        </div>
+      </div>`;
+    })()}`;
+}
+
+/* ============================================================
+   TAB 4 — NEWS
+   ============================================================ */
+function renderNewsTab(trade, newsData) {
+  const articles = newsData && newsData.results && newsData.results.length > 0 ? newsData.results : null;
+  if (articles) {
+    document.getElementById('tab-news').innerHTML = `
+      <div class="analysis-section">
+        <div class="analysis-section-title">${t('section_news')} (CryptoPanic)</div>
+        <div class="news-list">
+          ${articles.slice(0, 8).map(n => {
+            const nloc = _currentLang === 'en' ? 'en-US' : _currentLang === 'zh-CN' ? 'zh-CN' : _currentLang === 'ko' ? 'ko-KR' : _currentLang === 'ja' ? 'ja-JP' : _currentLang === 'th' ? 'th-TH' : _currentLang === 'vi' ? 'vi-VN' : 'zh-TW';
+            const dateStr = n.published_at ? new Date(n.published_at).toLocaleDateString(nloc, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+            const link = n.url ? `href="${n.url}" target="_blank"` : '';
+            return `<div class="news-item">
+              <a ${link} style="text-decoration:none;color:inherit;cursor:${n.url?'pointer':'default'};">
+                <div class="news-item-title">${n.title}</div>
+                <div class="news-item-meta">
+                  <span>${n.source ? n.source.title : (n.domain || '')}</span>
+                  <span style="color:var(--text-muted);font-size:11px;">${dateStr}</span>
+                </div>
+                ${n.description ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.4;">${n.description.slice(0,150)}${n.description.length>150?'…':''}</div>` : ''}
+              </a>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  } else {
+    document.getElementById('tab-news').innerHTML = `
+      <div class="analysis-section">
+        <div class="analysis-section-title">${t('section_news')}</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${[1,2,3,4,5].map(()=>`<div class="placeholder-block" style="height:60px;border-radius:8px;"></div>`).join('')}
+        </div>
+      </div>`;
+  }
+}
+
+/* ============================================================
+   OPN-301 固定分析區塊
+   ============================================================ */
+function renderOPN301Section(trade) {
+  const el = document.getElementById('tab-opn301');
+
+  // 後端交易：顯示存好的分析
+  if (trade._fromAPI && trade.analysis) {
+    let entry = null, closing = null;
+    try { entry = JSON.parse(trade.analysis); } catch {}
+    try { closing = trade.closingAnalysis ? JSON.parse(trade.closingAnalysis) : null; } catch {}
+
+    // Map current UI language to the stored JSON field suffix
+    const _langSuffix = {'en':'_en','zh-CN':'_zh_cn','ko':'_ko','ja':'_ja','th':'_th','vi':'_vi'}[_currentLang] || '';
+    const _pick = (obj, key) => (_langSuffix && obj[key + _langSuffix] != null) ? obj[key + _langSuffix] : obj[key];
+
+    if (entry) {
+      const entryKps = _pick(entry, 'key_points') || [];
+      const entrySummary = _pick(entry, 'summary') || '';
+
+      const kpHtml = entryKps.map(kp => `
+        <div class="opn301-kp">
+          <div class="opn301-kp-header">
+            <span class="opn301-kp-label">${kp.indicator}</span>
+            <span class="opn301-kp-value">${kp.value}</span>
+          </div>
+          <span class="opn301-kp-insight">${kp.insight}</span>
+        </div>`).join('');
+
+      let closingHtml = '';
+      if (closing) {
+        const resultColor = closing.result === 'profit' ? 'var(--ice)' : 'var(--red)';
+        const closingKps = _pick(closing, 'key_points') || [];
+        const closingReason = _pick(closing, 'reason') || '';
+
+        const ckpHtml = closingKps.map(kp => `
+          <div class="opn301-kp">
+            <div class="opn301-kp-header">
+              <span class="opn301-kp-label">${kp.indicator}</span>
+              <span class="opn301-kp-value" style="color:${resultColor}">${kp.value}</span>
+            </div>
+            <span class="opn301-kp-insight">${kp.insight}</span>
+          </div>`).join('');
+        closingHtml = `
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);">
+            <div style="font-size:13px;font-weight:700;letter-spacing:0.08em;color:${resultColor};margin-bottom:10px;">${t('label_exit_analysis')}</div>
+            ${ckpHtml}
+            ${closingReason ? `<div style="font-size:12px;color:${resultColor};margin-top:8px;padding:8px 12px;background:rgba(37,99,235,0.04);border-radius:6px;border-left:2px solid ${resultColor};line-height:1.7;">${closingReason}</div>` : ''}
+          </div>`;
+      }
+
+      el.innerHTML = `
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px;">${t('label_trade_analysis')}</div>
+        <div style="font-size:13px;font-weight:700;letter-spacing:0.08em;color:var(--ice);margin-bottom:10px;">${t('label_entry_signal')}</div>
+        ${kpHtml}
+        ${entrySummary ? `<div style="font-size:12px;color:var(--ice);margin-top:8px;margin-bottom:8px;padding:8px 12px;background:rgba(37,99,235,0.04);border-radius:6px;border-left:2px solid var(--ice);line-height:1.7;">${entrySummary}</div>` : ''}
+        ${closingHtml}`;
+      return;
+    }
+  }
+
+  // 本地模擬交易：placeholder
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;">
+    ${[1,2,3].map(()=>`<div class="placeholder-block" style="height:14px;border-radius:4px;"></div>`).join('')}
+  </div>`;
+}
+
+/* ============================================================
+   MARKDOWN RENDERER (lightweight)
+   ============================================================ */
+function renderMarkdown(text) {
+  return text
+    // Tables: | col | col | → styled rows
+    .split('\n').map(line => {
+      if (/^\|.+\|$/.test(line.trim())) {
+        if (/^[\s|:-]+$/.test(line.trim())) return ''; // separator row
+        const cells = line.trim().slice(1,-1).split('|').map(c => c.trim());
+        const isHeader = false;
+        return `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);">`
+          + cells.map(c => `<span style="flex:1;font-size:12px;">${c}</span>`).join('')
+          + `</div>`;
+      }
+      return line;
+    }).join('\n')
+    // Headings
+    .replace(/^### (.+)$/gm, '<div style="font-size:12px;font-weight:700;color:var(--ice);margin:14px 0 6px;letter-spacing:0.06em;text-transform:uppercase;">$1</div>')
+    .replace(/^## (.+)$/gm,  '<div style="font-size:13px;font-weight:700;color:var(--text);margin:16px 0 8px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:4px;">$1</div>')
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text);font-weight:600;">$1</strong>')
+    // Blockquote / method callout
+    .replace(/^> (.+)$/gm, '<div style="border-left:2px solid rgba(147,197,253,0.7);padding:6px 12px;margin:8px 0;font-size:12px;color:var(--text-dim);background:rgba(37,99,235,0.04);border-radius:0 4px 4px 0;">$1</div>')
+    // Horizontal rule
+    .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:12px 0;">')
+    // List items
+    .replace(/^- (.+)$/gm, '<div style="padding:2px 0 2px 12px;position:relative;"><span style="position:absolute;left:0;color:var(--ice);">·</span>$1</div>')
+    // Line breaks
+    .replace(/\n/g, '<br>');
+}
+
+/* ============================================================
+   K線圖面板（TradingView Widget）
+   ============================================================ */
+let _tvSym = null;
+const _tvSymMap = {
+  BTCUSDT: 'BINANCE:BTCUSDT',
+  ETHUSDT: 'BINANCE:ETHUSDT',
+  XRPUSDT: 'BINANCE:XRPUSDT',
+  SOLUSDT: 'BINANCE:SOLUSDT',
+  BNBUSDT: 'BINANCE:BNBUSDT'
+};
+
+function openCoinChart(sym) {
+  const panel  = document.getElementById('kc-inline-row');
+  const tbody  = document.getElementById('market-tbody');
+  if (_tvSym === sym) {
+    _tvSym = null;
+    panel.style.display = 'none';
+    document.querySelectorAll('.market-row').forEach(r => r.classList.remove('kc-row-active'));
+    return;
+  }
+  _tvSym = sym;
+  const clickedRow = tbody.querySelector(`.market-row[data-sym="${sym}"]`);
+  clickedRow.after(panel);
+  panel.style.display = '';
+  document.querySelectorAll('.market-row').forEach(r => r.classList.toggle('kc-row-active', r.dataset.sym === sym));
+  // 清空舊 widget，重新建立
+  const container = document.getElementById('tradingview_chart');
+  container.innerHTML = '';
+  new TradingView.widget({
+    autosize:          true,
+    symbol:            _tvSymMap[sym] || 'BINANCE:BTCUSDT',
+    interval:          '60',
+    timezone:          'Asia/Taipei',
+    theme:             'dark',
+    style:             '1',
+    locale:            _currentLang === 'en' ? 'en' : _currentLang === 'zh-CN' ? 'zh_CN' : _currentLang === 'ko' ? 'ko' : _currentLang === 'ja' ? 'ja' : _currentLang === 'th' ? 'th_TH' : _currentLang === 'vi' ? 'vi_VN' : 'zh_TW',
+    backgroundColor:   'rgba(5,8,15,1)',
+    gridColor:         'rgba(255,255,255,0.04)',
+    enable_publishing: false,
+    hide_top_toolbar:  false,
+    hide_legend:       false,
+    save_image:        false,
+    container_id:      'tradingview_chart'
+  });
+  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+}
+
+/* ============================================================
+   EVENT LISTENERS
+   ============================================================ */
+// Market row → open coin chart
+document.getElementById('market-tbody').addEventListener('click', e => {
+  const row = e.target.closest('.market-row');
+  if (row) openCoinChart(row.dataset.sym);
+});
+
+
+document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+
+document.getElementById('analysis-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// Also update tab comment
+/* Tabs: technical | derivatives | sentiment | news */
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+/* ============================================================
+   API 交易數據抓取
+   ============================================================ */
+const API_URL = 'https://operon.network/api/trades';
+
+function apiToLocal(t) {
+  return {
+    id: 'api_' + t.id,
+    date: t.entry_time ? t.entry_time.split('T')[0] : '',
+    exitDate: t.exit_time ? t.exit_time.split('T')[0] : null,
+    symbol: t.symbol,
+    pair: t.pair,
+    dir: t.direction,
+    leverage: t.leverage,
+    position_pct: t.position_pct,
+    entry: t.entry_price,
+    exit: t.exit_price,
+    pnl: t.pnl_pct,
+    pnlUsdt: t.pnl_usdt,
+    status: t.status,
+    analysis: t.analysis || '',
+    closingAnalysis: t.closing_analysis || '',
+    marketSnapshot: t.market_snapshot || '',
+    newsSnapshot: t.news_snapshot || '',
+    _fromAPI: true
+  };
+}
+
+async function fetchAndMergeTrades() {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    API_TRADES = data.map(apiToLocal);
+    PERF = calcPerfStats();
+    CHART_POINTS = PERF.CHART_POINTS;
+    renderTable();
+    initChart();
+  } catch(e) {
+    console.warn('[API] 抓取失敗', e);
+    renderTable();
+  }
+}
+
+function getAllTrades() {
+  return API_TRADES;
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  applyLanguage();                 // Apply i18n on load
+  fetchAndMergeTrades();           // Fetch API trades (auto-updates charts)
+  setInterval(fetchAndMergeTrades, 10 * 60 * 1000);
+  initMarketWebSocket();
+  updateMarketPanel();
+  setInterval(updateMarketPanel, 30000);
+});
+</script>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:20px;padding:16px 16px 40px;">
+  <a href="https://operon.network/#agents" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 48px;border:1px solid rgba(255,255,255,0.15);border-radius:999px;color:var(--text);font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.3)';this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)';this.style.background='transparent'">
+    → <span data-i18n="btn_back_grid">BACK TO GRID</span>
+  </a>
+  <a href="https://operon.network/#nodes" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 48px;border:1px solid rgba(147,197,253,0.3);border-radius:999px;color:var(--ice);font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,204,0,0.5)';this.style.background='rgba(37,99,235,0.08)'" onmouseout="this.style.borderColor='rgba(147,197,253,0.3)';this.style.background='transparent'">
+    <span data-i18n="btn_learn_nodes">LEARN MORE ABOUT NODES</span> →
+  </a>
+</div>
+<footer style="text-align:center; padding:24px 16px 32px; border-top:1px solid rgba(255,255,255,0.06);">
+  <p data-i18n="disclaimer" style="font-size:11px; color:rgba(255,255,255,0.3); max-width:600px; margin:0 auto; line-height:1.6;">
+    過往績效不代表未來表現。加密貨幣交易涉及高度風險，可能導致本金損失。
+  </p>
+</footer>
+</body>
+</html>
