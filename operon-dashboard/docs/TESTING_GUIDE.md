@@ -8,6 +8,12 @@
 
 **What's different from cycle 1:** This is the second pass of user testing. The first pass (2026-04-14) surfaced 14 bugs; all of them have been fixed, the code has been re-reviewed end-to-end, and this package reflects the fixed state. Two items in Part 3 setup are new — **read Part 3 carefully even if you tested cycle 1**. A known-caveats list is in Part 10 at the bottom of this guide — those are items that have been intentionally deferred for later, not bugs we want you to report. Part 7 is new and covers the common "looks like a bug but isn't" situations you'll hit — **read Part 7 before you file a report.**
 
+**If you already tested the 2026-04-18 package:** thanks for coming back. The setup delta is tiny — one extra migration file (`018_revoked_referral_status.sql`) to apply after `017`. No new env vars, no new dependencies, no contract redeploy needed. Three new things are worth poking at while you're here:
+
+1. **Admin revokes a referral code.** After buying with a valid code, have the operator revoke it via the admin endpoint. Try to buy with the same code again — you should fall through to "no discount," and the code should stay revoked (it should not silently reappear on-chain within 5 minutes).
+2. **Pending-tx recovery across wallets.** Start a purchase, close the tab mid-tx, switch to a different wallet in MetaMask, reload the sale page. The yellow "pending transaction" banner should **not** appear under the second wallet. If it does, flag it.
+3. **Realtime reconnect.** While on the sale page, simulate a dropped connection (browser devtools → Network → Offline for 10s, then back Online). The tier / status should reconcile, not stay stuck at whatever it showed when the socket dropped.
+
 **You will not need to understand code.** You will copy and paste commands. If something fails, message the operator — do not improvise.
 
 ---
@@ -293,14 +299,15 @@ Easiest way is Supabase's SQL editor, not the terminal.
 3. In your file manager, open the folder `operon-dashboard/supabase/migrations`. You will see files named `001_initial_schema.sql`, `002_seed_data.sql`, etc.
 4. Open `001_initial_schema.sql` in a text editor. Select all. Copy. Paste into the Supabase SQL Editor. Click **Run**.
 5. Wait for **Success**.
-6. Clear the editor. Repeat for each remaining file **in numerical order**: 002, 003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017. **There is no 007 — skip it.**
+6. Clear the editor. Repeat for each remaining file **in numerical order**: 002, 003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018. **There is no 007 — skip it.**
 
 If any file errors, stop and message the operator.
 
 Notes:
 - `002_seed_data.sql` pre-seeds a handful of EPP invite codes into the database. You can use those in Test 5 without generating new ones. It also inserts demo rows (a fake "David Kim" EPP partner, two fake historical purchases) purely for dashboard screenshots — ignore them, they don't affect Tests 1–6.
 - `013_referral_chain_state.sql` creates the queue that tracks whether a referral code has been mirrored onto the sale contract. `014_seed_full_tier_curve.sql` fills in tiers 6–40 and resets tier state so the DB lines up with a fresh contract deploy.
-- `017_guard_tier_reset.sql` is the compensating control for `014` — it makes `014`'s tier-state reset skip if any real purchases already exist, so re-running the migration list mid-session does not corrupt counters. Must be applied after `016`.
+- `017_guard_tier_reset.sql` is the compensating control for `014` — it makes `014`'s tier-state reset skip if any real purchases already exist, so re-running the migration list mid-session does not corrupt counters. Must be applied after `016`. **Never re-run `014` by itself** — its tier-counter reset is unconditional. If you need to reset state, re-apply the full `014 → 015 → 016 → 017` sequence so the guard in `017` protects any real purchase rows.
+- `018_revoked_referral_status.sql` widens the `referral_code_chain_state` status column to accept `'revoked'` as a terminal state, so an admin-initiated referral-code removal is no longer silently reversed by the drain loop within 5 minutes. Apply it after `017`.
 
 ### 3.8 Run the site
 
