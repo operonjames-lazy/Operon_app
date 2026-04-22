@@ -615,3 +615,54 @@ Short tooling session.
 - Did not actually run `pnpm dev` end-to-end in this session. Filters resolve, workspace lists all three; operator should confirm the Launch button lands on the dashboard once both servers are up.
 
 ---
+
+## 2026-04-22 — R14 tester-package rebuild + Vercel-compromise survival plan
+
+Read-and-plan session. Two concrete artifacts landed, plus a threat-model document now parked outside the repo for operator execution.
+
+### Completed
+
+**Ship-readiness `/review-ship` on the post-R14 delta** (commits `b1dd7da..a127009`, the monorepo restructure + `?connect=1` deep-link). Four agents in parallel (security / correctness / client / scale). Scope was the delta only — R14 body was reviewed this morning. Verdict summary:
+
+- **0 blocking for the offline tester-zip path.** Testers who receive the zip get a flat `operon-dashboard/` subtree identical in shape to R7 (2026-04-18). Install + migrations + dev server + contract deploy all unaffected.
+- **2 blocking for the live marketing→dashboard flow on Vercel.** (a) `.github/workflows/ci.yml` moved to `operon-dashboard/.github/workflows/ci.yml` — GitHub Actions only reads repo-root `.github/`, so CI is silently disabled since `a127009`. (b) `apps/website/vite.config.ts:15` substitutes `VITE_DASHBOARD_URL` with fallback `http://localhost:3001`; verified the literal string is in the built bundle, so Launch buttons point at localhost unless the website's Vercel project sets `VITE_DASHBOARD_URL`.
+- **Required (non-blocking for tester zip)**: `TESTING_GUIDE.md` omitted migration 018 (admin-revoke untestable on tester DB); 3-way lockfile split-brain (root untracked `pnpm-lock.yaml` + `operon-dashboard/pnpm-lock.yaml` committed + stale `apps/website/package-lock.json` npm-style); Vercel project Root Directory likely needs repointing to `operon-dashboard` for the dashboard project; `?ref=` silently dropped on marketing→dashboard hop (community referrer attribution loss, A-P5 makes the miss permanent); no CSP/SRI on marketing site which loads from 5 third-party script origins.
+- **Praise**: `ConnectParamHandler` at [operon-dashboard/app/providers.tsx:56-89](../app/providers.tsx) fire-once + URL-cleanup + param-preservation all correct; Vite `DASHBOARD_URL` `define` plumbing clean; external links use `rel="noopener noreferrer"`.
+
+**Tester-guide patch landed** (commit `75dc5e7`). Both EN and zh-CN:
+- Migration list in §3.7 extended to include `018` after `017`.
+- Notes for `017` got the "never re-run `014` by itself" warning (re-apply the full `014→017` sequence so `017`'s guard protects purchase counters).
+- New `018` note explaining the `revoked` terminal status and why it fixes the silent-reversal bug.
+- Near-top "If you already tested the 2026-04-18 package" block with the three R14 scenarios returning testers should poke at: admin-revoke-stays-revoked, pending-tx-doesn't-bleed-across-wallets, realtime-reconnect-reconciles.
+
+**Rebuilt tester package**: `../operon-tester-2026-04-22.zip` (533 KB, file-count verified via `prepare-tester-package.sh`'s post-stage safety sweep). Secret scan clean (no `.env*`, no keys, no internal docs). Migration `018_revoked_referral_status.sql` present. "018" appears 3× in each testing guide (migration list + §3.7 notes + top-of-doc returning-tester block).
+
+**Vercel-compromise survival plan** drafted and approved by operator. Lives at `~/.claude/plans/if-someone-hits-my-zesty-duckling.md` (outside repo by design — operational, not source). Content summary:
+
+- Blast-radius table across four scenarios: (a) today pre-Safe, (b) post-Safe with key still in env, (c) + KMS admin signer, (d) + YubiKey + RLS-re-enabled + independent-RPC quorum.
+- **17-item prioritized mitigation** split across three tiers. Tier 1 (pre-mainnet, mostly operator-side): Safe novation (D06), YubiKey on Vercel/GitHub/Supabase/email, mark env vars sensitive, paste fresh secrets, branch + deploy protection, out-of-band alerting, pre-signed pause tx, registrar lock. Tier 2 (within two weeks of mainnet, mostly code-side): KMS admin signer, re-enable RLS, independent second-RPC quorum in `verifyOnChain`, move `ADMIN_WALLETS` to DB, rate-limit + alert on high-`discountBps` registrations, `pg_dump` to write-once bucket. Tier 3: split Vercel projects, Safe co-signer recruitment, bundle-hash bounty.
+- **IR runbook** with rotation-order dependencies: Safe is the recovery root (not Vercel) since `setAdmin` from Safe rotates the hot admin even if attacker still has the old key.
+
+### Owed doc updates (not landed this session — surfaced by the survival plan)
+
+- [`docs/OPERATIONS.md`](OPERATIONS.md) §5 "Operator private key rotation" is written for the pre-Safe world (says `transferOwnership` from current owner). Post-Safe, hot-key rotation is `setAdmin` from Safe, not `transferOwnership`. Fix when Safe novation lands.
+- `docs/OPERATIONS.md` wants a new "§5 Vercel compromise" subsection reflecting the survival-plan IR runbook. Owed to operator-facing docs so an oncall finds it where they'd look.
+- Survival-plan Tier 2 items (#10 RLS re-enable, #11 indep RPC quorum, #12 ADMIN_WALLETS→DB) are each multi-hour design-worthy changes — should get their own per-item planning sessions before implementation.
+
+### Operator-side blockers for live flow (from the review-ship)
+
+Before flipping the live marketing→dashboard flow on Vercel:
+
+1. `git mv operon-dashboard/.github .github` and update the workflow path so CI runs again. Workflow needs `cd operon-dashboard && pnpm install --frozen-lockfile && ...` pattern to operate from the nested app directory.
+2. Set `VITE_DASHBOARD_URL=https://<prod-dashboard>.vercel.app` in the website's Vercel project (Production + Preview scopes).
+3. Confirm the dashboard Vercel project Root Directory = `operon-dashboard`. Create a second Vercel project with Root Directory = `apps/website` for the marketing site.
+4. Decide lockfile winner. Recommended: track the root `pnpm-lock.yaml`, delete `apps/website/package-lock.json` (pnpm ignores it but it confuses contributors), and either delete `operon-dashboard/pnpm-lock.yaml` (if root-drives-all) or gitignore the root one (if dashboard-Vercel-project-drives-dashboard). OPERATIONS.md should document the choice.
+5. Forward `?ref=` from marketing Launch → dashboard deep-link, so community-referrer URLs on the marketing origin don't silently drop the attribution.
+6. Add a marketing-site `apps/website/vercel.json` with CSP + SRI on the external script tags before mainnet (testnet-tolerable, mainnet-gate).
+
+### Open (pending operator go-ahead)
+
+- Survival-plan Tier 1 items all operator-side: YubiKey purchase + enrollment, Vercel env paste of rotated secrets from `~/operon-mainnet-secrets.txt`, branch protection, pre-signed pause tx from Safe, registrar lock. None require code.
+- Next code-side pick: user was offered (a) doc-only updates to `OPERATIONS.md` §5, (b) Tier 2 item #13 rate-limit `addReferralCode` + alert on high-discount registrations, (c) Tier 2 item #11 independent-RPC quorum. User response pending.
+
+---
