@@ -40,7 +40,7 @@ const FAQPage: React.FC<FAQPageProps> = ({ t }) => {
             Everything you need<br/>to know about <span className="text-[#00f2ff]">Operon.</span>
           </h1>
           <p className="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
-            The Genesis Node Sale is the founding event of the Operon network. This document answers every material question about the sale, tokenomics, referral mechanics, and earning potential.
+            Operon is the open agent protocol — Layer 2 of the AI stack. The Genesis Node Sale opens the protocol to its first 100,000 operators. This page answers every material question about the sale, tokenomics, referral mechanics, and earning potential.
           </p>
         </div>
 
