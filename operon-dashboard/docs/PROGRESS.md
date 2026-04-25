@@ -666,3 +666,82 @@ Before flipping the live marketing→dashboard flow on Vercel:
 - Next code-side pick: user was offered (a) doc-only updates to `OPERATIONS.md` §5, (b) Tier 2 item #13 rate-limit `addReferralCode` + alert on high-discount registrations, (c) Tier 2 item #11 independent-RPC quorum. User response pending.
 
 ---
+
+## 2026-04-25 — admin panel land + close all 7 review items
+
+Continued the in-flight admin panel from the previous session. The 2026-04-22 admin-panel review left 4 required + 3 advisory items open and the entire panel sitting untracked in the working tree. This session shipped the panel, closed every item from the review, and pushed.
+
+Four commits, all on `main`:
+
+- `d46cea4` — `docs(operations): add mainnet token-address env vars (O-P5)`
+- `a26ae08` — `feat(admin): land admin panel + wire partner status control (Pass-5)`
+- `999b0af` — `fix(admin): move money-math aggregates to Postgres RPCs (D-9, Pass-3)`
+- `2d8d0b1` — `chore(admin): close last two review advisories (C-P4, S-76/A-8)`
+
+### Completed
+
+**Admin panel landed** (`a26ae08`). 33 files / +4293 lines. Operator-only `/admin/*` route group, allowlist-gated by `requireAdmin()`. Sidebar gains a conditional "Admin panel" link gated on `useIsAdmin()` → `/api/admin/me`. Pieces:
+
+- 7 pages under `app/(admin)/admin/`: Overview, Users, Users/[id], Sale, Partners, Payouts, Health, Settings
+- 17 new route handlers under `app/api/admin/`: announcements, audit, epp/invites/list, health, i18n-status, killswitches, me, partners/list, partners/pipeline, partners/status, payouts/milestones, payouts/unpaid, sale/balance, sale/tiers, stats/overview, users/[id], users/search
+- `hooks/useAdmin.ts` — React-Query wrappers (useIsAdmin, useAdminOverview, useUserSearch, useUserDetail, usePartnersList, usePartnerPipeline, useUnpaidCommissions, useMilestones, useHealth, useAuditLog, useAnnouncements, useKillSwitches, useI18nStatus)
+- `lib/admin-read.ts` — server-side aggregation helpers (rewritten in `999b0af` as thin RPC wrappers)
+- `components/admin/{metric-tile,sparkbars}.tsx`
+- `migration 019_admin_killswitches.sql` — per-endpoint kill switches table seeded with 12 known mutation keys
+- **Pass-5 closure folded in:** `/admin/users/[id]` page now has a "Change status" form calling `/api/admin/partners/status` with required reason. The endpoint had been built earlier with audit+reason plumbing but no UI surface.
+
+**O-P5 closure** (`d46cea4`). `OPERATIONS.md §1` `.env.local` template gains the four mainnet token-address env vars (`NEXT_PUBLIC_USDC_ARB`, `_USDT_ARB`, `_USDC_BSC`, `_USDT_BSC`) consumed by `/api/admin/sale/balance`. Same vars added to §3 Before-mainnet checklist with the failure-mode note ("unset = balance tiles render 'n/a' with no hint").
+
+**D-9 + Pass-3 closure** (`999b0af`). Migration **020** introduces 5 STABLE admin-read RPCs that move every aggregate from JS `.reduce()` over unbounded SELECTs into Postgres:
+
+- `admin_attribution()` — revenue split by code prefix (no-code / community / EPP)
+- `admin_overview_stats()` — full Overview KPI blob (revenue, nodes, attribution, commissions, partners, users, saleStage)
+- `admin_daily_revenue(days)` — trailing-N-day chart series, fills zeros for empty days
+- `admin_unpaid_grouped()` — unpaid commission batches grouped by referrer with enrichment (wallet, payout_wallet, payout_chain) — replaces the previous 4-query stitch in `/api/admin/payouts/unpaid`
+- `admin_user_commission_totals(uuid)` — lifetime / paid / unpaid for one referrer, removing the under-report bug for Senior+ partners with >500 commission rows
+
+`lib/admin-read.ts` is now a thin wrapper: each function is one `db.rpc('admin_...', {...})` call. JSON return shapes match the existing TypeScript interfaces so route changes are minimal.
+
+`/api/admin/users/[id]` also gains `count: 'exact', head: true` shadow queries for `purchaseCount` and `referralsMadeCount`, fixing the Pass-3 advisory where header counts ("Purchases · N", "Referrals made · N") used the truncated list length rather than the true row count.
+
+New REVIEW_ADDENDUM entry **D-P9** codifies the rule: admin dashboards aggregate via Postgres RPC, not client-side `.reduce()` over unbounded SELECT.
+
+Migration 020 applied to hosted Supabase (`erxxsmvdzhxelezlocuf`); all 5 RPCs verified against the live dataset (lifetime $1,338.75 across 2 purchases, unpaid $160.65 — both match pre-migration totals).
+
+**Advisory closures** (`2d8d0b1`):
+
+- **C-P4** — `app/(admin)/admin/layout.tsx` gains a header comment documenting English-only admin JSX as deliberate (operator-only, single user). Routing 17+ admin labels through `t()` would bloat the 6-language translation files for zero audience value. Revisit trigger: a second admin who doesn't read EN.
+- **S-76/A-8** — `/api/admin/users/search` strip regex extended from `[%_]` to `[%_,()"\\]`. Previously the raw PostgREST `.or()`-filter metachars passed through into the interpolated filter expression, producing silent garbage for queries that contained them. Deliberately keeps `.`, `:`, `@`, `-` since those are safe inside `.or()` values (only structural in the key half of `field.op.value`), so email / UUID / OPR-XXXX / wallet searches still match.
+
+**Admin panel review status:** 0 blocking, 0 required, 0 advisory open. All 7 items from the 2026-04-22 review closed.
+
+### Verification
+
+- `npx tsc --noEmit` — clean after each commit
+- `npx next build` — green, all admin routes emit
+- Migration 020 applied to hosted Supabase via `scripts/apply-migration.mjs`
+- Each of the 5 RPCs called with `SELECT admin_<fn>(...)` and verified against live data
+
+### Open / next session
+
+**Operator-side (Vercel + mainnet flip), unchanged from 2026-04-22 entry:**
+1. `git mv operon-dashboard/.github .github` — CI silently disabled since `a127009`
+2. Set `VITE_DASHBOARD_URL` on the website's Vercel project; confirm dashboard project Root Directory = `operon-dashboard`; create a 2nd project for `apps/website`
+3. Forward `?ref=` from marketing Launch → dashboard deep-link
+4. Paste rotated `JWT_SECRET` + `CRON_SECRET` (already at `~/operon-mainnet-secrets.txt`) into Vercel Production
+5. Mainnet contract deploy + token env + webhook rewire + live smoke test + Gnosis Safe novation
+6. Survival-plan Tier 1: YubiKey, branch protection, pre-signed pause tx, registrar lock
+
+**Code-side small follow-ups:**
+- `.playwright-mcp/` → add to `.gitignore`
+- Lockfile split-brain decision (root `pnpm-lock.yaml` untracked; `operon-dashboard/pnpm-lock.yaml` committed; stale `apps/website/package-lock.json` from npm)
+- DECISIONS D-pending: Resources URLs, stale rate table on referrals page, delete deprecated `/api/epp/create`
+- B7 E2E harness: `app/providers.tsx` `NEXT_PUBLIC_E2E` mock-connector branch (regression safety net only)
+
+**Code-side bigger (each its own planning session):**
+- Survival-plan Tier 2: KMS admin signer, re-enable RLS, independent second-RPC quorum in `verifyOnChain`, move `ADMIN_WALLETS` to DB, rate-limit `addReferralCode` + alert on high-`discountBps` registrations
+
+**Deferred with reason:**
+- 3 admin routes still doing JS reduce over `epp_partners` (partners/list, partners/pipeline, payouts/milestones) — no truncation risk until partner count >1k. Same D-P9 fix applies when it matters.
+
+---

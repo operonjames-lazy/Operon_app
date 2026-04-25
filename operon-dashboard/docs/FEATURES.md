@@ -85,6 +85,7 @@ Feature implementation tracker. Stable IDs that never renumber.
 | I15 | NodeSale admin role separation (admin vs Ownable2Step owner) | ✅ Done | `contracts/contracts/NodeSale.sol` — `addReferralCode{s}` / `removeReferralCode` / `setTierActive` moved to `onlyAdmin`; all else stays `onlyOwner`. `setAdmin(address)` rotates the hot key. Makes Gnosis Safe novation (F34) a two-tx handshake instead of a contract redeploy. Tested in "Admin role separation" suite (8 tests). See DECISIONS D26. |
 | I16 | Webhook local signed-payload harness | ✅ Done | `scripts/test-webhooks.mjs` — Alchemy + QuickNode, two modes (signature-only / live-tx), `--wrong-sig` negative control. Exercises signature verify + payload parse + on-chain re-verify + commission RPC without needing cloud webhook config. Runbook in `OPERATIONS.md §6.5`. |
 | I17 | Playwright E2E regression harness | 🔄 In Progress | `playwright.config.ts` + `e2e/{ui,full-chain,fixtures}/`. `ui/smoke.spec.ts` + `ui/referral-capture.spec.ts` runnable today. `full-chain/*` (referral-sync + purchase-arbitrum + purchase-bsc) stubbed pending ~3–4h of fixture wiring (hardhat-node, supabase-test-db, `E2E=1` mock-connector branch in `app/providers.tsx`). See `e2e/README.md` and DECISIONS D27. |
+| I18 | Admin panel UI v1 | ✅ Done | `app/(admin)/admin/*` (Overview, Users, Users/[id], Sale, Partners, Payouts, Health, Settings) gated by `requireAdmin()` + `useIsAdmin()` UX gate. 17 read/write API routes under `app/api/admin/*`. `hooks/useAdmin.ts` React-Query wrappers. `lib/admin-read.ts` server-side aggregation (RPC-backed, see DB12). Sidebar wires the entry conditionally. Deliberately English-only (REVIEW_ADDENDUM C-P4). 2026-04-22 review closed all 7 items (D-9, Pass-3, Pass-5, O-P5, C-P4, S-76, Pass-3 advisory). |
 
 ### Dashboard pages
 
@@ -112,6 +113,8 @@ Feature implementation tracker. Stable IDs that never renumber.
 | DB9 | Atomic commission RPC `process_purchase_and_commissions` | ✅ Done | Migration 010 (original), `CREATE OR REPLACE`'d by 012. See ALGORITHMS.md §1–§4. |
 | DB10 | Review fixes — `purchases.amount_usd` → BIGINT, `epp_partners.invite_id` UNIQUE | ✅ Done | Migration 011. |
 | DB11 | Community referrer earning + affiliate L5 in commission RPC | ✅ Done | Migration 012. Community path credits `users.referral_code` holders at flat 10-3-2-1-1 with `referrer_tier='community'`. |
+| DB12 | Admin per-endpoint kill switches | ✅ Done | Migration 019. `admin_killswitches` table seeded with 12 known mutation keys. Lets the operator disable individual admin actions (e.g. invite generation during audit) without redeploying. Read on opt-in admin routes; written via `/api/admin/killswitches`. |
+| DB13 | Admin-read RPCs (D-9 + Pass-3 fix) | ✅ Done | Migration 020. 5 STABLE functions: `admin_attribution`, `admin_overview_stats`, `admin_daily_revenue(days)`, `admin_unpaid_grouped`, `admin_user_commission_totals(uuid)`. Move every admin aggregate from JS `.reduce()` over unbounded SELECT into Postgres so PostgREST row-cap truncation cannot under-report money totals. Pattern enforced by REVIEW_ADDENDUM **D-P9**. |
 
 ---
 
@@ -135,7 +138,7 @@ These are placeholders. Each maps roughly to a planned scope area. Open decision
 | F32 | Emission epoch cron job | 🔵 Future | Hourly or per-epoch. |
 | F33 | Uptime sample cron job | 🔵 Future | Hourly. |
 | F34 | Migration of contract ownership to Gnosis Safe | 🔵 Future | See DECISIONS D06 / D26. Contract-level enabler landed 2026-04-21 (I15 — admin/owner role split). Remaining work is operator-run: `setAdmin(<fresh hot key>)` + `transferOwnership(<Safe>)` + Safe `acceptOwnership()`. |
-| F35 | Admin panel v2 — UI dashboards, charts, partner search | 🔵 Future | Post-emissions scope. |
+| F35 | Admin panel v2 — emissions/staking dashboards on top of v1 | 🔵 Future | Post-emissions scope. v1 (Overview / Users / Sale / Partners / Payouts / Health / Settings) shipped 2026-04-25 as I18; F35 extends with Phase 2-specific surfaces (epoch monitoring, reward pool ops, uptime samples). |
 | F36 | — | 🔵 Future | Reserved |
 | F37 | — | 🔵 Future | Reserved |
 | F38 | — | 🔵 Future | Reserved |

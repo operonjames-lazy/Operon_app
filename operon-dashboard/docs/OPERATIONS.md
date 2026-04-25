@@ -215,21 +215,24 @@ All admin endpoints require:
 
 All endpoints write to `admin_audit_log` **before** performing the mutation. If the audit write fails, the mutation is aborted.
 
-### Read surface — Supabase Studio
+### Read surface — Admin panel UI
 
-There is no admin dashboard UI. For reads (sale stats, partner lookup, failed events, payout queue) use the Supabase Studio table editor directly. Relevant tables:
+The admin panel (`/admin/*`, gated by `requireAdmin()`) is the primary read surface. Pages:
 
-- `purchases` — filter by `chain`, `tier`, `created_at`. Sale stats: `SELECT chain, tier, COUNT(*), SUM(amount_usd) FROM purchases GROUP BY chain, tier`.
-- `users` + `epp_partners` — wallet lookup, referral code → partner mapping
-- `referrals` — referrer chain traversal
-- `referral_purchases` — commission audit trail, unpaid filter (`paid_at IS NULL`)
-- `epp_partners` — tier, credited amount, payout wallet
-- `failed_events` — retry queue, status, kind
-- `admin_audit_log` — every admin write, ever
+- `/admin` — Overview: revenue tiles, daily revenue chart, attribution split, commission balances, partner-by-tier counts
+- `/admin/users` — Search box + result table (search supports UUID / wallet / email / display name / referral code / partner code / telegram)
+- `/admin/users/[id]` — Full user detail: profile, partner row, upline, purchases (with true count), referrals made (with true count), commission totals (lifetime / paid / unpaid via Postgres RPC), recent commissions, audit log entries targeting this user. Has "Override tier" + "Change status" forms
+- `/admin/sale` — Tier table, sale stage, on-chain USDC + USDT balances per chain
+- `/admin/partners` — Leaderboard sortable by credited / network / joined / tier; pipeline view of partners ≤30% from next tier
+- `/admin/payouts` — Unpaid commission batches grouped by referrer (each batch = one USDC send), milestones owed
+- `/admin/health` — Failed-events queue depth, sync queue, last-reconcile timestamp, contract-balance snapshot
+- `/admin/settings` — Announcement banner CRUD, per-endpoint kill switches, i18n missing-key report
 
-If a query becomes repetitive, add it as a saved Postgres view rather than building UI.
+Every aggregate on these pages is computed in Postgres via the RPCs in **migration 020** (`admin_overview_stats`, `admin_attribution`, `admin_daily_revenue`, `admin_unpaid_grouped`, `admin_user_commission_totals`). Do **not** add new admin tiles that sum a `supabase.from(...).select(...)` in JS — REVIEW_ADDENDUM **D-P9** forbids it. The PostgREST row cap silently truncates and the aggregate goes wrong.
 
-### Write surface — 11 endpoints
+For ad-hoc queries beyond what the panel surfaces, fall through to Supabase Studio. Relevant tables: `purchases`, `users`, `epp_partners`, `referrals`, `referral_purchases`, `failed_events`, `admin_audit_log`. If a Studio query becomes repetitive, add it as a saved Postgres view (or extend the admin panel).
+
+### Write surface — endpoints
 
 #### Pause the sale
 
@@ -364,6 +367,46 @@ curl -X POST https://app.operon.network/api/admin/referrals/remove \
 ```
 
 Calls `NodeSale.removeReferralCode(codeHash)` and tombstones the queue row so subsequent drains don't re-add the code. Historical purchases and DB-level referral bindings are NOT touched — only future on-chain purchases lose their discount. Use when a code is confirmed abused or mistakenly issued.
+
+#### Suspend / terminate / reactivate an EPP partner
+
+```bash
+curl -X POST https://app.operon.network/api/admin/partners/status \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"<uuid>","status":"suspended","reason":"T&Cs §4.2 — terms-breach ticket #123"}'
+```
+
+Body: `{ userId, status: 'active'|'suspended'|'terminated', reason }`. Suspend freezes commission earning on future purchases (history preserved); terminate is one-way. Reason is required and audit-logged. Wired from the user-detail page's "Change status" form.
+
+#### Toggle a per-endpoint kill switch
+
+```bash
+curl -X POST https://app.operon.network/api/admin/killswitches \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"admin.epp.invites","disabled":true,"reason":"Audit in progress"}'
+```
+
+Sets / clears a row in `admin_killswitches` (migration 019). Admin endpoints that opt-in check their key on each request and 503 when disabled. Lets the operator freeze individual actions (e.g. invite generation during an audit) without redeploying.
+
+#### Announcement banner
+
+```bash
+# Create
+curl -X POST https://app.operon.network/api/admin/announcements \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"message_en":"Scheduled maintenance 2026-04-30","message_tc":"...","is_active":true}'
+
+# Toggle
+curl -X PATCH https://app.operon.network/api/admin/announcements?id=<uuid> \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"is_active":false}'
+```
+
+Site-wide banner, written to the `announcements` table (migration 001). The Settings page in the admin panel exposes both as a form.
 
 ---
 

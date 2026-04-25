@@ -321,6 +321,8 @@ Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/de
 
 ### Admin (all gated by `requireAdmin()`)
 
+**Write surface** — every endpoint here audit-logs **before** mutation; audit-write failure aborts the mutation.
+
 | Route | Method | Purpose |
 |---|---|---|
 | `/api/admin/sale/pause` | POST | Call `pause()` on NodeSale contracts |
@@ -330,12 +332,34 @@ Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/de
 | `/api/admin/events/replay` | POST | Re-fetch a tx, re-run commission RPC (idempotent) |
 | `/api/admin/events/resolve` | POST | Mark a `failed_events` row resolved with reason |
 | `/api/admin/partners/tier` | POST | Manual tier override (promote or demote), required reason |
+| `/api/admin/partners/status` | POST | Suspend / terminate / reactivate an EPP partner; required reason. Wired from the user-detail page |
 | `/api/admin/payouts/mark-paid` | POST | Record manual USDC sends, writes `paid_at` / `payout_tx` / `paid_from_wallet` |
 | `/api/admin/epp/invites` | POST | Batch generate `EPP-XXXX` invite codes, return CSV |
 | `/api/admin/referrals/reset` | POST | Reset a `referral_code_chain_state` row from `failed` → `pending, attempts=0` so the next drain retries. Use on codes that hit the 10-attempt cap |
 | `/api/admin/referrals/remove` | POST | Call `removeReferralCode(codeHash)` to revoke a code from the contract's `validCodes` mapping. Historical purchases + DB bindings unchanged; only future on-chain purchases lose the discount |
+| `/api/admin/killswitches` | POST | Toggle a per-endpoint kill switch (migration 019). Lets the operator disable individual admin actions without redeploying |
+| `/api/admin/announcements` | POST/PATCH | Create / update site-wide announcement banner. GET returns the list |
 
-All admin routes **audit-log BEFORE mutation**. If the audit write fails, the mutation is aborted.
+**Read surface** — pure reads that back the admin UI panel. Allowlist-gated; aggregate reads use Postgres RPCs (migration 020) so PostgREST row-cap truncation cannot under-report money totals.
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/admin/me` | GET | `{ isAdmin: boolean, wallet }` for the connected wallet. Drives sidebar gate + admin layout pre-check |
+| `/api/admin/stats/overview?days=N` | GET | Calls `admin_overview_stats()` + `admin_daily_revenue(days)` RPCs. Backs the Overview page |
+| `/api/admin/payouts/unpaid` | GET | Calls `admin_unpaid_grouped()` RPC. Returns batches grouped by referrer |
+| `/api/admin/payouts/milestones` | GET | Per-partner highest-achieved milestone bonus, derived in-memory over `epp_partners` |
+| `/api/admin/users/search?q=` | GET | Multi-source user search (UUID / wallet / email / display name / referral code / partner code / telegram). Strips `[%_,()"\\]` from `q` to prevent PostgREST `.or()`-filter metachars from producing garbage results |
+| `/api/admin/users/[id]` | GET | Full user detail: profile, partner row, upline, recent purchases (LIMIT 100) + true `purchaseCount` shadow query, recent referrals (LIMIT 100) + true `referralsMadeCount`, commission totals via `admin_user_commission_totals(uuid)` RPC, recent commissions (LIMIT 25), audit entries targeting this user |
+| `/api/admin/partners/list` | GET | Leaderboard with wallet + networkSize enrichment. Sortable by credited / network / joined / tier |
+| `/api/admin/partners/pipeline` | GET | Partners ≤30% from next tier threshold, sorted "closest first" |
+| `/api/admin/sale/tiers` | GET | All tier rows from `sale_tiers` for the Sale page |
+| `/api/admin/sale/balance` | GET | Live USDC + USDT balance held in each NodeSale contract, normalised to USD cents. Reads `NEXT_PUBLIC_{USDC,USDT}_{ARB,BSC}` env vars (see OPERATIONS §1) |
+| `/api/admin/health` | GET | Failed-events queue depth, sync-queue status, last-reconcile timestamp, contract-balance snapshot. Backs the Health page |
+| `/api/admin/audit?q=&actor=&action=` | GET | Paginated `admin_audit_log` query |
+| `/api/admin/i18n-status` | GET | Per-locale missing-key report. Drives the Settings/translations panel |
+| `/api/admin/epp/invites/list` | GET | List EPP invites with status (issued / used / expired). Read companion to the POST CSV generator |
+
+`lib/admin-read.ts` is the server-side aggregation module — thin wrappers over `admin_overview_stats`, `admin_attribution`, `admin_daily_revenue`. `hooks/useAdmin.ts` is the client-side React-Query layer (one hook per read endpoint plus `useIsAdmin`). New aggregate code must follow REVIEW_ADDENDUM **D-P9**: admin dashboards aggregate via Postgres RPC, never client-side `.reduce()` over an unbounded SELECT.
 
 ---
 
@@ -349,8 +373,16 @@ All admin routes **audit-log BEFORE mutation**. If the audit write fails, the mu
 | `/referrals` | Referral dashboard | JWT required |
 | `/resources` | Downloads + community links | JWT required |
 | `/epp/onboard` | EPP onboarding (4 steps: Letter → Terms → Wallet → Confirm) | **Public**, gated by `?inv=EPP-XXXX` |
+| `/admin` | Admin Overview — KPI tiles + daily revenue chart + attribution split | JWT + `ADMIN_WALLETS` allowlist |
+| `/admin/users` | User search + result table | JWT + allowlist |
+| `/admin/users/[id]` | User detail — profile, partner, upline, purchases, referrals made, commissions, audit. "Override tier" + "Change status" forms | JWT + allowlist |
+| `/admin/sale` | Tier table, sale stage, contract balances | JWT + allowlist |
+| `/admin/partners` | Leaderboard + tier-promotion pipeline | JWT + allowlist |
+| `/admin/payouts` | Unpaid commission batches + milestones owed | JWT + allowlist |
+| `/admin/health` | Failed-events queue, sync queue, reconcile state, contract balances | JWT + allowlist |
+| `/admin/settings` | Announcements, kill switches, i18n-status | JWT + allowlist |
 
-The `(app)` route group in `app/(app)/` shares a layout with sidebar + header. The `/epp/onboard` page is outside that group and has its own self-contained styled-jsx block matching the exclusive letter aesthetic.
+The `(app)` route group in `app/(app)/` shares a layout with sidebar + header. The `/epp/onboard` page is outside that group and has its own self-contained styled-jsx block matching the exclusive letter aesthetic. The `(admin)` route group in `app/(admin)/` shares a separate admin layout (compact header + horizontal tab bar) that pre-checks `useIsAdmin()` and redirects non-admins back to `/`. Admin JSX is deliberately English-only — see REVIEW_ADDENDUM C-P4.
 
 ---
 
