@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
+import { assertNotKilled } from '@/lib/killswitches';
 import { TIER_ORDER } from '@/lib/commission';
 import { logger } from '@/lib/logger';
 
@@ -16,6 +17,8 @@ import { logger } from '@/lib/logger';
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.partners.tier');
+  if (killed) return killed;
 
   let body: { userId?: string; newTier?: string; reason?: string };
   try {

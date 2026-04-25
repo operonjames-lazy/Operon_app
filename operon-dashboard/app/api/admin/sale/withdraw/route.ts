@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { ethers } from 'ethers';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
+import { assertNotKilled } from '@/lib/killswitches';
 import { getTreasuryAdminContract, type AdminChain } from '@/lib/admin-signer';
 import { STABLECOIN_ADDRESSES } from '@/lib/wagmi/contracts';
 import { logger } from '@/lib/logger';
@@ -22,6 +23,8 @@ import { logger } from '@/lib/logger';
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.sale.withdraw');
+  if (killed) return killed;
 
   let body: { chain?: string; token?: string; to?: string };
   try {

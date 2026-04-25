@@ -87,7 +87,7 @@ Non-negotiable. Violating these corrupts data or leaks money in ways that are ha
 
 10. **Before declaring work complete, ask:** "Does it flow? What else could it be? Who consumes this?"
 
-11. **Commission flow is atomic** — single `process_purchase_and_commissions` Postgres RPC call per purchase. Never split into multiple Supabase calls at the application layer. See DECISIONS D01.
+11. **Commission flow is atomic** — the buyer upsert, purchase insert, 9-level chain walk, commission inserts, credited-amount updates, tier auto-promotion, and milestone audit all happen inside `process_purchase_and_commissions`. Never split that bundle across multiple Supabase calls at the application layer. The tier-counter bump (`increment_tier_sold`) is a separate idempotent RPC by design — it is the one acceptable second call, has its own dedupe key (`tier_increments` PK), and is safe to retry independently. See DECISIONS D01.
 
 12. **Admin endpoints audit-log BEFORE mutation.** Audit write failing aborts the mutation. See REVIEW_ADDENDUM S-P2.
 

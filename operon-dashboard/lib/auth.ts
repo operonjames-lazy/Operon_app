@@ -15,14 +15,22 @@ function getJwtSecret(): Uint8Array {
   if (!secret) {
     throw new Error('JWT_SECRET environment variable is required. Set it in .env.local');
   }
+  // Mainnet-strict default: anything that isn't an explicit "testnet" string
+  // is treated as mainnet for the purposes of the placeholder guard. A typo
+  // in NEXT_PUBLIC_NETWORK_MODE ("mainet"), a missing env var on a fresh
+  // Vercel project, or any other value all now trip the guard instead of
+  // silently bypassing it. Set NEXT_PUBLIC_NETWORK_MODE=testnet explicitly
+  // to opt out (testnet / preview deploys).
+  const isTestnet = process.env.NEXT_PUBLIC_NETWORK_MODE === 'testnet';
   if (
     process.env.NODE_ENV === 'production' &&
-    process.env.NEXT_PUBLIC_NETWORK_MODE === 'mainnet' &&
+    !isTestnet &&
     KNOWN_PLACEHOLDER_JWT_SECRETS.has(secret)
   ) {
     throw new Error(
-      'JWT_SECRET is a known placeholder and NODE_ENV=production with NEXT_PUBLIC_NETWORK_MODE=mainnet. ' +
-        'Refusing to boot. Rotate JWT_SECRET in Vercel env before re-deploying.',
+      'JWT_SECRET is a known placeholder and NODE_ENV=production. ' +
+        'Refusing to boot. Either rotate JWT_SECRET in Vercel env or set ' +
+        'NEXT_PUBLIC_NETWORK_MODE=testnet for non-mainnet deploys.',
     );
   }
   return new TextEncoder().encode(secret);

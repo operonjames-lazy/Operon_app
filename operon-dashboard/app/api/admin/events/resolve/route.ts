@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
+import { assertNotKilled } from '@/lib/killswitches';
 import { logger } from '@/lib/logger';
 
 /**
@@ -14,6 +15,8 @@ import { logger } from '@/lib/logger';
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.events.resolve');
+  if (killed) return killed;
 
   let body: { failedEventId?: string; reason?: string };
   try {

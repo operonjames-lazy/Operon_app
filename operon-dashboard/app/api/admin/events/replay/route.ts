@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
+import { assertNotKilled } from '@/lib/killswitches';
 import { processReferralAttribution } from '@/lib/commission';
 import {
   parseNodePurchasedLog,
@@ -24,6 +25,8 @@ import { logger } from '@/lib/logger';
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.events.replay');
+  if (killed) return killed;
 
   let body: { txHash?: string; chain?: string };
   try {

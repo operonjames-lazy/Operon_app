@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
+import { assertNotKilled } from '@/lib/killswitches';
 import { getTierAdminContract, type AdminChain } from '@/lib/admin-signer';
 import { logger } from '@/lib/logger';
 
@@ -18,6 +19,8 @@ import { logger } from '@/lib/logger';
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.sale.tier-active');
+  if (killed) return killed;
 
   let body: { chain?: string; tierId?: number; active?: boolean };
   try {

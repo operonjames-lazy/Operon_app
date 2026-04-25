@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
+import { assertNotKilled } from '@/lib/killswitches';
 import { logger } from '@/lib/logger';
 
 /**
@@ -17,11 +18,19 @@ import { logger } from '@/lib/logger';
  *
  * Safety:
  *   - Refuses mixed-recipient batches (all IDs must share a referrer_id)
- *   - Refuses if any ID is already marked paid
+ *   - Refuses if any ID is already marked paid (read-time check)
+ *   - The UPDATE is conditional on paid_at IS NULL and we verify the
+ *     returned rowcount equals the request size. Two concurrent calls
+ *     for the same IDs will see the same null paid_at at read time, but
+ *     only one UPDATE actually transitions the rows — the other gets 0
+ *     rows back and we return 409. Closes the TOCTOU double-write that
+ *     would otherwise let two operators each post a different payout_tx.
  */
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.payouts.mark-paid');
+  if (killed) return killed;
 
   let body: {
     referralPurchaseIds?: string[];
@@ -103,18 +112,41 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'audit_failed' }, { status: 500 });
   }
 
-  const { error: updateErr } = await supabase
+  // Conditional UPDATE on paid_at IS NULL. If a concurrent request beat us
+  // to the punch, our UPDATE matches zero rows even though all the IDs
+  // exist — return 409 so the operator knows the batch was already
+  // recorded by someone else (or by their own duplicate submit).
+  const { data: updatedRows, error: updateErr } = await supabase
     .from('referral_purchases')
     .update({
       paid_at: new Date().toISOString(),
       payout_tx: body.txHash,
       paid_from_wallet: body.paidFromWallet.toLowerCase(),
     })
-    .in('id', body.referralPurchaseIds);
+    .in('id', body.referralPurchaseIds)
+    .is('paid_at', null)
+    .select('id');
 
   if (updateErr) {
     logger.error('referral_purchases update error', { error: updateErr.message });
     return Response.json({ error: 'db_error' }, { status: 500 });
+  }
+
+  const updatedCount = updatedRows?.length ?? 0;
+  if (updatedCount !== body.referralPurchaseIds.length) {
+    logger.warn('mark-paid race lost — concurrent UPDATE claimed some/all rows', {
+      requested: body.referralPurchaseIds.length,
+      updated: updatedCount,
+      recipient_id: recipientId,
+    });
+    return Response.json(
+      {
+        error: 'concurrent_update',
+        requested: body.referralPurchaseIds.length,
+        updated: updatedCount,
+      },
+      { status: 409 }
+    );
   }
 
   return Response.json({

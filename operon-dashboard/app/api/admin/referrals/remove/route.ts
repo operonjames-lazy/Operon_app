@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { encodePacked, keccak256 } from 'viem';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
+import { assertNotKilled } from '@/lib/killswitches';
 import { getReferralAdminContract, type AdminChain } from '@/lib/admin-signer';
 import { createServerSupabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
@@ -27,6 +28,8 @@ import { logger } from '@/lib/logger';
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.referrals.remove');
+  if (killed) return killed;
 
   let body: { code?: string; chain?: string };
   try {

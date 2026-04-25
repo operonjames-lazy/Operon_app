@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
+import { assertNotKilled } from '@/lib/killswitches';
 import { createServerSupabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
@@ -9,13 +10,19 @@ const VALID_STATUSES = new Set(['active', 'suspended', 'terminated']);
  * POST /api/admin/partners/status
  * Body: { userId, status: 'active'|'suspended'|'terminated', reason }
  *
- * Suspend freezes commission earning on future purchases (enforced elsewhere
- * by checking epp_partners.status); history is preserved. Terminate is a
- * one-way exit. Reason is required and audit-logged.
+ * Setting status to 'suspended' or 'terminated' freezes commission earning
+ * on future purchases — the chain walk in process_purchase_and_commissions
+ * (migration 021) skips uplines whose status is not 'active'. History is
+ * preserved: existing referral_purchases rows are untouched, so commissions
+ * earned before suspension remain payable. Terminate is a one-way exit by
+ * convention; schema does not prevent reversing back to 'active', operator
+ * discipline does. Reason is required and audit-logged.
  */
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.partners.status');
+  if (killed) return killed;
 
   let body: { userId?: string; status?: string; reason?: string };
   try {
