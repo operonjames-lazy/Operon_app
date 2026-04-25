@@ -347,7 +347,7 @@ Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/de
 | `/api/admin/me` | GET | `{ isAdmin: boolean, wallet }` for the connected wallet. Drives sidebar gate + admin layout pre-check |
 | `/api/admin/stats/overview?days=N` | GET | Calls `admin_overview_stats()` + `admin_daily_revenue(days)` RPCs. Backs the Overview page |
 | `/api/admin/payouts/unpaid` | GET | Calls `admin_unpaid_grouped()` RPC. Returns batches grouped by referrer |
-| `/api/admin/payouts/milestones` | GET | Per-partner highest-achieved milestone bonus, derived in-memory over `epp_partners` |
+| `/api/admin/payouts/milestones` | GET | Calls `admin_milestones_pending()` RPC (migration 022) — per-partner highest-achieved milestone bonus, computed in Postgres against migration 010's authoritative thresholds |
 | `/api/admin/users/search?q=` | GET | Multi-source user search (UUID / wallet / email / display name / referral code / partner code / telegram). Strips `[%_,()"\\]` from `q` to prevent PostgREST `.or()`-filter metachars from producing garbage results |
 | `/api/admin/users/[id]` | GET | Full user detail: profile, partner row, upline, recent purchases (LIMIT 100) + true `purchaseCount` shadow query, recent referrals (LIMIT 100) + true `referralsMadeCount`, commission totals via `admin_user_commission_totals(uuid)` RPC, recent commissions (LIMIT 25), audit entries targeting this user |
 | `/api/admin/partners/list` | GET | Leaderboard with wallet + networkSize enrichment. Sortable by credited / network / joined / tier |
@@ -359,7 +359,11 @@ Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/de
 | `/api/admin/i18n-status` | GET | Per-locale missing-key report. Drives the Settings/translations panel |
 | `/api/admin/epp/invites/list` | GET | List EPP invites with status (issued / used / expired). Read companion to the POST CSV generator |
 
-`lib/admin-read.ts` is the server-side aggregation module — thin wrappers over `admin_overview_stats`, `admin_attribution`, `admin_daily_revenue`. `hooks/useAdmin.ts` is the client-side React-Query layer (one hook per read endpoint plus `useIsAdmin`). New aggregate code must follow REVIEW_ADDENDUM **D-P9**: admin dashboards aggregate via Postgres RPC, never client-side `.reduce()` over an unbounded SELECT.
+`lib/admin-read.ts` is the server-side aggregation module — thin wrappers over `admin_overview_stats`, `admin_attribution`, `admin_daily_revenue`. `hooks/useAdmin.ts` is the client-side React-Query layer (one hook per read endpoint plus `useIsAdmin`). New aggregate code must follow REVIEW_ADDENDUM **D-P9**: admin dashboards aggregate via Postgres RPC, never client-side `.reduce()` over an unbounded SELECT. Migration 022 added `admin_milestones_pending` (closing a route 020 missed) and re-bucketed `admin_overview_stats.revenue.today` to UTC-date so the "Today" KPI tile equals the rightmost bar of the daily-revenue chart.
+
+Kill-switch enforcement on mutation routes lives in [`lib/killswitches.ts`](../lib/killswitches.ts). Each mutation route calls `assertNotKilled('<key>')` after `requireAdmin()` and returns its 503 Response if non-null. Keys are flat strings like `admin.sale.pause`. Current wired set: `admin.{sale.pause,sale.unpause,sale.tier-active,sale.withdraw,events.replay,events.resolve,partners.tier,partners.status,payouts.mark-paid,epp.invites,referrals.remove,referrals.reset}`. Reads are uncached so a freshly-toggled switch takes effect on the next request.
+
+Commission RPC `process_purchase_and_commissions` (migrations 010 → 016, 021) skips uplines whose `epp_partners.status != 'active'` since 021. Suspended / terminated partners stop earning on new purchases; existing owed payouts in `referral_purchases` remain payable. Community referrers (no `epp_partners` row) are unaffected.
 
 ---
 

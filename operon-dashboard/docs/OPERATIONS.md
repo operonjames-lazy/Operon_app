@@ -173,6 +173,8 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 | `018_revoked_referral_status.sql` | Adds terminal `'revoked'` status to `referral_code_chain_state` (CHECK constraint). Required because `/api/admin/referrals/remove` previously set `'failed'`, which the drain loop treats as retry-eligible — admin revocations were silently re-registered on-chain within 5 minutes. Ship-readiness R14. |
 | `019_admin_killswitches.sql` | `admin_killswitches` per-endpoint toggle table (seeded with the 12 known admin-mutation keys). Lets the operator disable individual admin actions without redeploying. |
 | `020_admin_read_rpcs.sql` | 5 STABLE admin-read RPCs (`admin_attribution`, `admin_overview_stats`, `admin_daily_revenue`, `admin_unpaid_grouped`, `admin_user_commission_totals`) that move every aggregate from JS `.reduce()` over unbounded `SELECT`s into Postgres. Closes D-9 (Overview + Payouts money-math truncation at sale scale) and Pass-3 (user-detail lifetime commissions under-reported for partners with >500 rows). Pattern enforced by new REVIEW_ADDENDUM **D-P9**. |
+| `021_partner_status_commission_filter.sql` | `CREATE OR REPLACE` of `process_purchase_and_commissions`. The chain walk now reads `epp_partners.status` and skips uplines whose status is not `'active'`. Before this, `/api/admin/partners/status` set `'suspended'`/`'terminated'` and audit-logged but the RPC ignored the column, so suspended partners kept earning on every new purchase. Historical `referral_purchases` rows untouched — existing owed payouts remain payable; only NEW purchases skip non-active uplines. Surfaced by /grill review of the admin panel. |
+| `022_admin_overview_today_utc_milestones_rpc.sql` | Two read-side fixes: (1) `admin_overview_stats.revenue.today` re-keyed from rolling-24h to UTC-date bucket so the "Today" KPI tile equals the rightmost bar of `admin_daily_revenue`'s chart on the same page. (2) New `admin_milestones_pending()` RPC + `/api/admin/payouts/milestones` rewrite to use it (the route was missed in 020's D-9 sweep). Also fixes a 100×-too-high threshold/bonus bug in the route's TS table — numeric-separator literal `1_000_000_00` parses to 100,000,000 cents, not the $10,000 the comment claimed. RPC uses migration 010's authoritative thresholds. |
 
 (Migration 007 does not exist.)
 
@@ -379,6 +381,8 @@ curl -X POST https://app.operon.network/api/admin/partners/status \
 
 Body: `{ userId, status: 'active'|'suspended'|'terminated', reason }`. Suspend freezes commission earning on future purchases (history preserved); terminate is one-way. Reason is required and audit-logged. Wired from the user-detail page's "Change status" form.
 
+Enforcement lives in **migration 021** — `process_purchase_and_commissions` reads `epp_partners.status` and skips uplines that are not `'active'`. A suspended partner does NOT earn at all on new purchases (the chain does not fall through to a community-rate path for them). Historical `referral_purchases` rows are untouched, so payouts already owed remain payable.
+
 #### Toggle a per-endpoint kill switch
 
 ```bash
@@ -388,7 +392,9 @@ curl -X POST https://app.operon.network/api/admin/killswitches \
   -d '{"key":"admin.epp.invites","disabled":true,"reason":"Audit in progress"}'
 ```
 
-Sets / clears a row in `admin_killswitches` (migration 019). Admin endpoints that opt-in check their key on each request and 503 when disabled. Lets the operator freeze individual actions (e.g. invite generation during an audit) without redeploying.
+Sets / clears a row in `admin_killswitches` (migration 019). Lets the operator freeze individual actions (e.g. invite generation during an audit) without redeploying.
+
+Enforcement: 11 mutation routes call `assertNotKilled('<key>')` from [`lib/killswitches.ts`](../lib/killswitches.ts) right after `requireAdmin()`. When the row's `disabled = true`, the helper returns a `503` with the audit-logged reason. Reads are uncached so a freshly-toggled switch takes effect on the next request. The `admin.events.replay`, `admin.events.resolve`, `admin.partners.tier`, `admin.partners.status`, `admin.payouts.mark-paid`, `admin.epp.invites`, `admin.referrals.remove`, `admin.referrals.reset`, `admin.sale.pause`, `admin.sale.unpause`, `admin.sale.tier-active`, `admin.sale.withdraw` keys are wired today — see migration 019 for the full seed list.
 
 #### Announcement banner
 
