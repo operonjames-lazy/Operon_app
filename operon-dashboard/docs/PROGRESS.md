@@ -745,3 +745,67 @@ Migration 020 applied to hosted Supabase (`erxxsmvdzhxelezlocuf`); all 5 RPCs ve
 - 3 admin routes still doing JS reduce over `epp_partners` (partners/list, partners/pipeline, payouts/milestones) — no truncation risk until partner count >1k. Same D-P9 fix applies when it matters.
 
 ---
+
+## 2026-04-26 — marketing site (apps/website) copy realignment to pitch deck + hero prototype iteration
+
+Marketing-site session, not dashboard. Two threads: (1) realign the live website's English copy to the current pitch deck (`Desktop/operon/Operon Pitch Final.html`), and (2) iterate on hero visual prototypes against user-supplied refs.
+
+One commit on `main`:
+
+- `373a790` — `website: realign EN copy to current pitch deck`
+
+### Completed
+
+**Copy realignment** (`373a790`). 3 files / +54/-54 lines. EN locale only (other 6 locales deferred — positioning needs to settle in EN first). Drift the deck had moved past:
+
+| Dimension | Before | After |
+|---|---|---|
+| Positioning | "cryptocurrency network" | "the open agent protocol" |
+| Three pillars | Discover · Distribute · Align | **Coordination · Verification · Distribution** |
+| Hero subhead | (verbose) | "Coordinate, verify, and distribute AI agents…" |
+| Why-now | generic differentiator | $3–5T market + 88%/<10% deployment funnel (deck-quoted) |
+| Footer tagline | "crypto-native growth and coordination layer" | "The open agent protocol. Coordination, verification, and distribution for the agentic economy." |
+| Mini-FAQ (4 answers) | old framing | rewritten with deck vocabulary |
+| Agents page header | "The Hive Grid / The Agentic Workforce" | "Live Agents / Live agents at work" + "200+ integrations · 100+ affiliate partnerships" |
+| Nodes page hero | "POWER THE AGENT ECONOMY" | "POWER THE PROTOCOL" + burn-note now spells out pro-rata redistribution |
+| Media Library FAQ (2 answers) | old framing | "Layer 2 of the AI stack" + "Nodes coordinate, verify, distribute…" |
+| `/faq/` static page intro | "node-powered decentralised network" | "the open agent protocol — Layer 2 of the AI stack" |
+
+Files: `apps/website/App.tsx` (en locale strings only, all other locales untouched), `apps/website/components/FAQPage.tsx` (header description), `apps/website/public/faq/index.html` ("What is Operon?" opening line).
+
+**Verified end-to-end** with Playwright at 375 / 1440 / 2560 viewports — Home, Agents, Nodes, Media Library all render cleanly. Discovered: `/faq/` in the live site is served from the static `public/faq/index.html`, not from `FAQPage.tsx`. The `FAQPage.tsx` component is dead code in the SPA — `App.tsx` routing accepts `?page=agents|nodes|docs` but not `faq`, and the navbar links `/faq/` directly to the static file. Both edited for safety; FAQPage.tsx can probably be deleted.
+
+**Hero prototype iteration** (uncommitted, sitting in `apps/website/`):
+
+- `hero-prototype-M.html` — Horizon Arc (curved planet horizon at the bottom + soft column of light + agent metric labels floating)
+- `hero-prototype-N.html` — Twin Spotlights v2 (subtle corner glows + dot-grid floor)
+- `hero-prototype-O.html` — Tracle-style spotlights + dashboard mockup, with Hero F's typewriter activity feed ticker ported in (cycles through 12 OPN-XXX agents with colour-coded pulsing dot)
+
+Iteration churned through several visual directions on O — Tracle-strength SVG cones, perspective-tilted hex grid floor, beveled hex grid, plain background — none landed cleanly. User asked to wrap up and keep all three as **reference only** (do not integrate).
+
+**User-side copy refinement in flight** (uncommitted):
+
+- `apps/website/App.tsx` has further EN copy edits the user is iterating on — `navArch`, `archBadge`, `archTitle`, `archTitle2`, `archDesc`, `faq1A`. Direction matches **Combo 2** from `apps/website/copy-review-hero-arch.md` (a working doc the user opened mid-session).
+- Hero text tightening I made: subHero shortened, subHeroBold cleared, JSX wrapped in conditional render so empty bold span doesn't add whitespace.
+
+### Verification
+
+- Playwright screenshots at 375 / 1440 / 2560 across Home, Agents, Nodes, Media Library — all clean
+- Live FAQ at `/faq/` only serves correctly in production build (vite dev falls back to SPA index)
+
+### Open / next session
+
+**Owed before live:**
+- 6 non-English locales (zh-CN, zh-TW, ja, ko, th, vi) still carry the pre-deck framing in `App.tsx`. Static `/faq/index.html` is also multilingual and only the EN intro line was tightened.
+- Agent inventory mismatch — deck names **4 live** agents (Chorus, Verify, Pulse, Quill); the site lists **12** (6 application + 6 architectural OPN-NNN). Pending decision: trim site to "4 live + 6 protocol", or keep all and demote 2 application agents to a "Coming soon" rail.
+- `apps/website/components/FAQPage.tsx` is dead code (SPA routing doesn't accept `?page=faq`; `/faq/` is static). Likely safe to delete.
+
+**Code-side small follow-ups (carried from previous session, still open):**
+- `.playwright-mcp/` add to `.gitignore`
+- Lockfile split-brain decision (root `pnpm-lock.yaml` untracked; `operon-dashboard/pnpm-lock.yaml` committed; stale `apps/website/package-lock.json` from npm)
+
+**User-side, work in progress:**
+- `apps/website/copy-review-hero-arch.md` lists 3 candidate combos for the Architecture section (verb-led / category-led / pillar-led). Decision pending; current uncommitted edits in App.tsx track Combo 2.
+- Hero visual direction not picked — M/N/O all built as reference, none integrated. Spiraled because the brief was ambiguous; better picked up with a single static reference image rather than incremental prompts.
+
+---
