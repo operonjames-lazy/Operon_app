@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Operon — Hero H · C · Crystal Bloom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --t1: #f4f6fb;
+    --t2: rgba(220, 230, 250, 0.74);
+    --t3: rgba(180, 195, 225, 0.5);
+    --c-coord: #4ad8ff;
+    --c-verif: #f5d289;
+    --c-distr: #ff7eb6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 0%, rgba(80, 130, 230, 0.20) 0%, rgba(60, 90, 180, 0.06) 35%, transparent 65%),
+      linear-gradient(180deg, #0a1228 0%, #060912 60%, #050810 100%);
+    color: var(--t1);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+  .stars {
+    position: fixed; inset: 0; pointer-events: none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 14%, rgba(255,255,255,0.55), transparent),
+      radial-gradient(1px 1px at 24% 8%, rgba(255,255,255,0.45), transparent),
+      radial-gradient(1.5px 1.5px at 38% 20%, rgba(180,220,255,0.6), transparent),
+      radial-gradient(2px 2px at 68% 18%, rgba(180,220,255,0.55), transparent),
+      radial-gradient(1px 1px at 82% 10%, rgba(255,255,255,0.45), transparent);
+    mask-image: linear-gradient(180deg, #000 0%, #000 28%, transparent 55%);
+    z-index: 0;
+  }
+  .card {
+    position: relative; z-index: 2;
+    width: 100%; max-width: 1600px; margin: 0 auto;
+    height: 100vh; min-height: 720px;
+    display: flex; flex-direction: column;
+    container-type: inline-size;
+  }
+  nav {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px clamp(20px, 3cqw, 44px); width: 100%;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; color: var(--t1); }
+  .brand-mark { width: 26px; height: 26px; display: grid; place-items: center; }
+  .nav-mid { display: flex; gap: 30px; font-size: 13px; color: rgba(230,235,250,0.85); font-weight: 500; }
+  .nav-mid a { color: inherit; text-decoration: none; }
+  .nav-cta { font-size: 13px; font-weight: 600; color: #0a0f1c; background: #fff; padding: 9px 22px; border-radius: 100px; text-decoration: none; box-shadow: 0 6px 18px rgba(255,255,255,0.18); }
+
+  .stage {
+    flex: 1; position: relative;
+    display: grid; grid-template-columns: 1fr 1fr; align-items: center;
+    padding: 0 clamp(20px, 4cqw, 64px) clamp(40px, 6cqh, 80px);
+    gap: clamp(24px, 4cqw, 64px); min-height: 0;
+  }
+  .stack-wrap {
+    position: relative; width: 100%; height: clamp(420px, 56cqh, 640px);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stack-svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* === C · CRYSTAL BLOOM ===
+     Node enters, then unfolds horizontally into 3 nested rotating discs */
+  .node-C {
+    animation: nodeEnter 2.5s ease-out forwards;
+  }
+  @keyframes nodeEnter {
+    0%   { transform: translateY(-200px); opacity: 0; }
+    35%  { transform: translateY(0); opacity: 1; }
+    65%  { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(0) scale(0.4); }
+  }
+
+  .disc {
+    transform-origin: 300px 300px;
+    opacity: 0;
+    animation: discBloom 2.5s ease-out forwards;
+  }
+  .disc-1 { animation-delay: 1.0s; }
+  .disc-2 { animation-delay: 1.3s; }
+  .disc-3 { animation-delay: 1.6s; }
+  @keyframes discBloom {
+    0%   { opacity: 0; transform: scaleY(0.02) translateY(0); }
+    50%  { opacity: 1; transform: scaleY(1.2) var(--target, translateY(0)); }
+    100% { opacity: 1; transform: scaleY(1) var(--target, translateY(0)); }
+  }
+  .disc-1 { --target: translateY(-110px); }
+  .disc-2 { --target: translateY(0); }
+  .disc-3 { --target: translateY(110px); }
+
+  /* sweep — rotating bright segment around each disc rim */
+  .sweep-1, .sweep-2, .sweep-3 {
+    stroke-dasharray: 36 820;
+    fill: none;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 6px currentColor);
+  }
+  .sweep-1 { animation: sweepRot 9s linear infinite; }
+  .sweep-2 { animation: sweepRot 14s linear infinite reverse; }
+  .sweep-3 { animation: sweepRot 11s linear infinite; }
+  @keyframes sweepRot {
+    to { stroke-dashoffset: -820; }
+  }
+
+  /* breathing — slight Y oscillation per disc */
+  .disc-1-grp { animation: breathe1 8s ease-in-out infinite; transform-origin: 300px 190px; }
+  .disc-2-grp { animation: breathe2 8s ease-in-out infinite; transform-origin: 300px 300px; }
+  .disc-3-grp { animation: breathe3 8s ease-in-out infinite; transform-origin: 300px 410px; }
+  @keyframes breathe1 { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @keyframes breathe2 { 0%,100% { transform: translateY(0); } 50% { transform: translateY(0); } }
+  @keyframes breathe3 { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+
+  .plate-labels {
+    position: absolute; inset: 0; pointer-events: none;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 16% 0;
+  }
+  .plate-label {
+    position: absolute; left: 0;
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 2.5px;
+    text-transform: uppercase; color: var(--t2);
+    transform: translateY(-50%);
+    opacity: 0;
+    animation: labelFadeIn 1.5s ease-out forwards;
+  }
+  @keyframes labelFadeIn {
+    from { opacity: 0; transform: translateY(-50%) translateX(-20px); }
+    to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+  }
+  .plate-label .lnum {
+    font-size: 9px; color: var(--t3);
+    border: 1px solid currentColor; padding: 2px 6px;
+    border-radius: 3px; letter-spacing: 1.5px;
+  }
+  .plate-label .lname { color: currentColor; font-weight: 600; }
+  .plate-label.l1 { top: 32%; color: var(--c-coord); animation-delay: 1.5s; }
+  .plate-label.l2 { top: 50%; color: var(--c-verif); animation-delay: 1.9s; }
+  .plate-label.l3 { top: 68%; color: var(--c-distr); animation-delay: 2.3s; }
+
+  .copy { position: relative; z-index: 5; display: flex; flex-direction: column; gap: 22px; max-width: 540px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 2.5px;
+    text-transform: uppercase; color: var(--c-coord);
+    padding: 6px 14px; border: 1px solid rgba(74,216,255,0.25); border-radius: 100px;
+    align-self: flex-start; background: rgba(74,216,255,0.04);
+  }
+  .eyebrow::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--c-coord); box-shadow: 0 0 8px var(--c-coord);
+    animation: ePulse 2s ease-in-out infinite;
+  }
+  @keyframes ePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  h1 { font-size: clamp(34px, 4.6cqw, 72px); line-height: 1.04; letter-spacing: -0.025em; font-weight: 600; }
+  h1 .l1 { color: var(--t1); }
+  h1 .l2 { background: linear-gradient(180deg,rgba(220,225,240,0.85),rgba(170,180,215,0.65)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .subhead { font-size: clamp(14px, 1.1cqw, 17px); line-height: 1.6; color: rgba(210,220,245,0.66); max-width: 460px; }
+  .ctas { display: inline-flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .btn { font-size: clamp(13px, 0.9cqw, 15px); font-weight: 600; padding: clamp(11px,0.8cqw,14px) clamp(24px,1.8cqw,30px); border-radius: 100px; border: none; text-decoration: none; }
+  .btn-primary { background: #fff; color: #0a0f1c; box-shadow: 0 8px 22px rgba(255,255,255,0.18); }
+  .btn-ghost { background: rgba(8,14,28,0.85); color: var(--t1); border: 1px solid rgba(74,216,255,0.5); box-shadow: inset 0 0 12px rgba(74,216,255,0.18); }
+  .floor-cap {
+    position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 3px; color: var(--t3); text-transform: uppercase; z-index: 4;
+  }
+  .variant-tag {
+    position: fixed; top: 28px; right: 130px; z-index: 100;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 2px; color: var(--c-distr); text-transform: uppercase;
+    border: 1px solid rgba(255,126,182,0.4); padding: 4px 10px; border-radius: 4px;
+  }
+  @media (max-width: 900px) {
+    .stage { grid-template-columns: 1fr; gap: 24px; padding-bottom: 80px; }
+    .stack-wrap { height: 380px; }
+  }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<div class="variant-tag">VARIATION C · CRYSTAL BLOOM</div>
+
+<div class="card">
+  <nav>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4ad8ff"/><stop offset="60%" stop-color="#5ba4f5"/><stop offset="100%" stop-color="#c47bff"/>
+          </linearGradient></defs>
+          <path d="M4 4 L20 4 L14 11 L8 11 Z" fill="url(#lg)"/>
+          <path d="M4 13 L16 13 L11 20 L6 20 Z" fill="url(#lg)" opacity="0.8"/>
+        </svg>
+      </div>
+      <span>Operon</span>
+    </div>
+    <div class="nav-mid"><a href="#network">Network</a><a href="#agents">Agents</a><a href="#nodes">Nodes</a></div>
+    <a class="nav-cta" href="#launch">Connect</a>
+  </nav>
+
+  <div class="stage">
+    <div class="stack-wrap">
+      <svg class="stack-svg" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="nodeCore" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="40%" stop-color="#fff" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#cfe7ff" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3"/>
+          </filter>
+          <filter id="bigGlow" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="10"/>
+          </filter>
+        </defs>
+
+        <!-- DISC 1 — COORDINATION -->
+        <g class="disc disc-1">
+          <g class="disc-1-grp">
+            <!-- concentric rings -->
+            <ellipse cx="300" cy="190" rx="60"  ry="11" stroke="#4ad8ff" stroke-width="0.6" fill="none" opacity="0.25"/>
+            <ellipse cx="300" cy="190" rx="120" ry="22" stroke="#4ad8ff" stroke-width="0.6" fill="none" opacity="0.25"/>
+            <ellipse cx="300" cy="190" rx="160" ry="30" stroke="#4ad8ff" stroke-width="0.6" fill="none" opacity="0.25"/>
+            <!-- main rim -->
+            <ellipse cx="300" cy="190" rx="190" ry="36" stroke="#4ad8ff" stroke-width="1.5" fill="rgba(74,216,255,0.025)" filter="url(#softGlow)"/>
+            <ellipse cx="300" cy="190" rx="190" ry="36" stroke="#4ad8ff" stroke-width="1" fill="none" opacity="0.85"/>
+            <!-- engraved label on disc surface -->
+            <text x="300" y="195" text-anchor="middle" fill="#4ad8ff" font-family="JetBrains Mono" font-size="11" letter-spacing="4" opacity="0.55" font-weight="600">COORDINATION</text>
+            <!-- rotating sweep -->
+            <ellipse class="sweep-1" cx="300" cy="190" rx="190" ry="36" stroke="#4ad8ff"/>
+          </g>
+        </g>
+
+        <!-- DISC 2 — VERIFICATION -->
+        <g class="disc disc-2">
+          <g class="disc-2-grp">
+            <ellipse cx="300" cy="300" rx="60"  ry="11" stroke="#f5d289" stroke-width="0.6" fill="none" opacity="0.25"/>
+            <ellipse cx="300" cy="300" rx="120" ry="22" stroke="#f5d289" stroke-width="0.6" fill="none" opacity="0.25"/>
+            <ellipse cx="300" cy="300" rx="160" ry="30" stroke="#f5d289" stroke-width="0.6" fill="none" opacity="0.25"/>
+            <ellipse cx="300" cy="300" rx="190" ry="36" stroke="#f5d289" stroke-width="1.5" fill="rgba(245,210,137,0.025)" filter="url(#softGlow)"/>
+            <ellipse cx="300" cy="300" rx="190" ry="36" stroke="#f5d289" stroke-width="1" fill="none" opacity="0.85"/>
+            <text x="300" y="305" text-anchor="middle" fill="#f5d289" font-family="JetBrains Mono" font-size="11" letter-spacing="4" opacity="0.55" font-weight="600">VERIFICATION</text>
+            <ellipse class="sweep-2" cx="300" cy="300" rx="190" ry="36" stroke="#f5d289"/>
+          </g>
+        </g>
+
+        <!-- DISC 3 — DISTRIBUTION -->
+        <g class="disc disc-3">
+          <g class="disc-3-grp">
+            <ellipse cx="300" cy="410" rx="60"  ry="11" stroke="#ff7eb6" stroke-width="0.6" fill="none" opacity="0.25"/>
+            <ellipse cx="300" cy="410" rx="120" ry="22" stroke="#ff7eb6" stroke-width="0.6" fill="none" opacity="0.25"/>
+            <ellipse cx="300" cy="410" rx="160" ry="30" stroke="#ff7eb6" stroke-width="0.6" fill="none" opacity="0.25"/>
+            <ellipse cx="300" cy="410" rx="190" ry="36" stroke="#ff7eb6" stroke-width="1.5" fill="rgba(255,126,182,0.025)" filter="url(#softGlow)"/>
+            <ellipse cx="300" cy="410" rx="190" ry="36" stroke="#ff7eb6" stroke-width="1" fill="none" opacity="0.85"/>
+            <text x="300" y="415" text-anchor="middle" fill="#ff7eb6" font-family="JetBrains Mono" font-size="11" letter-spacing="4" opacity="0.55" font-weight="600">DISTRIBUTION</text>
+            <ellipse class="sweep-3" cx="300" cy="410" rx="190" ry="36" stroke="#ff7eb6"/>
+          </g>
+        </g>
+
+        <!-- vertical guide -->
+        <line x1="300" y1="190" x2="300" y2="410" stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="2 6"/>
+
+        <!-- node (one-shot intro) -->
+        <g class="node-C">
+          <circle cx="300" cy="300" r="40" fill="#fff" opacity="0.25" filter="url(#bigGlow)"/>
+          <circle cx="300" cy="300" r="14" fill="url(#nodeCore)"/>
+          <circle cx="300" cy="300" r="5" fill="#fff"/>
+        </g>
+      </svg>
+      <div class="plate-labels">
+        <div class="plate-label l1"><span class="lnum">L1</span><span class="lname">COORDINATION</span></div>
+        <div class="plate-label l2"><span class="lnum">L2</span><span class="lname">VERIFICATION</span></div>
+        <div class="plate-label l3"><span class="lnum">L3</span><span class="lname">DISTRIBUTION</span></div>
+      </div>
+    </div>
+
+    <div class="copy">
+      <span class="eyebrow">A protocol is a precision instrument</span>
+      <h1><span class="l1">Coordination.</span><br/><span class="l2">Verification. Distribution.</span></h1>
+      <p class="subhead">Three layers, one network. Operon's open agent protocol turns models and agents into deployable production infrastructure.</p>
+      <div class="ctas">
+        <a class="btn btn-ghost" href="#explore">Our Network</a>
+        <a class="btn btn-primary" href="#launch">Connect</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="floor-cap">ONE NODE · THREE LAYERS</div>
+</div>
+</body>
+</html>

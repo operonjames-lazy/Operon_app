@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Operon — Hero H · Pass-Through</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --t1: #f4f6fb;
+    --t2: rgba(220, 230, 250, 0.74);
+    --t3: rgba(180, 195, 225, 0.5);
+    --c-coord: #4ad8ff;
+    --c-verif: #f5d289;
+    --c-distr: #ff7eb6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 0%, rgba(80, 130, 230, 0.20) 0%, rgba(60, 90, 180, 0.06) 35%, transparent 65%),
+      linear-gradient(180deg, #0a1228 0%, #060912 60%, #050810 100%);
+    color: var(--t1);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* starfield */
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 14%, rgba(255,255,255,0.55), transparent),
+      radial-gradient(1px 1px at 24% 8%, rgba(255,255,255,0.45), transparent),
+      radial-gradient(1.5px 1.5px at 38% 20%, rgba(180,220,255,0.6), transparent),
+      radial-gradient(1px 1px at 52% 6%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(2px 2px at 68% 18%, rgba(180,220,255,0.55), transparent),
+      radial-gradient(1px 1px at 82% 10%, rgba(255,255,255,0.45), transparent),
+      radial-gradient(1.5px 1.5px at 92% 24%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1px 1px at 18% 32%, rgba(180,220,255,0.45), transparent),
+      radial-gradient(1.5px 1.5px at 60% 38%, rgba(255,255,255,0.4), transparent);
+    mask-image: linear-gradient(180deg, #000 0%, #000 28%, transparent 55%);
+    z-index: 0;
+  }
+
+  /* card */
+  .card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    height: 100vh;
+    min-height: 720px;
+    display: flex;
+    flex-direction: column;
+    container-type: inline-size;
+  }
+
+  /* nav */
+  nav {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px clamp(20px, 3cqw, 44px);
+    width: 100%;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--t1);
+  }
+  .brand-mark { width: 26px; height: 26px; display: grid; place-items: center; }
+  .nav-mid {
+    display: flex; gap: 30px;
+    font-size: 13px;
+    color: rgba(230, 235, 250, 0.85);
+    font-weight: 500;
+  }
+  .nav-mid a { color: inherit; text-decoration: none; transition: color 0.2s; }
+  .nav-mid a:hover { color: var(--t1); }
+  .nav-cta {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0a0f1c;
+    background: #fff;
+    padding: 9px 22px;
+    border-radius: 100px;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(255,255,255,0.18);
+  }
+  @media (max-width: 820px) { .nav-mid { display: none; } }
+
+  /* main composition */
+  .stage {
+    flex: 1;
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: 0 clamp(20px, 4cqw, 64px) clamp(40px, 6cqh, 80px);
+    gap: clamp(24px, 4cqw, 64px);
+    min-height: 0;
+  }
+
+  /* LEFT: plate stack + node */
+  .stack-wrap {
+    position: relative;
+    width: 100%;
+    height: clamp(420px, 56cqh, 640px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stack-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  /* node animation: passes through 3 plates over 5.5s, then rests */
+  .node-grp { transform-origin: 300px 300px; }
+  .node {
+    animation: nodeFall 5.5s cubic-bezier(.4,.05,.55,.98) infinite;
+  }
+  @keyframes nodeFall {
+    0%   { transform: translateY(-200px); opacity: 0; }
+    8%   { opacity: 1; }
+    /* plate 1 cross at ~16% */
+    16%  { transform: translateY(-150px); }
+    /* plate 2 cross at ~36% */
+    36%  { transform: translateY(0px); }
+    /* plate 3 cross at ~56% */
+    56%  { transform: translateY(150px); }
+    /* exit */
+    72%  { transform: translateY(360px); opacity: 0.7; }
+    78%  { transform: translateY(420px); opacity: 0; }
+    100% { transform: translateY(420px); opacity: 0; }
+  }
+  /* node trail */
+  .node-trail {
+    animation: trailFade 5.5s ease-in-out infinite;
+  }
+  @keyframes trailFade {
+    0%, 8% { opacity: 0; }
+    12%, 70% { opacity: 0.8; }
+    78%, 100% { opacity: 0; }
+  }
+
+  /* plate flash animations — synced to node crossings */
+  .plate-1 .plate-rim,
+  .plate-2 .plate-rim,
+  .plate-3 .plate-rim {
+    transform-origin: 300px 0;
+  }
+  .plate-1 .ripple,
+  .plate-2 .ripple,
+  .plate-3 .ripple {
+    transform-origin: 300px 0;
+    opacity: 0;
+  }
+
+  .plate-1 .plate-rim { animation: plateFlash 5.5s ease-out infinite; animation-delay: 0s; }
+  .plate-1 .plate-grid { animation: plateFlash 5.5s ease-out infinite; animation-delay: 0s; }
+  .plate-1 .ripple    { animation: ripple 5.5s ease-out infinite; animation-delay: 0s; }
+
+  .plate-2 .plate-rim { animation: plateFlash 5.5s ease-out infinite; animation-delay: -3.4s; }
+  .plate-2 .plate-grid { animation: plateFlash 5.5s ease-out infinite; animation-delay: -3.4s; }
+  .plate-2 .ripple    { animation: ripple 5.5s ease-out infinite; animation-delay: -3.4s; }
+
+  .plate-3 .plate-rim { animation: plateFlash 5.5s ease-out infinite; animation-delay: -2.3s; }
+  .plate-3 .plate-grid { animation: plateFlash 5.5s ease-out infinite; animation-delay: -2.3s; }
+  .plate-3 .ripple    { animation: ripple 5.5s ease-out infinite; animation-delay: -2.3s; }
+
+  @keyframes plateFlash {
+    0%, 14% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+    16%     { filter: brightness(2.6) drop-shadow(0 0 24px currentColor); }
+    28%     { filter: brightness(1.4) drop-shadow(0 0 8px currentColor); }
+    50%, 100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+  }
+  @keyframes ripple {
+    0%, 14% { opacity: 0; transform: scale(0.8); }
+    16%     { opacity: 1; transform: scale(1); }
+    32%     { opacity: 0; transform: scale(1.45); }
+    100%    { opacity: 0; transform: scale(1.45); }
+  }
+
+  /* plate label hover (label is a separate HTML element) */
+  .plate-labels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 16% 0;
+  }
+  .plate-label {
+    position: absolute;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--t2);
+    transform: translateY(-50%);
+  }
+  .plate-label .lnum {
+    font-size: 9px;
+    color: var(--t3);
+    border: 1px solid currentColor;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 1.5px;
+  }
+  .plate-label .lname { color: currentColor; font-weight: 600; }
+  .plate-label.l1 { top: 22%; color: var(--c-coord); }
+  .plate-label.l2 { top: 50%; color: var(--c-verif); }
+  .plate-label.l3 { top: 78%; color: var(--c-distr); }
+
+  /* RIGHT: text */
+  .copy {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    max-width: 540px;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--c-coord);
+    padding: 6px 14px;
+    border: 1px solid rgba(74, 216, 255, 0.25);
+    border-radius: 100px;
+    align-self: flex-start;
+    background: rgba(74, 216, 255, 0.04);
+  }
+  .eyebrow::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--c-coord);
+    box-shadow: 0 0 8px var(--c-coord);
+    animation: ePulse 2s ease-in-out infinite;
+  }
+  @keyframes ePulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+  }
+  h1 {
+    font-size: clamp(34px, 4.6cqw, 72px);
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+  }
+  h1 .l1 { color: var(--t1); }
+  h1 .l2 {
+    background: linear-gradient(180deg, rgba(220,225,240,0.85), rgba(170,180,215,0.65));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .subhead {
+    font-size: clamp(14px, 1.1cqw, 17px);
+    line-height: 1.6;
+    color: rgba(210, 220, 245, 0.66);
+    max-width: 460px;
+  }
+  .ctas {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .btn {
+    font-size: clamp(13px, 0.9cqw, 15px);
+    font-weight: 600;
+    padding: clamp(11px, 0.8cqw, 14px) clamp(24px, 1.8cqw, 30px);
+    border-radius: 100px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.25s;
+    text-decoration: none;
+    letter-spacing: -0.005em;
+  }
+  .btn-primary {
+    background: #fff;
+    color: #0a0f1c;
+    box-shadow: 0 8px 22px rgba(255,255,255,0.18);
+  }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-ghost {
+    background: rgba(8,14,28,0.85);
+    color: var(--t1);
+    border: 1px solid rgba(74,216,255,0.5);
+    box-shadow: inset 0 0 12px rgba(74,216,255,0.18), 0 0 0 3px rgba(74,216,255,0.05);
+  }
+  .btn-ghost:hover { border-color: rgba(74,216,255,0.85); }
+
+  .floor-cap {
+    position: absolute;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--t3);
+    text-transform: uppercase;
+    z-index: 4;
+  }
+
+  .variant-tag {
+    position: fixed; top: 28px; right: 130px; z-index: 100;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 2px; color: var(--c-distr); text-transform: uppercase;
+    border: 1px solid rgba(255,126,182,0.4); padding: 4px 10px; border-radius: 4px;
+  }
+  /* responsive: stack vertically below 900px */
+  @media (max-width: 900px) {
+    .stage { grid-template-columns: 1fr; gap: 24px; padding-bottom: 80px; }
+    .stack-wrap { height: 360px; }
+    .copy { align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<div class="variant-tag">VARIATION B · PASS-THROUGH</div>
+
+<div class="card">
+  <nav>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#4ad8ff"/>
+              <stop offset="60%" stop-color="#5ba4f5"/>
+              <stop offset="100%" stop-color="#c47bff"/>
+            </linearGradient>
+          </defs>
+          <path d="M4 4 L20 4 L14 11 L8 11 Z" fill="url(#logoGrad)"/>
+          <path d="M4 13 L16 13 L11 20 L6 20 Z" fill="url(#logoGrad)" opacity="0.8"/>
+        </svg>
+      </div>
+      <span>Operon</span>
+    </div>
+    <div class="nav-mid">
+      <a href="#network">Network</a>
+      <a href="#agents">Agents</a>
+      <a href="#nodes">Nodes</a>
+    </div>
+    <a class="nav-cta" href="#launch">Connect</a>
+  </nav>
+
+  <div class="stage">
+    <!-- LEFT: stack -->
+    <div class="stack-wrap">
+      <svg class="stack-svg" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="nodeCore" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+            <stop offset="40%" stop-color="#ffffff" stop-opacity="0.95"/>
+            <stop offset="100%" stop-color="#cfe7ff" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="nodeHalo" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+            <stop offset="100%" stop-color="#88c4ff" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3"/>
+          </filter>
+          <filter id="nodeGlow" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="6"/>
+          </filter>
+        </defs>
+
+        <!-- ============== PLATE 1 — COORDINATION (cyan) ============== -->
+        <g class="plate plate-1" style="color: var(--c-coord)">
+          <!-- ripple expanding from rim on flash -->
+          <ellipse class="ripple" cx="300" cy="180" rx="200" ry="38"
+                   stroke="#4ad8ff" stroke-width="1.5" fill="none"
+                   opacity="0"/>
+          <!-- inner grid (concentric ellipses) -->
+          <g class="plate-grid" stroke="#4ad8ff" fill="none" stroke-width="0.8" opacity="0.28">
+            <ellipse cx="300" cy="180" rx="60" ry="11"/>
+            <ellipse cx="300" cy="180" rx="120" ry="22"/>
+            <ellipse cx="300" cy="180" rx="160" ry="30"/>
+          </g>
+          <!-- radial spokes -->
+          <g class="plate-grid" stroke="#4ad8ff" stroke-width="0.6" opacity="0.22">
+            <line x1="100" y1="180" x2="500" y2="180"/>
+            <line x1="160" y1="160" x2="440" y2="200"/>
+            <line x1="160" y1="200" x2="440" y2="160"/>
+          </g>
+          <!-- main rim (outer ellipse) -->
+          <ellipse class="plate-rim" cx="300" cy="180" rx="200" ry="38"
+                   stroke="#4ad8ff" stroke-width="1.6" fill="rgba(74,216,255,0.025)"
+                   filter="url(#softGlow)"/>
+          <ellipse class="plate-rim" cx="300" cy="180" rx="200" ry="38"
+                   stroke="#4ad8ff" stroke-width="1" fill="none" opacity="0.9"/>
+          <!-- tick marks on rim -->
+          <g class="plate-grid" stroke="#4ad8ff" stroke-width="1.2" opacity="0.7">
+            <line x1="100" y1="180" x2="92" y2="180"/>
+            <line x1="500" y1="180" x2="508" y2="180"/>
+            <line x1="300" y1="142" x2="300" y2="138"/>
+            <line x1="300" y1="218" x2="300" y2="222"/>
+            <line x1="200" y1="148" x2="196" y2="143"/>
+            <line x1="400" y1="148" x2="404" y2="143"/>
+            <line x1="200" y1="212" x2="196" y2="217"/>
+            <line x1="400" y1="212" x2="404" y2="217"/>
+          </g>
+        </g>
+
+        <!-- ============== PLATE 2 — VERIFICATION (warm gold) ============== -->
+        <g class="plate plate-2" style="color: var(--c-verif)">
+          <ellipse class="ripple" cx="300" cy="300" rx="200" ry="38"
+                   stroke="#f5d289" stroke-width="1.5" fill="none"
+                   opacity="0"/>
+          <g class="plate-grid" stroke="#f5d289" fill="none" stroke-width="0.8" opacity="0.28">
+            <ellipse cx="300" cy="300" rx="60" ry="11"/>
+            <ellipse cx="300" cy="300" rx="120" ry="22"/>
+            <ellipse cx="300" cy="300" rx="160" ry="30"/>
+          </g>
+          <g class="plate-grid" stroke="#f5d289" stroke-width="0.6" opacity="0.22">
+            <line x1="100" y1="300" x2="500" y2="300"/>
+            <line x1="160" y1="280" x2="440" y2="320"/>
+            <line x1="160" y1="320" x2="440" y2="280"/>
+          </g>
+          <ellipse class="plate-rim" cx="300" cy="300" rx="200" ry="38"
+                   stroke="#f5d289" stroke-width="1.6" fill="rgba(245,210,137,0.025)"
+                   filter="url(#softGlow)"/>
+          <ellipse class="plate-rim" cx="300" cy="300" rx="200" ry="38"
+                   stroke="#f5d289" stroke-width="1" fill="none" opacity="0.9"/>
+          <g class="plate-grid" stroke="#f5d289" stroke-width="1.2" opacity="0.7">
+            <line x1="100" y1="300" x2="92" y2="300"/>
+            <line x1="500" y1="300" x2="508" y2="300"/>
+            <line x1="300" y1="262" x2="300" y2="258"/>
+            <line x1="300" y1="338" x2="300" y2="342"/>
+            <line x1="200" y1="268" x2="196" y2="263"/>
+            <line x1="400" y1="268" x2="404" y2="263"/>
+            <line x1="200" y1="332" x2="196" y2="337"/>
+            <line x1="400" y1="332" x2="404" y2="337"/>
+          </g>
+        </g>
+
+        <!-- ============== PLATE 3 — DISTRIBUTION (magenta-pink) ============== -->
+        <g class="plate plate-3" style="color: var(--c-distr)">
+          <ellipse class="ripple" cx="300" cy="420" rx="200" ry="38"
+                   stroke="#ff7eb6" stroke-width="1.5" fill="none"
+                   opacity="0"/>
+          <g class="plate-grid" stroke="#ff7eb6" fill="none" stroke-width="0.8" opacity="0.28">
+            <ellipse cx="300" cy="420" rx="60" ry="11"/>
+            <ellipse cx="300" cy="420" rx="120" ry="22"/>
+            <ellipse cx="300" cy="420" rx="160" ry="30"/>
+          </g>
+          <g class="plate-grid" stroke="#ff7eb6" stroke-width="0.6" opacity="0.22">
+            <line x1="100" y1="420" x2="500" y2="420"/>
+            <line x1="160" y1="400" x2="440" y2="440"/>
+            <line x1="160" y1="440" x2="440" y2="400"/>
+          </g>
+          <ellipse class="plate-rim" cx="300" cy="420" rx="200" ry="38"
+                   stroke="#ff7eb6" stroke-width="1.6" fill="rgba(255,126,182,0.025)"
+                   filter="url(#softGlow)"/>
+          <ellipse class="plate-rim" cx="300" cy="420" rx="200" ry="38"
+                   stroke="#ff7eb6" stroke-width="1" fill="none" opacity="0.9"/>
+          <g class="plate-grid" stroke="#ff7eb6" stroke-width="1.2" opacity="0.7">
+            <line x1="100" y1="420" x2="92" y2="420"/>
+            <line x1="500" y1="420" x2="508" y2="420"/>
+            <line x1="300" y1="382" x2="300" y2="378"/>
+            <line x1="300" y1="458" x2="300" y2="462"/>
+            <line x1="200" y1="388" x2="196" y2="383"/>
+            <line x1="400" y1="388" x2="404" y2="383"/>
+            <line x1="200" y1="452" x2="196" y2="457"/>
+            <line x1="400" y1="452" x2="404" y2="457"/>
+          </g>
+        </g>
+
+        <!-- vertical guide rail (subtle) — connects the three plate centers -->
+        <line x1="300" y1="180" x2="300" y2="420"
+              stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="2 6"/>
+
+        <!-- ============== NODE ============== -->
+        <g class="node-grp">
+          <g class="node-trail" filter="url(#nodeGlow)" opacity="0.6">
+            <line x1="300" y1="280" x2="300" y2="180" stroke="#bfe9ff" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+          </g>
+          <g class="node">
+            <!-- outer halo -->
+            <circle cx="300" cy="300" r="40" fill="url(#nodeHalo)" filter="url(#nodeGlow)" opacity="0.9"/>
+            <!-- mid glow -->
+            <circle cx="300" cy="300" r="22" fill="#ffffff" opacity="0.18" filter="url(#softGlow)"/>
+            <!-- core -->
+            <circle cx="300" cy="300" r="9" fill="url(#nodeCore)"/>
+            <circle cx="300" cy="300" r="3.5" fill="#ffffff"/>
+          </g>
+        </g>
+      </svg>
+
+      <!-- plate labels (HTML, positioned over SVG) -->
+      <div class="plate-labels">
+        <div class="plate-label l1"><span class="lnum">L1</span><span class="lname">COORDINATION</span></div>
+        <div class="plate-label l2"><span class="lnum">L2</span><span class="lname">VERIFICATION</span></div>
+        <div class="plate-label l3"><span class="lnum">L3</span><span class="lname">DISTRIBUTION</span></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: copy -->
+    <div class="copy">
+      <span class="eyebrow">The open agent protocol · Live</span>
+      <h1>
+        <span class="l1">Agent rails</span><br/>
+        <span class="l2">for the agentic economy.</span>
+      </h1>
+      <p class="subhead">
+        One node, three layers. Every agent's work coordinated, verified,
+        and distributed across the open Operon network.
+      </p>
+      <div class="ctas">
+        <a class="btn btn-ghost" href="#explore">Our Network</a>
+        <a class="btn btn-primary" href="#launch">Connect</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="floor-cap">ONE NODE · THREE LAYERS</div>
+</div>
+
+</body>
+</html>

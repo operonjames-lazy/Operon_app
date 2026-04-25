@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Operon — Hero B · Cinematic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #060b18;
+    --bg-2: #0a1224;
+    --card: #0c1424;
+    --border: rgba(100, 160, 255, 0.08);
+    --border-hi: rgba(100, 160, 255, 0.22);
+    --t1: #e8edf5;
+    --t2: rgba(210, 225, 245, 0.78);
+    --t3: rgba(175, 195, 225, 0.55);
+    --t4: rgba(150, 170, 200, 0.38);
+    --accent: #5ba4f5;
+    --accent-2: #89c4ff;
+    --grad: linear-gradient(135deg, #5ba4f5, #89c4ff);
+    --gold: #d4a853;
+    --green: #4ecb8d;
+    --violet: #7c5cff;
+    --pink: #ff5cae;
+    --cyan: #5beaff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--t1);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* ============ NAV ============ */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 clamp(20px, 4vw, 56px);
+    z-index: 50;
+    backdrop-filter: blur(14px);
+    background: rgba(6, 11, 24, 0.45);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+  }
+  .brand-mark {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: var(--grad);
+    display: grid; place-items: center;
+    font-weight: 800;
+    font-size: 13px;
+    color: #061226;
+    box-shadow: 0 4px 18px rgba(91,164,245,0.45);
+  }
+  .nav-links {
+    display: flex; gap: 28px;
+    font-size: 13px;
+    color: var(--t2);
+  }
+  .nav-links a { color: inherit; text-decoration: none; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--t1); }
+  .nav-cta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--t1);
+    border: 1px solid var(--border-hi);
+    padding: 9px 18px;
+    border-radius: 100px;
+    cursor: pointer;
+    background: rgba(12,20,36,0.4);
+    transition: all 0.25s;
+    text-decoration: none;
+  }
+  .nav-cta:hover {
+    border-color: var(--accent);
+    background: rgba(91,164,245,0.12);
+    box-shadow: 0 0 0 4px rgba(91,164,245,0.08);
+  }
+  @media (max-width: 720px) { .nav-links { display: none; } }
+
+  /* ============ HERO ============ */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120px clamp(20px, 5vw, 80px) 80px;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  /* MESH BACKDROP — slow, drifting conic / radial gradients */
+  .mesh {
+    position: absolute;
+    inset: -10%;
+    z-index: 0;
+    pointer-events: none;
+    filter: blur(60px) saturate(1.15);
+    opacity: 0.55;
+  }
+  .mesh::before, .mesh::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .mesh::before {
+    background:
+      radial-gradient(40% 50% at 22% 30%, rgba(124,92,255,0.55) 0%, transparent 60%),
+      radial-gradient(45% 55% at 78% 25%, rgba(91,164,245,0.55) 0%, transparent 60%),
+      radial-gradient(50% 60% at 50% 80%, rgba(91,234,255,0.32) 0%, transparent 65%),
+      radial-gradient(35% 40% at 85% 75%, rgba(255,92,174,0.30) 0%, transparent 60%);
+    animation: mesh-drift 48s ease-in-out infinite alternate;
+  }
+  .mesh::after {
+    background:
+      radial-gradient(35% 45% at 65% 50%, rgba(91,164,245,0.30) 0%, transparent 65%),
+      radial-gradient(40% 50% at 18% 70%, rgba(124,92,255,0.22) 0%, transparent 65%);
+    animation: mesh-drift2 60s ease-in-out infinite alternate;
+    mix-blend-mode: screen;
+  }
+  @keyframes mesh-drift {
+    from { transform: translate(0,0) rotate(0deg); }
+    to   { transform: translate(40px, -30px) rotate(8deg); }
+  }
+  @keyframes mesh-drift2 {
+    from { transform: translate(0,0) rotate(0deg); }
+    to   { transform: translate(-50px, 35px) rotate(-6deg); }
+  }
+
+  /* SUBTLE GRID over mesh */
+  .bg-grid {
+    position: absolute; inset: 0;
+    z-index: 1;
+    background-image:
+      linear-gradient(rgba(100,160,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(100,160,255,0.05) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 85%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 85%);
+    pointer-events: none;
+  }
+
+  /* AGENT SWARM CANVAS */
+  canvas#swarm {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* darken centre for legibility — stronger pocket, soft edges */
+  .scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 52%, rgba(6,11,24,0.72) 0%, rgba(6,11,24,0.0) 70%),
+      linear-gradient(to bottom, transparent 60%, rgba(6,11,24,0.45) 100%);
+    pointer-events: none;
+  }
+
+  /* ============ CONTENT ============ */
+  .hero-inner {
+    position: relative;
+    z-index: 4;
+    max-width: 920px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+
+  /* Sale pill */
+  .sale-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--t2);
+    padding: 7px 16px 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    background: rgba(212, 168, 83, 0.06);
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s;
+  }
+  .sale-pill:hover { border-color: rgba(212,168,83,0.3); }
+  .sale-pill .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 0 rgba(212,168,83,0.6);
+    animation: pulse-gold 2.2s ease-out infinite;
+  }
+  .sale-pill a { color: var(--t1); text-decoration: none; opacity: 0.85; }
+  .sale-pill a:hover { opacity: 1; }
+  @keyframes pulse-gold {
+    0%   { box-shadow: 0 0 0 0 rgba(212,168,83,0.5); }
+    70%  { box-shadow: 0 0 0 8px rgba(212,168,83,0); }
+    100% { box-shadow: 0 0 0 0 rgba(212,168,83,0); }
+  }
+
+  /* Wordmark — bigger + shimmer on the gradient half */
+  .wordmark {
+    font-weight: 800;
+    font-size: clamp(72px, 13vw, 184px);
+    line-height: 0.94;
+    letter-spacing: -0.045em;
+    margin-top: 4px;
+    text-shadow: 0 8px 60px rgba(91,164,245,0.18);
+  }
+  .wordmark .grad {
+    background: linear-gradient(135deg, #5ba4f5 0%, #89c4ff 35%, #c5b3ff 70%, #ff8fc8 100%);
+    background-size: 250% 250%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* per-letter reveal — applied to ALL letters incl. .grad ones */
+  .wordmark .wm-letter {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(20px) rotateX(40deg);
+    animation: letter-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  @keyframes letter-in {
+    to { opacity: 1; transform: translateY(0) rotateX(0); }
+  }
+  /* shimmer the gradient half once it's revealed; combine animations so neither is overridden */
+  .wordmark .wm-letter.grad {
+    animation:
+      letter-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards,
+      shimmer 14s ease-in-out 1s infinite;
+  }
+  @keyframes shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+
+  /* Headline */
+  .headline {
+    font-weight: 700;
+    font-size: clamp(28px, 3.6vw, 46px);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--t1);
+    max-width: 820px;
+  }
+  .headline .grad {
+    background: linear-gradient(135deg, #89c4ff, #c5b3ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .subhead {
+    font-size: clamp(15px, 1.4vw, 18px);
+    line-height: 1.6;
+    color: var(--t2);
+    max-width: 600px;
+    font-weight: 400;
+  }
+
+  /* CTAs */
+  .ctas {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 28px;
+    border-radius: 100px;
+    background: var(--grad);
+    color: #061226;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    box-shadow:
+      0 10px 30px rgba(91,164,245,0.4),
+      0 0 0 1px rgba(255,255,255,0.06),
+      inset 0 1px 0 rgba(255,255,255,0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: transform 0.7s;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 14px 36px rgba(91,164,245,0.55),
+      0 0 0 1px rgba(255,255,255,0.1),
+      inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+  .btn-primary:hover::after { transform: translateX(100%); }
+  .btn-primary svg { width: 14px; height: 14px; position: relative; z-index: 1; }
+  .btn-primary span { position: relative; z-index: 1; }
+
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 26px;
+    border-radius: 100px;
+    background: rgba(12, 20, 36, 0.55);
+    color: var(--t1);
+    font-weight: 500;
+    font-size: 14px;
+    text-decoration: none;
+    border: 1px solid var(--border-hi);
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: all 0.25s;
+  }
+  .btn-outline:hover {
+    border-color: var(--accent);
+    background: rgba(91,164,245,0.1);
+    transform: translateY(-1px);
+  }
+  .btn-outline .arrow { transition: transform 0.2s; }
+  .btn-outline:hover .arrow { transform: translateX(3px); }
+
+  /* ============ LIVE FEED (smaller variant) ============ */
+  .feed-wrap {
+    margin-top: 36px;
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .feed-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--t4);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .feed-label::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 0 rgba(78,203,141,0.6);
+    animation: pulse-green 1.6s ease-out infinite;
+  }
+  @keyframes pulse-green {
+    0%   { box-shadow: 0 0 0 0 rgba(78,203,141,0.55); }
+    70%  { box-shadow: 0 0 0 7px rgba(78,203,141,0); }
+    100% { box-shadow: 0 0 0 0 rgba(78,203,141,0); }
+  }
+  .feed-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(11px, 1vw, 13px);
+    color: var(--t2);
+    border: 1px solid var(--border);
+    background: rgba(12, 20, 36, 0.65);
+    border-radius: 100px;
+    padding: 10px 20px;
+    backdrop-filter: blur(10px);
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+  }
+  .feed-dot {
+    flex: 0 0 auto;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .feed-dot.green  { background: var(--green);  box-shadow: 0 0 8px var(--green);  }
+  .feed-dot.gold   { background: var(--gold);   box-shadow: 0 0 8px var(--gold);   }
+  .feed-dot.violet { background: var(--violet); box-shadow: 0 0 8px var(--violet); }
+  .feed-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100vw - 100px);
+  }
+  .feed-text .agent {
+    color: var(--t1);
+    font-weight: 600;
+  }
+  .caret {
+    display: inline-block;
+    width: 7px;
+    height: 12px;
+    background: var(--accent);
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 0.9s steps(2, jump-none) infinite;
+    border-radius: 1px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ============ SCROLL CUE ============ */
+  .scroll-cue {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--t4);
+    z-index: 5;
+    pointer-events: none;
+  }
+  .scroll-cue .line {
+    width: 1px;
+    height: 36px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    animation: line-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes line-pulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(0.7); }
+    50%      { opacity: 1; transform: scaleY(1); }
+  }
+
+  /* fade-up */
+  .fade-up {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: fadeUp 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  .delay-1 { animation-delay: 0.05s; }
+  .delay-2 { animation-delay: 0.15s; }
+  .delay-3 { animation-delay: 0.95s; }    /* after wordmark letter reveal */
+  .delay-4 { animation-delay: 1.10s; }
+  .delay-5 { animation-delay: 1.30s; }
+  .delay-6 { animation-delay: 1.55s; }
+  @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+  .proto-tag {
+    position: fixed;
+    bottom: 18px;
+    left: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--t4);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    z-index: 100;
+    opacity: 0.5;
+  }
+
+  /* ambient soft-glow blobs used across sections — must be absolute
+     or they occupy height in normal flow */
+  .glow {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ============================================================
+     SECTION SHELL — shared styles for all content sections
+     ============================================================ */
+  section.section {
+    position: relative;
+    padding: clamp(90px, 12vw, 160px) clamp(20px, 5vw, 80px);
+    overflow: hidden;
+  }
+  .section-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+  }
+  .section .bg-grid {
+    background-size: 72px 72px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 85%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 85%);
+  }
+  .section-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 6px 14px;
+    border: 1px solid var(--border-hi);
+    border-radius: 100px;
+    background: rgba(91, 164, 245, 0.05);
+    margin-bottom: 28px;
+  }
+  .section-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .section-badge.gold { color: var(--gold); border-color: rgba(212,168,83,0.22); background: rgba(212,168,83,0.05); }
+  .section-badge.gold::before { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+  .section-badge.green { color: var(--green); border-color: rgba(78,203,141,0.22); background: rgba(78,203,141,0.05); }
+  .section-badge.green::before { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+  .section-title {
+    font-weight: 700;
+    font-size: clamp(32px, 4.2vw, 58px);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    color: var(--t1);
+    max-width: 880px;
+    margin-bottom: 18px;
+  }
+  .section-title .grad {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  .section-title .dim { color: var(--t3); }
+  .section-sub {
+    font-size: clamp(15px, 1.5vw, 19px);
+    line-height: 1.65;
+    color: var(--t2);
+    max-width: 680px;
+  }
+
+  .section-divider {
+    position: absolute;
+    left: 10%; right: 10%;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-hi), transparent);
+  }
+
+  /* ============================================================
+     OPPORTUNITY — big number + funnel + supporting stats
+     ============================================================ */
+  .opp-big {
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    margin-bottom: 56px;
+  }
+  .opp-big-n {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: clamp(64px, 10.5vw, 156px);
+    color: var(--t1);
+    line-height: 0.95;
+    letter-spacing: -5px;
+    background: linear-gradient(180deg, #ffffff 0%, #89c4ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .opp-big-n .tail {
+    font-size: 0.45em;
+    letter-spacing: 0;
+    -webkit-text-fill-color: initial;
+    color: var(--t2);
+    font-weight: 500;
+    margin-left: -6px;
+  }
+  .opp-big-side {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 10px;
+    max-width: 340px;
+  }
+  .opp-big-side .l1 { font-size: clamp(16px, 1.6vw, 20px); color: var(--t1); font-weight: 600; line-height: 1.4; }
+  .opp-big-side .l2 { font-size: 13px; color: var(--t3); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; }
+
+  .opp-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-bottom: 64px;
+  }
+  .opp-stat {
+    padding: 24px 24px 24px 22px;
+    border-left: 2px solid rgba(91, 164, 245, 0.35);
+    transition: border-color 0.25s;
+  }
+  .opp-stat:hover { border-left-color: var(--accent); }
+  .opp-stat-n {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(24px, 2.6vw, 34px);
+    font-weight: 700;
+    color: var(--t1);
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+  .opp-stat-l {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--t2);
+  }
+  .opp-stat-l .muted { color: var(--t3); display: block; margin-top: 2px; font-size: 12.5px; }
+  @media (max-width: 760px) {
+    .opp-stats { grid-template-columns: 1fr; }
+  }
+
+  /* funnel */
+  .funnel {
+    margin-top: 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 820px;
+  }
+  .frow {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .flabel {
+    font-size: 13px;
+    color: var(--t2);
+    min-width: 170px;
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.3px;
+  }
+  .ftrack {
+    flex: 1;
+    height: 36px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .ffill {
+    height: 100%;
+    border-radius: 6px;
+    transform-origin: left;
+    transform: scaleX(0);
+    transition: transform 1.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .frow.show .ffill { transform: scaleX(1); }
+  .fnum {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 16px;
+    color: rgba(232,237,245,0.88);
+    position: absolute;
+    right: -58px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .fnum.warn { color: #dc8328; }
+  .opp-closer {
+    margin-top: 64px;
+    max-width: 720px;
+  }
+  .opp-closer p { font-size: clamp(16px, 1.7vw, 20px); line-height: 1.55; color: var(--t1); font-weight: 500; }
+  .opp-closer .accent { color: var(--accent); font-weight: 600; }
+  .opp-source {
+    position: absolute;
+    bottom: clamp(28px, 4vw, 48px);
+    right: clamp(20px, 5vw, 80px);
+    font-size: 10.5px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--t4);
+    max-width: 360px;
+    text-align: right;
+    z-index: 2;
+  }
+  @media (max-width: 720px) {
+    .opp-source { position: static; margin-top: 32px; max-width: 100%; text-align: left; }
+    .flabel { min-width: 110px; font-size: 11.5px; }
+    .fnum { right: -48px; font-size: 14px; }
+  }
+
+  /* ============================================================
+     PROTOCOL — 3 pcards
+     ============================================================ */
+  .proto-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    margin-top: 56px;
+  }
+  .pcard {
+    position: relative;
+    padding: 34px 28px 30px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(12, 20, 36, 0.7) 0%, rgba(12, 20, 36, 0.35) 100%);
+    backdrop-filter: blur(8px);
+    transition: border-color 0.3s, transform 0.3s;
+    overflow: hidden;
+  }
+  .pcard::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    border-radius: 18px 18px 0 0;
+  }
+  .pcard.blue::before  { background: linear-gradient(90deg, #5ba4f5, #89c4ff); }
+  .pcard.green::before { background: linear-gradient(90deg, #4ecb8d, #8fe4b5); }
+  .pcard.gold::before  { background: linear-gradient(90deg, #d4a853, #f2c87a); }
+  .pcard:hover {
+    border-color: var(--border-hi);
+    transform: translateY(-2px);
+  }
+  .pcard-micro {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--t3);
+    margin-bottom: 14px;
+  }
+  .pcard.blue  .pcard-micro { color: var(--accent); }
+  .pcard.green .pcard-micro { color: var(--green); }
+  .pcard.gold  .pcard-micro { color: var(--gold); }
+  .pcard-title {
+    font-size: clamp(22px, 2.2vw, 28px);
+    font-weight: 700;
+    color: var(--t1);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .pcard-body {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--t2);
+    margin-bottom: 22px;
+  }
+  .pcard-meta {
+    display: flex;
+    gap: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  .pcard-meta div { display: flex; flex-direction: column; gap: 4px; }
+  .pcard-meta .k {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--t4);
+  }
+  .pcard-meta .v {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--t1);
+    font-weight: 600;
+  }
+  @media (max-width: 900px) {
+    .proto-grid { grid-template-columns: 1fr; }
+  }
+
+  /* flow diagram below the cards */
+  .flow {
+    margin-top: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .flow-node {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    background: rgba(12, 20, 36, 0.5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--t2);
+  }
+  .flow-node .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .flow-node.blue .dot  { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .flow-node.green .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .flow-node.gold .dot  { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+  .flow-arrow {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--t4);
+    font-size: 14px;
+  }
+
+  /* ============================================================
+     NODE — two-column layout, ring graphic + feature list
+     ============================================================ */
+  .node-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 72px;
+    align-items: center;
+    margin-top: 56px;
+  }
+  @media (max-width: 900px) {
+    .node-grid { grid-template-columns: 1fr; gap: 48px; }
+  }
+  .node-viz {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    aspect-ratio: 1;
+    margin: 0 auto;
+    display: grid; place-items: center;
+  }
+  .node-ring {
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--border-hi);
+    border-radius: 50%;
+    animation: ring-rot 40s linear infinite;
+  }
+  .node-ring::before, .node-ring::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 1px dashed rgba(91,164,245,0.15);
+  }
+  .node-ring::before { inset: 14%; }
+  .node-ring::after  { inset: 28%; border-style: solid; border-color: rgba(91,164,245,0.1); }
+  @keyframes ring-rot {
+    from { transform: rotate(0); }
+    to   { transform: rotate(360deg); }
+  }
+  .node-core {
+    position: relative;
+    width: 28%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #89c4ff, #5ba4f5 55%, #3a7dc8 100%);
+    box-shadow:
+      0 0 60px rgba(91,164,245,0.45),
+      inset 0 0 20px rgba(255,255,255,0.2);
+    display: grid; place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: #061226;
+    font-size: 14px;
+    letter-spacing: 1.6px;
+  }
+  .node-sat {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    top: 50%; left: 50%;
+    transform-origin: 0 0;
+  }
+  .node-label {
+    position: absolute;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--t4);
+    pointer-events: none;
+  }
+
+  .node-features {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .nfeat {
+    position: relative;
+    padding: 22px 24px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(12, 20, 36, 0.5);
+    transition: border-color 0.25s, transform 0.25s;
+  }
+  .nfeat:hover {
+    border-color: var(--border-hi);
+    transform: translateX(4px);
+  }
+  .nfeat-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .nfeat-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--t1);
+    letter-spacing: -0.01em;
+  }
+  .nfeat-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .nfeat-body {
+    font-size: 14px;
+    color: var(--t2);
+    line-height: 1.6;
+  }
+  .node-link {
+    margin-top: 28px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-decoration: none;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(91,164,245,0.4);
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .node-link:hover { color: var(--t1); border-color: var(--t1); }
+  .node-link .arrow { transition: transform 0.2s; }
+  .node-link:hover .arrow { transform: translateX(3px); }
+
+  /* ============================================================
+     CLOSING
+     ============================================================ */
+  .close-wrap {
+    text-align: center;
+    position: relative;
+    padding: clamp(64px, 8vw, 96px) 0;
+  }
+  .close-title {
+    font-weight: 700;
+    font-size: clamp(36px, 5vw, 64px);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    color: var(--t1);
+    margin-bottom: 18px;
+  }
+  .close-title .grad {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  .close-sub {
+    font-size: clamp(15px, 1.4vw, 18px);
+    color: var(--t2);
+    max-width: 540px;
+    margin: 0 auto 36px;
+    line-height: 1.6;
+  }
+  .close-ctas {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .close-glow {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0; left: 0;
+    background: radial-gradient(ellipse 50% 60% at 50% 50%, rgba(91,164,245,0.16), transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+    filter: blur(30px);
+  }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  footer {
+    position: relative;
+    padding: clamp(60px, 7vw, 88px) clamp(20px, 5vw, 80px) 48px;
+    border-top: 1px solid var(--border);
+    background: #050a15;
+  }
+  .foot-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 48px;
+  }
+  @media (max-width: 820px) {
+    .foot-inner { grid-template-columns: 1fr 1fr; gap: 36px; }
+  }
+  @media (max-width: 480px) {
+    .foot-inner { grid-template-columns: 1fr; gap: 32px; }
+  }
+  .foot-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 340px;
+  }
+  .foot-brand .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .foot-tag {
+    color: var(--t2);
+    font-size: 14px;
+    line-height: 1.65;
+  }
+  .foot-col h5 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--t4);
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .foot-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .foot-col a {
+    color: var(--t2);
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.2s;
+  }
+  .foot-col a:hover { color: var(--t1); }
+  .foot-copy {
+    margin-top: 56px;
+    padding-top: 28px;
+    border-top: 1px solid var(--border);
+    max-width: 1180px;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--t4);
+    text-transform: uppercase;
+  }
+
+  /* ============================================================
+     SCROLL REVEAL
+     ============================================================ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal.d1 { transition-delay: 0.08s; }
+  .reveal.d2 { transition-delay: 0.18s; }
+  .reveal.d3 { transition-delay: 0.28s; }
+  .reveal.d4 { transition-delay: 0.38s; }
+  .reveal.d5 { transition-delay: 0.48s; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">
+    <div class="brand-mark">O</div>
+    <span>Operon</span>
+  </div>
+  <div class="nav-links">
+    <a href="#protocol">Protocol</a>
+    <a href="#nodes">Nodes</a>
+    <a href="#opportunity">Market</a>
+    <a href="#">Litepaper</a>
+  </div>
+  <a href="#" class="nav-cta">Launch App</a>
+</nav>
+
+<section class="hero">
+  <div class="mesh"></div>
+  <div class="bg-grid"></div>
+  <canvas id="swarm"></canvas>
+  <div class="scrim"></div>
+
+  <div class="hero-inner">
+    <div class="sale-pill fade-up delay-1">
+      <span class="dot"></span>
+      <span>Node sale — now live</span>
+      <span style="opacity:.4">·</span>
+      <a href="#">view</a>
+    </div>
+
+    <h1 class="wordmark fade-up delay-2" id="wordmark">
+      <span class="wm-letter" style="animation-delay:0.20s">O</span><span class="wm-letter" style="animation-delay:0.27s">P</span><span class="wm-letter" style="animation-delay:0.34s">E</span><span class="wm-letter" style="animation-delay:0.41s">R</span><span class="wm-letter grad" style="animation-delay:0.48s">O</span><span class="wm-letter grad" style="animation-delay:0.55s">N</span>
+    </h1>
+
+    <h2 class="headline fade-up delay-3">
+      The <span class="grad">open</span> agent protocol.
+    </h2>
+
+    <p class="subhead fade-up delay-4">
+      Operon is the open coordination, verification, and distribution
+      layer that moves AI agents from pilot to production.
+    </p>
+
+    <div class="ctas fade-up delay-5">
+      <a href="#" class="btn-primary">
+        <span>Read the litepaper</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#" class="btn-outline">
+        Launch app
+        <span class="arrow">→</span>
+      </a>
+    </div>
+
+    <div class="feed-wrap fade-up delay-6">
+      <div class="feed-label">Live network activity</div>
+      <div class="feed-line">
+        <span class="feed-dot" id="feedDot"></span>
+        <span class="feed-text" id="feedText"></span><span class="caret"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-cue fade-up delay-6">
+    <span>scroll</span>
+    <div class="line"></div>
+  </div>
+</section>
+
+<!-- =========================================================
+     SECTION 2 · THE OPPORTUNITY — market size & deployment gap
+     ========================================================= -->
+<section class="section" id="opportunity" style="background: linear-gradient(180deg, transparent 0%, rgba(12,20,36,0.5) 100%);">
+  <div class="section-divider"></div>
+  <div class="bg-grid"></div>
+  <div class="glow" style="width:500px;height:500px;top:10%;right:-8%;background:radial-gradient(circle, rgba(220,131,40,0.12), transparent 65%);filter:blur(80px);"></div>
+
+  <div class="section-inner">
+    <div class="section-badge gold reveal">● THE OPPORTUNITY</div>
+    <h2 class="section-title reveal d1">
+      A trillion-dollar market,<br />
+      <span class="dim">stuck in a deployment bottleneck.</span>
+    </h2>
+
+    <div class="opp-big reveal d2">
+      <div class="opp-big-n">
+        $3<span style="color:var(--t3);font-weight:600;">–</span>5<span class="tail">T</span>
+      </div>
+      <div class="opp-big-side">
+        <div class="l1">in agentic commerce by 2030</div>
+        <div class="l2">McKinsey, 2025</div>
+      </div>
+    </div>
+
+    <div class="opp-stats">
+      <div class="opp-stat reveal d1">
+        <div class="opp-stat-n">$47B</div>
+        <div class="opp-stat-l">
+          agentic AI market by 2030
+          <span class="muted">44% CAGR from $5.1B in 2024</span>
+        </div>
+      </div>
+      <div class="opp-stat reveal d2">
+        <div class="opp-stat-n">40%</div>
+        <div class="opp-stat-l">
+          of enterprise apps will embed agents
+          <span class="muted">by end of 2026</span>
+        </div>
+      </div>
+      <div class="opp-stat reveal d3">
+        <div class="opp-stat-n">$450B</div>
+        <div class="opp-stat-l">
+          enterprise software revenue from agentic AI
+          <span class="muted">by 2035 — best case</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="funnel reveal">
+      <div class="frow" data-width="88">
+        <div class="flabel">Using AI</div>
+        <div class="ftrack"><div class="ffill" style="background:linear-gradient(90deg,rgba(91,164,245,0.14),rgba(91,164,245,0.42))"></div><span class="fnum">88%</span></div>
+      </div>
+      <div class="frow" data-width="62">
+        <div class="flabel">Testing agents</div>
+        <div class="ftrack"><div class="ffill" style="background:linear-gradient(90deg,rgba(91,164,245,0.12),rgba(91,164,245,0.35))"></div><span class="fnum">62%</span></div>
+      </div>
+      <div class="frow" data-width="23">
+        <div class="flabel">Scaling deployment</div>
+        <div class="ftrack"><div class="ffill" style="background:linear-gradient(90deg,rgba(91,164,245,0.10),rgba(91,164,245,0.28))"></div><span class="fnum">23%</span></div>
+      </div>
+      <div class="frow" data-width="10">
+        <div class="flabel">Deployed at scale</div>
+        <div class="ftrack"><div class="ffill" style="background:linear-gradient(90deg,rgba(220,131,40,0.18),rgba(220,131,40,0.55))"></div><span class="fnum warn">&lt; 10%</span></div>
+      </div>
+    </div>
+
+    <div class="opp-closer reveal">
+      <p>
+        The gap between testing and production is <span class="accent">infrastructure — not capability.</span>
+        Operon is the open coordination, verification, and distribution layer
+        that closes it.
+      </p>
+    </div>
+  </div>
+
+  <div class="opp-source">McKinsey State of AI, Nov 2025 · Capgemini, Jan 2025 · Gartner, Aug 2025</div>
+</section>
+
+<!-- =========================================================
+     SECTION 3 · THE PROTOCOL — what Operon actually is
+     ========================================================= -->
+<section class="section" id="protocol">
+  <div class="section-divider"></div>
+  <div class="bg-grid"></div>
+  <div class="glow" style="width:520px;height:520px;top:-10%;left:40%;background:radial-gradient(circle, rgba(91,164,245,0.18), transparent 65%);filter:blur(80px);"></div>
+
+  <div class="section-inner">
+    <div class="section-badge reveal">● THE PROTOCOL</div>
+    <h2 class="section-title reveal d1">
+      What <span class="grad">Operon</span> is.
+    </h2>
+    <p class="section-sub reveal d2">
+      Three primitives that turn isolated AI agents into a production-grade network.
+      Each runs across a distributed set of nodes — no central operator, no single point of trust.
+    </p>
+
+    <div class="proto-grid">
+      <!-- DISCOVER -->
+      <div class="pcard blue reveal d1">
+        <div class="pcard-micro">OPN · DISCOVER</div>
+        <div class="pcard-title">A reputation graph for agents.</div>
+        <div class="pcard-body">
+          Every agent on Operon is indexed by uptime, engagement, and attested output quality.
+          Search, rank, and route decisions are made from a single source of truth that users can audit.
+        </div>
+        <div class="pcard-meta">
+          <div><span class="k">Updated</span><span class="v">every 30 min</span></div>
+          <div><span class="k">Consensus</span><span class="v">3-of-5 nodes</span></div>
+        </div>
+      </div>
+
+      <!-- DISTRIBUTE -->
+      <div class="pcard green reveal d2">
+        <div class="pcard-micro">OPN · DISTRIBUTE</div>
+        <div class="pcard-title">A node network, not an app store.</div>
+        <div class="pcard-body">
+          Nodes route new agents to the users and communities most likely to deploy them,
+          with on-chain referral attribution so every hand-off is paid for deterministically.
+        </div>
+        <div class="pcard-meta">
+          <div><span class="k">Attribution</span><span class="v">On-chain</span></div>
+          <div><span class="k">Epoch</span><span class="v">7 days</span></div>
+        </div>
+      </div>
+
+      <!-- VERIFY -->
+      <div class="pcard gold reveal d3">
+        <div class="pcard-micro">OPN · VERIFY</div>
+        <div class="pcard-title">Proofs, not promises.</div>
+        <div class="pcard-body">
+          Agent outputs are attested in Trusted Execution Environments and anchored on-chain.
+          Any participant can re-check that a result was produced by the agent it claims to be from.
+        </div>
+        <div class="pcard-meta">
+          <div><span class="k">Runtime</span><span class="v">TEE-backed</span></div>
+          <div><span class="k">Hash</span><span class="v">On-chain</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow reveal">
+      <div class="flow-node blue"><span class="dot"></span>Discover</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node green"><span class="dot"></span>Distribute</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node gold"><span class="dot"></span>Verify</div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     SECTION 4 · THE NODE
+     ========================================================= -->
+<section class="section" id="nodes" style="background: linear-gradient(180deg, transparent 0%, rgba(12,20,36,0.35) 100%);">
+  <div class="section-divider"></div>
+  <div class="bg-grid"></div>
+  <div class="glow" style="width:600px;height:600px;bottom:-15%;left:-10%;background:radial-gradient(circle, rgba(91,164,245,0.16), transparent 65%);filter:blur(80px);"></div>
+
+  <div class="section-inner">
+    <div class="section-badge reveal">● THE ENGINE</div>
+    <h2 class="section-title reveal d1">
+      Nodes are the network.
+    </h2>
+    <p class="section-sub reveal d2">
+      Operon has no central operator. Nodes index agent activity, verify uptime,
+      and compute reputation scores. They keep the network honest — and share
+      in its growth as a result.
+    </p>
+
+    <div class="node-grid">
+      <div class="node-viz reveal">
+        <div class="node-ring"></div>
+        <div class="node-core">OPN</div>
+        <!-- orbiting satellite dots placed via rotation -->
+        <div class="node-sat" style="transform: rotate(0deg) translate(150px) rotate(0deg);"></div>
+        <div class="node-sat" style="transform: rotate(60deg) translate(150px) rotate(-60deg); background: var(--green); box-shadow: 0 0 10px var(--green);"></div>
+        <div class="node-sat" style="transform: rotate(120deg) translate(150px) rotate(-120deg); background: var(--gold); box-shadow: 0 0 10px var(--gold);"></div>
+        <div class="node-sat" style="transform: rotate(180deg) translate(150px) rotate(-180deg);"></div>
+        <div class="node-sat" style="transform: rotate(240deg) translate(150px) rotate(-240deg); background: var(--violet); box-shadow: 0 0 10px var(--violet);"></div>
+        <div class="node-sat" style="transform: rotate(300deg) translate(150px) rotate(-300deg);"></div>
+      </div>
+
+      <div>
+        <div class="node-features">
+          <div class="nfeat reveal d1">
+            <div class="nfeat-head">
+              <div class="nfeat-title">Reputation indexing</div>
+              <div class="nfeat-tag">OPN-002 · Scout</div>
+            </div>
+            <div class="nfeat-body">
+              Nodes poll every registered agent for liveness, schema compliance,
+              and engagement signal. Scores are written back on 3-of-5 consensus.
+            </div>
+          </div>
+
+          <div class="nfeat reveal d2">
+            <div class="nfeat-head">
+              <div class="nfeat-title">Proof verification</div>
+              <div class="nfeat-tag">OPN-004 · Ledger</div>
+            </div>
+            <div class="nfeat-body">
+              Nodes re-verify TEE attestations and publish signed epoch summaries.
+              No single node can fabricate state; quorum-signed reports are final.
+            </div>
+          </div>
+
+          <div class="nfeat reveal d3">
+            <div class="nfeat-head">
+              <div class="nfeat-title">Network rewards</div>
+              <div class="nfeat-tag">Protocol</div>
+            </div>
+            <div class="nfeat-body">
+              Node operators earn from routed referrals, staking flows, and
+              protocol-level attribution. Incentives align node uptime with network growth.
+            </div>
+          </div>
+        </div>
+
+        <a href="#" class="node-link reveal d4">
+          Learn how nodes work
+          <span class="arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     SECTION 5 · CLOSING
+     ========================================================= -->
+<section class="section" id="closing">
+  <div class="section-divider"></div>
+  <div class="close-wrap section-inner">
+    <div class="close-glow"></div>
+    <h2 class="close-title reveal">
+      Build on the <span class="grad">agent rails.</span>
+    </h2>
+    <p class="close-sub reveal d1">
+      Operon is open. Run agents, operate nodes, or read the litepaper
+      to see what we're building.
+    </p>
+    <div class="close-ctas reveal d2">
+      <a href="#" class="btn-primary">
+        <span>Read the litepaper</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#" class="btn-outline">
+        View FAQ
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     FOOTER
+     ========================================================= -->
+<footer>
+  <div class="foot-inner">
+    <div class="foot-brand">
+      <div class="row">
+        <div class="brand-mark">O</div>
+        <span>Operon</span>
+      </div>
+      <div class="foot-tag">
+        The open coordination, verification, and distribution layer for AI agents.
+      </div>
+    </div>
+    <div class="foot-col">
+      <h5>Protocol</h5>
+      <ul>
+        <li><a href="#protocol">Discover</a></li>
+        <li><a href="#protocol">Distribute</a></li>
+        <li><a href="#protocol">Verify</a></li>
+        <li><a href="#nodes">Nodes</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <h5>Resources</h5>
+      <ul>
+        <li><a href="#">Litepaper</a></li>
+        <li><a href="#">Docs</a></li>
+        <li><a href="#">Agents</a></li>
+        <li><a href="#">FAQ</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <h5>Community</h5>
+      <ul>
+        <li><a href="#">Twitter / X</a></li>
+        <li><a href="#">Discord</a></li>
+        <li><a href="#">GitHub</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-copy">
+    <div>© 2026 Operon Network · All systems operational</div>
+    <div>v4.0.0 · Mainnet Init</div>
+  </div>
+</footer>
+
+<div class="proto-tag">prototype · full site</div>
+
+<script>
+  /* ====================================================================
+     AGENT SWARM CANVAS
+     - 6 hub nodes laid out around the hero
+     - particles continuously spawn at random hubs and travel along curved
+       bezier paths to another hub
+     - on arrival they trigger an expanding ring at the destination
+     ==================================================================== */
+  (function() {
+    const canvas = document.getElementById('swarm');
+    const ctx = canvas.getContext('2d');
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let W = 0, H = 0;
+
+    const HUBS_NORM = [
+      // pushed to the perimeter so labels never overlap centred content
+      { x: 0.07, y: 0.34, label: 'discover'   }, // 0 — far left
+      { x: 0.93, y: 0.30, label: 'verify'     }, // 1 — far right
+      { x: 0.16, y: 0.18, label: 'distribute' }, // 2 — top left
+      { x: 0.84, y: 0.18, label: 'relay'      }, // 3 — top right
+      { x: 0.20, y: 0.86, label: 'settle'     }, // 4 — bottom left
+      { x: 0.80, y: 0.86, label: 'ledger'     }, // 5 — bottom right
+    ];
+    let hubs = [];
+
+    /* edges: pairs of hub indices for particle routing AND faint persistent lines */
+    const EDGES = [
+      [0,2],[2,3],[3,1],[1,5],[5,4],[4,0],   // outer ring
+      [0,3],[1,2],                           // top crosses
+      [0,5],[1,4],                           // long diagonals
+      [2,5],[3,4],                           // bottom crosses
+    ];
+
+    /* Particle pool */
+    const PARTICLES = [];
+    const RIPPLES = [];
+
+    const COLORS = [
+      { r: 91,  g: 164, b: 245, weight: 60 }, // sky-blue
+      { r: 137, g: 196, b: 255, weight: 25 }, // light blue
+      { r: 124, g: 92,  b: 255, weight: 10 }, // violet
+      { r: 91,  g: 234, b: 255, weight: 5  }, // cyan
+    ];
+
+    function pickColor() {
+      const total = COLORS.reduce((s, c) => s + c.weight, 0);
+      let r = Math.random() * total;
+      for (const c of COLORS) {
+        r -= c.weight;
+        if (r <= 0) return c;
+      }
+      return COLORS[0];
+    }
+
+    function resize() {
+      const r = canvas.getBoundingClientRect();
+      W = r.width;
+      H = r.height;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      hubs = HUBS_NORM.map((h, i) => ({
+        ...h,
+        i,
+        px: h.x * W,
+        py: h.y * H,
+      }));
+    }
+
+    /* curved bezier control point: midpoint of edge nudged perpendicular */
+    function bezier(t, p0, p1, p2) {
+      const u = 1 - t;
+      return {
+        x: u*u*p0.x + 2*u*t*p1.x + t*t*p2.x,
+        y: u*u*p0.y + 2*u*t*p1.y + t*t*p2.y,
+      };
+    }
+
+    function spawnParticle() {
+      const edge = EDGES[Math.floor(Math.random() * EDGES.length)];
+      const dirFlip = Math.random() < 0.5;
+      const aIdx = dirFlip ? edge[1] : edge[0];
+      const bIdx = dirFlip ? edge[0] : edge[1];
+      const a = hubs[aIdx];
+      const b = hubs[bIdx];
+      // perpendicular offset for curve
+      const mx = (a.px + b.px) / 2;
+      const my = (a.py + b.py) / 2;
+      const dx = b.px - a.px;
+      const dy = b.py - a.py;
+      const len = Math.hypot(dx, dy);
+      const nx = -dy / len;
+      const ny =  dx / len;
+      const curve = (Math.random() * 0.35 + 0.10) * len * (Math.random() < 0.5 ? 1 : -1);
+      const ctrl = { x: mx + nx * curve, y: my + ny * curve };
+      const color = pickColor();
+      const speed = 0.12 + Math.random() * 0.20; // slower, more deliberate
+      PARTICLES.push({
+        a: { x: a.px, y: a.py },
+        b: { x: b.px, y: b.py },
+        c: ctrl,
+        t: 0,
+        speed,
+        color,
+        size: 1.4 + Math.random() * 1.4,
+        targetHub: bIdx,
+        trail: [],
+      });
+    }
+
+    function spawnRipple(hubIdx, color) {
+      const h = hubs[hubIdx];
+      RIPPLES.push({
+        x: h.px,
+        y: h.py,
+        r: 4,
+        max: 60 + Math.random() * 40,
+        life: 0,
+        ttl: 1.2,
+        color,
+      });
+    }
+
+    let last = performance.now();
+    let acc = 0;
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      acc += dt;
+
+      // spawn rate ~5 / sec — calmer, more deliberate
+      while (acc > 1/5) {
+        spawnParticle();
+        acc -= 1/5;
+      }
+
+      ctx.clearRect(0, 0, W, H);
+
+      // faint persistent edges — shows network even when no particles
+      ctx.strokeStyle = 'rgba(91,164,245,0.055)';
+      ctx.lineWidth = 1;
+      for (const [a, b] of EDGES) {
+        ctx.beginPath();
+        ctx.moveTo(hubs[a].px, hubs[a].py);
+        ctx.lineTo(hubs[b].px, hubs[b].py);
+        ctx.stroke();
+      }
+
+      // hubs (drawn under particles, very subtle)
+      for (const h of hubs) {
+        // soft glow
+        const g = ctx.createRadialGradient(h.px, h.py, 0, h.px, h.py, 36);
+        g.addColorStop(0, 'rgba(91,164,245,0.18)');
+        g.addColorStop(1, 'rgba(91,164,245,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(h.px, h.py, 36, 0, Math.PI * 2);
+        ctx.fill();
+        // core
+        ctx.fillStyle = 'rgba(232,237,245,0.7)';
+        ctx.beginPath();
+        ctx.arc(h.px, h.py, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        // ring
+        ctx.strokeStyle = 'rgba(91,164,245,0.25)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(h.px, h.py, 8, 0, Math.PI * 2);
+        ctx.stroke();
+        // label
+        ctx.fillStyle = 'rgba(175,195,225,0.45)';
+        ctx.font = '500 9px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        const offset = h.y < 0.5 ? -22 : 22;
+        ctx.fillText(h.label.toUpperCase(), h.px, h.py + offset);
+        ctx.textAlign = 'start';
+      }
+
+      // ripples
+      for (let i = RIPPLES.length - 1; i >= 0; i--) {
+        const r = RIPPLES[i];
+        r.life += dt;
+        const k = r.life / r.ttl;
+        if (k >= 1) { RIPPLES.splice(i, 1); continue; }
+        const radius = r.r + (r.max - r.r) * easeOut(k);
+        const alpha = (1 - k) * 0.55;
+        ctx.strokeStyle = `rgba(${r.color.r},${r.color.g},${r.color.b},${alpha})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // particles
+      for (let i = PARTICLES.length - 1; i >= 0; i--) {
+        const p = PARTICLES[i];
+        p.t += dt * p.speed;
+        if (p.t >= 1) {
+          spawnRipple(p.targetHub, p.color);
+          PARTICLES.splice(i, 1);
+          continue;
+        }
+        const pos = bezier(p.t, p.a, p.c, p.b);
+
+        // trail
+        p.trail.push({ x: pos.x, y: pos.y });
+        if (p.trail.length > 14) p.trail.shift();
+
+        for (let j = 0; j < p.trail.length - 1; j++) {
+          const tr = p.trail[j];
+          const tr2 = p.trail[j+1];
+          const a = (j / p.trail.length) * 0.5;
+          ctx.strokeStyle = `rgba(${p.color.r},${p.color.g},${p.color.b},${a})`;
+          ctx.lineWidth = p.size * 0.7;
+          ctx.beginPath();
+          ctx.moveTo(tr.x, tr.y);
+          ctx.lineTo(tr2.x, tr2.y);
+          ctx.stroke();
+        }
+
+        // head
+        const headAlpha = 0.85;
+        ctx.fillStyle = `rgba(${p.color.r},${p.color.g},${p.color.b},${headAlpha})`;
+        ctx.shadowColor = `rgba(${p.color.r},${p.color.g},${p.color.b},0.9)`;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+    window.addEventListener('resize', () => {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      resize();
+    });
+    resize();
+    requestAnimationFrame(frame);
+  })();
+
+  /* ====================================================================
+     LIVE FEED  (same idea as Hero A, smaller)
+     ==================================================================== */
+  (function() {
+    const events = [
+      { agent: 'OPN-202 Quill',     verb: 'drafted',     metric: '4,219 articles',         tail: 'today',                   color: 'blue'   },
+      { agent: 'OPN-203 Meridian',  verb: 'rebalanced',  metric: '$147,221 USDC',          tail: 'across 12 positions',     color: 'green'  },
+      { agent: 'OPN-201 Zenith',    verb: 'executed',    metric: '8,221 trades',           tail: 'last 24h',                color: 'gold'   },
+      { agent: 'OPN-001 Herald',    verb: 'routed',      metric: '412 broadcasts',         tail: 'last hour',               color: 'blue'   },
+      { agent: 'OPN-002 Scout',     verb: 'indexed',     metric: '38 new agents',          tail: 'last epoch',              color: 'green'  },
+      { agent: 'OPN-006 Relay',     verb: 'handed off',  metric: '9 multi-step workflows', tail: 'TEE-attested',            color: 'violet' },
+      { agent: 'OPN-204 Atelier',   verb: 'rendered',    metric: '1,408 brand assets',     tail: 'this week',               color: 'blue'   },
+      { agent: 'OPN-205 Arbiter',   verb: 'flagged',     metric: '17 jurisdictional changes', tail: 'monitored 41 regions', color: 'gold'   },
+      { agent: 'OPN-206 Epoch',     verb: 'synthesised', metric: '92 research reports',    tail: 'on-chain attested',       color: 'blue'   },
+      { agent: 'OPN-004 Ledger',    verb: 'finalised',   metric: 'epoch 1,204 attribution', tail: '3-of-5 quorum',           color: 'green'  },
+    ];
+
+    const feedDot = document.getElementById('feedDot');
+    const feedText = document.getElementById('feedText');
+    let idx = 0;
+    let cancelled = false;
+
+    function buildHTML(e) {
+      return `<span class="agent">${e.agent}</span> · ${e.verb} ${e.metric} ${e.tail}`;
+    }
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+
+    async function typeLine(html) {
+      feedText.innerHTML = '';
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      const plain = tmp.textContent;
+      for (let i = 0; i <= plain.length; i++) {
+        if (cancelled) return;
+        feedText.textContent = plain.slice(0, i);
+        await wait(22 + Math.random() * 28);
+      }
+      feedText.innerHTML = html;
+    }
+    async function eraseLine() {
+      const current = feedText.textContent;
+      for (let i = current.length; i >= 0; i--) {
+        if (cancelled) return;
+        feedText.textContent = current.slice(0, i);
+        await wait(8);
+      }
+    }
+    async function loop() {
+      while (!cancelled) {
+        const e = events[idx % events.length];
+        feedDot.className = 'feed-dot ' + e.color;
+        await typeLine(buildHTML(e));
+        await wait(4200);
+        await eraseLine();
+        await wait(350);
+        idx++;
+      }
+    }
+    setTimeout(loop, 1900);
+    window.addEventListener('beforeunload', () => { cancelled = true; });
+  })();
+
+  /* ====================================================================
+     SCROLL REVEAL
+     Observe elements with .reveal and add .in when they enter the viewport.
+     ==================================================================== */
+  (function() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  })();
+
+  /* ====================================================================
+     FUNNEL BARS — animate widths on scroll into view
+     ==================================================================== */
+  (function() {
+    const rows = document.querySelectorAll('.funnel .frow');
+    if (!rows.length) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        rows.forEach((row, i) => {
+          const w = row.getAttribute('data-width');
+          const fill = row.querySelector('.ffill');
+          setTimeout(() => {
+            fill.style.width = w + '%';
+            row.classList.add('show');
+          }, i * 150);
+        });
+        observer.disconnect();
+      });
+    }, { threshold: 0.3 });
+
+    observer.observe(rows[0].parentElement);
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Operon — Hero I · Stream</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --t1: #f8f9fc;
+    --t2: rgba(220, 225, 240, 0.72);
+    --t3: rgba(170, 180, 200, 0.45);
+    --warm: #ffd89a;
+    --warm-bright: #fff4d6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: #050608;
+    color: var(--t1);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* === SCENE BACKGROUND === */
+  /* deep vignette + faint grain */
+  .scene-bg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 35%, rgba(40, 45, 60, 0.55) 0%, rgba(15, 18, 24, 0.85) 45%, #050608 75%),
+      #050608;
+  }
+  .grain {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+  }
+  /* very faint stars top half */
+  .stars {
+    position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    background-image:
+      radial-gradient(1px 1px at 8% 14%, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1.2px 1.2px at 18% 8%, rgba(255,255,255,0.42), transparent),
+      radial-gradient(1px 1px at 28% 22%, rgba(255,235,200,0.45), transparent),
+      radial-gradient(1.5px 1.5px at 41% 6%, rgba(255,255,255,0.38), transparent),
+      radial-gradient(1px 1px at 54% 18%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1.2px 1.2px at 66% 10%, rgba(255,235,200,0.42), transparent),
+      radial-gradient(1px 1px at 78% 24%, rgba(255,255,255,0.38), transparent),
+      radial-gradient(1.5px 1.5px at 88% 14%, rgba(255,255,255,0.45), transparent),
+      radial-gradient(1px 1px at 12% 32%, rgba(255,235,200,0.35), transparent),
+      radial-gradient(1px 1px at 72% 36%, rgba(255,255,255,0.32), transparent);
+    mask-image: linear-gradient(180deg, #000 0%, #000 35%, transparent 60%);
+  }
+
+  /* === CARD / FRAME === */
+  .card {
+    position: relative;
+    z-index: 5;
+    width: calc(100% - 48px);
+    max-width: 1480px;
+    margin: 24px auto;
+    height: calc(100vh - 48px);
+    min-height: 720px;
+    border-radius: 24px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 30%, rgba(30, 32, 40, 0.6) 0%, rgba(10, 12, 16, 0.7) 50%, rgba(5, 6, 8, 0.85) 100%);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 30px 80px rgba(0, 0, 0, 0.6);
+    container-type: inline-size;
+    container-name: card;
+  }
+
+  /* === NAV === */
+  nav {
+    position: relative; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 32px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 500; font-size: 15px; letter-spacing: -0.005em; color: var(--t1);
+  }
+  .brand-mark {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(255, 240, 200, 0.18), rgba(255, 240, 200, 0.04));
+    border: 1px solid rgba(255, 240, 200, 0.18);
+    display: grid; place-items: center;
+  }
+  .brand-mark svg { width: 16px; height: 16px; }
+  .nav-mid {
+    display: flex; align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 100px;
+    padding: 4px;
+    gap: 0;
+  }
+  .nav-mid a {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: rgba(220, 225, 240, 0.65);
+    text-decoration: none;
+    border-radius: 100px;
+    transition: all 0.25s;
+  }
+  .nav-mid a:hover, .nav-mid a.active {
+    color: var(--t1);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .nav-right { display: flex; gap: 8px; align-items: center; }
+  .nav-cta {
+    font-size: 13px; font-weight: 500;
+    color: var(--t1);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 8px 18px;
+    border-radius: 100px;
+    text-decoration: none;
+    transition: all 0.25s;
+  }
+  .nav-cta:hover { background: rgba(255, 255, 255, 0.14); }
+  .nav-link-plain { font-size: 13px; color: var(--t2); text-decoration: none; padding: 0 8px; }
+
+  /* === FLOATING LABELS (asset-style chips around perimeter) === */
+  .float-label {
+    position: absolute;
+    z-index: 20;
+    display: flex; align-items: flex-start; gap: 10px;
+    color: var(--t2);
+    font-size: 13px;
+    line-height: 1.2;
+    opacity: 0;
+    animation: fadeIn 1.2s ease-out forwards;
+  }
+  .float-label .dot {
+    margin-top: 5px;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--t1);
+    flex-shrink: 0;
+  }
+  .float-label .lbl-name { color: var(--t1); font-weight: 500; }
+  .float-label .lbl-num {
+    display: block;
+    color: var(--t3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+  .float-label .icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--t1);
+  }
+  .fl-1 { top: 14%; left: 3%;   animation-delay: 0.6s; }
+  .fl-2 { top: 36%; left: 3%;   animation-delay: 0.9s; }
+  .fl-3 { top: 36%; right: 3%;  animation-delay: 1.0s; }
+  .fl-4 { top: 14%; right: 3%;  animation-delay: 1.2s; }
+
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* === HERO COPY === */
+  .hero {
+    position: relative;
+    z-index: 30;
+    text-align: center;
+    padding: clamp(40px, 6cqh, 90px) clamp(24px, 4cqw, 64px) 0;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .hero-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 100px;
+    padding: 7px 16px;
+    font-size: 12px;
+    color: var(--t2);
+    margin-bottom: 28px;
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    animation: fadeUp 1s 0.3s ease-out forwards;
+  }
+  .hero-pill::before {
+    content: '→';
+    font-size: 11px;
+    color: var(--t1);
+    margin-right: 4px;
+  }
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: clamp(46px, 7cqw, 100px);
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    color: var(--t1);
+    opacity: 0;
+    animation: fadeUp 1.2s 0.5s ease-out forwards;
+  }
+  h1 .l1 { display: block; }
+  h1 .l2 {
+    display: block;
+    background: linear-gradient(180deg, rgba(255, 245, 220, 0.95) 0%, rgba(180, 175, 160, 0.5) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-style: italic;
+  }
+  .subhead {
+    margin-top: 28px;
+    font-size: clamp(14px, 1.1cqw, 16px);
+    line-height: 1.55;
+    color: var(--t2);
+    max-width: 540px;
+    margin-left: auto; margin-right: auto;
+    opacity: 0;
+    animation: fadeUp 1s 0.7s ease-out forwards;
+  }
+  .cta-row {
+    margin-top: 32px;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    opacity: 0;
+    animation: fadeUp 1s 0.9s ease-out forwards;
+  }
+  .btn {
+    font-size: 14px;
+    font-weight: 500;
+    padding: 12px 26px;
+    border-radius: 100px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    text-decoration: none;
+    transition: all 0.25s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary {
+    background: linear-gradient(180deg, #ffffff 0%, #e6e3dc 100%);
+    color: #0a0c12;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 6px 18px rgba(255, 235, 200, 0.18);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 8px 22px rgba(255, 235, 200, 0.28); }
+  .btn-ghost {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--t1);
+    border-color: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(6px);
+  }
+  .btn-ghost:hover { background: rgba(255, 255, 255, 0.08); }
+  .btn .arrow { font-size: 14px; opacity: 0.7; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* === STREAM / BEAM (the move) === */
+  .stream-wrap {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    width: clamp(280px, 32cqw, 540px);
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+    overflow: hidden;
+  }
+  .beam-soft {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse 70% 100% at 50% 95%,
+      rgba(255, 235, 200, 0.55) 0%,
+      rgba(255, 220, 170, 0.3) 18%,
+      rgba(255, 215, 160, 0.12) 38%,
+      rgba(255, 215, 160, 0.04) 60%,
+      transparent 80%);
+    filter: blur(8px);
+    opacity: 0;
+    animation: beamRise 2.4s 0.2s ease-out forwards, beamPulse 7s 2.6s ease-in-out infinite;
+  }
+  .beam-core {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: clamp(100px, 12cqw, 200px);
+    background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(255, 250, 230, 0.05) 20%,
+      rgba(255, 245, 220, 0.18) 50%,
+      rgba(255, 240, 210, 0.5) 88%,
+      rgba(255, 245, 220, 0.85) 96%,
+      rgba(255, 250, 235, 1) 100%);
+    -webkit-mask-image: radial-gradient(ellipse 60% 100% at 50% 100%, #000 30%, transparent 75%);
+            mask-image: radial-gradient(ellipse 60% 100% at 50% 100%, #000 30%, transparent 75%);
+    opacity: 0;
+    animation: beamRise 2.4s 0.4s ease-out forwards;
+  }
+  .beam-thin {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(255, 250, 230, 0.4) 35%,
+      rgba(255, 250, 230, 1) 95%);
+    box-shadow:
+      0 0 8px rgba(255, 240, 200, 0.6),
+      0 0 24px rgba(255, 235, 180, 0.4);
+    opacity: 0;
+    animation: beamRise 2s 0.6s ease-out forwards;
+  }
+  /* particles streaming up the beam */
+  .beam-particle {
+    position: absolute;
+    left: 50%;
+    width: 2px; height: 2px;
+    border-radius: 50%;
+    background: rgba(255, 245, 220, 0.95);
+    box-shadow: 0 0 6px rgba(255, 235, 180, 0.9);
+    transform: translateX(-50%);
+    animation: streamUp 3.5s linear infinite;
+  }
+  .beam-particle:nth-child(1)  { left: 50%;        animation-delay: 0s;    animation-duration: 3.6s; }
+  .beam-particle:nth-child(2)  { left: calc(50% - 8px);  animation-delay: 0.5s;  animation-duration: 4.2s; }
+  .beam-particle:nth-child(3)  { left: calc(50% + 6px);  animation-delay: 1.0s;  animation-duration: 3.2s; }
+  .beam-particle:nth-child(4)  { left: calc(50% + 14px); animation-delay: 1.6s;  animation-duration: 4.0s; }
+  .beam-particle:nth-child(5)  { left: calc(50% - 14px); animation-delay: 2.2s;  animation-duration: 3.8s; }
+  .beam-particle:nth-child(6)  { left: calc(50% + 2px);  animation-delay: 2.8s;  animation-duration: 3.5s; }
+  .beam-particle:nth-child(7)  { left: calc(50% - 4px);  animation-delay: 3.4s;  animation-duration: 4.1s; }
+  .beam-particle:nth-child(8)  { left: calc(50% + 10px); animation-delay: 0.2s;  animation-duration: 3.7s; }
+  @keyframes streamUp {
+    0%   { top: 100%; opacity: 0; transform: translateX(-50%) scale(0.6); }
+    8%   { opacity: 1; }
+    85%  { opacity: 0.8; }
+    100% { top: -5%; opacity: 0; transform: translateX(-50%) scale(0.4); }
+  }
+  @keyframes beamRise {
+    from { opacity: 0; transform: translateX(-50%) scaleY(0.5); }
+    to   { opacity: 1; transform: translateX(-50%) scaleY(1); }
+  }
+  @keyframes beamPulse {
+    0%, 100% { opacity: 1; filter: blur(8px); }
+    50%      { opacity: 0.85; filter: blur(11px); }
+  }
+
+  /* === HORIZON / PLANET === */
+  .horizon {
+    position: absolute;
+    left: 50%;
+    bottom: -85cqw;
+    transform: translateX(-50%);
+    width: 145cqw;
+    height: 145cqw;
+    max-width: 2200px;
+    max-height: 2200px;
+    z-index: 8;
+    pointer-events: none;
+  }
+  .horizon-svg { width: 100%; height: 100%; display: block; }
+  .horizon-glow {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    width: clamp(400px, 60cqw, 1100px);
+    height: clamp(160px, 18cqh, 280px);
+    background: radial-gradient(ellipse 50% 100% at 50% 100%,
+      rgba(255, 240, 210, 0.55) 0%,
+      rgba(255, 220, 170, 0.22) 30%,
+      transparent 70%);
+    filter: blur(20px);
+    opacity: 0;
+    animation: fadeIn 2s 0.4s ease-out forwards;
+  }
+
+  /* === PROOF CARDS — floating row above floor === */
+  .proof-row {
+    position: absolute;
+    left: 50%; bottom: 28px;
+    transform: translateX(-50%);
+    z-index: 25;
+    display: flex; gap: 14px;
+    align-items: flex-end;
+    perspective: 1400px;
+    width: calc(100% - 64px);
+    justify-content: center;
+    opacity: 0;
+    animation: fadeUp 1.2s 1.2s ease-out forwards;
+  }
+  .pcard {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    padding: 14px 16px;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: all 0.3s;
+  }
+  .pcard:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.12); }
+  .pc-1 { transform: rotate(-1.5deg); width: 180px; }
+  .pc-2 { transform: rotate(0.5deg); width: 230px; }
+  .pc-3 { transform: rotate(2deg);    width: 180px; }
+  .pc-h {
+    display: flex; align-items: baseline; gap: 6px;
+    margin-bottom: 6px;
+  }
+  .pc-h .v {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--t1);
+    line-height: 1;
+  }
+  .pc-h .u {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--warm);
+    text-transform: uppercase;
+  }
+  .pc-l {
+    font-size: 12px;
+    color: var(--t2);
+    line-height: 1.4;
+  }
+  .pc-l strong { color: var(--t1); font-weight: 500; }
+  .pc-foot {
+    margin-top: 10px;
+    display: flex; gap: 4px; flex-wrap: wrap;
+  }
+  .pc-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--t3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  /* mini agent grid in proof card 2 */
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .agent-pip {
+    aspect-ratio: 1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    display: grid; place-items: center;
+    font-size: 11px;
+    color: var(--t2);
+  }
+  .agent-pip.live { background: rgba(255, 220, 170, 0.08); border-color: rgba(255, 220, 170, 0.3); color: var(--warm); }
+
+  .floor-cap {
+    position: absolute;
+    left: 50%; bottom: 8px;
+    transform: translateX(-50%);
+    z-index: 30;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--t3);
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .variant-tag {
+    position: fixed; top: 12px; right: 16px; z-index: 100;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 2px; color: var(--warm); text-transform: uppercase;
+    border: 1px solid rgba(255, 220, 170, 0.4); padding: 4px 10px; border-radius: 4px;
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  @media (max-width: 900px) {
+    .float-label { display: none; }
+    .pc-3 { display: none; }
+    h1 { font-size: clamp(38px, 9vw, 64px); }
+  }
+</style>
+</head>
+<body>
+<div class="scene-bg"></div>
+<div class="grain"></div>
+<div class="stars"></div>
+<div class="variant-tag">VARIATION I · STREAM</div>
+
+<div class="card">
+  <nav>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 16 16" fill="none">
+          <path d="M3 3 L13 3 L9.5 7.5 L6.5 7.5 Z" fill="rgba(255, 240, 200, 0.95)"/>
+          <path d="M3 8.5 L11 8.5 L7.5 13 L4.5 13 Z" fill="rgba(255, 240, 200, 0.7)"/>
+        </svg>
+      </div>
+      <span>Operon</span>
+    </div>
+    <div class="nav-mid">
+      <a href="#" class="active">Network</a>
+      <a href="#">Agents</a>
+      <a href="#">Verify</a>
+      <a href="#">Nodes</a>
+    </div>
+    <div class="nav-right">
+      <a class="nav-link-plain" href="#">Sign in</a>
+      <a class="nav-cta" href="#">Connect</a>
+    </div>
+  </nav>
+
+  <!-- Floating perimeter labels (asset-style) -->
+  <div class="float-label fl-1">
+    <div class="icon">◯</div>
+    <div>
+      <span class="lbl-name">Chorus</span>
+      <span class="lbl-num">workflow · live</span>
+    </div>
+  </div>
+  <div class="float-label fl-2">
+    <div class="icon">✓</div>
+    <div>
+      <span class="lbl-name">Verify</span>
+      <span class="lbl-num">attestations 18.2K/d</span>
+    </div>
+  </div>
+  <div class="float-label fl-3">
+    <div class="icon">◈</div>
+    <div>
+      <span class="lbl-name">Pulse</span>
+      <span class="lbl-num">200+ integrations</span>
+    </div>
+  </div>
+  <div class="float-label fl-4">
+    <div class="icon">✦</div>
+    <div>
+      <span class="lbl-name">Quill</span>
+      <span class="lbl-num">3.4K agents drafted</span>
+    </div>
+  </div>
+
+  <!-- Hero copy -->
+  <div class="hero">
+    <span class="hero-pill">100,000 Genesis Nodes · Whitelist now open</span>
+    <h1>
+      <span class="l1">Operon Network</span>
+      <span class="l2">the open agent protocol</span>
+    </h1>
+    <p class="subhead">
+      Coordination, verification, and distribution rails for the agentic economy —
+      moving AI agents from pilot to production across an open, on-chain network.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#">Discover the network <span class="arrow">→</span></a>
+      <a class="btn btn-ghost" href="#">Read the protocol</a>
+    </div>
+  </div>
+
+  <!-- THE STREAM (light beam + particles) -->
+  <div class="stream-wrap">
+    <div class="beam-soft"></div>
+    <div class="beam-core"></div>
+    <div class="beam-thin"></div>
+    <span class="beam-particle"></span>
+    <span class="beam-particle"></span>
+    <span class="beam-particle"></span>
+    <span class="beam-particle"></span>
+    <span class="beam-particle"></span>
+    <span class="beam-particle"></span>
+    <span class="beam-particle"></span>
+    <span class="beam-particle"></span>
+  </div>
+
+  <!-- HORIZON / PLANET (massive sphere mostly off-screen) -->
+  <div class="horizon">
+    <svg class="horizon-svg" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <!-- planet body: dark with subtle warm rim at top, deeper center -->
+        <radialGradient id="planet" cx="50%" cy="0%" r="70%">
+          <stop offset="0%"  stop-color="rgba(180, 165, 130, 0.22)"/>
+          <stop offset="8%"  stop-color="rgba(80, 70, 55, 0.5)"/>
+          <stop offset="22%" stop-color="rgba(35, 32, 28, 0.92)"/>
+          <stop offset="45%" stop-color="rgba(15, 14, 13, 1)"/>
+          <stop offset="100%" stop-color="rgba(5, 5, 8, 1)"/>
+        </radialGradient>
+        <!-- atmosphere glow at the limb -->
+        <radialGradient id="atmo" cx="50%" cy="50%" r="50%">
+          <stop offset="92%" stop-color="rgba(255, 230, 180, 0)"/>
+          <stop offset="97%" stop-color="rgba(255, 230, 180, 0.3)"/>
+          <stop offset="99%" stop-color="rgba(255, 230, 180, 0.08)"/>
+          <stop offset="100%" stop-color="transparent"/>
+        </radialGradient>
+        <!-- specular sunrise highlight at top center -->
+        <radialGradient id="sunrise" cx="50%" cy="0%" r="20%">
+          <stop offset="0%" stop-color="rgba(255, 245, 220, 0.95)"/>
+          <stop offset="40%" stop-color="rgba(255, 220, 170, 0.4)"/>
+          <stop offset="100%" stop-color="transparent"/>
+        </radialGradient>
+        <!-- subtle terrain texture -->
+        <filter id="bumps" x="0" y="0">
+          <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" seed="3"/>
+          <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0"/>
+          <feComposite in2="SourceGraphic" operator="in"/>
+        </filter>
+      </defs>
+
+      <!-- atmosphere halo -->
+      <circle cx="500" cy="500" r="495" fill="url(#atmo)"/>
+      <!-- planet body -->
+      <circle cx="500" cy="500" r="480" fill="url(#planet)"/>
+      <!-- terrain noise overlay -->
+      <circle cx="500" cy="500" r="480" fill="rgba(255, 255, 255, 0.02)" filter="url(#bumps)"/>
+      <!-- sunrise highlight near top -->
+      <ellipse cx="500" cy="20" rx="160" ry="40" fill="url(#sunrise)"/>
+      <!-- meridian arcs for surface depth -->
+      <path d="M 500 20 Q 350 480 500 980" stroke="rgba(255, 230, 180, 0.04)" stroke-width="0.6" fill="none"/>
+      <path d="M 500 20 Q 650 480 500 980" stroke="rgba(255, 230, 180, 0.04)" stroke-width="0.6" fill="none"/>
+      <path d="M 500 20 Q 220 480 500 980" stroke="rgba(255, 230, 180, 0.025)" stroke-width="0.5" fill="none"/>
+      <path d="M 500 20 Q 780 480 500 980" stroke="rgba(255, 230, 180, 0.025)" stroke-width="0.5" fill="none"/>
+      <!-- equator ellipse -->
+      <ellipse cx="500" cy="500" rx="478" ry="80" stroke="rgba(255, 230, 180, 0.04)" stroke-width="0.6" fill="none"/>
+
+      <!-- emission point at top center (where the beam originates) -->
+      <circle cx="500" cy="20" r="6" fill="rgba(255, 250, 235, 1)"/>
+      <circle cx="500" cy="20" r="14" fill="rgba(255, 245, 220, 0.5)"/>
+    </svg>
+    <div class="horizon-glow"></div>
+  </div>
+
+  <!-- PROOF CARDS — floating row -->
+  <div class="proof-row">
+    <div class="pcard pc-1">
+      <div class="pc-h">
+        <span class="v">100K</span>
+        <span class="u">nodes</span>
+      </div>
+      <div class="pc-l"><strong>Genesis cap.</strong> Forever. ERC-721 on Arbitrum.</div>
+      <div class="pc-foot">
+        <span class="pc-chip">Tier 1 · $500</span>
+        <span class="pc-chip">40 Tiers</span>
+      </div>
+    </div>
+    <div class="pcard pc-2">
+      <div class="pc-h">
+        <span class="v">4 LIVE</span>
+        <span class="u">agents</span>
+      </div>
+      <div class="pc-l"><strong>Already deployed.</strong> Already earning. 200+ integrations across the stack.</div>
+      <div class="agent-grid">
+        <div class="agent-pip live">⊕</div>
+        <div class="agent-pip live">◈</div>
+        <div class="agent-pip live">◉</div>
+        <div class="agent-pip live">✦</div>
+        <div class="agent-pip">+</div>
+        <div class="agent-pip">+</div>
+        <div class="agent-pip">+</div>
+        <div class="agent-pip">+</div>
+      </div>
+    </div>
+    <div class="pcard pc-3">
+      <div class="pc-h">
+        <span class="v">18.2K</span>
+        <span class="u">/day</span>
+      </div>
+      <div class="pc-l"><strong>Attestations</strong> recorded on-chain. Immutable.</div>
+      <div class="pc-foot">
+        <span class="pc-chip">Verify v0.6</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="floor-cap">Coordination · Verification · Distribution</div>
+</div>
+
+</body>
+</html>

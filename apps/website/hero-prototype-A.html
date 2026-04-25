@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Operon — Hero A · Muted</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #060b18;
+    --bg-2: #0a1224;
+    --card: #0c1424;
+    --border: rgba(100, 160, 255, 0.08);
+    --border-hi: rgba(100, 160, 255, 0.22);
+    --t1: #e8edf5;
+    --t2: rgba(210, 225, 245, 0.78);
+    --t3: rgba(175, 195, 225, 0.55);
+    --t4: rgba(150, 170, 200, 0.38);
+    --accent: #5ba4f5;
+    --accent-2: #89c4ff;
+    --grad: linear-gradient(135deg, #5ba4f5, #89c4ff);
+    --gold: #d4a853;
+    --green: #4ecb8d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--t1);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* ============ NAV ============ */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 clamp(20px, 4vw, 56px);
+    z-index: 50;
+    backdrop-filter: blur(14px);
+    background: rgba(6, 11, 24, 0.55);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+  }
+  .brand-mark {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: var(--grad);
+    display: grid; place-items: center;
+    font-weight: 800;
+    font-size: 13px;
+    color: #061226;
+    box-shadow: 0 4px 18px rgba(91,164,245,0.35);
+  }
+  .nav-links {
+    display: flex; gap: 28px;
+    font-size: 13px;
+    color: var(--t2);
+  }
+  .nav-links a { color: inherit; text-decoration: none; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--t1); }
+  .nav-cta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--t1);
+    border: 1px solid var(--border-hi);
+    padding: 9px 18px;
+    border-radius: 100px;
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.25s;
+    text-decoration: none;
+  }
+  .nav-cta:hover {
+    border-color: var(--accent);
+    background: rgba(91,164,245,0.08);
+    box-shadow: 0 0 0 4px rgba(91,164,245,0.06);
+  }
+  @media (max-width: 720px) { .nav-links { display: none; } }
+
+  /* ============ HERO ============ */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120px clamp(20px, 5vw, 80px) 80px;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  /* layered backdrop */
+  .bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(100,160,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(100,160,255,0.04) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, black 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, black 30%, transparent 80%);
+    pointer-events: none;
+  }
+  .glow {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(80px);
+  }
+  .glow-1 {
+    width: 620px; height: 620px;
+    top: -180px; left: 8%;
+    background: radial-gradient(circle, rgba(91,164,245,0.28), transparent 65%);
+    animation: drift1 22s ease-in-out infinite alternate;
+  }
+  .glow-2 {
+    width: 520px; height: 520px;
+    bottom: -160px; right: 6%;
+    background: radial-gradient(circle, rgba(137,196,255,0.16), transparent 65%);
+    animation: drift2 26s ease-in-out infinite alternate;
+  }
+  @keyframes drift1 {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(60px, 40px); }
+  }
+  @keyframes drift2 {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(-50px, -30px); }
+  }
+
+  /* ============ CONTENT ============ */
+  .hero-inner {
+    position: relative;
+    z-index: 2;
+    max-width: 880px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  /* Sale pill */
+  .sale-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--t2);
+    padding: 7px 16px 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    background: rgba(212, 168, 83, 0.04);
+    transition: border-color 0.3s;
+  }
+  .sale-pill:hover { border-color: rgba(212,168,83,0.25); }
+  .sale-pill .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 0 rgba(212,168,83,0.6);
+    animation: pulse-gold 2.2s ease-out infinite;
+  }
+  .sale-pill a { color: var(--t1); text-decoration: none; opacity: 0.85; }
+  .sale-pill a:hover { opacity: 1; }
+  @keyframes pulse-gold {
+    0%   { box-shadow: 0 0 0 0 rgba(212,168,83,0.5); }
+    70%  { box-shadow: 0 0 0 8px rgba(212,168,83,0); }
+    100% { box-shadow: 0 0 0 0 rgba(212,168,83,0); }
+  }
+
+  /* Wordmark */
+  .wordmark {
+    position: relative;
+    font-weight: 800;
+    font-size: clamp(58px, 10vw, 144px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin-top: 4px;
+    /* soft aura so the wordmark feels anchored, not floating */
+    text-shadow: 0 10px 80px rgba(91, 164, 245, 0.16);
+  }
+  .wordmark::before {
+    content: '';
+    position: absolute;
+    inset: -15% -8%;
+    z-index: -1;
+    background: radial-gradient(ellipse 60% 70% at 65% 50%, rgba(91,164,245,0.18), transparent 70%);
+    filter: blur(30px);
+    pointer-events: none;
+  }
+  .wordmark .grad {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* Headline */
+  .headline {
+    font-weight: 700;
+    font-size: clamp(28px, 3.6vw, 44px);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--t1);
+    max-width: 780px;
+  }
+  .headline .grad {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .subhead {
+    font-size: clamp(15px, 1.4vw, 18px);
+    line-height: 1.6;
+    color: var(--t2);
+    max-width: 580px;
+    font-weight: 400;
+  }
+
+  /* CTAs */
+  .ctas {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 26px;
+    border-radius: 100px;
+    background: var(--grad);
+    color: #061226;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    box-shadow:
+      0 8px 24px rgba(91,164,245,0.28),
+      inset 0 1px 0 rgba(255,255,255,0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 12px 30px rgba(91,164,245,0.4),
+      inset 0 1px 0 rgba(255,255,255,0.35);
+  }
+  .btn-primary svg { width: 14px; height: 14px; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--t2);
+    font-weight: 500;
+    font-size: 14px;
+    text-decoration: none;
+    padding: 14px 4px;
+    transition: color 0.2s;
+  }
+  .btn-secondary:hover { color: var(--t1); }
+  .btn-secondary .arrow {
+    transition: transform 0.2s;
+  }
+  .btn-secondary:hover .arrow { transform: translateX(3px); }
+
+  /* ============ LIVE FEED ============ */
+  .feed-wrap {
+    margin-top: 44px;
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .feed-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--t4);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .feed-label::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 0 rgba(78,203,141,0.6);
+    animation: pulse-green 1.6s ease-out infinite;
+  }
+  @keyframes pulse-green {
+    0%   { box-shadow: 0 0 0 0 rgba(78,203,141,0.55); }
+    70%  { box-shadow: 0 0 0 7px rgba(78,203,141,0); }
+    100% { box-shadow: 0 0 0 0 rgba(78,203,141,0); }
+  }
+
+  .feed-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(12px, 1.05vw, 14px);
+    color: var(--t2);
+    border: 1px solid var(--border);
+    background: rgba(12, 20, 36, 0.5);
+    border-radius: 100px;
+    padding: 11px 22px;
+    backdrop-filter: blur(8px);
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    transition: border-color 0.4s;
+  }
+  .feed-dot {
+    flex: 0 0 auto;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .feed-dot.green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .feed-dot.gold { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+  .feed-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100vw - 100px);
+  }
+  .feed-text .agent {
+    color: var(--t1);
+    font-weight: 600;
+  }
+  .caret {
+    display: inline-block;
+    width: 7px;
+    height: 13px;
+    background: var(--accent);
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 0.9s steps(2, jump-none) infinite;
+    border-radius: 1px;
+  }
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* ============ SCROLL CUE ============ */
+  .scroll-cue {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--t4);
+    pointer-events: none;
+  }
+  .scroll-cue .line {
+    width: 1px;
+    height: 36px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    animation: line-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes line-pulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(0.7); }
+    50%      { opacity: 1; transform: scaleY(1); }
+  }
+
+  /* fade-in on load */
+  .fade-up {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: fadeUp 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  .delay-1 { animation-delay: 0.05s; }
+  .delay-2 { animation-delay: 0.18s; }
+  .delay-3 { animation-delay: 0.32s; }
+  .delay-4 { animation-delay: 0.48s; }
+  .delay-5 { animation-delay: 0.64s; }
+  .delay-6 { animation-delay: 0.82s; }
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* watermark / tag for prototype */
+  .proto-tag {
+    position: fixed;
+    bottom: 18px;
+    left: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--t4);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">
+    <div class="brand-mark">O</div>
+    <span>Operon</span>
+  </div>
+  <div class="nav-links">
+    <a href="#">Protocol</a>
+    <a href="#">Agents</a>
+    <a href="#">Nodes</a>
+    <a href="#">Litepaper</a>
+  </div>
+  <a href="#" class="nav-cta">Launch App</a>
+</nav>
+
+<section class="hero">
+  <div class="bg-grid"></div>
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <div class="hero-inner">
+    <div class="sale-pill fade-up delay-1">
+      <span class="dot"></span>
+      <span>Node sale — now live</span>
+      <span style="opacity:.4">·</span>
+      <a href="#">view</a>
+    </div>
+
+    <h1 class="wordmark fade-up delay-2">
+      OPER<span class="grad">ON</span>
+    </h1>
+
+    <h2 class="headline fade-up delay-3">
+      The <span class="grad">open</span> agent protocol.
+    </h2>
+
+    <p class="subhead fade-up delay-4">
+      Operon is the open coordination, verification, and distribution
+      layer that moves AI agents from pilot to production.
+    </p>
+
+    <div class="ctas fade-up delay-5">
+      <a href="#" class="btn-primary">
+        Read the litepaper
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#" class="btn-secondary">
+        Launch app
+        <span class="arrow">→</span>
+      </a>
+    </div>
+
+    <div class="feed-wrap fade-up delay-6">
+      <div class="feed-label">Live network activity</div>
+      <div class="feed-line">
+        <span class="feed-dot" id="feedDot"></span>
+        <span class="feed-text" id="feedText"></span><span class="caret"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-cue fade-up delay-6">
+    <span>scroll</span>
+    <div class="line"></div>
+  </div>
+</section>
+
+<div class="proto-tag">prototype A · muted</div>
+
+<script>
+  // Live feed simulation — types each line, holds, fades, types next.
+  const events = [
+    { agent: 'OPN-202 Quill',     verb: 'drafted',     metric: '4,219 articles',         tail: 'today',                   color: 'blue'  },
+    { agent: 'OPN-203 Meridian',  verb: 'rebalanced',  metric: '$147,221 USDC',          tail: 'across 12 positions',     color: 'green' },
+    { agent: 'OPN-201 Zenith',    verb: 'executed',    metric: '8,221 trades',           tail: 'last 24h',                color: 'gold'  },
+    { agent: 'OPN-001 Herald',    verb: 'routed',      metric: '412 broadcasts',         tail: 'last hour',               color: 'blue'  },
+    { agent: 'OPN-002 Scout',     verb: 'indexed',     metric: '38 new agents',          tail: 'last epoch',              color: 'green' },
+    { agent: 'OPN-204 Atelier',   verb: 'rendered',    metric: '1,408 brand assets',     tail: 'this week',               color: 'blue'  },
+    { agent: 'OPN-205 Arbiter',   verb: 'flagged',     metric: '17 jurisdictional changes', tail: 'monitored 41 regions',  color: 'gold'  },
+    { agent: 'OPN-206 Epoch',     verb: 'synthesised', metric: '92 research reports',    tail: 'on-chain attested',       color: 'blue'  },
+    { agent: 'OPN-004 Ledger',    verb: 'finalised',   metric: 'epoch 1,204 attribution', tail: '3-of-5 quorum',           color: 'green' },
+  ];
+
+  const feedDot = document.getElementById('feedDot');
+  const feedText = document.getElementById('feedText');
+  let idx = 0;
+  let cancelled = false;
+
+  function buildLine(e) {
+    return `<span class="agent">${e.agent}</span> · ${e.verb} ${e.metric} ${e.tail}`;
+  }
+
+  async function typeLine(html) {
+    feedText.innerHTML = '';
+    // Type by character but preserve HTML by setting incrementally with fragments.
+    // Simpler: type plain visible chars then swap to formatted at end.
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const plain = tmp.textContent;
+    for (let i = 0; i <= plain.length; i++) {
+      if (cancelled) return;
+      feedText.textContent = plain.slice(0, i);
+      await wait(14 + Math.random() * 22);
+    }
+    // swap to formatted html
+    feedText.innerHTML = html;
+  }
+
+  async function eraseLine() {
+    const current = feedText.textContent;
+    for (let i = current.length; i >= 0; i--) {
+      if (cancelled) return;
+      feedText.textContent = current.slice(0, i);
+      await wait(6);
+    }
+  }
+
+  function wait(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+  async function loop() {
+    while (!cancelled) {
+      const e = events[idx % events.length];
+      feedDot.className = 'feed-dot ' + e.color;
+      await typeLine(buildLine(e));
+      await wait(2600);
+      await eraseLine();
+      await wait(220);
+      idx++;
+    }
+  }
+
+  // start after the fade-up sequence so the typing isn't competing with reveals
+  setTimeout(loop, 1200);
+  window.addEventListener('beforeunload', () => { cancelled = true; });
+</script>
+</body>
+</html>
