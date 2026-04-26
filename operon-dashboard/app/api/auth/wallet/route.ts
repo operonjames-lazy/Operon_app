@@ -250,7 +250,11 @@ async function maybeCreateEppPartner(
     .select('epp_discount_bps')
     .single();
   const eppDiscountBps = cfg?.epp_discount_bps ?? 1500;
-  await enqueueReferralSync(supabase, partnerCode, eppDiscountBps);
+
+  // The Pattern A on-chain self-referral block requires the code's owner
+  // wallet at registration. The EPP partner's primary wallet is `walletLower`
+  // — the SIWE-verified caller — which is also their `users.primary_wallet`.
+  await enqueueReferralSync(supabase, partnerCode, walletLower, eppDiscountBps);
 
   return { ok: true, referralCode: partnerCode };
 }
@@ -348,7 +352,10 @@ export async function POST(request: NextRequest) {
         .select('community_discount_bps')
         .single();
       const communityDiscountBps = cfg?.community_discount_bps ?? 1000;
-      await enqueueReferralSync(supabase, personalCode, communityDiscountBps);
+      // Pattern A: pass the code-owner wallet so the contract can reject
+      // same-wallet self-referral on-chain. The owner is the connected
+      // wallet itself — `walletLower` is the SIWE-verified address.
+      await enqueueReferralSync(supabase, personalCode, walletLower, communityDiscountBps);
     }
 
     // On first signup, attach the referrer if one was supplied.

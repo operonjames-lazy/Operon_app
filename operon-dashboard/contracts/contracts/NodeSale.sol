@@ -33,6 +33,12 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
     mapping(uint256 => Tier) public tiers;
     mapping(bytes32 => bool) public validCodes;
     mapping(bytes32 => uint16) public codeDiscountBps;
+    // Per-code owner wallet, set at registration. Used by `purchase()` to
+    // reject same-wallet self-referral on-chain. Zero address means the code
+    // has no owner binding (legacy codes registered before this mapping
+    // existed); such codes are still valid but cannot be self-referral-checked.
+    // New deploys populate this for every registered code.
+    mapping(bytes32 => address) public codeOwner;
     mapping(address => mapping(uint256 => uint256)) public purchaseCount;
     mapping(uint256 => uint256) public maxPerWallet;
     mapping(address => bool) public acceptedTokens;
@@ -55,7 +61,7 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
     event TierPausedToggled(uint256 indexed tierId, bool paused);
     event TierActiveUpdated(uint256 indexed tierId, bool active);
     event MaxPerWalletUpdated(uint256 indexed tierId, uint256 max);
-    event ReferralCodeAdded(bytes32 indexed codeHash, uint16 discountBps);
+    event ReferralCodeAdded(bytes32 indexed codeHash, address indexed owner, uint16 discountBps);
     event AcceptedTokenUpdated(address indexed token, bool accepted);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event NodeContractUpdated(address indexed oldContract, address indexed newContract);
@@ -109,6 +115,15 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
         // Calculate price
         uint256 totalPrice = tier.price * quantity;
         if (codeHash != bytes32(0) && validCodes[codeHash]) {
+            // Same-wallet self-referral guard. Codes registered after the
+            // codeOwner mapping shipped carry the owning wallet; we reject
+            // a buyer attempting to discount themselves with their own code.
+            // Codes registered before the mapping existed have owner=0 and
+            // skip this check (legacy passthrough). The frontend zeroes the
+            // codeHash for self-referral as a UX courtesy; this require is
+            // the load-bearing defense against a direct contract call.
+            address owner_ = codeOwner[codeHash];
+            require(owner_ == address(0) || owner_ != msg.sender, "NodeSale: self-referral");
             uint16 discount = codeDiscountBps[codeHash];
             if (discount == 0) {
                 discount = defaultDiscountBps;
@@ -203,7 +218,7 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
         emit MaxPerWalletUpdated(tierId, max);
     }
 
-    function addReferralCode(bytes32 codeHash, uint16 discountBps) external onlyAdmin {
+    function addReferralCode(bytes32 codeHash, address owner, uint16 discountBps) external onlyAdmin {
         // Cap at 100%. `uint16` goes to 65535 and the purchase path uses
         // `totalPrice - (totalPrice * discount / 10000)`, which underflows
         // (and reverts in 0.8.x) above 10000 — so the tx would fail loudly
@@ -213,21 +228,32 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
         require(discountBps <= 10000, "NodeSale: discount > 100%");
         validCodes[codeHash] = true;
         codeDiscountBps[codeHash] = discountBps;
-        emit ReferralCodeAdded(codeHash, discountBps);
+        // owner=0 is permitted (no self-referral binding) but discouraged —
+        // the off-chain sync always passes the real wallet. A zero owner
+        // means the code passes through the self-referral check unconditionally.
+        codeOwner[codeHash] = owner;
+        emit ReferralCodeAdded(codeHash, owner, discountBps);
     }
 
     function removeReferralCode(bytes32 codeHash) external onlyAdmin {
         validCodes[codeHash] = false;
         codeDiscountBps[codeHash] = 0;
+        codeOwner[codeHash] = address(0);
         emit ReferralCodeRemoved(codeHash);
     }
 
-    function addReferralCodes(bytes32[] calldata codeHashes, uint16 discountBps) external onlyAdmin {
+    function addReferralCodes(
+        bytes32[] calldata codeHashes,
+        address[] calldata owners,
+        uint16 discountBps
+    ) external onlyAdmin {
         require(discountBps <= 10000, "NodeSale: discount > 100%");
+        require(codeHashes.length == owners.length, "NodeSale: length mismatch");
         for (uint256 i = 0; i < codeHashes.length; i++) {
             validCodes[codeHashes[i]] = true;
             codeDiscountBps[codeHashes[i]] = discountBps;
-            emit ReferralCodeAdded(codeHashes[i], discountBps);
+            codeOwner[codeHashes[i]] = owners[i];
+            emit ReferralCodeAdded(codeHashes[i], owners[i], discountBps);
         }
     }
 

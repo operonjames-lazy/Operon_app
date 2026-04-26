@@ -7,6 +7,8 @@ export type SyncResult =
   | { ok: true; txHash: string }
   | { ok: false; error: string };
 
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
 function codeHashFor(code: string): string {
   // Matches the contract's keccak256(bytes(code)) and the frontend's
   // viem keccak256(encodePacked(['string'], [code.toUpperCase()])).
@@ -37,6 +39,7 @@ function codeHashFor(code: string): string {
  */
 export async function syncReferralCodeOnChain(
   code: string,
+  ownerWallet: string,
   discountBps: number,
   chain: AdminChain,
 ): Promise<SyncResult> {
@@ -50,6 +53,23 @@ export async function syncReferralCodeOnChain(
   if (!Number.isFinite(discountBps) || discountBps <= 0 || discountBps > 10000) {
     logger.error('syncReferralCodeOnChain refused invalid discountBps', { code, chain, discountBps });
     return { ok: false, error: `invalid_discount_bps: ${discountBps}` };
+  }
+
+  // Pattern A self-referral block: every newly-registered code carries its
+  // owner wallet so `purchase()` can reject same-wallet self-referral. Refuse
+  // bad input here so a malformed enqueue never lands as a no-binding code
+  // on-chain. Lower-case is enforced because the contract emits the address
+  // as topics[2] and the dashboard compares against lowercased wallets.
+  if (typeof ownerWallet !== 'string' || !/^0x[a-f0-9]{40}$/.test(ownerWallet)) {
+    logger.error('syncReferralCodeOnChain refused invalid ownerWallet', { code, chain, ownerWallet });
+    return { ok: false, error: `invalid_owner_wallet: ${ownerWallet}` };
+  }
+  if (ownerWallet.toLowerCase() === ZERO_ADDRESS) {
+    // Caller explicitly asked for an unbound code (legacy path). The contract
+    // accepts it but no self-referral check applies. Don't silently allow this
+    // — make the caller pass the real wallet.
+    logger.error('syncReferralCodeOnChain refused zero ownerWallet', { code, chain });
+    return { ok: false, error: 'owner_wallet_zero' };
   }
 
   const result = await getReferralAdminContract(chain);
@@ -89,6 +109,20 @@ export async function syncReferralCodeOnChain(
   try {
     const already = await contract.validCodes(hash);
     if (already) {
+      // Already on-chain. Verify the owner binding matches what we'd register
+      // now — a synced code with a stale (or zero) owner means a previously
+      // weaker registration is still in place; surface that rather than
+      // returning ok and letting the discount path stay unprotected.
+      const onChainOwner = String(await contract.codeOwner(hash)).toLowerCase();
+      if (onChainOwner !== ownerWallet.toLowerCase()) {
+        logger.warn('syncReferralCodeOnChain owner mismatch on already-synced code', {
+          code, chain, expected: ownerWallet, onChain: onChainOwner,
+        });
+        return {
+          ok: false,
+          error: `owner_mismatch_on_chain: expected=${ownerWallet} actual=${onChainOwner}`,
+        };
+      }
       return { ok: true, txHash: 'already_synced' };
     }
   } catch (err) {
@@ -97,7 +131,7 @@ export async function syncReferralCodeOnChain(
 
   let txHash: string;
   try {
-    const tx = await contract.addReferralCode(hash, discountBps);
+    const tx = await contract.addReferralCode(hash, ownerWallet, discountBps);
     const receipt = await tx.wait(1);
     // Post-condition (2): receipt exists. ethers v6 returns null when the
     // wait races a reorg; treat that as failure rather than ok.
@@ -137,23 +171,51 @@ export async function syncReferralCodeOnChain(
     return { ok: false, error: `post_tx_validCodes_read_failed: ${String(err)}` };
   }
 
+  // Post-condition (5): codeOwner read-back. The Pattern A on-chain self-
+  // referral block reads codeOwner[hash] in purchase(); a tx that lands with
+  // the wrong owner (or no owner) silently bypasses the check. Reading it
+  // back catches a corrupted ABI / wrong-arg-order regression that emit-
+  // and validCodes-state both miss.
+  try {
+    const onChainOwner = String(await contract.codeOwner(hash)).toLowerCase();
+    if (onChainOwner !== ownerWallet.toLowerCase()) {
+      return {
+        ok: false,
+        error: `codeOwner_mismatch_after_tx: expected=${ownerWallet} actual=${onChainOwner}`,
+      };
+    }
+  } catch (err) {
+    return { ok: false, error: `post_tx_codeOwner_read_failed: ${String(err)}` };
+  }
+
   return { ok: true, txHash };
 }
 
 /**
  * Enqueue a referral code for on-chain sync on both supported chains.
  * Fire-and-forget from the auth route — the cron picks it up.
+ *
+ * `ownerWallet` is the wallet address of the user who owns the code; the
+ * NodeSale contract reads it back in `purchase()` to reject same-wallet
+ * self-referral. Must be a 40-hex-char lowercased EVM address — the column
+ * has a CHECK constraint enforcing this.
  */
 export async function enqueueReferralSync(
   supabase: ReturnType<typeof createServerSupabase>,
   code: string,
+  ownerWallet: string,
   discountBps: number,
 ): Promise<void> {
+  if (!/^0x[a-f0-9]{40}$/.test(ownerWallet)) {
+    logger.error('enqueueReferralSync called with invalid ownerWallet', { code, ownerWallet });
+    return;
+  }
   const rows = (['arbitrum', 'bsc'] as const).map((chain) => ({
     code,
     chain,
     status: 'pending' as const,
     discount_bps: discountBps,
+    owner_wallet: ownerWallet,
     attempts: 0,
   }));
 

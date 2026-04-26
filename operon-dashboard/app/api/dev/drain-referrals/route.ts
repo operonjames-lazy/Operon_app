@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // are not silently reversed on the next drain tick.
     const { data: pending } = await supabase
       .from('referral_code_chain_state')
-      .select('code, chain, discount_bps, attempts')
+      .select('code, chain, discount_bps, owner_wallet, attempts')
       .in('status', ['pending', 'failed'])
       .lt('attempts', 10)
       .order('updated_at', { ascending: true })
@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
       out.attempted += 1;
       const result = await syncReferralCodeOnChain(
         row.code,
+        row.owner_wallet,
         row.discount_bps,
         row.chain as 'arbitrum' | 'bsc',
       );

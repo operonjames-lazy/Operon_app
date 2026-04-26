@@ -123,10 +123,10 @@ describe("NodeSale", function () {
 
   describe("Referral code discount", function () {
     it("should apply 15% default discount for valid referral code", async function () {
-      const { buyer, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+      const { buyer, treasury, usdc, sale, tierPrice, other } = await loadFixture(deployFixture);
 
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("ALPHA15"));
-      await sale.addReferralCode(codeHash, 0); // 0 means use default (15%)
+      await sale.addReferralCode(codeHash, other.address, 0); // 0 means use default (15%)
 
       const discountedPrice = tierPrice - (tierPrice * 1500n / 10000n); // 15% off
       await usdc.connect(buyer).approve(await sale.getAddress(), discountedPrice);
@@ -141,10 +141,10 @@ describe("NodeSale", function () {
     });
 
     it("should apply custom discount per code", async function () {
-      const { buyer, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+      const { buyer, treasury, usdc, sale, tierPrice, other } = await loadFixture(deployFixture);
 
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("VIP20"));
-      await sale.addReferralCode(codeHash, 2000); // 20%
+      await sale.addReferralCode(codeHash, other.address, 2000); // 20%
 
       const discountedPrice = tierPrice - (tierPrice * 2000n / 10000n);
       await usdc.connect(buyer).approve(await sale.getAddress(), discountedPrice);
@@ -165,20 +165,19 @@ describe("NodeSale", function () {
     });
 
     it("R5-BUG-06: charges full price when codeHash is bytes32(0) even if the buyer owns a registered code", async function () {
-      // Pins the frontend→contract contract that the R5-BUG-06 fix depends on.
-      // The frontend zeroes the codeHash whenever `codeValid !== true` (including
-      // the self-referral case where the UI rejects the buyer's own code). The
-      // contract has no on-chain self-referral check — that's a known gap
-      // tracked for mainnet — so the frontend's zeroing is the load-bearing
-      // guard. This test fails loudly if either side of that contract drifts:
-      // e.g. a future frontend refactor that stops zeroing, or a contract
-      // upgrade that adds a self-referral check without updating this test.
+      // Pins the frontend→contract behaviour: a zero codeHash short-circuits
+      // the discount path, regardless of whether a code with that hash is
+      // registered. The frontend zeroes the codeHash when validate-code says
+      // not-valid (e.g. self-referral) as a UX courtesy that avoids a revert;
+      // post-Pattern-A the contract also independently rejects self-referral
+      // via the `codeOwner` check. Both layers stay so a zero hash is never
+      // discounted even by accident.
       const { buyer, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
 
-      // Register the buyer's own code on-chain with a 10% discount — the exact
-      // shape the frontend has to defend against.
+      // Register the buyer's own code with the buyer as owner — this is the
+      // shape an attacker would set up if attempting a direct contract call.
       const buyerCodeHash = ethers.keccak256(ethers.toUtf8Bytes("OPR-SELF"));
-      await sale.addReferralCode(buyerCodeHash, 1000);
+      await sale.addReferralCode(buyerCodeHash, buyer.address, 1000);
 
       // Buyer approves only the FULL price (what the UI would have asked for
       // after setting discountBps = 0 on codeValid = false).
@@ -198,10 +197,10 @@ describe("NodeSale", function () {
     });
 
     it("validateCode should return correct info", async function () {
-      const { sale } = await loadFixture(deployFixture);
+      const { sale, other } = await loadFixture(deployFixture);
 
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("CODE1"));
-      await sale.addReferralCode(codeHash, 1000);
+      await sale.addReferralCode(codeHash, other.address, 1000);
 
       const [valid, discount] = await sale.validateCode(codeHash);
       expect(valid).to.be.true;
@@ -209,7 +208,7 @@ describe("NodeSale", function () {
 
       // Default discount
       const codeHash2 = ethers.keccak256(ethers.toUtf8Bytes("CODE2"));
-      await sale.addReferralCode(codeHash2, 0);
+      await sale.addReferralCode(codeHash2, other.address, 0);
       const [valid2, discount2] = await sale.validateCode(codeHash2);
       expect(valid2).to.be.true;
       expect(discount2).to.equal(1500); // defaultDiscountBps
@@ -221,10 +220,10 @@ describe("NodeSale", function () {
     });
 
     it("should allow owner to remove a referral code", async function () {
-      const { buyer, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+      const { buyer, treasury, usdc, sale, tierPrice, other } = await loadFixture(deployFixture);
 
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("REMOVE_ME"));
-      await sale.addReferralCode(codeHash, 0);
+      await sale.addReferralCode(codeHash, other.address, 0);
 
       // Verify code is valid
       const [valid] = await sale.validateCode(codeHash);
@@ -249,7 +248,7 @@ describe("NodeSale", function () {
       const { other, sale } = await loadFixture(deployFixture);
 
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("CODE"));
-      await sale.addReferralCode(codeHash, 0);
+      await sale.addReferralCode(codeHash, other.address, 0);
 
       await expect(
         sale.connect(other).removeReferralCode(codeHash)
@@ -257,20 +256,106 @@ describe("NodeSale", function () {
     });
 
     it("should batch add referral codes", async function () {
-      const { sale } = await loadFixture(deployFixture);
+      const { sale, owner, treasury, other } = await loadFixture(deployFixture);
 
       const hashes = [
         ethers.keccak256(ethers.toUtf8Bytes("BATCH1")),
         ethers.keccak256(ethers.toUtf8Bytes("BATCH2")),
         ethers.keccak256(ethers.toUtf8Bytes("BATCH3")),
       ];
-      await sale.addReferralCodes(hashes, 1200);
+      const owners = [owner.address, treasury.address, other.address];
+      await sale.addReferralCodes(hashes, owners, 1200);
 
-      for (const h of hashes) {
-        const [valid, discount] = await sale.validateCode(h);
+      for (let i = 0; i < hashes.length; i++) {
+        const [valid, discount] = await sale.validateCode(hashes[i]);
         expect(valid).to.be.true;
         expect(discount).to.equal(1200);
+        expect(await sale.codeOwner(hashes[i])).to.equal(owners[i]);
       }
+    });
+
+    it("addReferralCodes reverts on length mismatch between codeHashes and owners", async function () {
+      const { sale, other } = await loadFixture(deployFixture);
+      const hashes = [
+        ethers.keccak256(ethers.toUtf8Bytes("L1")),
+        ethers.keccak256(ethers.toUtf8Bytes("L2")),
+      ];
+      const owners = [other.address]; // length 1 vs hashes length 2
+      await expect(sale.addReferralCodes(hashes, owners, 1000)).to.be.revertedWith(
+        "NodeSale: length mismatch"
+      );
+    });
+  });
+
+  describe("Self-referral on-chain block (Pattern A)", function () {
+    it("reverts when buyer == codeOwner", async function () {
+      const { buyer, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("SELFREF"));
+      // Register the buyer's own wallet as the code owner — exactly the
+      // shape the cron sync produces for a community/EPP code.
+      await sale.addReferralCode(codeHash, buyer.address, 1000);
+
+      await usdc.connect(buyer).approve(await sale.getAddress(), tierPrice);
+
+      // Buyer tries to discount themselves with their own code → revert.
+      await expect(
+        sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), codeHash, futureDeadline(), tierPrice)
+      ).to.be.revertedWith("NodeSale: self-referral");
+    });
+
+    it("succeeds when buyer != codeOwner (positive case)", async function () {
+      const { buyer, buyer2, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // buyer2 owns the code; buyer (a different wallet) uses it.
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("FRIENDLY"));
+      await sale.addReferralCode(codeHash, buyer2.address, 1000);
+
+      const discountedPrice = tierPrice - (tierPrice * 1000n / 10000n);
+      await usdc.connect(buyer).approve(await sale.getAddress(), discountedPrice);
+
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), codeHash, futureDeadline(), tierPrice);
+
+      expect(await usdc.balanceOf(treasury.address)).to.equal(discountedPrice);
+    });
+
+    it("legacy code with owner=0 still passes (backward-compat passthrough)", async function () {
+      const { buyer, treasury, usdc, sale, tierPrice } = await loadFixture(deployFixture);
+
+      // Mimic a code that was registered before the codeOwner mapping shipped.
+      // Setting owner=0 explicitly proves the require's owner_==0 branch
+      // applies the discount as before — important for any pre-existing
+      // on-chain state migrated forward without a re-registration pass.
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("LEGACY"));
+      await sale.addReferralCode(codeHash, ethers.ZeroAddress, 1000);
+
+      const discountedPrice = tierPrice - (tierPrice * 1000n / 10000n);
+      await usdc.connect(buyer).approve(await sale.getAddress(), discountedPrice);
+
+      await sale.connect(buyer).purchase(0, 1, await usdc.getAddress(), codeHash, futureDeadline(), tierPrice);
+
+      expect(await usdc.balanceOf(treasury.address)).to.equal(discountedPrice);
+    });
+
+    it("removeReferralCode clears the codeOwner binding", async function () {
+      const { buyer, sale, other } = await loadFixture(deployFixture);
+
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("REVOKED"));
+      await sale.addReferralCode(codeHash, other.address, 1000);
+      expect(await sale.codeOwner(codeHash)).to.equal(other.address);
+
+      await sale.removeReferralCode(codeHash);
+      expect(await sale.codeOwner(codeHash)).to.equal(ethers.ZeroAddress);
+      expect(await sale.validCodes(codeHash)).to.be.false;
+    });
+
+    it("ReferralCodeAdded event includes the owner address", async function () {
+      const { sale, other } = await loadFixture(deployFixture);
+
+      const codeHash = ethers.keccak256(ethers.toUtf8Bytes("EVT"));
+      await expect(sale.addReferralCode(codeHash, other.address, 1500))
+        .to.emit(sale, "ReferralCodeAdded")
+        .withArgs(codeHash, other.address, 1500);
     });
   });
 
@@ -697,7 +782,7 @@ describe("NodeSale", function () {
 
   describe("Discount rounding edge case", function () {
     it("should handle discount rounding edge case", async function () {
-      const { buyer, treasury, usdc, sale } = await loadFixture(deployFixture);
+      const { buyer, treasury, usdc, sale, other } = await loadFixture(deployFixture);
 
       // Set a tier with an odd price (333_333333 = ~333.333333 USDC)
       const oddPrice = 333_333333n;
@@ -705,7 +790,7 @@ describe("NodeSale", function () {
 
       // Add a code with 1500 bps (15%) discount
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("ODD"));
-      await sale.addReferralCode(codeHash, 1500);
+      await sale.addReferralCode(codeHash, other.address, 1500);
 
       // Expected: 333_333333 - (333_333333 * 1500 / 10000) = 333_333333 - 49_999999 = 283_333334
       // Solidity integer division: 333_333333 * 1500 = 499_999_999_500, / 10000 = 49_999_999 (truncated)
@@ -843,7 +928,7 @@ describe("NodeSale", function () {
       expect(await sale.admin()).to.equal(ethers.ZeroAddress);
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("DISABLED"));
       await expect(
-        sale.connect(owner).addReferralCode(codeHash, 1000)
+        sale.connect(owner).addReferralCode(codeHash, owner.address, 1000)
       ).to.be.revertedWith("NodeSale: caller is not admin");
     });
 
@@ -851,11 +936,11 @@ describe("NodeSale", function () {
       const { sale, owner, other } = await loadFixture(deployFixture);
       await sale.connect(owner).setAdmin(other.address);
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("ROTATED"));
-      await sale.connect(other).addReferralCode(codeHash, 1000);
+      await sale.connect(other).addReferralCode(codeHash, other.address, 1000);
       expect(await sale.validCodes(codeHash)).to.be.true;
       const codeHash2 = ethers.keccak256(ethers.toUtf8Bytes("ROTATED2"));
       await expect(
-        sale.connect(owner).addReferralCode(codeHash2, 1000)
+        sale.connect(owner).addReferralCode(codeHash2, owner.address, 1000)
       ).to.be.revertedWith("NodeSale: caller is not admin");
     });
 
@@ -873,31 +958,33 @@ describe("NodeSale", function () {
     it("addReferralCodes (batch) enforces onlyAdmin", async function () {
       const { sale, other } = await loadFixture(deployFixture);
       const hashes = [ethers.keccak256(ethers.toUtf8Bytes("X"))];
+      const owners = [other.address];
       await expect(
-        sale.connect(other).addReferralCodes(hashes, 1000)
+        sale.connect(other).addReferralCodes(hashes, owners, 1000)
       ).to.be.revertedWith("NodeSale: caller is not admin");
     });
 
     it("addReferralCode rejects discountBps > 10000", async function () {
-      const { sale } = await loadFixture(deployFixture);
+      const { sale, other } = await loadFixture(deployFixture);
       const codeHash = ethers.keccak256(ethers.toUtf8Bytes("TOOHIGH"));
-      await expect(sale.addReferralCode(codeHash, 10001)).to.be.revertedWith(
+      await expect(sale.addReferralCode(codeHash, other.address, 10001)).to.be.revertedWith(
         "NodeSale: discount > 100%"
       );
       // 10000 (exactly 100% off) is allowed — treasury policy decision, not
       // an invariant violation; operators who want a lower ceiling enforce
       // it at the application layer.
-      await sale.addReferralCode(codeHash, 10000);
+      await sale.addReferralCode(codeHash, other.address, 10000);
       expect(await sale.validCodes(codeHash)).to.be.true;
     });
 
     it("addReferralCodes (batch) rejects discountBps > 10000", async function () {
-      const { sale } = await loadFixture(deployFixture);
+      const { sale, owner, other } = await loadFixture(deployFixture);
       const hashes = [
         ethers.keccak256(ethers.toUtf8Bytes("B1")),
         ethers.keccak256(ethers.toUtf8Bytes("B2")),
       ];
-      await expect(sale.addReferralCodes(hashes, 15000)).to.be.revertedWith(
+      const owners = [owner.address, other.address];
+      await expect(sale.addReferralCodes(hashes, owners, 15000)).to.be.revertedWith(
         "NodeSale: discount > 100%"
       );
       // And the batch must have registered nothing — all-or-nothing.
