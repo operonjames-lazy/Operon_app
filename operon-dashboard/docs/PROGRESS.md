@@ -1043,3 +1043,63 @@ Closes the website audit findings, plus tracks the prototype-O HTML output that 
 - **Operator-side mainnet items still owed** (carry-over from R14 / R15 sessions): Vercel env rotation, mainnet contract deploy, webhook rewire, live smoke test, Gnosis Safe novation. None touched this session.
 
 ---
+
+## 2026-04-26 (session 6) — Website: discard React app, ship prototype-O as static deploy bundle
+
+Workspace-only session. User: "prototype-O IS the website". Closes the session-3/4/5 carry-over "Port-or-discard decision" — discarded. The Vite/React `App.tsx` site is gone; `apps/website/` is now a flat-file static site, and a zipped deploy bundle was produced for staff hand-off.
+
+### Completed
+
+**Static deploy bundle.** New `operon-website-2026-04-26.zip` at repo root — 42 files, 1.03 MB. Contents staged at `operon-website-2026-04-26/`:
+- `index.html` (copy of `hero-prototype-O.html` — EN home)
+- `hero-prototype-O.html`, `-agents.html`, `-nodes.html`, `-faq.html` (4 EN pages)
+- `proto-o-i18n.js` (client-side lang router)
+- 6 locale dirs (`ja/`, `ko/`, `zh-cn/`, `zh-tw/`, `th/`, `vi/`) — each carries `index.html` + the 4 prototype files, 30 HTML files total
+- `faq/`, `quill/`, `zenith/` (sub-sites, copied from `apps/website/public/`)
+- `robots.txt`, `sitemap.xml`
+
+Static — drop on any web host. Cross-links use literal filenames (e.g. `hero-prototype-O-agents.html`); rewriting to `/agents/` etc. would have required rewriting every page + every lang dir + the `proto-o-i18n.js` `parsePath()` regex, deemed out of scope.
+
+**`apps/website/` purged of the React app and old prototypes.** Removed:
+- React source: `App.tsx`, `index.tsx`, `types.ts`, `constants.ts`, `metadata.json`, `index.css`, `README.md`, `components/` (14 files: AgentWorkforceGraphic, AgentsPage, ArchitectureGraphic, Countdown, DiagnosticGraphic, DocsPage, EcosystemGraphic, HeroTitle, Loader, Navbar, NetworkVisualizer, NodeGraphic, NodeNetworkGraphic, NodesPage, ParticleBackground)
+- Build infra: `vite.config.ts`, `tsconfig.json`, `package.json`, `package-lock.json`, `node_modules/`, `dist/`
+- Old prototypes: `hero-prototype-{A,B,C,D,E,F,G,H,H-A,H-C,H-D,H-index,I,J,K,K2,L,M,N}.html`, `index-react-legacy.html`
+- Working scratch: `copy-review-hero-arch.md`, `website-copy-spec.md`
+
+**`apps/website/` retained:**
+- 4 EN prototype-O HTML files + `index.html` (same content as the home file)
+- `proto-o-i18n.js`
+- 6 locale dirs
+- `public/` (faq, quill, zenith, robots.txt, sitemap.xml)
+- `scripts/` (`build-i18n.mjs` + the 3 fix-* idempotent steps from session 5) — pure-Node, no `package.json` deps, runs as `node scripts/build-i18n.mjs`
+- `i18n/` (per-language JSON dicts — build-time source of truth)
+
+### Decisions
+
+- **Prototype-O is the production website; App.tsx is dead.** The session-1/3 "stylistic prototype vs canonical App.tsx" tension is resolved by removing App.tsx. The cascade-vocabulary contradiction noted in session 4 (`website-copy-spec.md` re-locking "5-level on-chain referral cascade" + "referral cascade" terminology vs prototype-O's deliberate stripping) is moot — `website-copy-spec.md` was a spec for the React app that no longer exists, and was removed.
+- **No build step.** `apps/website/` is now pure static HTML + JS; no Vite, no Tailwind compile, no `pnpm build`. Content edits ship as raw HTML edits to the EN files, then `node scripts/build-i18n.mjs && node scripts/fix-seo-meta.mjs && node scripts/fix-a11y-contrast.mjs && node scripts/fix-locale-anchors.mjs` regenerates the locale tree. Then re-zip the deploy folder.
+- **Cross-page links stay as literal filenames** (`hero-prototype-O-agents.html` etc.) instead of pretty `/agents/` URLs. Pretty URLs would have required rewriting 35+ HTML files + the lang router. Deferred — purely cosmetic for non-canonical pages (canonicals are `/`, `/<lang>/`, `/faq/`).
+
+### Verification
+
+- `find operon-website-2026-04-26 -type f | wc -l` → 42 files, structure matches the contents list above
+- Zip created via `powershell.exe Compress-Archive` — 1.03 MB
+- `apps/website/` post-delete listing confirms only retained files remain (no `App.tsx`, no `components/`, no `vite.config.ts`, no old prototype letters)
+- **Not verified this session**: actual deploy / served-from-disk render. The zip has not been unpacked and served to a browser. The same files were verified in browser during session 5 (`fix-seo-meta` / `fix-a11y-contrast` / `fix-locale-anchors` Playwright pass), so cross-link integrity is inherited from that session's verification, not re-checked here.
+
+### Closes from prior sessions
+
+- ✅ "Port-or-discard decision" (session 3 / 4 / 5 open) — discarded.
+- ✅ "FAQPage.tsx still dead code" (session 1 / 5 carry-over) — deleted with `components/`.
+- ✅ "Spec contradiction noted, not yet reconciled" (session 4) — `website-copy-spec.md` removed; prototype-O is canonical.
+- ✅ "6 non-EN locales still drift" as it pertained to `App.tsx` (session 1 / 4 / 5) — App.tsx is gone; locale parity now lives entirely in the `apps/website/<lang>/` tree, regenerated from EN HTML + `i18n/<lang>.json` via `build-i18n.mjs`.
+
+### Open / next session
+
+- **Deploy verification deferred to staff.** The zip is the deliverable; staff unpacks and deploys. Once live, smoke-test: EN root, each `/<lang>/` home, lang switcher round-trip, footer dead-link "Coming soon" rendering, `/faq/` (the public/ FAQ — separate page from `hero-prototype-O-faq.html`), `/quill/`, `/zenith/`.
+- **Repo root cleanup deferred.** ~80 hero/redesign PNG screenshots from the prior prototype iterations are still untracked at repo root, plus the `operon-website-2026-04-26/` staged dir is now redundant (the zip is the deliverable). Both can be removed in a cleanup pass; left untouched this session because they're harmless to git and the user moved on.
+- **Build pipeline drift risk** (carry-over from session 5) still open. `build-i18n.mjs` doesn't chain `fix-seo-meta` / `fix-a11y-contrast` / `fix-locale-anchors`. Worth a wrapper script (`scripts/build-all.mjs`?) or a Makefile so future content edits don't silently regress canonical / a11y / dead-link fixes.
+- **Four website audit items deferred** (carry-over from session 5): sub-480px mobile breakpoint, inline `<style>` extraction (~70K dup lines across 4 prototypes × 7 locales), EN root FAQ ships all 7 langs in one 3603-line file, OG/Twitter Card meta missing on every page.
+- **Operator-side mainnet items still owed** (carry-over from R14 / R15): Vercel env rotation, mainnet contract deploy, webhook rewire, live smoke test, Gnosis Safe novation. None touched this session.
+
+---
