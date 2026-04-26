@@ -4,6 +4,55 @@ Append-only session log. One dated entry per coding session. Do not edit previou
 
 ---
 
+## 2026-04-26 — Livenet drift remediation: applied 4 missing migrations + 28 ship-readiness fixes
+
+### Migration drift discovered + closed
+
+Probed the live hosted Supabase and discovered **four migrations the docs implied were applied were not**. None of the prior 8 ship-readiness reviews caught this because every review treated "migration file in repo + correct CREATE OR REPLACE inside" as evidence of application. The migration apply step is manual and has no CI enforcement.
+
+**State before this session (live DB):**
+- Mig 014 not applied → only tiers 1–5 seeded; tiers 6–40 missing entirely (purchases against tier 6+ would FK-fail at the commission RPC)
+- Mig 019 not applied → `admin_killswitches` table absent; all 12 `assertNotKilled()` calls fail-open silently (the killswitch UI in /admin/settings was theatre — operator could toggle, route would not honour)
+- Mig 021 not applied → `process_purchase_and_commissions` did not read `epp_partners.status`; suspended/terminated EPP partners would still earn commissions on new purchases. **Audit captured 0 exposure** because no partners have been suspended yet — the bug existed but had never been triggered.
+- Mig 023 written this session — D-P9 RPCs (`admin_partner_leaderboard`, `admin_partner_pipeline`, `admin_user_purchase_counts`) closing the partner/leaderboard + user-search row-cap truncation, plus `try_reconcile_lock` advisory lock for cron concurrency, plus 3 announcement killswitch seed rows.
+
+Mig 014 was **edited in place** to add a purchase-count guard around its destructive `UPDATE sale_tiers SET total_sold = 0`, so reapply is safe on the populated DB. The in-place edit is justified because 014 had not been applied anywhere prior — CLAUDE.md Rule 13 (applied migrations are immutable) doesn't apply.
+
+**Apply order, all transactional with auto-rollback (2026-04-26):**
+1. `014_seed_full_tier_curve.sql` — INSERTed tiers 6–40, guard SKIPPED the destructive UPDATE because `purchases` rows exist; tiers 1+2 sold counters preserved.
+2. `019_admin_killswitches.sql` — created table + 12 seed keys.
+3. `021_partner_status_commission_filter.sql` — CREATE OR REPLACE on commission RPC; verified function body now references `epp_partners.status`.
+4. `023_admin_partner_rpcs_and_cron_lock.sql` — 4 new functions + 3 announcement killswitch rows; smoke-tested all 3 read RPCs return data and `try_reconcile_lock()` returns `true`.
+
+### Ship-readiness fixes (28 findings from /review-ship cycle 9)
+
+All blocking + required + advisory findings closed in code/docs. Verification: `npx tsc --noEmit` exit 0; `npx hardhat test` 64 passing; `npx next build` green (63 routes generated). Highlights:
+
+- **B1** — `partners/pipeline` JS-numeric-separator literals (`500_000_00` parsed as 50 000 000, not the $5 000 the comment claimed) replaced with `lib/commission` import; route now thin wrapper around mig 023's RPC.
+- **B4/B5** — D-P9 row-cap truncation closures via mig 023 (admin_partner_leaderboard, admin_partner_pipeline, admin_user_purchase_counts).
+- **R10** — `/sale → /nodes` UX coherence: confirmed-on-chain purchases now drop `operon_pending_attribution` localStorage marker; `/nodes` renders a "still confirming on backend" banner with explorer link until the tx_hash appears in the ingested `purchases` rows or a 15-min TTL expires. Localised to all 6 languages.
+- **R11** — middleware renamed to honest request-id propagation only; explicit `rateLimit()` calls added to `/api/health` and both webhook handlers (HMAC + IP brute-force budget pre signature-verify).
+- **R12** — `try_reconcile_lock()` engaged at top of `/api/cron/reconcile`; concurrent runs return `{ skipped: 'lock_held' }` rather than racing on signer nonces.
+- **A23** — i18n parity now compile-time enforced. CLAUDE.md Rule 6 + REVIEW_ADDENDUM C-P4 claimed TypeScript caught missing keys; previously dicts were `Record<string, string>` so the claim was vacuous. Now typed `Record<keyof typeof en, string>` with `AssertEqual` parity proofs at the export site.
+- **R14** — fabricated PostHog claim removed from CLAUDE.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md. Sentry only; PostHog deferred to Phase 2.
+- **R15** — mig 014 edited in place with purchase-count guard (see above).
+- **R16** — wagmi v3 `mock` connector wired in `lib/wagmi/config.ts` under `NEXT_PUBLIC_E2E=1`; `playwright.config.ts` exports the env to the dev-server boot. Existing UI tests (smoke + referral capture) now mount cleanly. Full-chain tests still skipped pending Hardhat-node fixture (~3-4h, separately scoped).
+
+### Process change owed
+
+There is no automated check that a migration in the repo is applied to the live DB. **Mandatory step 0 for every future `/review-ship` is to run `verify-migrations.mjs` against the live DB and inject the output into the journey ledger.** Without this, static review converges on a clean repo while operational drift accumulates invisibly. R15's primary lesson is that 9 ship-readiness rounds in 8 days had been measuring the wrong surface. A second structural follow-up — adopt Supabase CLI (or equivalent tracking-table-aware migration runner) — is open for discussion.
+
+### Operator-owed before livenet (mainnet) test
+
+- [ ] Set Vercel Production env: `ADMIN_WALLETS`, `ADMIN_PRIVATE_KEY`, `BSC_RPC_URL`, mainnet token addresses (`NEXT_PUBLIC_USDC_*`, `NEXT_PUBLIC_USDT_*`), all webhook signing keys, `CRON_SECRET`, `TG_BOT_TOKEN` + `TG_ADMIN_CHAT_ID`. Local `.env.local` shows zero address for sale contract and missing BSC RPC — confirm Vercel has real values via `vercel env ls --environment production`.
+- [ ] Deploy mainnet NodeSale + OperonNode (testnet contracts: confirm addresses + admin/owner state via `node scripts/probe-onchain-state.mjs`-shape script).
+- [ ] Update vendor webhook subscriptions (Alchemy + QuickNode dashboards) to point at production Vercel domain.
+- [ ] **wagmi v3 + RainbowKit 2.2.10 manual smoke test** — connect (MetaMask, WalletConnect, Coinbase, Rabby), sign SIWE, switch chains, disconnect, reconnect-with-different-wallet. The library version is post-knowledge-cutoff; compile-time validation is silent on connector lifecycle. This is the highest residual runtime risk.
+- [ ] Run a live testnet smoke test of the full purchase → webhook → commission → tier promotion path against a Vercel preview deploy.
+- [ ] Gnosis Safe novation (D06): `setAdmin(<fresh hot key>)` from deployer; rotate `ADMIN_PRIVATE_KEY` in Vercel; `transferOwnership(<Safe>)` + Safe `acceptOwnership()`. After this, `/api/admin/sale/{pause,unpause,withdraw}` must drive the Safe via UI, not the hot key.
+
+---
+
 ## 2026-04-10 — docs restructure + retroactive log of Phase 1 work
 
 > First entry is a retroactive summary. PROGRESS.md didn't exist during the sessions that landed most of Phase 1, so this single entry catches up the log. Future entries are one-per-session. See D18 for why this is deliberate rather than fabricating per-session history.
@@ -75,7 +124,7 @@ Append-only session log. One dated entry per coding session. Do not edit previou
 Items owed by operator / next pending decisions (all tracked in DECISIONS.md):
 
 - **D-pending: Resources page URLs** — 9 content URLs owed (pitch manual, brand assets, T&Cs PDF, whitepaper, FAQ, Medium, Telegram, Discord, X)
-- **D-pending: Vercel env vars** — `ADMIN_WALLETS`, `ADMIN_PRIVATE_KEY` (testnet), rotated `JWT_SECRET`, rotated `CRON_SECRET`, Upstash creds, Sentry/PostHog/Telegram
+- **D-pending: Vercel env vars** — `ADMIN_WALLETS`, `ADMIN_PRIVATE_KEY` (testnet), rotated `JWT_SECRET`, rotated `CRON_SECRET`, Upstash creds, Sentry, Telegram (`TG_BOT_TOKEN`/`TG_ADMIN_CHAT_ID`). PostHog is **not** integrated — earlier docs were wrong.
 - **D-pending: Live testnet smoke test** of commission RPC — schema verified but never exercised end-to-end with a live event
 - **D-pending: Thai legal review** of EPP T&Cs before TH market launch
 - **D-pending: EPP invite expiry policy** — currently no expiry; decide 14d / 30d / never

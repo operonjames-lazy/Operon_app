@@ -30,78 +30,49 @@ pnpm install
 
 ### Environment — `.env.local`
 
-Copy the template (ask a teammate for one) and fill in:
+The canonical env template lives at `.env.example` in the repo root. Copy it
+and fill in real values:
 
-```env
-# ─── Supabase ──────────────────────────────────────────────────
-NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...   # anon/public key
-SUPABASE_SERVICE_KEY=eyJhbGciOi...             # service role — server-only, NEVER expose in browser
-SUPABASE_DB_URL=postgresql://postgres.<ref>:<password>@aws-1-<region>.pooler.supabase.com:5432/postgres
-# ^ direct pooler connection — used by scripts/apply-migration.mjs, not by Next runtime
-
-# ─── Auth ──────────────────────────────────────────────────────
-JWT_SECRET=<rotate-before-mainnet>             # any long random string
-
-# ─── Network mode ──────────────────────────────────────────────
-NEXT_PUBLIC_NETWORK_MODE=testnet                # 'testnet' | 'mainnet'
-NEXT_PUBLIC_APP_DOMAIN=operon.app               # SIWE domain check; set to your deployed host
-
-# ─── RPC URLs ──────────────────────────────────────────────────
-NEXT_PUBLIC_ALCHEMY_KEY=<key>
-NEXT_PUBLIC_QUICKNODE_URL=                                      # optional client-side BSC RPC; falls back to wagmi default transport when empty
-ARBITRUM_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/<key>    # server-side for verifyOnChain + reconcile
-BSC_RPC_URL=https://<provider>                                  # required once BSC testnet contracts are live
-
-# ─── Contract addresses — testnet ──────────────────────────────
-NEXT_PUBLIC_SALE_CONTRACT_ARB=0x...
-NEXT_PUBLIC_SALE_CONTRACT_BSC=0x...
-NEXT_PUBLIC_NODE_CONTRACT_ARB=0x...
-NEXT_PUBLIC_NODE_CONTRACT_BSC=0x...
-SALE_CONTRACT_ARBITRUM=0x...                                    # same value as NEXT_PUBLIC_, server-side
-SALE_CONTRACT_BSC=0x...
-
-# ─── Webhook signing ───────────────────────────────────────────
-ALCHEMY_WEBHOOK_SIGNING_KEY=<key>
-QUICKNODE_WEBHOOK_SECRET=<secret>
-
-# ─── Testnet mock token addresses (if using custom deployed mocks) ─
-NEXT_PUBLIC_TESTNET_USDC_ARB=0x...
-NEXT_PUBLIC_TESTNET_USDT_ARB=0x...
-NEXT_PUBLIC_TESTNET_USDC_BSC=0x...
-NEXT_PUBLIC_TESTNET_USDT_BSC=0x...
-
-# ─── Mainnet token addresses ───────────────────────────────────
-# Read by /api/admin/sale/balance to report USDC+USDT held in each NodeSale
-# contract (cents, normalised for 6 / 18 decimals). Unset on mainnet = the
-# four balance tiles render "n/a" with no hint. Paste the canonical token
-# addresses from each chain's token registry before flipping NETWORK_MODE.
-NEXT_PUBLIC_USDC_ARB=0x...   # Arbitrum One USDC, 6 decimals
-NEXT_PUBLIC_USDT_ARB=0x...   # Arbitrum One USDT, 6 decimals
-NEXT_PUBLIC_USDC_BSC=0x...   # BNB Chain USDC, 18 decimals
-NEXT_PUBLIC_USDT_BSC=0x...   # BNB Chain USDT, 18 decimals
-
-# ─── Rate limiting ─────────────────────────────────────────────
-UPSTASH_REDIS_REST_URL=https://<id>.upstash.io
-UPSTASH_REDIS_REST_TOKEN=<token>
-# ^ REQUIRED in production. Missing = fail closed (all requests blocked at rate-limited routes).
-
-# ─── Admin panel ───────────────────────────────────────────────
-ADMIN_WALLETS=0xYourWallet,0xAnother                            # comma-separated, lowercased, one or more
-ADMIN_PRIVATE_KEY=0x...                                         # owner key for NodeSale pause/unpause. Testnet only.
-
-# ─── Cron ──────────────────────────────────────────────────────
-CRON_SECRET=<random>                                            # Vercel cron auth header Bearer token
-
-# ─── Optional monitoring ───────────────────────────────────────
-NEXT_PUBLIC_SENTRY_DSN=https://...              # read by sentry.{client,edge,server}.config.ts; init is no-op when unset
-TG_BOT_TOKEN=<bot-token>                         # abandoned-event Telegram alerts (reconcile cron)
-TG_ADMIN_CHAT_ID=<chat-id>
-
-# ─── Dev endpoints (LOCAL DEV ONLY — must NOT be set in production) ─
-# DEV_ENDPOINTS_ENABLED=1
-# DEV_INDEXER_SECRET=<hex32>                     # HMAC shared secret between scripts/dev-indexer.mjs and /api/dev/*
+```bash
+cp .env.example .env.local
+# then edit — see comments inside .env.example for every var
 ```
+
+`.env.example` is the single source of truth. Every var the code reads is
+listed there. If you find code referencing an env var that's not in
+`.env.example`, that's a bug worth opening. Do **not** maintain a parallel
+template in this doc — the two will drift.
+
+Variable groups in `.env.example`:
+
+- **Supabase** — `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `SUPABASE_SERVICE_KEY`, `SUPABASE_DB_URL` (pooler, used by migration scripts only)
+- **Auth** — `JWT_SECRET` (rotate before mainnet), `NEXT_PUBLIC_APP_DOMAIN`
+- **Admin** — `ADMIN_WALLETS` (lowercased CSV allowlist), `ADMIN_PRIVATE_KEY`
+  (testnet only, Gnosis Safe before mainnet)
+- **RPC** — `NEXT_PUBLIC_ALCHEMY_KEY`, `NEXT_PUBLIC_QUICKNODE_URL`,
+  `NEXT_PUBLIC_BSC_QUICKNODE_URL` (the #1 cause of "purchase hangs" if unset),
+  `ARBITRUM_RPC_URL` + `_FALLBACK`, `BSC_RPC_URL` + `_FALLBACK`
+- **Network mode** — `NEXT_PUBLIC_NETWORK_MODE` (`testnet` | `mainnet`)
+- **Contract addresses** — `NEXT_PUBLIC_SALE_CONTRACT_*`, `NEXT_PUBLIC_NODE_CONTRACT_*`,
+  `SALE_CONTRACT_ARBITRUM`/`_BSC` (server-side mirrors)
+- **Token addresses** — testnet mocks (`NEXT_PUBLIC_TESTNET_USDC_*`/`_USDT_*`)
+  and mainnet (`NEXT_PUBLIC_USDC_ARB`/`_USDT_ARB`/`_USDC_BSC`/`_USDT_BSC`,
+  consumed by `/api/admin/sale/balance` — unset on mainnet = balance tiles
+  render "n/a")
+- **Webhooks** — `ALCHEMY_WEBHOOK_SIGNING_KEY`, `QUICKNODE_WEBHOOK_SECRET`
+  (both fail-closed on missing in any env)
+- **Cron** — `CRON_SECRET` (Vercel cron auth Bearer token)
+- **Rate limiting** — `UPSTASH_REDIS_REST_URL` + `_TOKEN` (fail-closed in
+  production when unset)
+- **Monitoring** — `NEXT_PUBLIC_SENTRY_DSN` (Sentry only; PostHog is **not**
+  integrated despite earlier docs claiming so), `TG_BOT_TOKEN` +
+  `TG_ADMIN_CHAT_ID` (abandoned-event alerts)
+- **Contract deploy** — `TREASURY_ADDRESS`, `DEPLOYER_PRIVATE_KEY`,
+  `TOKEN_DECIMALS`, `ARBITRUM_SEPOLIA_RPC_URL`, `BSC_TESTNET_RPC_URL`,
+  `USDC_ADDRESS`, `USDT_ADDRESS` (consumed by `contracts/scripts/*` only)
+- **Dev endpoints** (commented in template) — `DEV_ENDPOINTS_ENABLED`,
+  `DEV_INDEXER_SECRET`. Must NEVER be set in production.
 
 ### Commands
 
@@ -118,9 +89,38 @@ PG_MODULE_PATH=/tmp/pg-temp/node_modules/pg \
 
 Note on `PG_MODULE_PATH`: `pg` is not a project dependency (we do not add deps without discussion). The migration scripts dynamically require it from a throwaway node_modules location. To bootstrap:
 
+**macOS / Linux / Git Bash:**
+
 ```bash
 mkdir -p /tmp/pg-temp && cd /tmp/pg-temp && npm init -y && npm install pg@8
+# subsequent commands use:
+PG_MODULE_PATH=/tmp/pg-temp/node_modules/pg \
+  node scripts/apply-migration.mjs supabase/migrations/<file>.sql
 ```
+
+**Windows PowerShell:**
+
+```powershell
+$env:PG_TEMP="$env:TEMP\pg-temp"
+New-Item -ItemType Directory -Force -Path $env:PG_TEMP | Out-Null
+Push-Location $env:PG_TEMP; npm init -y; npm install pg@8; Pop-Location
+# subsequent commands use:
+$env:PG_MODULE_PATH="$env:PG_TEMP\node_modules\pg"
+node scripts/apply-migration.mjs supabase/migrations/<file>.sql
+```
+
+**Windows cmd.exe:**
+
+```cmd
+mkdir "%TEMP%\pg-temp" 2>nul
+pushd "%TEMP%\pg-temp" && npm init -y && npm install pg@8 && popd
+set PG_MODULE_PATH=%TEMP%\pg-temp\node_modules\pg
+node scripts/apply-migration.mjs supabase/migrations/<file>.sql
+```
+
+The Unix-style commands at the top of the next subsection assume Git Bash on
+Windows. If you're in PowerShell or cmd.exe, translate `PG_MODULE_PATH=...`
+prefixes to the equivalent shown above.
 
 ---
 
@@ -166,7 +166,7 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 | `011_review_fixes.sql` | BIGINT upgrade for `purchases.amount_usd` + `epp_partners.invite_id` UNIQUE constraint |
 | `012_community_commission.sql` | `CREATE OR REPLACE` of commission RPC — adds community referrer earning path (flat 10-3-2-1-1 for users with `users.referral_code` but no `epp_partners` row) and affiliate L5=1% so every EPP tier stays strictly ≥ community |
 | `013_referral_chain_state.sql` | `referral_code_chain_state` queue (per code × chain) tracking whether each code has been mirrored onto the `NodeSale` contract via `addReferralCode`. Drained by `/api/cron/reconcile` in production and `/api/dev/drain-referrals` in local dev. Required for `/api/sale/validate-code` to ever return `synced` |
-| `014_seed_full_tier_curve.sql` | Fills in tiers 6-40 of the `sale_tiers` table and resets tier state so the DB matches a fresh contract deploy. ⚠ **Contains an unconditional `UPDATE sale_tiers SET total_sold = 0` — do NOT re-apply to a DB with real purchases. Use `scripts/reset-tier-state.sql` (guarded, refuses to run if purchases exist) for any subsequent reset.** |
+| `014_seed_full_tier_curve.sql` | Fills in tiers 6-40 of the `sale_tiers` table and resets tier state so the DB matches a fresh contract deploy. ⚠ Originally contained an unconditional `UPDATE sale_tiers SET total_sold = 0`. R15 (2026-04-26) edited 014 in place to add a purchase-count guard around that UPDATE — the in-place edit was justified because 014 had not yet been applied to any environment when the edit landed. The migration is now safe to apply on a populated DB (the guarded UPDATE no-ops if any purchases exist). 017 remains as the original compensating control for re-runs. |
 | `015_purchase_audit_fields.sql` | `CREATE OR REPLACE` of the commission RPC to compute applied `discount_bps` from tier base price vs event `amount_usd`, and persist resolved referral code string in `purchases.code_used`. Closes the per-code audit gap from DECISIONS D09. |
 | `016_overpay_anomaly.sql` | `CREATE OR REPLACE` of the commission RPC to split "paid exactly equal to list" from "paid more than list" in the `discount_bps` derivation. Overpay now emits `RAISE WARNING` with the event context (tx, chain, tier, qty, base_total, amount_usd) instead of being silently masked as 0% discount. Commission math unchanged. |
 | `017_guard_tier_reset.sql` | Compensating control for migration 014's unconditional `UPDATE sale_tiers SET total_sold = 0` — guarded version that skips the reset if any `purchases` or `referral_purchases` row exists. CLAUDE.md Rule 13 (applied migrations are immutable) forbids editing 014; this file carries the same intent safely. Always apply 017 after 014 on any re-run. |
@@ -175,8 +175,11 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 | `020_admin_read_rpcs.sql` | 5 STABLE admin-read RPCs (`admin_attribution`, `admin_overview_stats`, `admin_daily_revenue`, `admin_unpaid_grouped`, `admin_user_commission_totals`) that move every aggregate from JS `.reduce()` over unbounded `SELECT`s into Postgres. Closes D-9 (Overview + Payouts money-math truncation at sale scale) and Pass-3 (user-detail lifetime commissions under-reported for partners with >500 rows). Pattern enforced by new REVIEW_ADDENDUM **D-P9**. |
 | `021_partner_status_commission_filter.sql` | `CREATE OR REPLACE` of `process_purchase_and_commissions`. The chain walk now reads `epp_partners.status` and skips uplines whose status is not `'active'`. Before this, `/api/admin/partners/status` set `'suspended'`/`'terminated'` and audit-logged but the RPC ignored the column, so suspended partners kept earning on every new purchase. Historical `referral_purchases` rows untouched — existing owed payouts remain payable; only NEW purchases skip non-active uplines. Surfaced by /grill review of the admin panel. |
 | `022_admin_overview_today_utc_milestones_rpc.sql` | Two read-side fixes: (1) `admin_overview_stats.revenue.today` re-keyed from rolling-24h to UTC-date bucket so the "Today" KPI tile equals the rightmost bar of `admin_daily_revenue`'s chart on the same page. (2) New `admin_milestones_pending()` RPC + `/api/admin/payouts/milestones` rewrite to use it (the route was missed in 020's D-9 sweep). Also fixes a 100×-too-high threshold/bonus bug in the route's TS table — numeric-separator literal `1_000_000_00` parses to 100,000,000 cents, not the $10,000 the comment claimed. RPC uses migration 010's authoritative thresholds. |
+| `023_admin_partner_rpcs_and_cron_lock.sql` | Three D-P9 closures + cron concurrency lock + 3 announcement killswitch keys. New STABLE RPCs `admin_partner_leaderboard()`, `admin_partner_pipeline()`, `admin_user_purchase_counts()` move the last partner-related aggregates from JS `.reduce()` over unbounded `SELECT`s into Postgres (D-P9 sweep that 020 missed — the 100× threshold bug in `app/api/admin/partners/pipeline/route.ts` was a symptom). New `try_reconcile_lock()` returns `pg_try_advisory_lock(1330005838)` so two concurrent `/api/cron/reconcile` ticks don't race on signer nonces. Idempotent INSERT seeds `admin.announcements.{create,toggle,delete}` keys consumed by the announcement route's new `assertNotKilled` calls. |
 
 (Migration 007 does not exist.)
+
+**Live DB state as of 2026-04-26** (from runtime probe + remediation): migrations 001-006, 008-016, 018, 020, 022 were applied progressively over the project's lifetime. Migrations 014, 019, 021, 023 were applied in order on 2026-04-26 after the R15 drift discovery — see `docs/PROGRESS.md` for the apply log. 017 has been superseded in spirit by the in-place guard added to 014; reapply is still safe and a no-op given the purchase-count short-circuit.
 
 ---
 
@@ -203,6 +206,7 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 - [ ] Update `ARBITRUM_RPC_URL` and `BSC_RPC_URL` to mainnet endpoints
 - [ ] Update webhook subscriptions in Alchemy and QuickNode dashboards to mainnet contracts
 - [ ] Run a live smoke test of the commission RPC with a real purchase → webhook → commission → tier promotion path (see §7)
+- [ ] **wagmi v3 + RainbowKit 2.2 connector smoke test.** wagmi v3 is post-knowledge-cutoff territory; D25 validated the `useWaitForTransactionReceipt` confirmations gate but the full connect → SIWE → disconnect → reconnect lifecycle under v3 + RainbowKit 2.2.10 has not been recorded in PROGRESS.md. Do this before mainnet: connect (MetaMask, WalletConnect, Coinbase, Rabby), sign SIWE, switch chains, disconnect, reconnect with a different wallet — confirm no console errors, no orphaned `useAccount` listeners. Document the result in DECISIONS as a follow-up to D25.
 - [ ] Novate `NodeSale` ownership to the Gnosis Safe (see DECISIONS D-pending "Mainnet contract ownership via Gnosis Safe"). Contract-level role split landed R6→R7 (see `admin` vs `owner` in `NodeSale.sol`); remaining work is: (a) `setAdmin(<fresh hot key>)` from deployer, (b) rotate `ADMIN_PRIVATE_KEY` in Vercel to that new hot key, (c) `transferOwnership(<Safe>)` + Safe calls `acceptOwnership()` (Ownable2Step). After this, `/api/admin/sale/{pause,unpause,withdraw}` stop working from the hot key by design — pause/unpause/withdraw are Safe-only at that point. Incident-response runbook must mention this before the switch.
 - [ ] Audit all env var names in Vercel match the code's expectations
 
@@ -560,9 +564,37 @@ If a webhook config is wrong and events are being dropped:
 
 Run this on testnet before any mainnet deploy. Every item must pass.
 
+> **Important — environment caveats for fresh-checkout testers**
+>
+> Two pieces of the system **cannot fire on `pnpm dev`**:
+>
+> 1. **Vercel cron** (`/api/cron/reconcile`) runs only on Vercel-deployed
+>    instances. Locally, the failed-events drain, the
+>    `referral_code_chain_state` drain, and the missed-event gap-filler are
+>    all silent. To exercise the path locally, hit the route manually:
+>    `curl -H "Authorization: Bearer $CRON_SECRET" $URL/api/cron/reconcile`.
+>    For a real test of the schedule itself, deploy to a Vercel preview
+>    and watch the function logs.
+>
+> 2. **Alchemy / QuickNode webhooks** require a public URL — the vendors
+>    cannot reach localhost. A testnet purchase made against a `pnpm dev`
+>    instance will confirm on-chain and show "Purchase Complete!" but the
+>    `purchases` row will not land until either (a) `/api/admin/events/replay`
+>    is run with the tx hash, or (b) the test is repeated against a Vercel
+>    preview deploy with the vendor webhooks pointed at it. The `/nodes`
+>    page surfaces a per-purchase "still confirming on backend" banner via
+>    `localStorage.operon_pending_attribution` while this gap is open, so
+>    the buyer-visible UX is coherent on either side. The server-side
+>    pipeline (signature + on-chain re-verify + commission RPC) can be
+>    exercised offline via `node scripts/test-webhooks.mjs --vendor alchemy
+>    --mode signature-only` — but that does not prove vendor delivery infra.
+>
+> Items below assume a Vercel preview deployment. If you're testing locally,
+> skip the webhook-dependent items or note them as "deferred pending preview".
+
 ### Auth
 - [ ] Connect wallet via RainbowKit (MetaMask + WalletConnect)
-- [ ] Sign SIWE message → JWT issued and persisted in-memory
+- [ ] Sign SIWE message → JWT issued in httpOnly cookie (`operon_session`)
 - [ ] Refresh the page → auth state restored / prompted to reconnect
 - [ ] Disconnect → token cleared, redirected to login
 

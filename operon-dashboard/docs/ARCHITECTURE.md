@@ -26,7 +26,7 @@ Technical architecture: stack, schema, routes, data flow, invariants. The "how i
 | Smart contracts | Solidity 0.8.24 · Hardhat |
 | Indexing | Alchemy webhooks (Arbitrum) · QuickNode webhooks (BSC) |
 | Hosting | Vercel |
-| Monitoring | Sentry + PostHog (configured, integration code exists) |
+| Monitoring | Sentry (configured). PostHog: **not integrated** — deferred to Phase 2 funnel work |
 
 **Key packages (selected):** `next@16`, `react@19`, `wagmi@3.6`, `viem@2.47`, `@rainbow-me/rainbowkit@2.2`, `ethers@6.16`, `siwe@3.0`, `jose@6.2`, `@supabase/supabase-js`, `@tanstack/react-query@5.96`, `zustand`, `@upstash/ratelimit`, `@upstash/redis`.
 
@@ -348,10 +348,10 @@ Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/de
 | `/api/admin/stats/overview?days=N` | GET | Calls `admin_overview_stats()` + `admin_daily_revenue(days)` RPCs. Backs the Overview page |
 | `/api/admin/payouts/unpaid` | GET | Calls `admin_unpaid_grouped()` RPC. Returns batches grouped by referrer |
 | `/api/admin/payouts/milestones` | GET | Calls `admin_milestones_pending()` RPC (migration 022) — per-partner highest-achieved milestone bonus, computed in Postgres against migration 010's authoritative thresholds |
-| `/api/admin/users/search?q=` | GET | Multi-source user search (UUID / wallet / email / display name / referral code / partner code / telegram). Strips `[%_,()"\\]` from `q` to prevent PostgREST `.or()`-filter metachars from producing garbage results |
+| `/api/admin/users/search?q=` | GET | Multi-source user search (UUID / wallet / email / display name / referral code / partner code / telegram). Strips `[%_,()"\\]` from `q` to prevent PostgREST `.or()`-filter metachars from producing garbage results. `purchase_count` per user via `admin_user_purchase_counts(uuid[])` RPC (migration 023) — earlier shape used `.in().select('user_id')` + JS reduce which silently truncated at the PostgREST row cap once a power user passed ~1k purchases |
 | `/api/admin/users/[id]` | GET | Full user detail: profile, partner row, upline, recent purchases (LIMIT 100) + true `purchaseCount` shadow query, recent referrals (LIMIT 100) + true `referralsMadeCount`, commission totals via `admin_user_commission_totals(uuid)` RPC, recent commissions (LIMIT 25), audit entries targeting this user |
-| `/api/admin/partners/list` | GET | Leaderboard with wallet + networkSize enrichment. Sortable by credited / network / joined / tier |
-| `/api/admin/partners/pipeline` | GET | Partners ≤30% from next tier threshold, sorted "closest first" |
+| `/api/admin/partners/list` | GET | Leaderboard. Calls `admin_partner_leaderboard(p_sort, p_tier, p_status)` RPC (migration 023) — wallet + networkSize computed in Postgres so the partner cohort scan and the per-referrer `referrals` aggregate aren't truncated by the PostgREST row cap (D-P9 sweep that 020 missed) |
+| `/api/admin/partners/pipeline` | GET | Top-30 partners ranked by progress-to-next-tier. Calls `admin_partner_pipeline()` RPC (migration 023). The earlier route hardcoded `TIER_THRESHOLDS_CENTS` with JS numeric-separator literals (`500_000_00` parsed as 50 000 000, not the $5 000 the comment claimed); thresholds now derived from migration 010's authoritative values |
 | `/api/admin/sale/tiers` | GET | All tier rows from `sale_tiers` for the Sale page |
 | `/api/admin/sale/balance` | GET | Live USDC + USDT balance held in each NodeSale contract, normalised to USD cents. Reads `NEXT_PUBLIC_{USDC,USDT}_{ARB,BSC}` env vars (see OPERATIONS §1) |
 | `/api/admin/health` | GET | Failed-events queue depth, sync-queue status, last-reconcile timestamp, contract-balance snapshot. Backs the Health page |
@@ -359,9 +359,11 @@ Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/de
 | `/api/admin/i18n-status` | GET | Per-locale missing-key report. Drives the Settings/translations panel |
 | `/api/admin/epp/invites/list` | GET | List EPP invites with status (issued / used / expired). Read companion to the POST CSV generator |
 
-`lib/admin-read.ts` is the server-side aggregation module — thin wrappers over `admin_overview_stats`, `admin_attribution`, `admin_daily_revenue`. `hooks/useAdmin.ts` is the client-side React-Query layer (one hook per read endpoint plus `useIsAdmin`). New aggregate code must follow REVIEW_ADDENDUM **D-P9**: admin dashboards aggregate via Postgres RPC, never client-side `.reduce()` over an unbounded SELECT. Migration 022 added `admin_milestones_pending` (closing a route 020 missed) and re-bucketed `admin_overview_stats.revenue.today` to UTC-date so the "Today" KPI tile equals the rightmost bar of the daily-revenue chart.
+`lib/admin-read.ts` is the server-side aggregation module — thin wrappers over `admin_overview_stats` and `admin_daily_revenue`. `hooks/useAdmin.ts` is the client-side React-Query layer (one hook per read endpoint plus `useIsAdmin`). New aggregate code must follow REVIEW_ADDENDUM **D-P9**: admin dashboards aggregate via Postgres RPC, never client-side `.reduce()` over an unbounded SELECT. Migration 022 added `admin_milestones_pending` (closing a route 020 missed) and re-bucketed `admin_overview_stats.revenue.today` to UTC-date so the "Today" KPI tile equals the rightmost bar of the daily-revenue chart. Migration 023 added the partner-leaderboard / pipeline / user-purchase-count RPCs, completing the D-P9 sweep that 020 started.
 
-Kill-switch enforcement on mutation routes lives in [`lib/killswitches.ts`](../lib/killswitches.ts). Each mutation route calls `assertNotKilled('<key>')` after `requireAdmin()` and returns its 503 Response if non-null. Keys are flat strings like `admin.sale.pause`. Current wired set: `admin.{sale.pause,sale.unpause,sale.tier-active,sale.withdraw,events.replay,events.resolve,partners.tier,partners.status,payouts.mark-paid,epp.invites,referrals.remove,referrals.reset}`. Reads are uncached so a freshly-toggled switch takes effect on the next request.
+Kill-switch enforcement on mutation routes lives in [`lib/killswitches.ts`](../lib/killswitches.ts). Each mutation route calls `assertNotKilled('<key>')` after `requireAdmin()` and returns its 503 Response if non-null. Keys are flat strings like `admin.sale.pause`. Current wired set: `admin.{sale.pause,sale.unpause,sale.tier-active,sale.withdraw,events.replay,events.resolve,partners.tier,partners.status,payouts.mark-paid,epp.invites,referrals.remove,referrals.reset,announcements.create,announcements.toggle,announcements.delete}`. Reads are uncached so a freshly-toggled switch takes effect on the next request.
+
+The cron `/api/cron/reconcile` calls `try_reconcile_lock()` (migration 023) at handler entry — a `pg_try_advisory_lock(1330005838)` wrapper. Concurrent runs (Vercel cold-start race, or the schedule flipped to `* * * * *` during an incident) return cleanly with `{ skipped: 'lock_held' }` rather than racing on signer nonces in `addReferralCode` calls.
 
 Commission RPC `process_purchase_and_commissions` (migrations 010 → 016, 021) skips uplines whose `epp_partners.status != 'active'` since 021. Suspended / terminated partners stop earning on new purchases; existing owed payouts in `referral_purchases` remain payable. Community referrers (no `epp_partners` row) are unaffected.
 
@@ -401,8 +403,8 @@ The `(app)` route group in `app/(app)/` shares a layout with sidebar + header. T
 7. If `eppOnboard` present: creates `epp_partners` row, marks invite used, generates `OPRN-XXXX`
 8. Backfills `users.referral_code` with a new `OPR-XXXXXX` if missing
 9. Issues JWT (24h expiry) containing `sub` (user id), `wallet`, `isEpp`
-10. Frontend stores JWT in memory via `setAuthToken` in `lib/api/fetch.ts`
-11. All subsequent requests include `Authorization: Bearer <token>`
+10. JWT is set as an httpOnly + Secure + SameSite=strict cookie (`operon_session`) by the route handler — XSS-resistant. A non-httpOnly flag cookie (`operon_auth=1`) is also set so client code can detect the auth state without exposing the token itself.
+11. All subsequent requests carry the cookie automatically; `lib/api/fetch.ts` adds nothing — the cookie is the credential.
 
 Referrer is **immutable after first signup**. A second signin ignores the `referralCode` field. See DECISIONS D08.
 

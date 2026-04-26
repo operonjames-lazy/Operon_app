@@ -11,6 +11,7 @@
 > | `docs/OPERATIONS.md` | Deploying, running migrations, handling admin actions, using admin endpoints, responding to failed events, smoke-testing |
 > | `docs/DECISIONS.md` | Before refactoring something that feels wrong, before introducing a new pattern, when discovering an open question mid-implementation (log it as D-pending immediately) |
 > | `docs/PROGRESS.md` | Starting a new session, resuming work mid-feature, or running `/wrapup` at session end |
+> | `docs/LIVENET_TEST_RUNBOOK.md` | Preparing for the next mainnet smoke test — single-source operator checklist of what's done in code vs. what's owed (Vercel env, contract deploy, vendor webhooks, wagmi v3 smoke, Safe novation) |
 > | `REVIEW_ADDENDUM.md` (repo root) | Reviewing Operon code — loaded automatically by the global `/review` skill |
 > | Review | Use `/review` skill — installed globally at `~/.claude/skills/review-methodology/` |
 > | Wrapup | Use `/wrapup` skill — installed globally at `~/.claude/skills/wrapup/`. Run at session end to update docs and append to PROGRESS.md |
@@ -35,7 +36,7 @@ See `docs/PRODUCT.md` for full programme mechanics.
 
 **Wallet + chain:** RainbowKit 2.2 · wagmi v3 · viem v2 · ethers v6 (server-side) · SIWE → JWT (`jose`)
 
-**State:** Zustand (UI, auth token, referral capture, language) · TanStack Query v5 (all server state)
+**State:** Zustand (UI, referral capture, language) · TanStack Query v5 (all server state). Auth token lives in an httpOnly cookie (`operon_session`), not Zustand — XSS-resistant by construction.
 
 **Backend:** Next.js API routes on Vercel · Supabase Postgres + Realtime · Upstash Redis (rate limiting, fail-closed in production)
 
@@ -43,7 +44,7 @@ See `docs/PRODUCT.md` for full programme mechanics.
 
 **Indexing:** Alchemy webhooks (Arbitrum) · QuickNode webhooks (BSC) · 5-minute reconciliation cron as backup
 
-**Monitoring:** Sentry + PostHog (configured)
+**Monitoring:** Sentry (configured). PostHog deferred to Phase 2 — earlier docs claimed an integration that does not exist in code.
 
 **Testing:** Hardhat (contracts, 64 tests) · Playwright (`@playwright/test`, E2E — scaffolded; `e2e/ui/*` runnable, `e2e/full-chain/*` stubbed pending fixture wiring)
 
@@ -135,6 +136,8 @@ If you're unsure which docs to update, check the file table at the top of this d
 - **R6→R7 sync-on-chain hardening** (2026-04-21): `syncReferralCodeOnChain` enforces 4 post-conditions (signer==admin, receipt non-null, `ReferralCodeAdded` event present, `validCodes[hash]` readback). Shared by both `/api/dev/drain-referrals` and `/api/cron/reconcile`. Errors surface per-row in the dev-indexer log.
 - **Regression-prevention scaffolding** (2026-04-21): `scripts/test-webhooks.mjs` local harness + `OPERATIONS.md §6.5` runbook for Alchemy + QuickNode. Playwright E2E scaffolded — `e2e/ui/*` runnable, `e2e/full-chain/*` awaiting ~3–4h of fixture wiring.
 - **R14 ship-readiness fixes** (2026-04-22): admin referral-code revoke is now enforceable — migration 018 adds `'revoked'` as a terminal status on `referral_code_chain_state`, and the remove endpoint writes it so the drain loop no longer silently reverses the admin action (D28). `useTierRealtime` reconciles `['sale']` + `['dashboard']` queries on Supabase Realtime reconnect. Sale-page pending-tx recovery requires strict address match (`!parsed.address` fallback removed). `lib/auth.ts` refuses to boot on mainnet+production if `JWT_SECRET` matches a known placeholder (REVIEW_ADDENDUM S-P7 backstop). QuickNode topic0 in `OPERATIONS.md §6.5.3` corrected from a fabricated value to the real `0x6591bdbb…` + reproduction command. Migrations 013 + 018 applied to the hosted Supabase; 014/015/016/017 deferred (014 wipes sold counters on a DB with purchases — apply cleanly to a fresh mainnet DB instead). Fresh mainnet `JWT_SECRET` + `CRON_SECRET` generated to `~/operon-mainnet-secrets.txt` for Vercel Production paste.
+
+- **R15 livenet drift remediation** (2026-04-26): probed live Supabase and discovered four migrations the docs implied were live were not — `019_admin_killswitches` (table missing → killswitches inert, all `assertNotKilled` calls were silently fail-open), `021_partner_status_commission_filter` (`process_purchase_and_commissions` did not read `epp_partners.status` → suspended/terminated EPP partners would still earn on new purchases; **audit captured 0 exposure** because no partners had been suspended yet), `014_seed_full_tier_curve` (only tiers 1–5 in `sale_tiers`, tiers 6–40 missing — purchases against tier 6+ contracts would FK-fail), and the new `023_admin_partner_rpcs_and_cron_lock` (D-P9 closures for `admin_partner_leaderboard`, `admin_partner_pipeline`, `admin_user_purchase_counts` + `try_reconcile_lock` advisory lock). Migration `014` was edited in place to add a purchase-count guard around its destructive `UPDATE sale_tiers SET total_sold = 0` so it's safe on a populated DB; the in-place edit is justified because 014 had not been applied anywhere prior. All four migrations applied to hosted Supabase 2026-04-26 in order 014 → 019 → 021 → 023; verified post-apply: 40 tiers seeded with sold counters preserved on tiers 1+2, 12 killswitch keys + 3 announcement keys present, status-filter live in commission RPC, all four 023 RPCs callable. **Process gap**: there is no automation that ensures a migration in the repo is applied to the DB. Static reviews up to and including R14 read the migration files and assumed application. Mandatory step 0 for every future `/review-ship` is `verify-migrations.mjs` against the live DB; the assumption "if it's in the repo, it's live" is wrong on this codebase.
 
 **Owed before mainnet:** See `docs/DECISIONS.md` pending section for operator-owed items (Resources URLs, Vercel env vars, live smoke test, Thai legal review, Gnosis Safe migration, etc.)
 

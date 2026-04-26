@@ -75,4 +75,5 @@ EN · 繁中 · 简中 · 한국어 · Tiếng Việt · ไทย — auto-dete
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Setup, env vars, migrations, deploy, admin runbook, smoke-test checklist |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Numbered architectural + product decisions, both resolved and pending |
 | [docs/PROGRESS.md](docs/PROGRESS.md) | Append-only dated session log |
+| [docs/LIVENET_TEST_RUNBOOK.md](docs/LIVENET_TEST_RUNBOOK.md) | Single-source operator checklist for the next mainnet smoke test — Vercel env audit, contract deploy, vendor webhook setup, wagmi v3 smoke, Safe novation |
 | [REVIEW_ADDENDUM.md](REVIEW_ADDENDUM.md) | Project-specific checks for the global `/review` skill |

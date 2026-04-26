@@ -291,7 +291,7 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 ---
 
 ## D-pending — Vercel deploy env vars
-**Context:** Several env vars must be set before the production deploy is functional: `ADMIN_WALLETS`, `ADMIN_PRIVATE_KEY` (testnet-only per D06), rotated `JWT_SECRET`, rotated `CRON_SECRET`, `UPSTASH_REDIS_REST_URL` + `_TOKEN`, `SENTRY_DSN`, `POSTHOG_KEY`, `TG_BOT_TOKEN` + `TG_ADMIN_CHAT_ID` (for abandoned-event alerts).
+**Context:** Several env vars must be set before the production deploy is functional: `ADMIN_WALLETS`, `ADMIN_PRIVATE_KEY` (testnet-only per D06), rotated `JWT_SECRET`, rotated `CRON_SECRET`, `UPSTASH_REDIS_REST_URL` + `_TOKEN`, `SENTRY_DSN`, `TG_BOT_TOKEN` + `TG_ADMIN_CHAT_ID` (for abandoned-event alerts). PostHog is **not** integrated; earlier docs claimed it was.
 **Concern:** Missing any of these produces silent failure modes (audit log unwritten, rate limiting disabled or blocked, admin panel 503, etc.)
 **Decision:** Pending — see OPERATIONS.md §3 pre-mainnet checklist. Operator responsibility before launch.
 
