@@ -4,263 +4,268 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./interfaces/IERC20.sol";
 import "./OperonNode.sol";
 
-contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
-    // --- Structs ---
-    struct Tier {
-        uint256 price;
-        uint256 publicSupply;
-        uint256 adminSupply;
-        uint256 publicSold;
-        uint256 adminSold;
-        bool active;
+/**
+ * NodeSale v2 — voucher checkout.
+ *
+ * Architectural shift from v1:
+ *   v1 held the global tier curve in contract state and applied discounts
+ *   from an on-chain referral-code mapping. That couples Arb and BSC tier
+ *   inventory to whichever contract gets there first (oversells the global
+ *   cap) and leaves a discount-bypass surface for any direct contract call.
+ *
+ *   v2 makes the contract a local safety-net. Every purchase requires an
+ *   EIP-712 voucher signed by the backend's voucherSigner. The backend
+ *   (sale_reservations + reserve_node_purchase RPC) is the global source of
+ *   truth for inventory, discounts, and per-wallet caps. The contract
+ *   verifies the voucher and enforces three local invariants:
+ *
+ *     1. min unit price per tier (price floor — voucherSigner can't sell
+ *        below the floor even with a leaked key)
+ *     2. per-chain hard cap per tier (defense against either chain being
+ *        used to oversell its own allocation)
+ *     3. reservation-id replay protection (each voucher consumed exactly once)
+ *
+ * EIP-712 domain version is "2" so v1 vouchers (had they ever existed) and
+ * v2 vouchers can never cross-pollinate. Fresh deploy on Arb + BSC.
+ *
+ * Owner (Safe-direct, no application caller):
+ *   setTreasury, setNodeContract, setVoucherSigner, setTierMinPrice,
+ *   setLocalTierCap, setAdminCap, setAcceptedToken, adminMint
+ *
+ * Owner (wired through dashboard):
+ *   pause          ← /api/admin/sale/pause
+ *   unpause        ← /api/admin/sale/unpause
+ *   withdrawFunds  ← /api/admin/sale/withdraw
+ *
+ * No `admin` rotating role exists in v2. The v1 role's only consumer was
+ * addReferralCode (gone), addReferralCodes (gone), and setTierActive
+ * (gone — backend owns tier activation). Voucher signer rotation goes
+ * through the Safe via setVoucherSigner per the threat model: a leaked
+ * voucher key would let an attacker mint at the floor; rotating it is
+ * higher-stakes than tier flips and warrants multi-sig consent.
+ */
+contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
+    using ECDSA for bytes32;
+
+    // ─── Voucher type ─────────────────────────────────────────────
+    // Bound fields — every byte is part of the signature digest, so a
+    // tampered voucher (different buyer, chain, contract, tier, qty, token,
+    // price, discount, codeHash, reservationId, or deadline) recovers a
+    // different signer and fails the equality check below.
+    struct PurchaseVoucher {
+        address buyer;
+        uint256 chainId;
+        address saleContract;
+        uint256 tierId;
+        uint256 quantity;
+        address token;
+        uint256 unitPrice;
+        uint16  discountBps;
+        bytes32 codeHash;
+        bytes32 reservationId;
+        uint256 deadline;
     }
 
-    // --- State ---
+    // Keep this in sync with the struct above. Offline signers (lib/voucher.ts)
+    // must produce the same EIP-712 typed-data hash.
+    bytes32 private constant PURCHASE_VOUCHER_TYPEHASH = keccak256(
+        "PurchaseVoucher(address buyer,uint256 chainId,address saleContract,uint256 tierId,uint256 quantity,address token,uint256 unitPrice,uint16 discountBps,bytes32 codeHash,bytes32 reservationId,uint256 deadline)"
+    );
+
+    // ─── Constants ────────────────────────────────────────────────
+    // Defensive cap on quantity. Backend's reserve RPC enforces the same
+    // bound; this is the contract-side belt to the backend's braces.
+    uint256 public constant MAX_BATCH_SIZE = 100;
+
+    // ─── Storage ──────────────────────────────────────────────────
     OperonNode public nodeContract;
-    address public treasury;
+    address    public treasury;
+    address    public voucherSigner;
 
-    // Hot-path operational role. `owner` (cold, Safe) is retained via
-    // Ownable2Step for treasury/price/ownership-handover; `admin` holds
-    // the frequently-called functions that cannot wait on multi-sig —
-    // referral code registration and per-tier active flips. Initialised
-    // to the deployer in the constructor so deploy.ts does not need a
-    // second tx. `setAdmin` lets owner rotate the key or zero it out.
-    address public admin;
+    // Per-tier price floor. A voucher with unitPrice below this floor reverts;
+    // bounds the worst-case loss from a leaked voucher signer to discounts off
+    // the floor (rather than the signer setting any price they want).
+    mapping(uint256 => uint256) public tierMinPrice;
 
-    mapping(uint256 => Tier) public tiers;
-    mapping(bytes32 => bool) public validCodes;
-    mapping(bytes32 => uint16) public codeDiscountBps;
-    // Per-code owner wallet, set at registration. Used by `purchase()` to
-    // reject same-wallet self-referral on-chain. Zero address means the code
-    // has no owner binding (legacy codes registered before this mapping
-    // existed); such codes are still valid but cannot be self-referral-checked.
-    // New deploys populate this for every registered code.
-    mapping(bytes32 => address) public codeOwner;
-    mapping(address => mapping(uint256 => uint256)) public purchaseCount;
-    mapping(uint256 => uint256) public maxPerWallet;
+    // Per-chain hard cap for this tier. Backend tracks the global cap across
+    // both chains via sale_reservations + sale_tiers; this is the contract's
+    // local-only safety-net so a backend bug can't oversell on this chain.
+    mapping(uint256 => uint256) public localTierCap;
+    mapping(uint256 => uint256) public localTierSold;
+
+    // Per-tier admin allocation, separate from the public cap. adminMint
+    // does not consume localTierCap.
+    mapping(uint256 => uint256) public adminCap;
+    mapping(uint256 => uint256) public adminMinted;
+
     mapping(address => bool) public acceptedTokens;
 
-    uint16 public defaultDiscountBps = 1500; // 15%
-    uint256 public maxBatchSize = 100;
-    mapping(uint256 => bool) public tierPaused;
+    // Replay protection. Backend's reservation IDs (UUID v4) are ~122 bits of
+    // entropy padded to bytes32; collision probability is negligible. Marked
+    // true atomically before the external transferFrom so a re-entrant call
+    // path can't reuse the same reservation.
+    mapping(bytes32 => bool) public usedReservations;
 
-    // --- Events ---
+    // ─── Events ───────────────────────────────────────────────────
     event NodePurchased(
         address indexed buyer,
-        uint256 tier,
+        uint256 indexed tier,
         uint256 quantity,
+        bytes32 indexed reservationId,
         bytes32 codeHash,
         uint256 totalPaid,
         address token
     );
-    event AdminMint(address indexed to, uint256 indexed tierId, uint256 quantity, uint256 adminSold, uint256 adminSupply);
-    event TierUpdated(uint256 indexed tierId, uint256 price, uint256 publicSupply, uint256 adminSupply, bool active);
-    event TierPausedToggled(uint256 indexed tierId, bool paused);
-    event TierActiveUpdated(uint256 indexed tierId, bool active);
-    event MaxPerWalletUpdated(uint256 indexed tierId, uint256 max);
-    event ReferralCodeAdded(bytes32 indexed codeHash, address indexed owner, uint16 discountBps);
+    event AdminMint(
+        address indexed to,
+        uint256 indexed tierId,
+        uint256 quantity,
+        uint256 adminMintedTotal,
+        uint256 adminCapTotal
+    );
+    event TierMinPriceUpdated(uint256 indexed tierId, uint256 minPrice);
+    event LocalTierCapUpdated(uint256 indexed tierId, uint256 cap);
+    event AdminCapUpdated(uint256 indexed tierId, uint256 cap);
     event AcceptedTokenUpdated(address indexed token, bool accepted);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event NodeContractUpdated(address indexed oldContract, address indexed newContract);
+    event VoucherSignerUpdated(address indexed oldSigner, address indexed newSigner);
     event FundsWithdrawn(address indexed token, address indexed to, uint256 amount);
-    event ReferralCodeRemoved(bytes32 indexed codeHash);
-    event MaxBatchSizeUpdated(uint256 oldSize, uint256 newSize);
-    event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
 
-    // --- Modifiers ---
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "NodeSale: caller is not admin");
-        _;
-    }
-
-    // --- Constructor ---
-    constructor(address _treasury) Ownable(msg.sender) {
+    // ─── Constructor ──────────────────────────────────────────────
+    constructor(address _treasury, address _voucherSigner)
+        Ownable(msg.sender)
+        EIP712("OperonNodeSale", "2")
+    {
         require(_treasury != address(0), "NodeSale: treasury is zero address");
+        require(_voucherSigner != address(0), "NodeSale: voucher signer is zero address");
         treasury = _treasury;
-        admin = msg.sender;
-        emit AdminUpdated(address(0), msg.sender);
+        voucherSigner = _voucherSigner;
+        emit TreasuryUpdated(address(0), _treasury);
+        emit VoucherSignerUpdated(address(0), _voucherSigner);
     }
 
-    // --- Purchase ---
-    function purchase(
-        uint256 tierId,
-        uint256 quantity,
-        address token,
-        bytes32 codeHash,
-        uint256 deadline,
-        uint256 maxPricePerNode
+    // ─── Public purchase path ────────────────────────────────────
+    function purchaseWithVoucher(
+        PurchaseVoucher calldata voucher,
+        bytes calldata signature
     ) external nonReentrant whenNotPaused {
-        require(block.timestamp <= deadline, "NodeSale: tx expired");
-        require(tiers[tierId].price <= maxPricePerNode, "NodeSale: price slippage");
-        require(quantity > 0 && quantity <= maxBatchSize, "NodeSale: invalid quantity");
-        require(acceptedTokens[token], "NodeSale: token not accepted");
-        require(!tierPaused[tierId], "NodeSale: tier paused");
+        // Voucher binding checks (cheap, fail fast)
+        require(voucher.buyer == msg.sender, "NodeSale: voucher buyer mismatch");
+        require(voucher.chainId == block.chainid, "NodeSale: wrong chain");
+        require(voucher.saleContract == address(this), "NodeSale: wrong contract");
+        require(voucher.deadline >= block.timestamp, "NodeSale: voucher expired");
+        require(!usedReservations[voucher.reservationId], "NodeSale: reservation used");
 
-        Tier storage tier = tiers[tierId];
-        require(tier.active, "NodeSale: tier not active");
-        require(tier.publicSold + quantity <= tier.publicSupply, "NodeSale: tier sold out");
-
-        // Check wallet limit
-        uint256 walletMax = maxPerWallet[tierId];
-        if (walletMax > 0) {
-            require(
-                purchaseCount[msg.sender][tierId] + quantity <= walletMax,
-                "NodeSale: exceeds wallet limit"
-            );
-        }
-
-        // Calculate price
-        uint256 totalPrice = tier.price * quantity;
-        if (codeHash != bytes32(0) && validCodes[codeHash]) {
-            // Same-wallet self-referral guard. Codes registered after the
-            // codeOwner mapping shipped carry the owning wallet; we reject
-            // a buyer attempting to discount themselves with their own code.
-            // Codes registered before the mapping existed have owner=0 and
-            // skip this check (legacy passthrough). The frontend zeroes the
-            // codeHash for self-referral as a UX courtesy; this require is
-            // the load-bearing defense against a direct contract call.
-            address owner_ = codeOwner[codeHash];
-            require(owner_ == address(0) || owner_ != msg.sender, "NodeSale: self-referral");
-            uint16 discount = codeDiscountBps[codeHash];
-            if (discount == 0) {
-                discount = defaultDiscountBps;
-            }
-            totalPrice = totalPrice - (totalPrice * discount / 10000);
-        }
-
-        // Update state BEFORE external calls (CEI pattern)
-        tier.publicSold += quantity;
-        purchaseCount[msg.sender][tierId] += quantity;
-
-        // Transfer payment to treasury
+        // Local safety-net checks (independent of voucher signer trust)
+        require(acceptedTokens[voucher.token], "NodeSale: token not accepted");
         require(
-            IERC20(token).transferFrom(msg.sender, treasury, totalPrice),
+            voucher.quantity > 0 && voucher.quantity <= MAX_BATCH_SIZE,
+            "NodeSale: invalid quantity"
+        );
+        require(
+            localTierSold[voucher.tierId] + voucher.quantity <= localTierCap[voucher.tierId],
+            "NodeSale: local tier cap"
+        );
+        require(voucher.unitPrice >= tierMinPrice[voucher.tierId], "NodeSale: price below min");
+        require(voucher.discountBps <= 10000, "NodeSale: discount > 100%");
+
+        // Signature verification (most expensive op — kept after the cheap
+        // failure paths so a malformed voucher reverts before paying for ECDSA).
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            PURCHASE_VOUCHER_TYPEHASH,
+            voucher.buyer,
+            voucher.chainId,
+            voucher.saleContract,
+            voucher.tierId,
+            voucher.quantity,
+            voucher.token,
+            voucher.unitPrice,
+            voucher.discountBps,
+            voucher.codeHash,
+            voucher.reservationId,
+            voucher.deadline
+        )));
+        address signer = ECDSA.recover(digest, signature);
+        require(signer == voucherSigner, "NodeSale: bad voucher signer");
+
+        // Effects (CEI pattern — state mutated before external calls)
+        usedReservations[voucher.reservationId] = true;
+        localTierSold[voucher.tierId] += voucher.quantity;
+
+        // Price math. Discount applied to (unitPrice * quantity) as a whole;
+        // the dapp's display logic must mirror this to avoid 1-cent drift on
+        // odd tier×discount combinations.
+        uint256 totalPrice = voucher.unitPrice * voucher.quantity;
+        if (voucher.discountBps > 0) {
+            totalPrice = totalPrice - (totalPrice * voucher.discountBps / 10000);
+        }
+
+        // Interactions
+        require(
+            IERC20(voucher.token).transferFrom(msg.sender, treasury, totalPrice),
             "NodeSale: payment transfer failed"
         );
+        nodeContract.batchMint(msg.sender, voucher.tierId, voucher.unitPrice, voucher.quantity);
 
-        // Mint nodes (external call last)
-        nodeContract.batchMint(msg.sender, tierId, tier.price, quantity);
-
-        emit NodePurchased(msg.sender, tierId, quantity, codeHash, totalPrice, token);
+        emit NodePurchased(
+            msg.sender,
+            voucher.tierId,
+            voucher.quantity,
+            voucher.reservationId,
+            voucher.codeHash,
+            totalPrice,
+            voucher.token
+        );
     }
 
-    // --- View Functions ---
-    function validateCode(bytes32 codeHash) external view returns (bool valid, uint16 discountBps) {
-        valid = validCodes[codeHash];
-        discountBps = codeDiscountBps[codeHash];
-        if (valid && discountBps == 0) {
-            discountBps = defaultDiscountBps;
-        }
-    }
-
-    // --- Admin Functions ---
-    //
-    // Wiring map (R-87 — Pass-5 orphan-inverse):
-    //   onlyOwner (Safe-direct, no application caller):
-    //     setTier, setMaxPerWallet, setAcceptedToken, setTreasury,
-    //     setNodeContract, setMaxBatchSize, setTierPaused, adminMint
-    //   onlyOwner (wired through dashboard):
-    //     pause            ← /api/admin/sale/pause
-    //     unpause          ← /api/admin/sale/unpause
-    //     withdrawFunds    ← /api/admin/sale/withdraw
-    //     setAdmin         ← Safe-direct, called once during Gnosis Safe handover
-    //   onlyAdmin (rotating hot key, wired through dashboard):
-    //     setTierActive    ← /api/admin/sale/tier-active
-    //     addReferralCode  ← /api/cron/reconcile (referral_code_chain_state drain)
-    //     addReferralCodes ← (batch helper; reserved)
-    //     removeReferralCode ← /api/admin/referrals/remove
-    //
-    // Post-Gnosis-Safe novation, the four `pause`/`unpause`/`withdraw`/
-    // `setAdmin` paths route through the Safe via Owner2Step `acceptOwnership`.
-    // The dashboard hot-key calls for those will revert by design — see
-    // OPERATIONS.md §3 "Before mainnet" for the runbook.
+    // ─── Admin / owner ────────────────────────────────────────────
     function adminMint(address to, uint256 tierId, uint256 quantity) external onlyOwner nonReentrant {
         require(to != address(0), "NodeSale: zero address");
         require(quantity > 0, "NodeSale: quantity must be > 0");
+        require(adminMinted[tierId] + quantity <= adminCap[tierId], "NodeSale: admin allocation exceeded");
 
-        Tier storage tier = tiers[tierId];
-        require(tier.active || tier.adminSupply > 0, "NodeSale: tier not configured");
-        require(tier.adminSold + quantity <= tier.adminSupply, "NodeSale: admin allocation exceeded");
+        adminMinted[tierId] += quantity;
 
-        // Effects before interactions (CEI)
-        tier.adminSold += quantity;
+        // Record admin mints at the tier's min price (audit info). Operator
+        // gets nodes for free; the per-token mint price stored on OperonNode
+        // is the min-price reference for that tier.
+        uint256 mintPrice = tierMinPrice[tierId];
+        nodeContract.batchMint(to, tierId, mintPrice, quantity);
 
-        // Mint nodes (no payment required)
-        nodeContract.batchMint(to, tierId, tier.price, quantity);
-
-        emit AdminMint(to, tierId, quantity, tier.adminSold, tier.adminSupply);
+        emit AdminMint(to, tierId, quantity, adminMinted[tierId], adminCap[tierId]);
     }
 
-    function setTier(uint256 tierId, uint256 price, uint256 publicSupply, uint256 adminSupply, bool active) external onlyOwner {
-        Tier storage tier = tiers[tierId];
-        // Preserve sold counts
-        uint256 prevPublicSold = tier.publicSold;
-        uint256 prevAdminSold = tier.adminSold;
-        tier.price = price;
-        tier.publicSupply = publicSupply;
-        tier.adminSupply = adminSupply;
-        tier.publicSold = prevPublicSold;
-        tier.adminSold = prevAdminSold;
-        tier.active = active;
-        emit TierUpdated(tierId, price, publicSupply, adminSupply, active);
+    function setVoucherSigner(address _voucherSigner) external onlyOwner {
+        require(_voucherSigner != address(0), "NodeSale: voucher signer is zero address");
+        address old = voucherSigner;
+        voucherSigner = _voucherSigner;
+        emit VoucherSignerUpdated(old, _voucherSigner);
     }
 
-    function setTierActive(uint256 tierId, bool active) external onlyAdmin {
-        tiers[tierId].active = active;
-        emit TierActiveUpdated(tierId, active);
+    function setTierMinPrice(uint256 tierId, uint256 minPrice) external onlyOwner {
+        tierMinPrice[tierId] = minPrice;
+        emit TierMinPriceUpdated(tierId, minPrice);
     }
 
-    function setMaxPerWallet(uint256 tierId, uint256 max) external onlyOwner {
-        maxPerWallet[tierId] = max;
-        emit MaxPerWalletUpdated(tierId, max);
+    function setLocalTierCap(uint256 tierId, uint256 cap) external onlyOwner {
+        // We do not enforce cap >= localTierSold here on purpose — a redeploy
+        // on a fresh chain has localTierSold=0, and a runtime cap raise is
+        // also fine. Lowering below localTierSold simply prevents further
+        // purchases until localTierSold catches up; existing minted nodes
+        // are unaffected.
+        localTierCap[tierId] = cap;
+        emit LocalTierCapUpdated(tierId, cap);
     }
 
-    function addReferralCode(bytes32 codeHash, address owner, uint16 discountBps) external onlyAdmin {
-        // Cap at 100%. `uint16` goes to 65535 and the purchase path uses
-        // `totalPrice - (totalPrice * discount / 10000)`, which underflows
-        // (and reverts in 0.8.x) above 10000 — so the tx would fail loudly
-        // at purchase time. Rejecting here keeps the failure mode upstream:
-        // a leaked admin key can't stealth-register a 100%-off code and
-        // force every subsequent purchase to revert on buyers.
-        require(discountBps <= 10000, "NodeSale: discount > 100%");
-        validCodes[codeHash] = true;
-        codeDiscountBps[codeHash] = discountBps;
-        // owner=0 is permitted (no self-referral binding) but discouraged —
-        // the off-chain sync always passes the real wallet. A zero owner
-        // means the code passes through the self-referral check unconditionally.
-        codeOwner[codeHash] = owner;
-        emit ReferralCodeAdded(codeHash, owner, discountBps);
-    }
-
-    function removeReferralCode(bytes32 codeHash) external onlyAdmin {
-        validCodes[codeHash] = false;
-        codeDiscountBps[codeHash] = 0;
-        codeOwner[codeHash] = address(0);
-        emit ReferralCodeRemoved(codeHash);
-    }
-
-    function addReferralCodes(
-        bytes32[] calldata codeHashes,
-        address[] calldata owners,
-        uint16 discountBps
-    ) external onlyAdmin {
-        require(discountBps <= 10000, "NodeSale: discount > 100%");
-        require(codeHashes.length == owners.length, "NodeSale: length mismatch");
-        for (uint256 i = 0; i < codeHashes.length; i++) {
-            validCodes[codeHashes[i]] = true;
-            codeDiscountBps[codeHashes[i]] = discountBps;
-            codeOwner[codeHashes[i]] = owners[i];
-            emit ReferralCodeAdded(codeHashes[i], owners[i], discountBps);
-        }
-    }
-
-    function setAdmin(address _admin) external onlyOwner {
-        address old = admin;
-        admin = _admin;
-        emit AdminUpdated(old, _admin);
+    function setAdminCap(uint256 tierId, uint256 cap) external onlyOwner {
+        adminCap[tierId] = cap;
+        emit AdminCapUpdated(tierId, cap);
     }
 
     function setAcceptedToken(address token, bool accepted) external onlyOwner {
@@ -288,17 +293,6 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
         require(balance > 0, "NodeSale: no funds to withdraw");
         require(IERC20(token).transfer(to, balance), "NodeSale: withdrawal failed");
         emit FundsWithdrawn(token, to, balance);
-    }
-
-    function setMaxBatchSize(uint256 _maxBatchSize) external onlyOwner {
-        uint256 old = maxBatchSize;
-        maxBatchSize = _maxBatchSize;
-        emit MaxBatchSizeUpdated(old, _maxBatchSize);
-    }
-
-    function setTierPaused(uint256 tierId, bool _paused) external onlyOwner {
-        tierPaused[tierId] = _paused;
-        emit TierPausedToggled(tierId, _paused);
     }
 
     function pause() external onlyOwner {

@@ -5,21 +5,18 @@ import "../NodeSale.sol";
 import "../interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-/// @dev A contract that calls NodeSale.purchase — simulates a smart contract
-///      wallet (Gnosis Safe, ERC-4337 account) that implements IERC721Receiver.
+/// @dev A contract that calls NodeSale.purchaseWithVoucher — simulates a
+///      smart contract wallet (Gnosis Safe, ERC-4337 account) that implements
+///      IERC721Receiver. v2: voucher checkout, no more raw purchase().
 contract MockPurchaser is IERC721Receiver {
     function tryPurchase(
         address sale,
-        uint256 tierId,
-        uint256 quantity,
-        address token,
-        bytes32 codeHash,
-        uint256 deadline,
-        uint256 maxPricePerNode,
+        NodeSale.PurchaseVoucher calldata voucher,
+        bytes calldata signature,
         uint256 approveAmount
     ) external {
-        IERC20(token).approve(sale, approveAmount);
-        NodeSale(sale).purchase(tierId, quantity, token, codeHash, deadline, maxPricePerNode);
+        IERC20(voucher.token).approve(sale, approveAmount);
+        NodeSale(sale).purchaseWithVoucher(voucher, signature);
     }
 
     function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
