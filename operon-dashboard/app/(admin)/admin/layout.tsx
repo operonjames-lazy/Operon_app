@@ -62,17 +62,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     .find((n) => pathname === n.href || pathname.startsWith(n.href + '/'))?.href;
 
   return (
-    <div className="min-h-screen bg-bg">
-      <header className="border-b border-border bg-sidebar">
+    <div className="min-h-screen">
+      <header className="border-b border-[rgba(147,197,253,0.08)] bg-[rgba(0,0,0,0.30)] backdrop-blur-md">
         <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-green">
-                <span className="text-xs font-bold text-black">O</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-[rgba(59,130,246,0.45)] bg-[rgba(59,130,246,0.12)] shadow-[0_0_14px_-4px_rgba(59,130,246,0.45)]">
+                <span className="font-display text-xs font-bold text-ice">O</span>
               </div>
-              <span className="font-display text-base font-bold text-t1">Operon</span>
+              <span className="font-display text-base font-bold tracking-wide text-white">
+                Oper<span className="text-ice">on</span>
+              </span>
             </Link>
-            <span className="rounded-full border border-amber/20 bg-amber/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-amber">
+            <span className="rounded-full border border-amber/30 bg-amber/10 px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-amber">
               Admin
             </span>
           </div>
@@ -94,7 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href={item.href}
                 className={`border-b-2 px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
                   active
-                    ? 'border-green text-t1'
+                    ? 'border-ice text-white'
                     : 'border-transparent text-t3 hover:text-t1'
                 }`}
               >

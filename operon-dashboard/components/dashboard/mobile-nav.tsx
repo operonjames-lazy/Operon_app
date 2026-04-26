@@ -87,19 +87,19 @@ export function MobileNav() {
       {/* Bottom sheet overlay */}
       {sheetOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          className="fixed inset-0 z-40 bg-[rgba(2,5,13,0.72)] backdrop-blur-sm lg:hidden"
           onClick={() => setSheetOpen(false)}
         />
       )}
 
       {/* Bottom sheet */}
       {sheetOpen && (
-        <div className="fixed bottom-16 left-0 right-0 z-50 rounded-t-2xl border border-border bg-sidebar p-4 lg:hidden animate-fade-in">
+        <div className="fixed bottom-16 left-0 right-0 z-50 rounded-t-2xl border-t border-x border-[rgba(147,197,253,0.16)] bg-[rgba(10,15,28,0.96)] backdrop-blur-md p-4 lg:hidden animate-fade-in">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold text-t1">{t('nav.more')}</p>
+            <p className="font-display text-sm font-semibold text-t1">{t('nav.more')}</p>
             <button
               onClick={() => setSheetOpen(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-card text-t3 hover:text-t1 cursor-pointer"
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t3 hover:text-ice cursor-pointer"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -113,7 +113,9 @@ export function MobileNav() {
                 href={item.href}
                 onClick={() => setSheetOpen(false)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                  isActive(item.href) ? 'bg-green-bg text-green' : 'text-t2 hover:bg-card'
+                  isActive(item.href)
+                    ? 'bg-[rgba(59,130,246,0.15)] text-white border border-[rgba(147,197,253,0.20)]'
+                    : 'text-t2 hover:bg-[rgba(147,197,253,0.05)]'
                 }`}
               >
                 {item.icon}
@@ -128,7 +130,9 @@ export function MobileNav() {
                 <rect x="13" y="3" width="4" height="14" rx="1" stroke="currentColor" strokeWidth="1.5" />
               </svg>
               {t('nav.staking')}
-              <span className="ml-auto rounded bg-card px-1.5 py-0.5 text-[10px]">{t('nav.comingSoon')}</span>
+              <span className="ml-auto rounded-full border border-[rgba(147,197,253,0.10)] bg-[rgba(147,197,253,0.04)] px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest">
+                {t('nav.comingSoon')}
+              </span>
             </div>
             <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-t4 opacity-50">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -136,14 +140,16 @@ export function MobileNav() {
                 <path d="M4 14h12M6 17h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
               {t('nav.nodeOps')}
-              <span className="ml-auto rounded bg-card px-1.5 py-0.5 text-[10px]">{t('nav.comingSoon')}</span>
+              <span className="ml-auto rounded-full border border-[rgba(147,197,253,0.10)] bg-[rgba(147,197,253,0.04)] px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest">
+                {t('nav.comingSoon')}
+              </span>
             </div>
           </div>
         </div>
       )}
 
       {/* Tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-sidebar lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-[rgba(147,197,253,0.08)] bg-[rgba(2,5,13,0.92)] backdrop-blur-md lg:hidden">
         {tabs.map((tab) => {
           const active = isActive(tab.href);
           return (
@@ -151,7 +157,7 @@ export function MobileNav() {
               key={tab.href}
               href={tab.href}
               className={`flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[52px] py-1.5 text-[10px] font-medium transition-colors ${
-                active ? 'text-green' : 'text-t3'
+                active ? 'text-ice' : 'text-t3'
               }`}
             >
               {tab.icon}
@@ -162,7 +168,7 @@ export function MobileNav() {
         <button
           onClick={() => setSheetOpen((p) => !p)}
           className={`flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[52px] py-1.5 text-[10px] font-medium transition-colors cursor-pointer ${
-            isMoreActive || sheetOpen ? 'text-green' : 'text-t3'
+            isMoreActive || sheetOpen ? 'text-ice' : 'text-t3'
           }`}
         >
           <MoreIcon />

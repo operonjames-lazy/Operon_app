@@ -9,21 +9,24 @@ interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'chi
   children: ReactNode;
 }
 
+// Primary CTA mirrors the website's `.cta-primary` / `.nav-cta`:
+// navy/purple gradient pill with multi-stop shadow + inset highlight.
+// Secondary is the website's `.cta-ghost`. Tertiary stays subtle.
 const variantStyles: Record<string, string> = {
   primary:
-    'bg-green text-black font-semibold hover:bg-green-hover active:bg-green-hover/90 disabled:opacity-50',
+    'bg-[linear-gradient(135deg,#4a3acc_0%,#2d2496_50%,#161a5e_100%)] text-white border border-[rgba(120,100,220,0.35)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),inset_0_-1px_1px_rgba(6,4,24,0.55),0_10px_26px_-3px_rgba(45,36,150,0.60),0_0_26px_-4px_rgba(74,58,204,0.30)] hover:bg-[linear-gradient(135deg,#5a4ae0_0%,#3a31ad_50%,#1e236f_100%)] hover:border-[rgba(140,120,235,0.45)] hover:-translate-y-px disabled:opacity-50 disabled:hover:translate-y-0',
   secondary:
-    'bg-card border border-border text-t1 hover:bg-card-hover active:bg-card-hover/90 disabled:opacity-50',
+    'bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.18)] text-t1 hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.40)] hover:-translate-y-px disabled:opacity-50',
   ghost:
-    'bg-transparent text-t2 hover:bg-card hover:text-t1 active:bg-card-hover disabled:opacity-50',
+    'bg-transparent text-t2 hover:bg-[rgba(147,197,253,0.05)] hover:text-ice disabled:opacity-50',
   danger:
-    'bg-red/10 border border-red/20 text-red hover:bg-red/20 active:bg-red/25 disabled:opacity-50',
+    'bg-red/10 border border-red/30 text-red hover:bg-red/20 disabled:opacity-50',
 };
 
 const sizeStyles: Record<string, string> = {
-  sm: 'px-3 py-1.5 text-xs rounded-md',
-  md: 'px-4 py-2 text-sm rounded-lg',
-  lg: 'px-6 py-3 text-base rounded-lg',
+  sm: 'px-3 py-1.5 text-xs rounded-full',
+  md: 'px-5 py-2.5 text-sm rounded-full',
+  lg: 'px-7 py-3 text-base rounded-full',
 };
 
 function Spinner() {
@@ -61,7 +64,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 font-medium transition-colors cursor-pointer ${variantStyles[variant]} ${sizeStyles[size]} ${
+      className={`inline-flex items-center justify-center gap-2 font-semibold tracking-wide transition-all duration-200 cursor-pointer ${variantStyles[variant]} ${sizeStyles[size]} ${
         loading ? 'pointer-events-none opacity-70' : ''
       } ${className}`}
       disabled={disabled || loading}

@@ -598,8 +598,8 @@ export default function SalePage() {
   if (isLoading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-40 bg-card rounded-lg" />
-        <div className="h-80 bg-card rounded-lg" />
+        <div className="h-40 rounded-2xl bg-[rgba(12,18,36,0.85)] border border-[rgba(147,197,253,0.08)]" />
+        <div className="h-80 rounded-2xl bg-[rgba(12,18,36,0.85)] border border-[rgba(147,197,253,0.08)]" />
         {loadingSlow && (
           <p className="text-center text-sm text-amber mt-4">
             {t('sale.networkSlow')}
@@ -635,7 +635,7 @@ export default function SalePage() {
 
       {/* Success Modal */}
       {step === 'success' && (
-        <div className="bg-green-bg border border-green-border rounded-[10px] p-6 text-center space-y-4 relative overflow-hidden">
+        <div className="card card-glow p-6 text-center space-y-4 relative overflow-hidden">
           {/* Confetti dots */}
           <div className="absolute inset-0 pointer-events-none">
             {[...Array(12)].map((_, i) => (
@@ -676,7 +676,7 @@ export default function SalePage() {
         {discountBps > 0 && (
           <div className="text-xs text-t4 mt-1">
             <span className="line-through">{formatUsdShort(pricePerNode)}</span>{' '}
-            <span className="text-green font-medium">{t('sale.percentOff', { discount: discountBps / 100 })}</span>
+            <span className="text-ice font-medium">{t('sale.percentOff', { discount: discountBps / 100 })}</span>
           </div>
         )}
         <div className="font-mono text-xs text-t2 mt-2">
@@ -706,10 +706,10 @@ export default function SalePage() {
                     i === 0 ? 'rounded-l-md' : ''
                   }${i === sale.tiers!.length - 1 ? ' rounded-r-md' : ''} ${
                     isActiveTier
-                      ? 'bg-green text-black text-[11px] font-semibold shadow-[0_0_24px_rgba(34,197,94,0.25)]'
+                      ? 'bg-[linear-gradient(180deg,#93c5fd_0%,#3b82f6_100%)] text-[#02050d] text-[11px] font-bold shadow-[0_0_24px_rgba(147,197,253,0.45),inset_0_1px_0_rgba(255,255,255,0.4)]'
                       : isSoldOut
-                        ? 'bg-border text-t4 text-[10px] font-medium'
-                        : 'bg-card border border-border text-t4 text-[10px] font-medium'
+                        ? 'bg-[rgba(147,197,253,0.18)] text-t4 text-[10px] font-medium'
+                        : 'bg-[rgba(8,12,24,0.6)] border border-[rgba(147,197,253,0.08)] text-t4 text-[10px] font-medium'
                   }`}
                 >
                   {isSoldOut ? t('sale.tierSoldLabel', { tier: tier.tier }) : `T${tier.tier} ${formatUsdShort(dp)}`}
@@ -730,15 +730,15 @@ export default function SalePage() {
           className={
             codeToastVariant === 'error'
               ? 'rounded-lg border border-red/40 bg-red/10 px-4 py-3 text-sm text-red text-center animate-fade-in'
-              : 'rounded-lg border border-green-border bg-green-bg px-4 py-3 text-sm text-green text-center animate-fade-in'
+              : 'rounded-lg border border-[rgba(147,197,253,0.25)] bg-[rgba(59,130,246,0.10)] px-4 py-3 text-sm text-ice text-center animate-fade-in'
           }
         >
           {codeToast}
         </div>
       )}
 
-      {/* ═══ BUY BOX — matches HTML reference ═══ */}
-      <div className="bg-card border border-border rounded-[10px] p-4 md:p-5">
+      {/* ═══ BUY BOX — gradient-border card, matches website fcard ═══ */}
+      <div className="card p-4 md:p-5">
         {/* Header: "Buy Nodes" + code badge */}
         {/* R4-03: if the wallet has a DB-bound referral code, lock the input
             immediately (don't wait for validateCode's round trip). The bound
@@ -748,7 +748,7 @@ export default function SalePage() {
         <div className="flex items-center justify-between mb-3.5">
           <span className="text-sm font-semibold text-t1">{t('home.buyNodes')}</span>
           {sale?.usedReferralCode || codeValid === true ? (
-            <span className="font-mono text-[10px] px-2.5 py-1.5 bg-green-bg border border-green-border rounded text-green">{sale?.usedReferralCode || referralCode} ✓</span>
+            <span className="font-mono text-[10px] px-2.5 py-1.5 bg-[rgba(59,130,246,0.10)] border border-[rgba(147,197,253,0.25)] rounded text-ice">{sale?.usedReferralCode || referralCode} ✓</span>
           ) : (
             <div className="flex gap-1.5 items-center">
               <input
@@ -772,7 +772,7 @@ export default function SalePage() {
                 }}
                 onBlur={() => referralCode && validateCode(referralCode)}
                 placeholder="OPRN-XXXX"
-                className="w-28 bg-bg border border-border rounded px-2 py-2 text-t1 font-mono text-[11px] focus:outline-none focus:border-green min-h-[44px]"
+                className="w-28 bg-[rgba(0,0,0,0.30)] border border-[rgba(147,197,253,0.10)] rounded px-2 py-2 text-ice font-mono text-[11px] focus:outline-none focus:border-[rgba(147,197,253,0.45)] min-h-[44px] placeholder:text-t4"
               />
               {codeValid === false && <span className="text-red text-[10px]">{t('sale.codeInvalidBadge')}</span>}
             </div>
@@ -798,7 +798,7 @@ export default function SalePage() {
         }} />
 
         {/* Quantity */}
-        <div className="bg-card-hover border border-border rounded-lg p-3 my-3">
+        <div className="rounded-lg border border-[rgba(147,197,253,0.08)] bg-[rgba(0,0,0,0.25)] p-3 my-3">
           <div className="flex justify-between mb-1.5">
             <span className="text-[11px] text-t4">{t('sale.quantity')}</span>
             <span className="text-[10px] text-t4">{t('sale.maxPerWallet')}</span>
@@ -837,8 +837,10 @@ export default function SalePage() {
                 resetApprove();
                 resetPurchase();
               }}
-              className={`flex-1 px-3 py-2.5 rounded-md border text-xs font-medium transition-colors cursor-pointer min-h-[44px] ${
-                paymentToken === token ? 'border-green text-green bg-green-bg' : 'border-border text-t2 hover:bg-card-hover'
+              className={`flex-1 px-3 py-2.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer min-h-[44px] ${
+                paymentToken === token
+                  ? 'border-[rgba(147,197,253,0.45)] text-ice bg-[rgba(59,130,246,0.12)] shadow-[0_0_20px_-8px_rgba(59,130,246,0.5),inset_0_1px_0_rgba(147,197,253,0.10)]'
+                  : 'border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 hover:border-[rgba(147,197,253,0.18)] hover:text-t1'
               }`}
             >
               {token}{balance !== undefined && paymentToken === token ? ` — $${Number(formatUnits(balance, decimals)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
@@ -847,7 +849,7 @@ export default function SalePage() {
         </div>
 
         {/* Price summary */}
-        <div className="bg-card-hover border border-border rounded-lg p-3 my-3.5 space-y-1.5">
+        <div className="rounded-lg border border-[rgba(147,197,253,0.08)] bg-[rgba(0,0,0,0.25)] p-3 my-3.5 space-y-1.5">
           {discountBps > 0 ? (
             <>
               <div className="flex justify-between text-[11px]">
@@ -876,7 +878,7 @@ export default function SalePage() {
           <div className="h-px bg-border my-2" />
           <div className="flex justify-between items-center">
             <span className="text-[13px] font-semibold text-t1">{t('sale.total')}</span>
-            <span className="font-display text-[18px] font-bold text-green tracking-tight">{formatUsdShort(totalCents)}</span>
+            <span className="font-display text-[18px] font-bold text-ice tracking-tight">{formatUsdShort(totalCents)}</span>
           </div>
         </div>
 

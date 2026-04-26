@@ -21,13 +21,21 @@ export default function HomePage() {
 
   if (!isConnected) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-        <h1 className="text-3xl font-bold text-t1 font-display">
-          {t('home.welcome')}
-        </h1>
-        <p className="text-t3 text-center max-w-md">
-          {t('home.connectPrompt')}
-        </p>
+      <div className="relative flex flex-col items-center justify-center min-h-[60vh] gap-6 overflow-hidden">
+        <div className="hex-backdrop" aria-hidden />
+        <div className="relative z-10 flex flex-col items-center gap-6 text-center">
+          <span className="status-pill">
+            <span className="dot" />
+            <span className="text-t3">Network</span>
+            <span className="text-green font-semibold">live</span>
+          </span>
+          <h1 className="font-display text-4xl font-bold text-white tracking-tight">
+            {t('home.welcome')}
+          </h1>
+          <p className="text-t2 text-center max-w-md">
+            {t('home.connectPrompt')}
+          </p>
+        </div>
       </div>
     );
   }
@@ -37,10 +45,10 @@ export default function HomePage() {
       <div className="space-y-6 animate-pulse">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-28 bg-card rounded-lg" />
+            <div key={i} className="h-28 rounded-2xl bg-[rgba(12,18,36,0.85)] border border-[rgba(147,197,253,0.08)]" />
           ))}
         </div>
-        <div className="h-48 bg-card rounded-lg" />
+        <div className="h-48 rounded-2xl bg-[rgba(12,18,36,0.85)] border border-[rgba(147,197,253,0.08)]" />
       </div>
     );
   }
@@ -73,13 +81,13 @@ export default function HomePage() {
       </div>
 
       {/* Sale Status Card */}
-      <Card title={t('home.genesisSale')}>
+      <Card title={t('home.genesisSale')} glow>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-t3 text-xs uppercase tracking-wider">{t('home.currentTier')}</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-t3">{t('home.currentTier')}</span>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-2xl font-bold text-t1">
+                <span className="font-display text-2xl font-bold text-white">
                   {t('home.tierLabel', { tier: sale?.currentTier || 1 })}
                 </span>
                 <Badge variant="green">
@@ -88,19 +96,19 @@ export default function HomePage() {
               </div>
             </div>
             <div className="text-right">
-              <span className="text-t3 text-xs uppercase tracking-wider">{t('home.price')}</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-t3">{t('home.price')}</span>
               <div className="mt-1">
                 {dashboard?.sale?.discountPrice ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold text-green">
+                    <span className="font-mono text-xl font-bold text-ice">
                       {formatUsd(dashboard.sale.discountPrice)}
                     </span>
-                    <span className="text-t4 line-through text-sm">
+                    <span className="font-mono text-t4 line-through text-sm">
                       {formatUsd(sale?.currentPrice || 0)}
                     </span>
                   </div>
                 ) : (
-                  <span className="text-xl font-bold text-t1">
+                  <span className="font-mono text-xl font-bold text-white">
                     {formatUsd(sale?.currentPrice || 0)}
                   </span>
                 )}
@@ -112,7 +120,7 @@ export default function HomePage() {
             value={tierProgress}
             label={`${formatNum(sale?.tierRemaining || 0)} ${t('home.remaining')}`}
             showPercentage
-            color="green"
+            color="blue"
           />
 
           <div className="flex items-center justify-between text-sm text-t3">

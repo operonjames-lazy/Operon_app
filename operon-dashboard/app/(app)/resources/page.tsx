@@ -61,7 +61,7 @@ export default function ResourcesPage() {
               href={item.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-card-hover transition-colors min-h-[44px]"
+              className="flex items-center justify-between p-3 rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.5)] hover:border-[rgba(147,197,253,0.25)] hover:bg-[rgba(8,12,24,0.85)] transition-colors min-h-[44px]"
             >
               <div className="flex items-center gap-3">
                 <span className="text-xl">{item.icon}</span>
@@ -82,7 +82,7 @@ export default function ResourcesPage() {
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 p-3 rounded-lg border border-border hover:bg-card-hover transition-colors min-h-[44px]"
+              className="flex items-center gap-2 p-3 rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.5)] hover:border-[rgba(147,197,253,0.25)] hover:bg-[rgba(8,12,24,0.85)] transition-colors min-h-[44px]"
             >
               <span>{link.icon}</span>
               <span className="text-sm text-t1">{t(`resources.${link.key}`)}</span>
@@ -100,7 +100,7 @@ export default function ResourcesPage() {
               href={social.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-card-hover transition-colors"
+              className="flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.5)] hover:border-[rgba(147,197,253,0.25)] hover:bg-[rgba(8,12,24,0.85)] transition-colors"
             >
               <span className="text-2xl">{social.icon}</span>
               <span className="text-xs text-t2">{social.name}</span>
@@ -126,7 +126,7 @@ export default function ResourcesPage() {
             href="https://bridge.arbitrum.io"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-card-hover transition-colors"
+            className="flex items-center justify-between p-3 rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.5)] hover:border-[rgba(147,197,253,0.25)] hover:bg-[rgba(8,12,24,0.85)] transition-colors"
           >
             <span className="text-sm text-t1">{t('resources.bridgeArbitrum')}</span>
             <span className="text-ice text-xs">→</span>
@@ -135,7 +135,7 @@ export default function ResourcesPage() {
             href="https://cbridge.celer.network"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-card-hover transition-colors"
+            className="flex items-center justify-between p-3 rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.5)] hover:border-[rgba(147,197,253,0.25)] hover:bg-[rgba(8,12,24,0.85)] transition-colors"
           >
             <span className="text-sm text-t1">{t('resources.bridgeBsc')}</span>
             <span className="text-ice text-xs">→</span>

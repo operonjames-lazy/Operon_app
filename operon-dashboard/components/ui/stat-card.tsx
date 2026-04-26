@@ -35,13 +35,13 @@ function TrendIndicator({ value, positive }: { value: number; positive: boolean 
 
 export function StatCard({ title, value, subtitle, icon, trend, href }: StatCardProps) {
   const content = (
-    <div className="rounded-lg bg-card border border-border p-4 transition-colors hover:bg-card-hover">
+    <div className="stat-tile p-4 transition-colors hover:border-[rgba(147,197,253,0.18)]">
       <div className="flex items-start justify-between">
-        <p className="text-xs font-medium uppercase tracking-wider text-t3">{title}</p>
-        {icon && <div className="text-t3">{icon}</div>}
+        <p className="text-[11px] font-mono font-medium uppercase tracking-[0.12em] text-t3">{title}</p>
+        {icon && <div className="text-ice">{icon}</div>}
       </div>
       <div className="mt-2 flex items-end gap-2">
-        <p className="text-2xl font-bold text-t1">{value}</p>
+        <p className="font-mono text-2xl font-bold text-white">{value}</p>
         {trend && <TrendIndicator value={trend.value} positive={trend.positive} />}
       </div>
       {subtitle && <p className="mt-1 text-sm text-t3">{subtitle}</p>}

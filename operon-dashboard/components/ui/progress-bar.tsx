@@ -10,7 +10,7 @@ interface ProgressBarProps {
 const colorMap: Record<string, string> = {
   green: 'bg-green',
   gold: 'bg-gold',
-  blue: 'bg-blue',
+  blue: 'bg-[linear-gradient(90deg,#93c5fd_0%,#3b82f6_100%)] shadow-[0_0_10px_rgba(147,197,253,0.45)]',
   amber: 'bg-amber',
 };
 
@@ -18,7 +18,7 @@ export function ProgressBar({
   value,
   label,
   showPercentage = false,
-  color = 'green',
+  color = 'blue',
 }: ProgressBarProps) {
   const clamped = Math.min(100, Math.max(0, value));
 

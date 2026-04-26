@@ -76,9 +76,9 @@ export default function NodesPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-32 bg-card rounded-lg" />
+        <div className="h-32 rounded-2xl bg-[rgba(12,18,36,0.85)] border border-[rgba(147,197,253,0.08)]" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => <div key={i} className="h-28 bg-card rounded-lg" />)}
+          {[1, 2, 3].map(i => <div key={i} className="h-28 rounded-2xl bg-[rgba(12,18,36,0.85)] border border-[rgba(147,197,253,0.08)]" />)}
         </div>
       </div>
     );
@@ -114,23 +114,23 @@ export default function NodesPage() {
     <div className="space-y-6 animate-fade-in">
       {pending && <PendingAttributionBanner pending={pending} />}
       {/* Emission Hero */}
-      <Card>
+      <Card glow>
         <div className="text-center py-6 space-y-2">
-          <span className="text-t3 text-xs uppercase tracking-wider">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-t3">
             {t('nodes.estDailyEmission')}
           </span>
-          <div className="text-[46px] font-extrabold text-green leading-none font-display">
-            ~{data.emission.dailyTotal.toFixed(1)} $OPRN
+          <div className="font-display text-[46px] font-extrabold text-ice leading-none tracking-tight">
+            ~{data.emission.dailyTotal.toFixed(1)} <span className="text-t2 text-3xl">$OPRN</span>
           </div>
           <div className="flex justify-center gap-6 text-sm text-t3 mt-3">
             <div>
-              <span className="text-t2 font-medium">{data.emission.dailyOwn.toFixed(1)}</span> {t('nodes.ownNodes')}
+              <span className="font-mono text-t1 font-medium">{data.emission.dailyOwn.toFixed(1)}</span> {t('nodes.ownNodes')}
             </div>
             <div>
-              <span className="text-t2 font-medium">{data.emission.dailyReferralPool.toFixed(1)}</span> {t('nodes.referralPool')}
+              <span className="font-mono text-t1 font-medium">{data.emission.dailyReferralPool.toFixed(1)}</span> {t('nodes.referralPool')}
             </div>
           </div>
-          <div className="flex justify-center gap-8 text-xs text-t4 mt-2">
+          <div className="flex justify-center gap-8 font-mono text-xs text-t4 mt-2">
             <span>~{data.emission.monthlyTotal.toFixed(0)}/mo</span>
             <span>~{data.emission.annualTotal.toFixed(0)}/yr</span>
           </div>
@@ -150,7 +150,7 @@ export default function NodesPage() {
 
       {/* Node Inventory */}
       <div>
-        <h3 className="text-sm text-t3 uppercase tracking-wider mb-3">{t('nodes.inventory')}</h3>
+        <h3 className="font-mono text-[10px] text-t3 uppercase tracking-[0.18em] mb-3">{t('nodes.inventory')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {data.nodes.map((node) => (
             <NodeCard key={`${node.chain}-${node.tokenId}`} {...node} />

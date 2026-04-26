@@ -110,7 +110,9 @@ function NavLink({ item, active, t }: { item: NavItem; active: boolean; t: (key:
       <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-t4 cursor-not-allowed select-none min-h-[44px]">
         <span className="shrink-0 opacity-40">{item.icon}</span>
         <span className="text-sm opacity-40">{t(item.labelKey)}</span>
-        <span className="ml-auto rounded bg-card px-1.5 py-0.5 text-[10px] text-t4">{t('nav.comingSoon')}</span>
+        <span className="ml-auto rounded-full border border-[rgba(147,197,253,0.10)] bg-[rgba(147,197,253,0.04)] px-2 py-0.5 text-[9px] uppercase tracking-widest text-t4 font-mono">
+          {t('nav.comingSoon')}
+        </span>
       </div>
     );
   }
@@ -120,11 +122,11 @@ function NavLink({ item, active, t }: { item: NavItem; active: boolean; t: (key:
       href={item.href}
       className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors min-h-[44px] ${
         active
-          ? 'bg-green-bg text-green border-l-2 border-green'
-          : 'text-t2 hover:bg-card hover:text-t1'
+          ? 'bg-[rgba(59,130,246,0.15)] text-white border border-[rgba(147,197,253,0.20)]'
+          : 'text-t3 hover:bg-[rgba(147,197,253,0.05)] hover:text-t1'
       }`}
     >
-      <span className="shrink-0">{item.icon}</span>
+      <span className={`shrink-0 ${active ? 'text-ice' : ''}`}>{item.icon}</span>
       {t(item.labelKey)}
     </Link>
   );
@@ -167,16 +169,18 @@ export function Sidebar({ walletAddress, isEpp }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed top-0 left-0 z-50 flex h-full w-64 flex-col border-r border-border bg-sidebar transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 flex h-full w-64 flex-col border-r border-[rgba(147,197,253,0.08)] bg-[rgba(0,0,0,0.30)] backdrop-blur-sm transition-transform duration-300 lg:static lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green">
-            <span className="text-sm font-bold text-black">O</span>
+        {/* Logo — matches website nav: "Operon" Unbounded with "ON" in ice */}
+        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-[rgba(147,197,253,0.06)]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(59,130,246,0.45)] bg-[rgba(59,130,246,0.12)] shadow-[0_0_20px_-6px_rgba(59,130,246,0.45)]">
+            <span className="font-display text-sm font-bold text-ice">O</span>
           </div>
-          <span className="font-display text-lg font-bold text-t1">Operon</span>
+          <span className="font-display text-lg font-bold tracking-wide text-white">
+            Oper<span className="text-ice">on</span>
+          </span>
         </div>
 
         {/* Main nav */}
@@ -185,8 +189,8 @@ export function Sidebar({ walletAddress, isEpp }: SidebarProps) {
             <NavLink key={item.href} item={item} active={isActive(item.href)} t={t} />
           ))}
 
-          <div className="my-3 border-t border-border" />
-          <p className="px-3 pb-1 text-[10px] font-medium uppercase tracking-widest text-t4">
+          <div className="my-3 border-t border-[rgba(147,197,253,0.06)]" />
+          <p className="px-3 pb-1 text-[10px] font-mono font-medium uppercase tracking-[0.18em] text-t4">
             {t('nav.comingSoon')}
           </p>
           {comingSoonNav.map((item) => (
@@ -195,10 +199,10 @@ export function Sidebar({ walletAddress, isEpp }: SidebarProps) {
 
           {showAdminLink && (
             <>
-              <div className="my-3 border-t border-border" />
+              <div className="my-3 border-t border-[rgba(147,197,253,0.06)]" />
               <Link
                 href="/admin"
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-amber hover:bg-amber/5 min-h-[44px]"
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gold hover:bg-gold-bg hover:border-gold-border border border-transparent min-h-[44px] transition-colors"
               >
                 <span className="shrink-0"><AdminIcon /></span>
                 Admin panel
@@ -209,15 +213,15 @@ export function Sidebar({ walletAddress, isEpp }: SidebarProps) {
 
         {/* User info */}
         {truncatedWallet && (
-          <div className="border-t border-border px-4 py-3">
+          <div className="border-t border-[rgba(147,197,253,0.06)] px-4 py-3">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-xs text-t3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(147,197,253,0.18)] bg-[rgba(8,12,24,0.7)] text-[10px] font-mono font-bold text-ice">
                 {walletAddress!.slice(2, 4).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-medium text-t1">{truncatedWallet}</p>
+                <p className="truncate text-sm font-mono font-medium text-t1">{truncatedWallet}</p>
                 {isEpp && (
-                  <span className="inline-block rounded bg-gold-bg text-[10px] font-medium text-gold border border-gold-border px-1.5 py-0.5 mt-0.5">
+                  <span className="inline-block rounded-full bg-gold-bg text-[9px] font-mono font-semibold uppercase tracking-widest text-gold border border-gold-border px-2 py-0.5 mt-0.5">
                     EPP
                   </span>
                 )}

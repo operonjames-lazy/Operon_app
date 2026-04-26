@@ -37,7 +37,7 @@ export function QuantitySelector({
         <button
           onClick={decrement}
           disabled={value <= min}
-          className="flex h-11 w-11 items-center justify-center rounded-l-lg border border-border bg-card text-t2 transition-colors hover:bg-card-hover hover:text-t1 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          className="flex h-11 w-11 items-center justify-center rounded-l-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -49,12 +49,12 @@ export function QuantitySelector({
           onChange={handleInput}
           min={min}
           max={max}
-          className="h-11 w-16 border-y border-border bg-bg text-center text-sm font-medium text-t1 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="h-11 w-16 border-y border-[rgba(147,197,253,0.10)] bg-[rgba(0,0,0,0.30)] text-center font-mono text-sm font-medium text-white outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <button
           onClick={increment}
           disabled={max != null && value >= max}
-          className="flex h-11 w-11 items-center justify-center rounded-r-lg border border-border bg-card text-t2 transition-colors hover:bg-card-hover hover:text-t1 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          className="flex h-11 w-11 items-center justify-center rounded-r-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

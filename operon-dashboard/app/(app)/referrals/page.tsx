@@ -35,9 +35,9 @@ export default function ReferralsPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-40 bg-card rounded-lg" />
+        <div className="h-40 rounded-2xl bg-[rgba(12,18,36,0.85)] border border-[rgba(147,197,253,0.08)]" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => <div key={i} className="h-28 bg-card rounded-lg" />)}
+          {[1, 2, 3].map(i => <div key={i} className="h-28 rounded-2xl bg-[rgba(12,18,36,0.85)] border border-[rgba(147,197,253,0.08)]" />)}
         </div>
       </div>
     );
@@ -75,16 +75,16 @@ export default function ReferralsPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
             <div>
-              <span className="text-xs text-t3 uppercase tracking-wider">{t('referrals.credited')}</span>
-              <div className="text-lg font-bold text-t1">{formatUsd(summary.creditedAmount)}</div>
+              <span className="font-mono text-[10px] text-t3 uppercase tracking-[0.18em]">{t('referrals.credited')}</span>
+              <div className="font-mono text-lg font-bold text-white">{formatUsd(summary.creditedAmount)}</div>
             </div>
             <div>
-              <span className="text-xs text-t3 uppercase tracking-wider">{t('referrals.commission')}</span>
-              <div className="text-lg font-bold text-green">{formatUsd(summary.totalCommission)}</div>
+              <span className="font-mono text-[10px] text-t3 uppercase tracking-[0.18em]">{t('referrals.commission')}</span>
+              <div className="font-mono text-lg font-bold text-green">{formatUsd(summary.totalCommission)}</div>
             </div>
             <div>
-              <span className="text-xs text-t3 uppercase tracking-wider">{t('referrals.network')}</span>
-              <div className="text-lg font-bold text-t1">{summary.networkSize}</div>
+              <span className="font-mono text-[10px] text-t3 uppercase tracking-[0.18em]">{t('referrals.network')}</span>
+              <div className="font-mono text-lg font-bold text-white">{summary.networkSize}</div>
             </div>
           </div>
         </Card>
@@ -120,17 +120,17 @@ export default function ReferralsPage() {
         <Card title={t('referrals.commissionByLevel')}>
           <div className="space-y-2">
             {summary.commissionByLevel.map(level => (
-              <div key={level.level} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+              <div key={level.level} className="flex items-center justify-between py-2 border-b border-[rgba(147,197,253,0.08)] last:border-0">
                 <div className="flex items-center gap-2">
                   <Badge variant="default">L{level.level}</Badge>
-                  <span className="text-sm text-t3">{formatUsd(level.salesVolume)} {t('referrals.volume')}</span>
+                  <span className="text-sm text-t3 font-mono">{formatUsd(level.salesVolume)} {t('referrals.volume')}</span>
                 </div>
-                <span className="text-sm font-medium text-green">{formatUsd(level.commission)}</span>
+                <span className="text-sm font-mono font-medium text-green">{formatUsd(level.commission)}</span>
               </div>
             ))}
             <div className="flex justify-between pt-2 font-bold">
               <span className="text-t1">{t('referrals.total')}</span>
-              <span className="text-green">
+              <span className="text-green font-mono">
                 {formatUsd(summary.commissionByLevel.reduce((sum, l) => sum + l.commission, 0))}
               </span>
             </div>
@@ -165,9 +165,9 @@ export default function ReferralsPage() {
         <Card title={t('referrals.networkBreakdown')}>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {summary.network.map(level => (
-              <div key={level.level} className="text-center">
-                <div className="text-lg font-bold text-t1">{level.count}</div>
-                <div className="text-xs text-t3">L{level.level}</div>
+              <div key={level.level} className="stat-tile py-3 text-center">
+                <div className="font-mono text-lg font-bold text-white">{level.count}</div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-t3">L{level.level}</div>
               </div>
             ))}
           </div>
@@ -193,7 +193,7 @@ export default function ReferralsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[400px]">
               <thead>
-                <tr className="text-t3 text-left text-xs uppercase tracking-wider">
+                <tr className="text-t3 text-left font-mono text-[10px] uppercase tracking-[0.15em]">
                   <th className="pb-2 whitespace-nowrap">{t('referrals.date')}</th>
                   <th className="pb-2 whitespace-nowrap">{t('referrals.amount')}</th>
                   <th className="pb-2 whitespace-nowrap">{t('referrals.chain')}</th>
@@ -202,10 +202,10 @@ export default function ReferralsPage() {
               </thead>
               <tbody>
                 {payouts.payouts.map(payout => (
-                  <tr key={payout.id} className="border-t border-border">
-                    <td className="py-2 text-t2">{payout.paidAt ? new Date(payout.paidAt).toLocaleDateString() : '—'}</td>
-                    <td className="py-2 text-t1 font-medium">{formatUsd(payout.amount)}</td>
-                    <td className="py-2 text-t3">{payout.chain === 'bsc' ? 'BNB' : 'ARB'}</td>
+                  <tr key={payout.id} className="border-t border-[rgba(147,197,253,0.08)]">
+                    <td className="py-2 text-t2 font-mono">{payout.paidAt ? new Date(payout.paidAt).toLocaleDateString() : '—'}</td>
+                    <td className="py-2 text-white font-mono font-medium">{formatUsd(payout.amount)}</td>
+                    <td className="py-2 text-t3 font-mono text-[11px]">{payout.chain === 'bsc' ? 'BNB' : 'ARB'}</td>
                     <td className="py-2">
                       <Badge variant={payout.status === 'confirmed' ? 'green' : payout.status === 'failed' ? 'red' : 'default'}>
                         {payout.status}

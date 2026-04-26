@@ -39,10 +39,10 @@ export function ChainSelector({ value, onChange }: ChainSelectorProps) {
           <button
             key={c.id}
             onClick={() => onChange(c.id)}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer min-h-[44px] ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer min-h-[44px] ${
               active
-                ? 'border-green bg-green-bg text-green'
-                : 'border-border bg-card text-t2 hover:bg-card-hover hover:text-t1'
+                ? 'border-[rgba(147,197,253,0.45)] bg-[rgba(59,130,246,0.12)] text-ice shadow-[0_0_20px_-8px_rgba(59,130,246,0.5),inset_0_1px_0_rgba(147,197,253,0.10)]'
+                : 'border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 hover:border-[rgba(147,197,253,0.18)] hover:text-t1'
             }`}
           >
             {c.icon}

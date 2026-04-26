@@ -36,17 +36,14 @@ export function Header({ announcement }: HeaderProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-bg/80 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-[rgba(147,197,253,0.08)] bg-[rgba(2,5,13,0.72)] backdrop-blur-md">
       {announcement && (
-        <div className="border-b border-green-border bg-green-bg px-4 py-2 text-center text-xs text-green">
+        <div className="border-b border-[rgba(147,197,253,0.10)] bg-[rgba(59,130,246,0.06)] px-4 py-2 text-center text-xs text-ice">
           {announcement}
         </div>
       )}
       <div className="flex h-14 items-center justify-between px-4 lg:px-6">
-        {/* Spacer on mobile (hamburger removed — bottom nav handles all navigation) */}
         <div className="lg:hidden" />
-
-        {/* Spacer on desktop */}
         <div className="hidden lg:block" />
 
         <div className="flex items-center gap-3">
@@ -54,15 +51,15 @@ export function Header({ announcement }: HeaderProps) {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setLangOpen((p) => !p)}
-              className="flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-medium text-t2 transition-colors hover:bg-card-hover hover:text-t1 cursor-pointer min-h-[44px]"
+              className="flex items-center gap-1.5 rounded-full border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.03)] px-3 py-2 font-mono text-[11px] font-medium tracking-widest uppercase text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice cursor-pointer min-h-[40px]"
             >
               {languages.find((l) => l.value === lang)?.label}
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                <path d="M0 0l5 6 5-6z" fill="currentColor" />
               </svg>
             </button>
             {langOpen && (
-              <div className="absolute right-0 top-full mt-1 w-20 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+              <div className="absolute right-0 top-full mt-1 w-28 overflow-hidden rounded-xl border border-[rgba(147,197,253,0.18)] bg-[rgba(10,15,28,0.96)] backdrop-blur-md shadow-[0_10px_30px_-8px_rgba(2,5,13,0.8)]">
                 {languages.map((l) => (
                   <button
                     key={l.value}
@@ -70,10 +67,10 @@ export function Header({ announcement }: HeaderProps) {
                       setLang(l.value);
                       setLangOpen(false);
                     }}
-                    className={`block w-full px-3 py-2.5 text-left text-xs transition-colors cursor-pointer min-h-[44px] ${
+                    className={`block w-full px-3 py-2.5 text-left text-xs transition-colors cursor-pointer min-h-[40px] ${
                       lang === l.value
-                        ? 'bg-green-bg text-green'
-                        : 'text-t2 hover:bg-card-hover hover:text-t1'
+                        ? 'bg-[rgba(59,130,246,0.15)] text-ice'
+                        : 'text-t2 hover:bg-[rgba(147,197,253,0.05)] hover:text-t1'
                     }`}
                   >
                     {l.label}

@@ -76,14 +76,14 @@ export function CodeBar({ code, label }: CodeBarProps) {
 
   return (
     <div className="w-full">
-      {label && <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-t3">{label}</p>}
+      {label && <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-t3">{label}</p>}
       <div className="flex items-center gap-1.5 sm:gap-2">
-        <div className="flex flex-1 items-center rounded-lg border border-border bg-bg px-3 sm:px-4 py-2.5 min-w-0 min-h-[44px]">
-          <span className="flex-1 font-mono text-sm text-t1 tracking-wide truncate">{code}</span>
+        <div className="flex flex-1 items-center rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(0,0,0,0.30)] px-3 sm:px-4 py-2.5 min-w-0 min-h-[44px]">
+          <span className="flex-1 font-mono text-sm text-ice tracking-wide truncate">{code}</span>
         </div>
         <button
           onClick={() => copyCode(code)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-t2 transition-colors hover:bg-card-hover hover:text-t1 cursor-pointer"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice cursor-pointer"
           title={t('code.copyCode')}
         >
           {codeCopied ? (
@@ -94,14 +94,14 @@ export function CodeBar({ code, label }: CodeBarProps) {
         </button>
         <button
           onClick={handleShare}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-t2 transition-colors hover:bg-card-hover hover:text-t1 cursor-pointer"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice cursor-pointer"
           title={t('code.share')}
         >
           <ShareIcon />
         </button>
         <button
           onClick={() => copyLink(referralUrl)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-t2 transition-colors hover:bg-card-hover hover:text-t1 cursor-pointer"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice cursor-pointer"
           title={t('code.copyLink')}
         >
           {linkCopied ? (
