@@ -77,7 +77,24 @@ export async function GET(request: NextRequest) {
 
   const results: Record<string, { eventsFound: number; gapsFilled: number }> = {};
   const referralSync = { attempted: 0, synced: 0, failed: 0, queueDepth: 0 };
+  let reservationsExpired = 0;
   try {
+
+  // Voucher checkout: sweep reservations whose 12-min TTL elapsed without a
+  // tx_hash. `expire_old_reservations` is a no-op when the queue is empty,
+  // so the call is cheap on every tick. Submitted reservations (with a
+  // tx_hash) are NOT touched here — the on-chain side is the ground truth
+  // for those, and the gap-filler below will mark them completed/failed.
+  try {
+    const { data: expired, error: expErr } = await supabase.rpc('expire_old_reservations');
+    if (expErr) {
+      logger.warn('expire_old_reservations failed', { error: expErr.message });
+    } else if (typeof expired === 'number') {
+      reservationsExpired = expired;
+    }
+  } catch (err) {
+    logger.warn('expire_old_reservations threw', { error: String(err) });
+  }
 
   for (const chain of CHAINS) {
     const saleAddr = getSaleContract(chain);
@@ -447,7 +464,7 @@ export async function GET(request: NextRequest) {
     logger.error('Referral code sync pass failed', { error: String(syncErr) });
   }
 
-    return Response.json({ ok: true, results, referralSync });
+    return Response.json({ ok: true, results, referralSync, reservationsExpired });
   } finally {
     // Always release the lease, even if a thrown exception escapes the route.
     // The TTL would eventually clear it, but explicit release means the next
