@@ -29,7 +29,16 @@ const PAGES = [
   'hero-prototype-O-agents.html',
   'hero-prototype-O-nodes.html',
   'hero-prototype-O-faq.html',
+  'index.html', // physical copy of hero-prototype-O.html — needs the same SEO meta
 ];
+
+// META keys for `index.html` reuse `hero-prototype-O.html`'s entries.
+function metaForPage(page, lang) {
+  if (page === 'index.html') {
+    return META['hero-prototype-O.html']?.[lang];
+  }
+  return META[page]?.[lang];
+}
 const SITE = 'https://operon.network';
 
 // Localised title + meta per (page, lang). Kept short — search engines
@@ -73,7 +82,15 @@ const META = {
   },
 };
 
+// The home page exists at two physical paths — `/index.html` and
+// `/hero-prototype-O.html` — and they serve byte-identical content
+// (build-i18n copies the prototype file to index.html). The canonical
+// for both should be the directory URL (`/` for EN, `/<lang>/` for
+// localised). Sub-pages (agents/nodes/faq) keep their own page URL.
 function urlFor(lang, page) {
+  if (page === 'hero-prototype-O.html' || page === 'index.html') {
+    return lang === 'en' ? `${SITE}/` : `${SITE}/${lang}/`;
+  }
   return lang === 'en' ? `${SITE}/${page}` : `${SITE}/${lang}/${page}`;
 }
 
@@ -87,7 +104,7 @@ function buildHreflangs(page) {
 
 async function processFile(absPath, lang, page) {
   let html = await fs.readFile(absPath, 'utf8');
-  const meta = META[page]?.[lang];
+  const meta = metaForPage(page, lang);
   if (!meta) {
     console.warn(`  ! no meta entry for (${page}, ${lang}) — skipping`);
     return;
