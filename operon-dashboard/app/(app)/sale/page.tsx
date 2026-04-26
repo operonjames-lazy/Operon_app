@@ -1001,7 +1001,7 @@ export default function SalePage() {
       {/* Wallet + switch */}
       {address && (
         <div className="flex justify-between text-[10px] text-t4">
-          <span>Wallet: <span className="font-mono text-t2">{address.slice(0, 6)}...{address.slice(-4)}</span></span>
+          <span>{t('sale.walletLabel')} <span className="font-mono text-t2">{address.slice(0, 6)}...{address.slice(-4)}</span></span>
           <button
             onClick={() => openAccountModal?.()}
             disabled={!openAccountModal}

@@ -32,7 +32,7 @@ export default function SaleError({
           {t('error.pageErrorDesc')}
         </p>
         <p className="text-xs text-t4">
-          Your funds are safe. If you had a pending transaction, check your wallet or block explorer.
+          {t('error.fundsSafe')}
         </p>
         {error.digest && (
           <p className="text-xs text-t4 font-mono">Error ID: {error.digest}</p>
