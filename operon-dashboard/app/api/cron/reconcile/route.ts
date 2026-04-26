@@ -55,12 +55,20 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServerSupabase();
 
-  // Advisory lock — prevents two reconcile runs racing on signer nonces if a
+  // Cron lease — prevents two reconcile runs racing on signer nonces if a
   // tick takes longer than the cron interval (or if the schedule is flipped
-  // to every-minute during an incident). `try_reconcile_lock()` lives in
-  // migration 023 and uses a session-scoped pg_try_advisory_lock. Skipped
-  // ticks return cleanly without touching the DB.
-  const { data: gotLock, error: lockErr } = await supabase.rpc('try_reconcile_lock');
+  // to every-minute during an incident). `try_acquire_cron_lock` lives in
+  // migration 025 and uses a row-based TTL lease, replacing the session-
+  // scoped advisory lock from migration 023 (which leaked across PostgREST
+  // pooled connections). TTL = 300s gives 5× headroom over `maxDuration: 60`
+  // so a crashed run releases its lease within five minutes even if the
+  // explicit `release_cron_lock` below never fires.
+  const RECONCILE_LOCK_NAME = 'reconcile';
+  const RECONCILE_LOCK_TTL_SECONDS = 300;
+  const { data: gotLock, error: lockErr } = await supabase.rpc('try_acquire_cron_lock', {
+    p_name: RECONCILE_LOCK_NAME,
+    p_ttl_seconds: RECONCILE_LOCK_TTL_SECONDS,
+  });
   if (lockErr) {
     logger.warn('reconcile lock RPC failed; allowing run to proceed', { error: lockErr.message });
   } else if (gotLock === false) {
@@ -68,6 +76,8 @@ export async function GET(request: NextRequest) {
   }
 
   const results: Record<string, { eventsFound: number; gapsFilled: number }> = {};
+  const referralSync = { attempted: 0, synced: 0, failed: 0, queueDepth: 0 };
+  try {
 
   for (const chain of CHAINS) {
     const saleAddr = getSaleContract(chain);
@@ -171,16 +181,54 @@ export async function GET(request: NextRequest) {
           blockNumber: event.blockNumber,
         };
 
+        // Split commission write from tier-counter write so the failed_events
+        // row gets the right `kind` for replay routing. Previously this was a
+        // single try/catch and any failure here was silently logged before
+        // the cursor advanced at the end of the loop — meaning a purchase
+        // that paid treasury could permanently miss its commission rows
+        // (R-review HIGH-3). Now every gap-fill failure parks in failed_events
+        // and the queue's own retry pass (further down this route) drains it.
+        let commissionsOk = false;
         try {
           await processReferralAttribution(purchaseEvent);
-          await supabase.rpc('increment_tier_sold', {
-            p_tx_hash: purchaseEvent.txHash,
-            p_chain: purchaseEvent.chain,
-            p_tier: purchaseEvent.tier,
-            p_quantity: purchaseEvent.quantity,
-          });
+          commissionsOk = true;
         } catch (err) {
-          logger.error('Reconcile gap-fill failed', { txHash, error: String(err) });
+          logger.error('Reconcile gap-fill: commission processing failed', { txHash, error: String(err) });
+          await supabase.from('failed_events').insert({
+            tx_hash: purchaseEvent.txHash,
+            chain: purchaseEvent.chain,
+            event_data: purchaseEvent,
+            error_message: `reconcile_process_error: ${String(err)}`,
+            status: 'pending',
+            kind: 'process_error',
+            next_retry_at: new Date(Date.now() + 60 * 1000).toISOString(),
+          });
+        }
+
+        if (commissionsOk) {
+          try {
+            await supabase.rpc('increment_tier_sold', {
+              p_tx_hash: purchaseEvent.txHash,
+              p_chain: purchaseEvent.chain,
+              p_tier: purchaseEvent.tier,
+              p_quantity: purchaseEvent.quantity,
+            });
+          } catch (err) {
+            // Commission RPC succeeded; only the tier counter failed. The
+            // retry pass re-runs processReferralAttribution (returns
+            // 'duplicate' via ON CONFLICT) then increment_tier_sold (idempotent
+            // via tier_increments PK), so the partial-success replay is safe.
+            logger.error('Reconcile gap-fill: tier increment failed', { txHash, error: String(err) });
+            await supabase.from('failed_events').insert({
+              tx_hash: purchaseEvent.txHash,
+              chain: purchaseEvent.chain,
+              event_data: purchaseEvent,
+              error_message: `reconcile_tier_increment_error: ${String(err)}`,
+              status: 'pending',
+              kind: 'tier_increment_error',
+              next_retry_at: new Date(Date.now() + 60 * 1000).toISOString(),
+            });
+          }
         }
       }
 
@@ -294,7 +342,6 @@ export async function GET(request: NextRequest) {
   // burst (2,000 rows = two chains × 1,000 wallets connecting in 30 min).
   // maxDuration (60s) + conservative RPC rate-limits still bound the work
   // per tick; the function returns on whichever ceiling hits first.
-  const referralSync = { attempted: 0, synced: 0, failed: 0, queueDepth: 0 };
   try {
     // Ship-readiness R5 re-review: observe queue depth before the drain
     // so operators can tell when ingress exceeds drain capacity. If the
@@ -400,5 +447,19 @@ export async function GET(request: NextRequest) {
     logger.error('Referral code sync pass failed', { error: String(syncErr) });
   }
 
-  return Response.json({ ok: true, results, referralSync });
+    return Response.json({ ok: true, results, referralSync });
+  } finally {
+    // Always release the lease, even if a thrown exception escapes the route.
+    // The TTL would eventually clear it, but explicit release means the next
+    // tick can pick up immediately rather than waiting up to 5 minutes.
+    if (gotLock !== false) {
+      try {
+        await supabase.rpc('release_cron_lock', { p_name: RECONCILE_LOCK_NAME });
+      } catch (releaseErr) {
+        logger.warn('reconcile lock release failed; TTL will reclaim', {
+          error: String(releaseErr),
+        });
+      }
+    }
+  }
 }

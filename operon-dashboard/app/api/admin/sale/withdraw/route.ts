@@ -90,7 +90,12 @@ export async function POST(request: NextRequest) {
     if (msg.includes('no funds to withdraw')) {
       return Response.json({ error: 'no_funds', chain, token }, { status: 409 });
     }
+    // Log the raw provider/contract error server-side; return a stable code
+    // to the client. Previously the response carried `detail: msg` which
+    // could leak RPC URLs, ethers error envelopes, and stack-shaped data
+    // into the browser. Operators can correlate via the timestamp + chain
+    // + token in the server log.
     logger.error('withdraw call failed', { chain, token, error: msg });
-    return Response.json({ error: 'withdraw_failed', detail: msg }, { status: 500 });
+    return Response.json({ error: 'withdraw_failed', chain, token }, { status: 500 });
   }
 }
