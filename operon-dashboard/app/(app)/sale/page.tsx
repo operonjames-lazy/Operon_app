@@ -81,6 +81,12 @@ export default function SalePage() {
   // so both receipt hooks subscribe to the right query from render 0.
   const [submittedChainId, setSubmittedChainId] = useState<number | undefined>(undefined);
 
+  // Auto-scroll the active tier into view in the horizontal tier strip on
+  // mount and whenever the current tier advances. Without this, the user
+  // lands on T1 (left edge) and has to scroll to find their position in
+  // the 40-tier curve.
+  const activeTierRef = useRef<HTMLDivElement | null>(null);
+
   // Recover pending transaction from localStorage (scoped to current wallet)
   //
   // R14 (2026-04-22): require strict address match. Previously the guard
@@ -116,6 +122,14 @@ export default function SalePage() {
       validateCode(ref);
     }
   }, []);
+
+  // Center the active tier in the horizontal scroll on mount and on
+  // tier advancement. `inline: 'center'` keeps the user's eye on the
+  // pricing curve they're shopping in. `block: 'nearest'` prevents
+  // the page from scrolling vertically.
+  useEffect(() => {
+    activeTierRef.current?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }, [sale?.currentTier]);
 
   // Prefill + keep the referral field in sync with the user's stored
   // upline. Runs after the /api/sale/status response lands.
@@ -688,36 +702,57 @@ export default function SalePage() {
         </div>
       </div>
 
-      {/* ═══ TIER BAR — T1 Sold | T2 $446 | T3 $468 | T4 $492 | T5 $517 ═══ */}
+      {/* ═══ TIER STRIP — horizontal scroll, all 40 tiers visible at a
+           readable size; active tier auto-scrolled into view. Edge fades
+           hint there's more on each side. ═══ */}
       {sale?.tiers && sale.tiers.length > 0 && (
         <div>
-          <div className="flex gap-0.5 mb-1">
-            {sale.tiers.map((tier, i) => {
-              const isSoldOut = tier.sold >= tier.supply;
-              const isActiveTier = tier.active;
-              // Integer math (matches contract + line 167 in this file).
-              // Previous `* (1 - discountBps / 10000)` produced a 1-cent
-              // float drift on some tier/discount combinations.
-              const dp = discountBps > 0 ? tier.price - Math.floor(tier.price * discountBps / 10000) : tier.price;
-              return (
-                <div
-                  key={tier.tier}
-                  className={`flex-1 h-12 md:h-14 flex items-center justify-center font-mono transition-all ${
-                    i === 0 ? 'rounded-l-md' : ''
-                  }${i === sale.tiers!.length - 1 ? ' rounded-r-md' : ''} ${
-                    isActiveTier
-                      ? 'bg-[linear-gradient(180deg,#93c5fd_0%,#3b82f6_100%)] text-[#02050d] text-[11px] font-bold shadow-[0_0_24px_rgba(147,197,253,0.45),inset_0_1px_0_rgba(255,255,255,0.4)]'
-                      : isSoldOut
-                        ? 'bg-[rgba(147,197,253,0.18)] text-t4 text-[10px] font-medium'
-                        : 'bg-[rgba(8,12,24,0.6)] border border-[rgba(147,197,253,0.08)] text-t4 text-[10px] font-medium'
-                  }`}
-                >
-                  {isSoldOut ? t('sale.tierSoldLabel', { tier: tier.tier }) : `T${tier.tier} ${formatUsdShort(dp)}`}
-                </div>
-              );
-            })}
+          <div className="relative">
+            {/* Edge fades — pure decoration so the user knows the strip
+                continues past the visible area. */}
+            <div className="pointer-events-none absolute left-0 top-0 bottom-2 w-8 z-10 bg-gradient-to-r from-[#02050d] to-transparent" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-8 z-10 bg-gradient-to-l from-[#02050d] to-transparent" />
+            <div
+              className="overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[rgba(147,197,253,0.18)] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-[rgba(147,197,253,0.32)]"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(147,197,253,0.18) transparent' }}
+            >
+              <div className="flex gap-0.5 mb-1 min-w-max">
+                {sale.tiers.map((tier, i) => {
+                  const isSoldOut = tier.sold >= tier.supply;
+                  const isActiveTier = tier.active;
+                  // Integer math (matches contract + line 167 in this file).
+                  // Previous `* (1 - discountBps / 10000)` produced a 1-cent
+                  // float drift on some tier/discount combinations.
+                  const dp = discountBps > 0 ? tier.price - Math.floor(tier.price * discountBps / 10000) : tier.price;
+                  return (
+                    <div
+                      key={tier.tier}
+                      ref={isActiveTier ? activeTierRef : undefined}
+                      className={`shrink-0 w-[68px] md:w-[76px] h-12 md:h-14 flex flex-col items-center justify-center gap-0.5 font-mono transition-all ${
+                        i === 0 ? 'rounded-l-md' : ''
+                      }${i === sale.tiers!.length - 1 ? ' rounded-r-md' : ''} ${
+                        isActiveTier
+                          ? 'bg-[linear-gradient(180deg,#93c5fd_0%,#3b82f6_100%)] text-[#02050d] font-bold shadow-[0_0_24px_rgba(147,197,253,0.45),inset_0_1px_0_rgba(255,255,255,0.4)]'
+                          : isSoldOut
+                            ? 'bg-[rgba(147,197,253,0.18)] text-t4 font-medium'
+                            : 'bg-[rgba(8,12,24,0.6)] border border-[rgba(147,197,253,0.08)] text-t4 font-medium'
+                      }`}
+                    >
+                      {isSoldOut ? (
+                        <span className="text-[10px]">{t('sale.tierSoldLabel', { tier: tier.tier })}</span>
+                      ) : (
+                        <>
+                          <span className={isActiveTier ? 'text-[10px] uppercase tracking-widest opacity-80' : 'text-[10px] uppercase tracking-widest text-t3'}>T{tier.tier}</span>
+                          <span className={isActiveTier ? 'text-[12px]' : 'text-[11px] text-t2'}>{formatUsdShort(dp)}</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between font-mono text-[10px] text-t3 mb-5">
+          <div className="flex justify-between font-mono text-[10px] text-t3 mb-5 mt-1">
             <span>{formatNum(sale?.totalSold || 0)} / {formatNum(sale?.totalSupply || 0)} {t('sale.soldCountLabel')}</span>
             {discountBps > 0 && <span>{t('sale.allPricesDiscount', { discount: discountBps / 100 })}</span>}
           </div>
