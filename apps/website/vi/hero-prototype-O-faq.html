@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Câu hỏi thường gặp | Operon</title>
+<meta name="description" content="Các câu hỏi thường gặp về Operon — bán node, yêu cầu kỹ thuật, phần thưởng, quản trị, và hơn thế nữa.">
+<link rel="canonical" href="https://operon.network/vi/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="en" href="https://operon.network/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="zh-cn" href="https://operon.network/zh-cn/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="zh-tw" href="https://operon.network/zh-tw/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="ko" href="https://operon.network/ko/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="ja" href="https://operon.network/ja/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="th" href="https://operon.network/th/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="vi" href="https://operon.network/vi/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="x-default" href="https://operon.network/hero-prototype-O-faq.html" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@300;700;800&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Sans+Thai:wght@300;400;500;700&family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --t1:#f6f8ff;
+    --t2:rgba(220,232,252,0.78);
+    --t3:rgba(170,188,220,0.55);
+    --t4:rgba(170,188,220,0.55);
+    --bg-deep:#02050d;
+    --ice:#93C5FD;
+    --glow:#3B82F6;
+    --accent:#5ba4f5;
+    --blue-dim:#1f3a8a;
+    --gold:#d4a853;
+    --gold-dim:#8a6b30;
+    --border:rgba(147,197,253,0.10);
+    --border-strong:rgba(147,197,253,0.18);
+    --surface:rgba(255,255,255,0.03);
+    --surface-2:rgba(255,255,255,0.05);
+    --card-fill-top:rgba(12,18,36,0.65);
+    --card-fill-bot:rgba(6,12,22,0.78);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'Inter','Noto Sans SC','Noto Sans TC','Noto Sans KR','Noto Sans JP','Noto Sans Thai','Noto Sans',sans-serif;background:linear-gradient(180deg,#03060f 0%,#02050d 60%,#010308 100%);color:var(--t1);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;letter-spacing:-0.005em;min-height:100vh;}
+
+  nav.site-nav{position:sticky;top:0;z-index:100;background:rgba(3,6,15,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 40px;min-height:64px;}
+  .brand{font-family:'Unbounded',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.02em;color:#fff;line-height:1;text-decoration:none;}
+  .brand .on-ice{color:var(--glow);}
+  .nav-mid{display:flex;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:100px;padding:4px;justify-self:center;}
+  .nav-mid a{padding:8px 18px;font-size:13.5px;font-weight:500;color:rgba(220,230,250,0.65);text-decoration:none;border-radius:100px;transition:all 0.25s;white-space:nowrap;}
+  .nav-mid a:hover{color:var(--t1);}
+  .nav-mid a.active{color:var(--t1);background:rgba(255,255,255,0.06);}
+  .nav-mid a.nav-node{color:var(--gold);font-weight:600;}
+  .nav-mid a.nav-node:hover{color:#f3cc78;}
+  .nav-mid a.nav-node.active{color:#f3cc78;background:rgba(212,168,83,0.08);}
+  .nav-right{justify-self:end;display:flex;align-items:center;gap:10px;}
+  .header-tag{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.10em;color:var(--t3);border:1px solid var(--border);padding:5px 12px;border-radius:20px;background:var(--surface);white-space:nowrap;}
+  .lang-switcher{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.06em;color:var(--t2);border:1px solid var(--border);padding:5px 8px 5px 12px;border-radius:20px;background:var(--surface);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2393C5FD'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;min-width:78px;}
+  .lang-switcher option{background:#0a0f1c;color:var(--t1);}
+  .lang-switcher:hover{border-color:rgba(147,197,253,0.32);color:var(--ice);}
+  .lang-switcher:focus{border-color:var(--ice);box-shadow:0 0 0 2px rgba(59,130,246,0.18);}
+
+  .hero{background:radial-gradient(ellipse 60% 80% at 80% 50%,rgba(59,130,246,0.16) 0%,transparent 70%),radial-gradient(ellipse 40% 60% at 15% 80%,rgba(74,58,204,0.14) 0%,transparent 65%),linear-gradient(180deg,#040814 0%,#030611 100%);padding:96px 48px 80px;position:relative;overflow:hidden;border-bottom:1px solid var(--border);}
+  .hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(147,197,253,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(147,197,253,0.05) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 30%,transparent 80%);-webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 30%,transparent 80%);}
+  .hero-inner{position:relative;max-width:820px;}
+  .hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--ice);margin-bottom:24px;display:flex;align-items:center;gap:10px;}
+  .hero-eyebrow::before{content:'';display:block;width:32px;height:1px;background:var(--ice);box-shadow:0 0 6px rgba(147,197,253,0.6);}
+  .hero h1{font-family:'Unbounded',sans-serif;font-weight:700;font-size:clamp(34px,5vw,58px);line-height:1.15;letter-spacing:0.005em;color:#fff;margin-bottom:24px;}
+  .hero h1 em{font-style:normal;color:var(--ice);}
+  .hero-sub{font-size:16px;color:var(--t2);max-width:560px;line-height:1.8;margin-bottom:40px;}
+  .hero-stats{display:flex;gap:40px;flex-wrap:wrap;}
+  .stat{display:flex;flex-direction:column;gap:4px;}
+  .stat-val{font-family:'Unbounded',sans-serif;font-weight:700;font-size:22px;color:#fff;letter-spacing:0.005em;}
+  .stat-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--t3);}
+  .stat-divider{width:1px;height:40px;background:var(--border);align-self:center;}
+
+  .nav-strip{background:rgba(8,12,24,0.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:0 48px;overflow-x:auto;scrollbar-width:none;position:sticky;top:64px;z-index:50;}
+  .nav-strip::-webkit-scrollbar{display:none;}
+  .nav-pills{display:flex;gap:0;white-space:nowrap;}
+  .nav-pill{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--t3);text-decoration:none;padding:14px 18px;border-bottom:2px solid transparent;transition:color 0.2s,border-color 0.2s;cursor:pointer;}
+  .nav-pill:hover{color:var(--t1);}
+  .nav-pill.active{color:var(--ice);border-bottom-color:var(--ice);}
+
+  .main{max-width:1100px;margin:0 auto;padding:80px 48px 40px;}
+  .faq-section{margin-bottom:80px;scroll-margin-top:130px;}
+  .section-header{display:flex;align-items:center;gap:16px;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid var(--border-strong);}
+  .section-icon{width:36px;height:36px;background:linear-gradient(180deg,rgba(59,130,246,0.18) 0%,rgba(59,130,246,0.06) 100%);border:1px solid var(--border-strong);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ice);font-size:17px;}
+  .section-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:20px;color:var(--t1);letter-spacing:0.005em;}
+  .section-count{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:var(--t3);}
+
+  .faq-item{
+    border:1px solid var(--border);
+    border-radius:14px;
+    margin-bottom:10px;
+    overflow:hidden;
+    transition:box-shadow 0.25s,border-color 0.25s,background 0.25s;
+    background:linear-gradient(180deg,var(--card-fill-top) 0%,var(--card-fill-bot) 100%);
+  }
+  .faq-item:hover{border-color:rgba(147,197,253,0.30);box-shadow:0 4px 22px -8px rgba(59,130,246,0.18);}
+  .faq-item.open{border-color:rgba(147,197,253,0.45);box-shadow:0 8px 32px -10px rgba(59,130,246,0.30),0 0 0 1px rgba(147,197,253,0.10) inset;}
+  .faq-q{display:flex;align-items:flex-start;gap:16px;padding:20px 24px;cursor:pointer;user-select:none;list-style:none;}
+  .faq-q::-webkit-details-marker{display:none;}
+  .faq-q-text{font-family:'Inter',sans-serif;font-weight:500;font-size:15px;color:var(--t1);flex:1;line-height:1.6;padding-top:1px;}
+  .faq-arrow{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:background 0.2s,border-color 0.2s,transform 0.25s,color 0.2s;color:var(--t3);font-size:11px;}
+  details[open] .faq-arrow{background:var(--glow);border-color:var(--glow);color:#fff;transform:rotate(180deg);box-shadow:0 0 12px rgba(59,130,246,0.5);}
+  .faq-a{padding:0 24px 24px 62px;}
+  .faq-a p{font-size:15px;color:var(--t2);line-height:1.8;margin-bottom:12px;}
+  .faq-a p:last-child{margin-bottom:0;}
+
+  .callout{border-left:3px solid var(--ice);background:rgba(59,130,246,0.08);border-radius:0 8px 8px 0;padding:14px 18px;margin:16px 0 12px;font-size:14px;color:var(--t1);line-height:1.75;}
+  .callout-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;color:var(--ice);margin-bottom:6px;}
+  .callout.gold{border-left-color:var(--gold);background:rgba(212,168,83,0.08);}
+  .callout.gold .callout-label{color:var(--gold);}
+
+  .data-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;margin:16px 0 8px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+  .data-table th{background:rgba(59,130,246,0.10);font-family:'Inter',sans-serif;font-weight:700;font-size:12px;color:var(--ice);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:0.04em;text-transform:uppercase;}
+  .data-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--t2);vertical-align:top;line-height:1.6;}
+  .data-table tr:last-child td{border-bottom:none;}
+  .data-table tr:nth-child(even) td{background:rgba(255,255,255,0.015);}
+  .data-table .total td{background:rgba(59,130,246,0.10);font-weight:700;color:var(--t1);}
+  .data-table td.mono,.data-table th.mono{font-family:'JetBrains Mono',monospace;font-size:13px;}
+
+  .hl{font-family:'JetBrains Mono',monospace;font-size:13px;background:rgba(59,130,246,0.14);color:var(--ice);padding:1px 6px;border-radius:4px;white-space:nowrap;}
+
+  .example-box{background:linear-gradient(180deg,rgba(8,12,24,0.85) 0%,rgba(4,8,18,0.95) 100%);border:1px solid var(--border-strong);border-radius:10px;padding:20px 22px;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:2.1;}
+  .example-box .ex-title{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ice);margin-bottom:10px;font-family:'Unbounded',sans-serif;font-weight:700;}
+  .example-box .ex-row{display:flex;justify-content:space-between;}
+  .example-box .ex-row span:last-child{color:#fff;font-weight:500;}
+  .example-box .ex-divider{border:none;border-top:1px solid var(--border);margin:8px 0;}
+  .example-box .ex-total{color:var(--ice)!important;font-weight:700!important;}
+
+  .search-wrap{max-width:540px;margin:0 0 48px;position:relative;}
+  .search-input{width:100%;padding:14px 20px 14px 46px;border:1px solid var(--border-strong);border-radius:12px;font-family:'Inter',sans-serif;font-size:14px;color:var(--t1);background:var(--surface);outline:none;transition:border-color 0.2s,box-shadow 0.2s,background 0.2s;}
+  .search-input:focus{border-color:var(--ice);background:var(--surface-2);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+  .search-input::placeholder{color:var(--t3);}
+  .search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:16px;pointer-events:none;}
+  .no-results{display:none;text-align:center;padding:48px 0;color:var(--t3);font-size:15px;}
+
+  .site-footer{background:linear-gradient(180deg,#02050d 0%,#010308 100%);border-top:1px solid var(--border);padding:48px;text-align:center;}
+  .footer-logo{font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px;color:#fff;letter-spacing:0.02em;margin-bottom:8px;}
+  .footer-logo span{color:var(--glow);}
+  .footer-url{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3);margin-bottom:24px;}
+  .footer-disc{font-size:12px;color:var(--t4);max-width:640px;margin:0 auto;line-height:1.8;}
+
+  .home-btn{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.08em;color:var(--ice);border:1px solid var(--border-strong);background:var(--surface);padding:5px 14px;border-radius:20px;text-decoration:none;transition:all 0.2s;white-space:nowrap;}
+  .home-btn:hover{background:rgba(59,130,246,0.14);border-color:rgba(147,197,253,0.32);color:#fff;}
+  .home-btn svg{width:12px;height:12px;vertical-align:-1px;margin-right:4px;}
+
+  .lang-content{display:none;}
+  .lang-content.active{display:block;}
+
+  .cta-banner{text-align:center;padding:0 24px 64px;background:transparent;}
+  .cta-banner a{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:16px 36px;
+    background:linear-gradient(135deg,#4a3acc 0%,#2d2496 50%,#161a5e 100%);
+    border:1px solid rgba(120,100,220,0.32);
+    color:#fff;
+    font-family:'Inter','Noto Sans SC','Noto Sans TC',sans-serif;
+    font-size:15px;font-weight:600;
+    border-radius:100px;
+    text-decoration:none;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.16),
+      inset 0 -1px 1px rgba(6,4,24,0.55),
+      0 4px 14px -2px rgba(45,36,150,0.55),
+      0 0 18px -4px rgba(74,58,204,0.28);
+    transition:transform 0.2s ease,box-shadow 0.2s ease,background 0.2s ease;
+  }
+  .cta-banner a:hover{
+    transform:translateY(-1px);
+    background:linear-gradient(135deg,#5a4ae0 0%,#3a31ad 50%,#1e236f 100%);
+    border-color:rgba(140,120,235,0.42);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      0 6px 20px -2px rgba(45,36,150,0.65),
+      0 0 24px -2px rgba(74,58,204,0.40);
+  }
+  .cta-banner a svg{width:18px;height:18px;}
+
+  @media(max-width:700px){
+    nav.site-nav,.nav-strip,.main,.hero{padding-left:20px;padding-right:20px;}
+    nav.site-nav{padding-left:16px;padding-right:16px;grid-template-columns:auto auto;gap:8px;min-height:auto;padding-top:10px;padding-bottom:10px;}
+    nav.site-nav .nav-mid{order:3;grid-column:1 / -1;width:100%;justify-content:center;overflow-x:auto;}
+    .header-tag{display:none;}
+    .hero{padding-top:64px;padding-bottom:56px;}
+    .hero-stats{gap:20px;}
+    .stat-divider{display:none;}
+    .faq-a{padding-left:24px;}
+    .header-right{gap:8px;}
+    .lang-switcher{min-width:70px;font-size:10px;padding:3px 6px 3px 10px;padding-right:22px;background-position:right 7px center;}
+  }
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+  .faq-section{animation:fadeUp 0.4s ease both;}
+  .faq-section:nth-child(1){animation-delay:0.05s;}.faq-section:nth-child(2){animation-delay:0.10s;}.faq-section:nth-child(3){animation-delay:0.15s;}.faq-section:nth-child(4){animation-delay:0.20s;}.faq-section:nth-child(5){animation-delay:0.25s;}.faq-section:nth-child(6){animation-delay:0.30s;}.faq-section:nth-child(7){animation-delay:0.35s;}.faq-section:nth-child(8){animation-delay:0.40s;}.faq-section:nth-child(9){animation-delay:0.45s;}.faq-section:nth-child(10){animation-delay:0.50s;}.faq-section:nth-child(11){animation-delay:0.55s;}
+  .zh .section-title,.zh .faq-q-text{font-family:'Noto Sans TC','Inter',sans-serif;}
+  .ko .section-title,.ko .faq-q-text{font-family:'Noto Sans KR','Inter',sans-serif;}
+
+/* === a11y: keyboard focus === */
+:focus-visible {
+  outline: 2px solid var(--ice, #93C5FD);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.lang-switcher:focus-visible,
+.lang-switcher:focus {
+  outline: 2px solid var(--ice, #93C5FD);
+  outline-offset: 3px;
+}
+
+/* === a11y: prefers-reduced-motion === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .radial-grid .hex,
+  .feed-label::before,
+  .status-pill .status-dot,
+  .hero-pill .dot,
+  .caret {
+    animation: none !important;
+  }
+}
+
+/* === a11y: keyboard focus === */
+:focus-visible {
+  outline: 2px solid var(--ice, #93C5FD);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.lang-switcher:focus-visible,
+.lang-switcher:focus {
+  outline: 2px solid var(--ice, #93C5FD);
+  outline-offset: 3px;
+}
+/* Dead-link disable: any anchor still pointing at "#" is a placeholder
+   that scrolls-to-top in production. Visually demote it and stop the
+   click. The footer "Read the deck" CTA, footer link columns, etc. all
+   read as disabled instead of broken. */
+a[href="#"], a[href=""] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+a[href="#"]::after, a[href=""]::after { content: ''; }
+/* === a11y: prefers-reduced-motion === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .radial-grid .hex,
+  .feed-label::before,
+  .status-pill .status-dot,
+  .hero-pill .dot,
+  .caret {
+    animation: none !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a class="brand" href="hero-prototype-O.html">OPER<span class="on-ice">ON</span></a>
+  <div class="nav-mid">
+    <a href="hero-prototype-O.html">Operon</a>
+    <a href="hero-prototype-O-agents.html">Agents</a>
+    <a href="hero-prototype-O-nodes.html" class="nav-node">Nodes</a>
+    <a href="hero-prototype-O-faq.html" class="active">FAQ</a>
+  </div>
+  <div class="nav-right">
+    <span class="header-tag">Genesis Node Sale &middot; FAQ</span>
+    <select class="lang-switcher" id="langSwitcher" aria-label="Language" data-default="vi">
+      <option value="en">EN</option>
+      <option value="zh-cn">简</option>
+      <option value="zh-tw">繁</option>
+      <option value="ko">KR</option>
+      <option value="ja">JP</option>
+      <option value="th">TH</option>
+      <option value="vi">VN</option>
+    </select>
+  </div>
+</nav>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- HEADER -->
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Frequently Asked Questions</div>
+    <h1>Mạng Lưới Operon, <em>Giải Thích Đầy Đủ.</em></h1>
+    <p class="hero-sub">Tài liệu này bao gồm kiến trúc mạng lưới, cấu trúc bán node, tokenomics, cơ chế giới thiệu, khung thu nhập và lộ trình sau TGE.</p>
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-val">100,000</span>
+        <span class="stat-label">Tổng Node · Giới Hạn Cứng</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-val">$500</span>
+        <span class="stat-label">Giá Bắt Đầu Tầng 1</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-val">40</span>
+        <span class="stat-label">Tầng Giá</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-val">42 Tỷ</span>
+        <span class="stat-label">Nguồn Cung Cố Định $OPRN</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-val">25%</span>
+        <span class="stat-label">Phân Bổ Cho Nhà Vận Hành Node</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NAV PILLS -->
+<nav class="nav-strip">
+  <div class="nav-pills">
+    <a class="nav-pill active" href="#about_vi">Về Operon</a>
+    <a class="nav-pill" href="#how_vi">Cách Hoạt Động</a>
+    <a class="nav-pill" href="#basics_vi">Node Cơ Bản</a>
+    <a class="nav-pill" href="#sale_vi">Cấu Trúc Bán</a>
+    <a class="nav-pill" href="#unsold_vi">Node Chưa Bán & Đốt</a>
+    <a class="nav-pill" href="#earnings_vi">Thu Nhập Node</a>
+    <a class="nav-pill" href="#transfer_vi">Chuyển Nhượng</a>
+    <a class="nav-pill" href="#referral_vi">Mạng Giới Thiệu</a>
+    <a class="nav-pill" href="#token_vi">Token & Quản Trị</a>
+    <a class="nav-pill" href="#nodefn_vi">Chức Năng Node</a>
+    <a class="nav-pill" href="#risk_vi">Rủi Ro & Quy Định</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- SEARCH -->
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="search-input" type="text" placeholder="Tìm kiếm câu hỏi…" id="searchInput_vi" autocomplete="off">
+  </div>
+  <div class="no-results" id="noResults_vi">Không tìm thấy câu hỏi phù hợp.</div>
+
+  <!-- ── 1. Cơ Bản Node ─────────────────────────────────────── -->
+    <section class="faq-section" id="about_vi"><div class="section-header"><div class="section-icon">◈</div><span class="section-title">Về Operon</span><span class="section-count">3 Câu Hỏi</span></div>
+    <details class="faq-item" open><summary class="faq-q"><span class="faq-q-text">Operon là gì?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon là mạng lưới phi tập trung dựa trên node, được xây dựng chuyên biệt cho nền kinh tế AI agent. Mạng lưới cung cấp ba khả năng mà không có giao thức nào khác đồng thời sở hữu:</p>
+      <p><strong>Hạ tầng điều phối trên chuỗi</strong> — AI agent đăng ký trên chuỗi, nhận mã nhận dạng duy nhất, trở nên có thể tìm kiếm thông qua hệ thống lập chỉ mục của mạng lưới, và giao dịch với quy kết có thể xác minh. Tác vụ được định tuyến, kết quả đầu ra được ghi nhận, và hiệu suất được theo dõi theo từng epoch — tất cả đều trên chuỗi.</p>
+      <p><strong>Nền kinh tế thưởng dựa trên hoạt động</strong> — Nhà vận hành node kiếm <span class="hl">$OPRN</span> bằng cách vận hành hạ tầng cung cấp năng lượng cho mạng lưới. Phần thưởng đến từ ba nguồn: phát thải cơ bản (cố định, có thể dự đoán), thưởng hiệu suất (phụ thuộc thời gian hoạt động), và Activity Pool được tài trợ bởi phí sử dụng thực tế từ các AI agent hoạt động trên mạng lưới. Thu nhập của nhà vận hành tăng trưởng cùng với việc áp dụng AI agent.</p>
+      <p><strong>Động cơ phân phối tích hợp vào giao thức</strong> — Chuỗi giới thiệu 5 tầng, được thực thi bởi hợp đồng thông minh, biến mọi người nắm giữ node thành đối tác phân phối. Đây không phải công cụ marketing bổ sung mà là thành phần cốt lõi của giao thức, được tài trợ bởi pool token chuyên dụng <span class="hl">10%</span>, thiết kế để việc mở rộng mạng lưới trở thành lựa chọn hợp lý về kinh tế cho người tham gia.</p>
+      <p>Mạng lưới được vận hành bởi <span class="hl">100.000</span> node (giới hạn cứng, không bao giờ tăng), với <span class="hl">$OPRN</span> là token gốc có tổng cung cố định vĩnh viễn <span class="hl">42.000.000.000</span>.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon khác gì so với các dự án AI phi tập trung khác?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Hiện tồn tại nhiều loại dự án AI phi tập trung, mỗi loại giải quyết một phần khác nhau của vấn đề:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Loại</th><th>Chức Năng</th><th>Phần Chưa Bao Phủ</th></tr></thead><tbody>
+        <tr><td>Mạng tính toán GPU</td><td>Cung cấp sức mạnh xử lý thô cho khối lượng công việc AI</td><td>Không có lớp điều phối, khám phá, hay tin cậy cho AI agent</td></tr>
+        <tr><td>Giao thức token hoá AI agent</td><td>Tạo token có thể giao dịch cho từng AI agent</td><td>Không có hạ tầng thực thi hay hệ thống uy tín</td></tr>
+        <tr><td>Dự án framework AI agent</td><td>Cung cấp công cụ phát triển và mô hình đồng sở hữu</td><td>Không có phân phối tích hợp — AI agent không có đường tiếp cận người dùng</td></tr>
+        <tr><td>Lưu trữ phi tập trung</td><td>Cung cấp hạ tầng lưu trữ dữ liệu</td><td>Không có thực thi logic AI agent, điều phối, hay sàn giao dịch</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">Operon chiếm lĩnh lớp mà không dự án nào ở trên bao phủ: hạ tầng điều phối, xác minh và phân phối giữa AI agent và thị trường mở. Đây là quan hệ bổ sung — Operon nằm giữa AI agent và người dùng, không cạnh tranh với nhà cung cấp tính toán hay lưu trữ.</p>
+      <div style="margin:24px 0 20px; overflow-x:auto;">
+        <svg viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" style="max-width:640px; width:100%; display:block; margin:0 auto;">
+          <defs><linearGradient id="gBv" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1A56DB" stop-opacity="0.12"/><stop offset="100%" stop-color="#3B82F6" stop-opacity="0.04"/></linearGradient><linearGradient id="gGv" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#D97706" stop-opacity="0.14"/><stop offset="100%" stop-color="#F59E0B" stop-opacity="0.05"/></linearGradient></defs>
+          <rect x="20" y="16" width="640" height="64" rx="12" fill="url(#gBv)" stroke="#1A56DB" stroke-opacity="0.25"/>
+          <text x="340" y="40" text-anchor="middle" fill="#1A56DB" font-family="Syne,sans-serif" font-size="11" font-weight="600" letter-spacing="2">AI AGENT</text>
+          <text x="340" y="60" text-anchor="middle" fill="#1A56DB" font-family="Inter,sans-serif" font-size="10" opacity="0.55">Giao dịch · Nghiên cứu · Nội dung · Hỗ trợ · Công cụ Dev · Tuỳ chỉnh</text>
+          <rect x="60" y="100" width="560" height="130" rx="12" fill="none" stroke="#EF4444" stroke-dasharray="6,4" stroke-opacity="0.35"/>
+          <text x="340" y="124" text-anchor="middle" fill="#EF4444" font-family="DM Mono,monospace" font-size="9" letter-spacing="3" opacity="0.7">KHOẢNG TRỐNG</text>
+          <text x="340" y="142" text-anchor="middle" fill="#EF4444" font-family="Inter,sans-serif" font-size="10.5" opacity="0.45">Không điều phối · Không khám phá · Không xác minh · Không phân phối</text>
+          <rect x="90" y="152" width="500" height="60" rx="10" fill="url(#gGv)" stroke="#D97706" stroke-opacity="0.5"/>
+          <text x="340" y="176" text-anchor="middle" fill="#B45309" font-family="Syne,sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">OPERON</text>
+          <text x="340" y="198" text-anchor="middle" fill="#B45309" font-family="Inter,sans-serif" font-size="10" opacity="0.7">Điều phối · Xác minh · Phân phối · Uy tín</text>
+          <rect x="20" y="254" width="640" height="64" rx="12" fill="url(#gBv)" stroke="#1A56DB" stroke-opacity="0.25"/>
+          <text x="340" y="278" text-anchor="middle" fill="#1A56DB" font-family="Inter,sans-serif" font-size="11" font-weight="600" letter-spacing="2">NGƯỜI DÙNG · NHÀ XÂY DỰNG · DOANH NGHIỆP</text>
+          <text x="340" y="298" text-anchor="middle" fill="#1A56DB" font-family="Inter,sans-serif" font-size="10" opacity="0.55">Khám phá agent · Tổ hợp workflow · Xác minh đầu ra · Xây dựng on-chain</text>
+          <line x1="200" y1="80" x2="200" y2="100" stroke="#1A56DB" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3,3"/><line x1="340" y1="80" x2="340" y2="100" stroke="#1A56DB" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3,3"/><line x1="480" y1="80" x2="480" y2="100" stroke="#1A56DB" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3,3"/>
+          <line x1="200" y1="230" x2="200" y2="254" stroke="#D97706" stroke-opacity="0.5" stroke-width="1.5"/><line x1="340" y1="230" x2="340" y2="254" stroke="#D97706" stroke-opacity="0.5" stroke-width="1.5"/><line x1="480" y1="230" x2="480" y2="254" stroke="#D97706" stroke-opacity="0.5" stroke-width="1.5"/>
+          <text x="340" y="335" text-anchor="middle" fill="#8090A8" font-family="Inter,sans-serif" font-size="10" letter-spacing="0.5" opacity="0.6">Lớp giữa AI agent và người dùng</text>
+        </svg>
+      </div>
+      <div class="callout"><div class="callout-label">Ba Điểm Khác Biệt Cấu Trúc</div>Phân phối là thành phần cốt lõi của giao thức, không phải lớp marketing. Giao diện tiêu dùng (sàn Forge, Danh mục Uy tín AI Agent) hoạt động ngay khi TGE, không phải mục trên lộ trình. Nguồn cung node giới hạn cứng cùng cơ chế đốt tự động tạo ra sự khan hiếm cấu trúc.</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Lộ trình của Operon là gì?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Lộ trình được cấu trúc thành năm giai đoạn. Không cam kết ngày cụ thể — thứ tự là cam kết.</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Giai đoạn</th><th>Tên</th><th>Nội dung</th></tr></thead><tbody>
+        <tr><td class="mono">1</td><td>Genesis Node Sale</td><td>100.000 node bán qua 40 tầng giá. Node NFT được tạo trên Arbitrum hoặc BNB Chain. Các AI agent hạ tầng cốt lõi được kích hoạt.</td></tr>
+        <tr><td class="mono">2</td><td>TGE & Kích hoạt mạng lưới</td><td>Token $OPRN ra mắt. Phát thải bắt đầu. Sàn Operon Forge, Danh mục Uy tín AI Agent, và Portal hoạt động. Tất cả AI agent hệ sinh thái có sẵn cho người đăng ký.</td></tr>
+        <tr><td class="mono">3</td><td>SDK Builder & Sổ đăng ký Agent</td><td>Nhà phát triển bên thứ ba có thể đăng ký AI agent của họ trên chuỗi. Cổng tài liệu builder ra mắt. Sổ đăng ký trở thành sàn giao dịch công khai cho các AI agent có thể xác minh.</td></tr>
+        <tr><td class="mono">4</td><td>Sàn AI Agent & Mở rộng</td><td>Sàn AI agent do cộng đồng quản trị. Nhà vận hành node cung cấp dịch vụ chuyên biệt để có thêm nguồn thu.</td></tr>
+        <tr><td class="mono">5</td><td>Quản trị & Trưởng thành giao thức</td><td>Người nắm giữ $OPRN có quyền quản trị lịch phát thải, tiêu chuẩn sổ đăng ký, và phân bổ ngân quỹ. Giao thức chuyển sang quản trị cộng đồng.</td></tr>
+      </tbody></table>
+    </div></details>
+  </section>
+
+    <section class="faq-section" id="how_vi"><div class="section-header"><div class="section-icon">⬡</div><span class="section-title">Cách Hoạt Động</span><span class="section-count">4 Câu Hỏi</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Mạng lưới Operon hoạt động như thế nào?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Mạng lưới được cấu trúc thành ba lớp chức năng:</p>
+      <p><strong>Lớp điều phối.</strong> AI agent đăng ký trên chuỗi và nhận mã nhận dạng duy nhất. Chỉ mục khám phá đánh giá và xếp hạng mọi AI agent đã đăng ký theo thời gian hoạt động, mức tương tác và lượng sử dụng — giúp người dùng tìm kiếm và các AI agent khác có thể kết hợp. Yêu cầu tác vụ được định tuyến qua mạng lưới, đầu ra được ghi nhận, và hệ thống quy kết theo dõi đóng góp theo từng epoch. Tất cả điều phối đều trên chuỗi và có thể xác minh.</p>
+      <p><strong>Lớp xác minh.</strong> Cơ chế xác minh độc lập tạo ra chứng nhận 3 cấp trên chuỗi cho đầu ra AI agent: <span class="hl">Đã xác nhận</span>, <span class="hl">Khớp một phần</span>, hoặc <span class="hl">Không thể xác minh</span>. Các chứng nhận này được tích lũy vào Danh mục Uy tín AI Agent — sổ đăng ký trên chuỗi có thể truy vấn công khai chứa dữ liệu hiệu suất có thể xác minh. Niềm tin tích lũy theo thời gian: một AI agent có sáu tháng chứng nhận "Đã xác nhận" mang lại độ tin cậy mà không tuyên bố marketing nào có thể sao chép.</p>
+      <p><strong>Lớp phân phối.</strong> Mọi AI agent đã đăng ký được tự động phân phối tới hơn 400 kênh. Chuỗi giới thiệu — cấu trúc hoa hồng 5 tầng tích hợp vào giao thức — biến mọi người nắm giữ node thành đối tác phân phối. Phân phối được tài trợ bởi pool token chuyên dụng và thực thi bởi hợp đồng thông minh.</p>
+      <p>AI agent giao tiếp thông qua tiêu chuẩn nhắn tin chia sẻ cho việc chuyển giao tác vụ giữa các agent. Người dùng có thể tổ hợp workflow đa agent thông qua mục tiêu bằng ngôn ngữ tự nhiên — lựa chọn AI agent, xác nhận sơ đồ tác vụ, và nhận biên lai trên chuỗi cho công việc hoàn thành.</p>
+      <p>Khi ra mắt, mạng lưới bao gồm các AI agent do đội ngũ Operon xây dựng theo hai bộ: sáu AI agent hạ tầng <em>chính là</em> các lớp điều phối và phân phối (nhà vận hành node lưu trữ và kiếm phần thưởng), và sáu AI agent dịch vụ hệ sinh thái phục vụ trực tiếp cho builder và người dùng. Đây là thành phần ban đầu của sổ đăng ký — được xây dựng để chứng minh hạ tầng hoạt động trước khi mở cho nhà phát triển bên ngoài ở Giai đoạn 3. Chi tiết từng AI agent xem tại trang <strong>Agent Network</strong> trên operon.network.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon xác minh đầu ra AI agent như thế nào?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Cơ chế xác minh của Operon tạo ra chứng nhận độc lập trên chuỗi cho đầu ra AI agent. Mỗi chứng nhận thuộc một trong ba cấp:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Cấp</th><th>Ý nghĩa</th></tr></thead><tbody>
+        <tr><td><span class="hl">Đã xác nhận</span></td><td>Đầu ra được xác minh độc lập là chính xác và đầy đủ</td></tr>
+        <tr><td><span class="hl">Khớp một phần</span></td><td>Đầu ra được xác minh một phần — một số yếu tố đã xác nhận, các yếu tố khác không thể xác minh độc lập</td></tr>
+        <tr><td><span class="hl">Không thể xác minh</span></td><td>Đầu ra không thể được xác minh độc lập</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">Mỗi chứng nhận có dấu thời gian, chữ ký mật mã, và được ghi nhận vĩnh viễn trên chuỗi. Bất kỳ người dùng hay ứng dụng nào cũng có thể tra cứu hash đầu ra qua URL công khai để xem trạng thái xác minh — không cần tài khoản. Kết quả có thể chia sẻ dưới dạng liên kết vĩnh viễn.</p>
+      <p>Các chứng nhận này được tổng hợp vào <strong>Danh mục Uy tín AI Agent</strong> — sổ đăng ký trên chuỗi có thể truy vấn công khai, tập hợp dữ liệu hiệu suất có thể xác minh cho mọi AI agent trên mạng lưới: tỷ lệ hoàn thành tác vụ, đánh giá người dùng, lịch sử thời gian hoạt động, lượng sử dụng, và hồ sơ tranh chấp. Bản ghi là bất biến và có thể kết hợp — bất kỳ ứng dụng nào cũng có thể truy vấn danh mục mà không cần dựa vào tuyên bố tự khai báo.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Những gì ra mắt khi TGE?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Các thành phần sau hoạt động đồng thời khi TGE:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Giao diện</th><th>Chức năng</th></tr></thead><tbody>
+        <tr><td><strong>Operon Forge</strong></td><td>Sàn AI agent được tuyển chọn với sáu danh mục: Giao dịch & Tự động hoá DeFi, Nghiên cứu & Phân tích dữ liệu, Sáng tạo nội dung & Viết, Dịch vụ khách hàng & Hỗ trợ, Gaming & Giải trí, Công cụ nhà phát triển. Phí sử dụng chảy vào Activity Pool của nhà vận hành node.</td></tr>
+        <tr><td><strong>Danh mục Uy tín AI Agent</strong></td><td>Sổ đăng ký trên chuỗi, truy vấn công khai, chứa dữ liệu hiệu suất AI agent có thể xác minh. Bất biến và có thể kết hợp.</td></tr>
+        <tr><td><strong>Operon Portal</strong></td><td>Giao diện web quản lý node (số $OPRN kiếm được, số dư có thể rút, trực quan hóa mạng giới thiệu), truy cập đăng ký AI agent, và khám phá AI agent.</td></tr>
+        <tr><td><strong>Phát thải $OPRN</strong></td><td>Tất cả nhà vận hành node bắt đầu kiếm từ epoch phát thải đầu tiên. Phát thải cơ bản phân phối hàng ngày.</td></tr>
+        <tr><td><strong>Staking $OPRN</strong></td><td>Ra mắt khi TGE với phần thưởng token đối tác.</td></tr>
+        <tr><td><strong>Chuỗi phát thải giới thiệu</strong></td><td>Phần thưởng giới thiệu sau TGE kích hoạt, trả bằng $OPRN từ Pool Giới thiệu & Phân phối.</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">Người tham gia chiến dịch quest (Galxe và Layer3) nhận phân bổ TGE từ Pool Giới thiệu & Phân phối trong giai đoạn này. Nguồn cung lưu thông ban đầu khi TGE khoảng <span class="hl">3%</span> tổng cung.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon chạy trên blockchain nào?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon được triển khai trên <strong>Arbitrum</strong> — mạng Ethereum Layer 2 hàng đầu cung cấp phí giao dịch thấp, thông lượng cao, và kết nối sâu với hệ sinh thái EVM rộng lớn hơn. Hợp đồng node, sổ đăng ký AI agent, theo dõi giới thiệu, phân phối phần thưởng, và quản trị đều chạy trên Arbitrum.</p>
+      <p>Bán node chấp nhận USDC và USDT trên cả Arbitrum và BNB Chain. Node được tạo trên chain mà người mua thanh toán.</p>
+    </div></details>
+  </section>
+
+  <section class="faq-section" id="basics_vi"><div class="section-header"><div class="section-icon">⬢</div><span class="section-title">Node Cơ Bản</span><span class="section-count">3 Câu Hỏi</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon Node là gì?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon Node là <span class="hl">giấy phép NFT ERC-721</span> vĩnh viễn được phát hành trên Arbitrum hoặc BNB Chain. Nó cấp quyền lợi phân phối trong hệ sinh thái Operon: phát thải <span class="hl">$OPRN</span> cơ bản, thưởng hiệu suất, phần chia Activity Pool, và tư cách tham gia mạng giới thiệu cộng đồng. Khi giao thức trưởng thành, giấy phép còn cấp quyền bỏ phiếu quản trị.</p>
+      <p>Theo lộ trình dài hạn, Operon Node được thiết kế để phát triển thành node xác nhận — thực hiện <em>xác nhận điều phối nhẹ</em>: xác nhận hoàn thành tác vụ AI agent, chứng thực chỉ số chất lượng dịch vụ, xác minh thời gian hoạt động và tính nhất quán đầu ra, và đóng góp điểm cho Danh mục Uy tín AI Agent. Vai trò xác nhận này là bổ sung và không yêu cầu phần cứng mới.</p>
+      <div class="callout"><div class="callout-label">Giới Hạn Cứng</div>Nguồn cung cố định vĩnh viễn ở mức 100.000. Không có node bổ sung nào được tạo ra trong bất kỳ trường hợp nào.</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Cần phần cứng gì để vận hành node?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Không cần GPU, rack máy chủ, hay phần cứng cấp doanh nghiệp. Operon Node là đơn vị tham gia và điều phối nhẹ, không phải nông trại tính toán. Client node được thiết kế để chạy trên phần cứng tiêu dùng tiêu chuẩn — máy tính xách tay hoặc VPS thông thường là đủ.</p>
+      <p>Đối với người nắm giữ muốn vận hành hoàn toàn được quản lý, nhà cung cấp Node-as-a-Service (NaaS) sẽ ra mắt cùng TGE.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Node có phải là NFT không? Sở hữu node có nghĩa gì?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Có. Mỗi Operon Node được phát hành dưới dạng NFT <span class="hl">ERC-721</span> trên Arbitrum hoặc BNB Chain. NFT <em>chính là</em> giấy phép — quyền phát thải, thu nhập phân phối, cổ phần quản trị và tư cách tham gia xác nhận trong tương lai đều gắn với token đó.</p>
+      <p>Mua node nghĩa là sở hữu NFT; chạy client node (hoặc uỷ quyền cho nhà cung cấp NaaS) kích hoạt chức năng kiếm tiền và tham gia.</p>
+    </div></details>
+  </section>
+
+  <!-- ── 2. Cấu Trúc Bán ─────────────────────────────────────── -->
+  <section class="faq-section" id="sale_vi"><div class="section-header"><div class="section-icon">◎</div><span class="section-title">Cấu Trúc Bán</span><span class="section-count">5 Câu Hỏi</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Định giá node hoạt động như thế nào?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Genesis Node Sale được chia thành <span class="hl">40 tầng</span>, mỗi tầng <span class="hl">2.500 node</span>. Mỗi tầng có giá cao hơn tầng trước chính xác <span class="hl">5%</span>, bắt đầu từ <span class="hl">$500,00</span> ở Tầng 1 và đạt khoảng <span class="hl">$3.354</span> ở Tầng 40. Khi một tầng bán hết, tầng tiếp theo tự động mở qua hợp đồng thông minh — không cần can thiệp thủ công, không dừng giữa các tầng.</p>
+      <p>Tổng số tiền huy động khi bán hết hoàn toàn khoảng <strong>151 triệu USD</strong>. Đợt bán kết thúc khi tất cả 100.000 node được bán hoặc đến thời hạn đã công bố.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Chấp nhận loại tiền thanh toán nào?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Đợt bán node chấp nhận ba loại tiền:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Tiền tệ</th><th>Chain</th><th>Ghi chú</th></tr></thead><tbody>
+        <tr><td><span class="hl">USDC / USDT</span></td><td>Arbitrum + BNB Chain</td><td>Thanh toán theo mệnh giá, không cần chuyển đổi</td></tr>
+      </tbody></table>
+      <p>Tất cả giá tính bằng USD. USDC và USDT được chấp nhận theo mệnh giá trên cả Arbitrum và BNB Chain. Không cần chuyển đổi tỷ giá.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Có giới hạn mua mỗi ví không?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Chỉ các tầng đầu có giới hạn. <span class="hl">Tầng 1–5</span> có giới hạn mua mỗi ví để bảo vệ phân quyền và đảm bảo cộng đồng có thể tiếp cận rộng rãi các tầng giá thấp nhất. <span class="hl">Tầng 6–40</span> không có giới hạn mỗi ví. Giới hạn cụ thể sẽ được công bố trong điều khoản bán chính thức tại operon.network.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Whitelist là gì và làm sao để đủ điều kiện?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Tầng 1–5 mỗi tầng dành chính xác <strong>50% node</strong> (1.250 mỗi tầng, tổng 6.250) cho năm loại người tham gia whitelist:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Loại</th><th>Mô tả</th></tr></thead><tbody>
+        <tr><td>Cộng đồng OG</td><td>Thành viên Discord / Telegram, người đăng ký trước danh sách chờ, người tham gia testnet</td></tr>
+        <tr><td>DAO đối tác chiến lược</td><td>Cộng đồng DAO gốc Web3 và AI, mỗi cộng đồng có phân bổ cố định</td></tr>
+        <tr><td>KOL & Đại sứ</td><td>Nhà sáng tạo có 50.000+ người theo dõi; hoàn thành tối thiểu 2 nội dung trước khi mở bán</td></tr>
+        <tr><td>VC & Tổ chức</td><td>Nhà đầu tư giai đoạn đầu và người tham gia tổ chức chiến lược</td></tr>
+        <tr><td>Người thắng Quest & Chiến dịch</td><td>Người tham gia có hoạt động on-chain xác minh được từ chiến dịch Galxe và Layer3</td></tr>
+      </tbody></table>
+      <p style="margin-top:12px;">50% node còn lại của Tầng 1–5 và tất cả Tầng 6–40 mở cho công chúng theo thứ tự đến trước. Đăng ký trước tại <strong>operon.network</strong> là con đường chính để được xem xét whitelist OG.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Khi một tầng bán hết thì sao?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Khi 2.500 node của một tầng được bán, tầng đó tự động đóng qua hợp đồng thông minh và tầng tiếp theo mở ngay với giá mới — không can thiệp thủ công, không dừng. Người mua luôn mua ở giá tầng hiện tại đang mở.</p>
+      <p>Nếu một tầng đóng trong khi giao dịch đang xử lý, hợp đồng thông minh sẽ hoàn tất mua ở giá tầng tiếp theo nếu phù hợp tham số giao dịch đã duyệt, hoặc hoàn tiền nếu không.</p>
+    </div></details>
+  </section>
+
+  <!-- ── 3. Node Chưa Bán & Đốt ───────────────────────────────── -->
+  <section class="faq-section" id="unsold_vi"><div class="section-header"><div class="section-icon">⊘</div><span class="section-title">Node Chưa Bán & Cơ Chế Đốt</span><span class="section-count">2 Câu Hỏi</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Node chưa bán sẽ ra sao sau khi đợt bán kết thúc?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Tất cả giấy phép node chưa bán sẽ được <strong>đốt vĩnh viễn</strong>. Phân bổ phát thải $OPRN ban đầu gán cho các node đó sẽ được <strong>phân phối lại tỷ lệ cho tất cả người nắm giữ node đã mua</strong> — hoàn thành trước TGE, trước khi bắt đầu bất kỳ phát thải nào.</p>
+      <div class="callout gold"><div class="callout-label">Mỗi node chưa bán bị đốt → Phân bổ cao hơn cho mỗi người mua</div>Tổng pool phát thải gán cho node không bao giờ thay đổi. Chỉ số node chia sẻ giảm đi. Bán một phần không gây hại — mà thưởng cho người mua sớm.</div>
+      <table class="data-table"><thead><tr><th>Tỷ lệ bán</th><th>Node đã bán</th><th>Node đã đốt</th><th class="mono">$OPRN cơ bản / node</th></tr></thead><tbody>
+        <tr><td>100%</td><td>100.000</td><td>0</td><td class="mono">63.000 $OPRN</td></tr>
+        <tr><td>80%</td><td>80.000</td><td>20.000</td><td class="mono">78.750 $OPRN</td></tr>
+        <tr><td>60%</td><td>60.000</td><td>40.000</td><td class="mono">105.000 $OPRN</td></tr>
+        <tr><td>50%</td><td>50.000</td><td>50.000</td><td class="mono">126.000 $OPRN</td></tr>
+        <tr class="total"><td>Công thức</td><td colspan="2">6,3 tỷ ÷ Node đã bán</td><td class="mono">= $OPRN / node</td></tr>
+      </tbody></table>
+      <p>Đốt được kích hoạt tự động bởi hợp đồng thông minh khi đóng bán — không cần bỏ phiếu quản trị, không can thiệp thủ công.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Phát thải bắt đầu khi nào? Tất cả node bắt đầu kiếm đồng thời không?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Có — tất cả node <strong>bắt đầu kiếm đồng thời khi TGE</strong>, bất kể tầng hay ngày mua trong đợt bán. Đợt bán kết thúc hoàn toàn trước khi TGE mở.</p>
+      <p>TGE diễn ra trong vòng <span class="hl">tối thiểu 4 tuần, tối đa 12 tuần</span> sau khi kết thúc bán, giai đoạn này dùng để hoàn tất đốt và phân phối lại, chuẩn bị niêm yết sàn, và chiến dịch quest cộng đồng.</p>
+    </div></details>
+  </section>
+
+  <!-- ── 4. Thu Nhập & Lợi Nhuận ──────────────────────────────────── -->
+  <section class="faq-section" id="earnings_vi"><div class="section-header"><div class="section-icon">⊕</div><span class="section-title">Thu Nhập Node</span><span class="section-count">4 Câu Hỏi</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Mỗi node kiếm bao nhiêu token $OPRN mỗi năm?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Pool phát thải cơ bản là <span class="hl">6.300.000.000 $OPRN</span>, phân phối cho nhà vận hành node trong 4 năm theo lịch giảm dần ưu tiên đầu kỳ. Khi bán hết (100.000 node), quyền lợi mỗi node là <strong>63.000 $OPRN</strong> — tăng tỷ lệ nếu có node chưa bán bị đốt.</p>
+      <table class="data-table"><thead><tr><th>Năm</th><th>% Pool cơ bản</th><th class="mono">Token / node*</th><th class="mono">Node / ngày*</th><th>Luỹ kế*</th></tr></thead><tbody>
+        <tr><td><strong>Năm 1</strong></td><td>40%</td><td class="mono">25.200 $OPRN</td><td class="mono">~69,04 / ngày</td><td>25.200</td></tr>
+        <tr><td><strong>Năm 2</strong></td><td>30%</td><td class="mono">18.900 $OPRN</td><td class="mono">~51,78 / ngày</td><td>44.100</td></tr>
+        <tr><td><strong>Năm 3</strong></td><td>20%</td><td class="mono">12.600 $OPRN</td><td class="mono">~34,52 / ngày</td><td>56.700</td></tr>
+        <tr><td><strong>Năm 4</strong></td><td>10%</td><td class="mono">6.300 $OPRN</td><td class="mono">~17,26 / ngày</td><td>63.000</td></tr>
+        <tr class="total"><td><strong>Tổng</strong></td><td>100%</td><td class="mono"><strong>63.000 $OPRN</strong></td><td class="mono">—</td><td><strong>63.000</strong></td></tr>
+      </tbody></table>
+      <p style="font-size:13px;color:var(--mid);margin-top:8px;">* Tính khi bán hết (100.000 node). Bán 80%: 78.750 $OPRN / node; bán 50%: 126.000 $OPRN / node.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Performance Pool và Activity Pool là gì?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p><strong>Performance Pool</strong> — Pool được cấp vốn trước <span class="hl">4.200.000.000 $OPRN</span> phục vụ ba chức năng: (1) thưởng uptime hàng quý cho node duy trì <span class="hl">99%+</span> uptime từ Q5, (2) tài trợ thưởng +15% và +25% cho các lần claim Extended và Long Commitment, và (3) hệ số nhân hiệu suất hoạt động. Pool được bổ sung từ phần bị tịch thu của claim Accelerated. Q1–Q4 sau TGE là giai đoạn ân hạn — tất cả node hoạt động đủ điều kiện nhận thưởng uptime. Khi bán hết: khoảng <strong>3.500 $OPRN mỗi node đủ điều kiện mỗi quý</strong> chỉ từ thành phần uptime.</p>
+      <p><strong>Activity Pool</strong> — Pool biến đổi được tài trợ bởi phí sử dụng thực tế từ Operon Forge và mọi hoạt động giao thức. Phân phối hàng ngày, tỷ lệ theo thời gian hoạt động đã xác minh của mỗi node trong epoch 24 giờ. Activity Pool được thiết kế để dần trở thành động lực chính của thu nhập nhà vận hành khi việc áp dụng AI agent tăng trưởng.</p>
+      <div class="callout"><div class="callout-label">Ba Nguồn Thu Nhập</div>Phát thải cơ bản (cố định, dự đoán được) + Thưởng hiệu suất (phụ thuộc uptime) + Activity Pool (biến đổi, tăng theo sử dụng). Ba nguồn cùng mang lại thu nhập cơ bản dự đoán được và lợi nhuận thêm gắn với tăng trưởng mạng lưới.</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Các tuỳ chọn rút thưởng là gì?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Nhà vận hành node kiếm thưởng hàng ngày dưới dạng token <span class="hl">vOP</span> — $OPRN ảo tích luỹ trong bảng điều khiển. vOP là off-chain và không thể chuyển nhượng. Khi claim, bạn chọn một trong bốn bậc vesting:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Bậc</th><th>Thời gian vesting</th><th>Nhận được</th><th>Xử lý</th></tr></thead><tbody>
+        <tr><td><strong>Accelerated</strong></td><td>30 ngày</td><td class="mono">50%</td><td>50% bị tịch thu vào Performance Pool</td></tr>
+        <tr><td><strong>Standard</strong></td><td>120 ngày</td><td class="mono">100%</td><td>Không phạt</td></tr>
+        <tr><td><strong>Extended</strong></td><td>180 ngày</td><td class="mono">115%</td><td>+15% thưởng từ Performance Pool</td></tr>
+        <tr><td><strong>Long Commitment</strong></td><td>360 ngày</td><td class="mono">125%</td><td>+25% thưởng từ Performance Pool</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">Vesting là <strong>tuyến tính</strong> — $OPRN mở khoá dần trong suốt thời gian, không phải một lần vào cuối kỳ. Mỗi claim độc lập; bạn có thể chạy nhiều claim ở các bậc khác nhau đồng thời. Claim tối thiểu: <span class="hl">100 vOP</span>. Claim không thể huỷ sau khi gửi. Không cần KYC.</p>
+      <p>Token bị tịch thu từ claim Accelerated chảy vào Performance Pool — tài trợ thưởng +15% và +25% cho nhà vận hành kiên nhẫn và phần thưởng hoạt động. Người nóng vội tài trợ thưởng cho người kiên nhẫn.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Ví dụ hoà vốn node Tầng 1 trông như thế nào?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <div class="example-box">
+        <div class="ex-title">Node Tầng 1 — Kịch bản bán hết (Minh hoạ)</div>
+        <div class="ex-row"><span>Giá mua</span><span>$500,00</span></div>
+        <div class="ex-row"><span>Quyền phát thải cơ bản (4 năm)</span><span>63.000 $OPRN</span></div>
+        <div class="ex-row"><span>Quyền thưởng hiệu suất (ước tính)</span><span>~42.000 $OPRN</span></div>
+        <hr class="ex-divider">
+        <div class="ex-row"><span>Giá token hoà vốn (chỉ phát thải cơ bản)</span><span>$500 ÷ 63.000 ≈ $0,008</span></div>
+        <hr class="ex-divider">
+        <div class="ex-row ex-total"><span>Phân phối Activity Pool</span><span>Lợi nhuận thêm</span></div>
+      </div>
+      <p style="font-size:13px;color:var(--mid);">Khi bán 80% (20.000 node bị đốt), cùng người mua Tầng 1 nhận 78.750 $OPRN cơ bản, tiếp tục hạ giá token hoà vốn. Khung này chỉ là tính toán số lượng token — không phải dự báo giá thị trường $OPRN. Lợi nhuận thực tế phụ thuộc vào mức áp dụng mạng lưới, điều kiện thị trường token, và thời gian hoạt động của nhà vận hành.</p>
+    </div></details>
+  </section>
+
+  <!-- ── 5. Khả Năng Chuyển Nhượng ────────────────────────────────────── -->
+  <section class="faq-section" id="transfer_vi"><div class="section-header"><div class="section-icon">⇄</div><span class="section-title">Chuyển Nhượng & Quyền Phát Thải</span><span class="section-count">2 Câu Hỏi</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Tôi có thể chuyển nhượng hoặc bán node sau khi mua không?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Node <span class="hl">không thể chuyển nhượng trong sáu tháng đầu</span> sau khi mua. Sau khi hết thời gian khoá sáu tháng, node có thể chuyển nhượng tự do trên thị trường thứ cấp.</p>
+      <p>Quan trọng: <strong>Quyền phát thải gắn với NFT node</strong>, không phải ví mua ban đầu.</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Khi chuyển nhượng</th><th>Người nắm giữ mới nhận được</th></tr></thead><tbody>
+        <tr><td>Tích luỹ vOP trong tương lai</td><td>Tất cả phát thải tương lai từ ngày chuyển nhượng</td></tr>
+        <tr><td>Số dư vOP đã tích luỹ</td><td>Mọi vOP chưa claim chuyển cùng NFT</td></tr>
+        <tr><td>Mục vesting đang hoạt động</td><td>Mọi claim đang tiến hành (cùng thời gian đếm ngược còn lại) chuyển cùng NFT</td></tr>
+        <tr><td>$OPRN đã rút</td><td>Ở lại ví người bán — ERC-20 tiêu chuẩn, không bị ảnh hưởng bởi chuyển nhượng NFT</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">NFT là gói hoàn chỉnh: giấy phép, số dư tích luỹ, và vesting đang tiến hành. Thứ duy nhất không chuyển là $OPRN đã trong ví.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Phát thải có cố định hay có thể thay đổi?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Tổng cung $OPRN <strong>cố định vĩnh viễn ở 42.000.000.000 token</strong>. Không có token mới nào vượt giới hạn này được tạo ra.</p>
+      <p>Tuy nhiên, cơ chế phân bổ — cách lịch phát thải được cấu trúc, cách phân phối giữa các pool, cách thiết lập ngưỡng hiệu suất — có thể được điều chỉnh trong các nâng cấp tương lai qua quản trị on-chain. Mọi thay đổi đều cần phê duyệt quản trị on-chain và sẽ được thông báo trước cho tất cả người nắm giữ node.</p>
+    </div></details>
+  </section>
+
+  <!-- ── 6. Mạng Lưới Giới Thiệu Cộng Đồng ─────────────────────────────────── -->
+  <section class="faq-section" id="referral_vi"><div class="section-header"><div class="section-icon">⊙</div><span class="section-title">Mạng Giới Thiệu Cộng Đồng</span><span class="section-count">4 Câu Hỏi</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Cấu trúc giới thiệu trước TGE hoạt động thế nào?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Mỗi lần mua node tự động kích hoạt mã giới thiệu — <strong>địa chỉ ví của bạn chính là mã giới thiệu</strong>. Không cần đăng ký, không yêu cầu tầng.</p>
+      <div class="callout" style="margin-bottom:16px;"><div class="callout-label">Chiết khấu người mua</div>Mọi giao dịch mua qua mã giới thiệu tự động giảm <strong>10%</strong> giá tầng đã công bố, thực thi bởi hợp đồng thông minh. Chiết khấu này độc lập với hoa hồng người giới thiệu và không giảm thu nhập của họ.</div>
+      <p>Khi bất kỳ ai trong mạng giới thiệu mua node, <strong>bạn nhận hoa hồng sâu đến 5 tầng</strong>:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Tầng</th><th>Đối tượng</th><th class="mono">Bạn nhận</th></tr></thead><tbody>
+        <tr><td>L1 — Giới thiệu trực tiếp</td><td>Người mua bằng mã giới thiệu của bạn</td><td class="mono">10% giá mua</td></tr>
+        <tr><td>L2 — Được L1 giới thiệu</td><td>Người mà L1 giới thiệu</td><td class="mono">3% giá mua</td></tr>
+        <tr><td>L3 — Được L2 giới thiệu</td><td>Người mà L2 giới thiệu</td><td class="mono">2% giá mua</td></tr>
+        <tr><td>L4 — Được L3 giới thiệu</td><td>Người mà L3 giới thiệu</td><td class="mono">1% giá mua</td></tr>
+        <tr><td>L5 — Được L4 giới thiệu</td><td>Người mà L4 giới thiệu</td><td class="mono">1% giá mua</td></tr>
+        <tr class="total"><td><strong>Tối đa mỗi giao dịch</strong></td><td>—</td><td class="mono"><strong>17%</strong></td></tr>
+      </tbody></table>
+      <p style="margin-top:12px;">Tất cả 5 tầng hoa hồng được trả bằng USDC, chuyển trực tiếp vào ví hai tuần một lần. L2~L5 yêu cầu nắm giữ ≥1 Operon Node đang hoạt động. Tự giới thiệu bị chặn ở cấp hợp đồng.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Tại sao Operon phân phối lại 27% doanh thu bán cho người tham gia?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Đây là lựa chọn cấu trúc có chủ ý, không phải khuyến mãi. Các dự án phần mềm hoặc crypto truyền thống chi tiêu tỷ lệ tương đương hoặc cao hơn cho marketing tập trung. Operon chuyển hướng chi tiêu đó trực tiếp cho thành viên cộng đồng thực hiện cùng công việc hiệu quả hơn và với sự liên kết lợi ích thực sự.</p>
+      <div class="callout"><div class="callout-label">27% Chi Phí Thu Hút Khách Hàng Tái Phân Phối</div>Mỗi $100 triệu huy động: $10 triệu chiết khấu người mua · $10 triệu hoa hồng L1 · $3 triệu thưởng L2 · $2 triệu L3 · $1 triệu L4 · $1 triệu L5. $73 triệu chảy vào ngân quỹ cho phát triển, tài trợ, và vận hành.</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Phần thưởng giới thiệu phát thải sau TGE hoạt động thế nào?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Sau TGE, hoa hồng giới thiệu chuyển từ thanh toán một lần theo giá mua (USDC) sang phần thưởng pass-through liên tục dựa trên phát thải (trả bằng $OPRN). Cùng cấu trúc 5 tầng thống nhất được áp dụng. Khi node trong mạng giới thiệu kiếm phần thưởng cơ bản, <strong>bạn nhận thưởng thêm theo phần trăm thu nhập của họ</strong> — trả từ Pool Giới thiệu & Phân phối, không bao giờ khấu trừ từ phần thưởng của node đó.</p>
+      <div class="example-box" style="margin:16px 0;">
+        <div class="ex-title">Ví dụ — Node trong mạng bạn kiếm 100 $OPRN</div>
+        <div class="ex-row"><span>Nếu là L1 (giới thiệu trực tiếp)</span><span>Bạn nhận +10 $OPRN</span></div>
+        <div class="ex-row"><span>Nếu là L2 (được L1 giới thiệu)</span><span>Bạn nhận +3 $OPRN</span></div>
+        <div class="ex-row"><span>Nếu là L3</span><span>Bạn nhận +2 $OPRN</span></div>
+        <div class="ex-row"><span>Nếu là L4</span><span>Bạn nhận +1 $OPRN</span></div>
+        <div class="ex-row"><span>Nếu là L5</span><span>Bạn nhận +1 $OPRN</span></div>
+        <hr class="ex-divider">
+        <div class="ex-row"><span>Node đó giữ</span><span class="ex-total">Trọn 100 $OPRN — thưởng của bạn là riêng biệt</span></div>
+      </div>
+      <p>Cascade kích hoạt từ TGE. Quý 1–4 là giai đoạn ân hạn. Từ Q5, node được giới thiệu cần duy trì <span class="hl">>99% thời gian hoạt động</span>. Pool Giới thiệu & Phân phối nắm giữ <span class="hl">4.200.000.000 $OPRN</span> (10% tổng cung).</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Chương Trình Đối Tác Tinh Hoa là gì?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Chương trình riêng tư, chỉ dành cho người được mời, cho các tổ chức, quỹ và nhà sáng tạo mang lại cộng đồng, vốn, hoặc năng lực đáng kể cho Operon.</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Quyền lợi</th><th>Người mua tiêu chuẩn</th><th>Đối tác tinh hoa</th></tr></thead><tbody>
+        <tr><td>Hoàn tiền người mua</td><td>10% khi thanh toán</td><td>Nâng cao (theo điều khoản mời)</td></tr>
+        <tr><td>Hoa hồng L1</td><td>10%</td><td>Tỷ lệ nâng cao trên 10%</td></tr>
+        <tr><td>Co-Marketing</td><td>—</td><td>Quyền đồng thương hiệu đầy đủ</td></tr>
+        <tr><td>Truy cập Whitelist</td><td>Phân bổ tiêu chuẩn</td><td>Ưu tiên truy cập mọi ra mắt tương lai</td></tr>
+        <tr><td>Vai trò hệ sinh thái</td><td>Thành viên cộng đồng</td><td>Ghế cố vấn, tiếp cận trực tiếp nhóm cốt lõi</td></tr>
+      </tbody></table>
+      <div class="callout gold" style="margin-top:14px;"><div class="callout-label">Riêng tư · Chỉ dành cho người được mời</div>Chương trình không được liệt kê công khai và không chấp nhận đơn đăng ký thông thường. Tổ chức đủ điều kiện liên hệ qua kênh chính thức của Operon.</div>
+    </div></details>
+  </section>
+
+  <!-- ── 7. Token & Quản Trị ──────────────────────────────────── -->
+  <section class="faq-section" id="token_vi"><div class="section-header"><div class="section-icon">◉</div><span class="section-title">Token & Quản Trị</span><span class="section-count">4 Câu Hỏi</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">$OPRN là gì và khi nào ra mắt?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>$OPRN là token giao thức gốc của Operon Network, triển khai dưới dạng <span class="hl">ERC-20</span> trên Arbitrum. Tổng cung cố định: <span class="hl">42.000.000.000 token</span> — không bao giờ lạm phát. $OPRN ra mắt khi TGE, 4 đến 12 tuần sau khi bán node hoàn tất. Nguồn cung lưu thông ban đầu khi TGE khoảng <strong>3%</strong> tổng cung.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">73% doanh thu bán node đi đâu?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Mỗi đô la huy động, 27% trả lại trực tiếp cho người tham gia qua chiết khấu người mua và hoa hồng giới thiệu. <strong>73% còn lại chảy vào ngân quỹ giao thức</strong>, phân bổ cho năm mục đích:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Mục đích</th><th>Chi tiết</th></tr></thead><tbody>
+        <tr><td>Phát triển giao thức</td><td>Kỹ thuật, hạ tầng, phát triển hợp đồng thông minh</td></tr>
+        <tr><td>Kiểm toán bảo mật</td><td>Nhiều đợt kiểm toán độc lập trước TGE, chương trình thưởng lỗi</td></tr>
+        <tr><td>Tài trợ hệ sinh thái</td><td>Khuyến khích tài chính cho nhà phát triển xây dựng trên Operon</td></tr>
+        <tr><td>Đối tác chiến lược</td><td>Đối tác tích hợp và tăng trưởng</td></tr>
+        <tr><td>Niêm yết sàn & Thanh khoản</td><td>Niêm yết CEX cấp 2 và DEX khi TGE</td></tr>
+      </tbody></table>
+      <p style="margin-top:10px;">Phân bổ ngân quỹ ngoài triển khai thanh khoản ban đầu sẽ chịu quản trị DAO từ Giai đoạn 5.</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Phân bổ token đầy đủ là gì?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <table class="data-table"><thead><tr><th>Phân bổ</th><th class="mono">%</th><th class="mono">Số token</th><th>Vesting / Ghi chú</th></tr></thead><tbody>
+        <tr><td>Thưởng cơ bản Node</td><td class="mono">15%</td><td class="mono">6.300.000.000</td><td>Phát thải giảm dần 4 năm</td></tr>
+        <tr><td>Thưởng hiệu suất Node</td><td class="mono">10%</td><td class="mono">4.200.000.000</td><td>Hàng quý · >99% uptime từ Q5</td></tr>
+        <tr><td>Pool Giới thiệu & Phân phối</td><td class="mono">10%</td><td class="mono">4.200.000.000</td><td>Cascade giới thiệu, cascade Đối tác Tinh hoa, quest TGE & phân phối hoạt động</td></tr>
+        <tr><td>Tài trợ Hệ sinh thái & Dev</td><td class="mono">15%</td><td class="mono">6.300.000.000</td><td>50% sau 3 tháng TGE; 50% tuyến tính 24 tháng</td></tr>
+        <tr><td>Nhóm cốt lõi</td><td class="mono">24%</td><td class="mono">10.080.000.000</td><td>Cliff 12 tháng · tuyến tính 36 tháng</td></tr>
+        <tr><td>Nhà đầu tư sớm</td><td class="mono">5%</td><td class="mono">2.100.000.000</td><td>Cliff 12 tháng · tuyến tính 36 tháng</td></tr>
+        <tr><td>Ngân quỹ / Thanh khoản</td><td class="mono">7%</td><td class="mono">2.940.000.000</td><td>2% thanh khoản sàn khi TGE · số dư DAO kiểm soát</td></tr>
+        <tr><td>Đối tác chiến lược</td><td class="mono">5%</td><td class="mono">2.100.000.000</td><td>Cliff 12 tháng · tuyến tính 36 tháng</td></tr>
+        <tr><td>Cố vấn</td><td class="mono">4%</td><td class="mono">1.680.000.000</td><td>Cliff 12 tháng · tuyến tính 36 tháng</td></tr>
+        <tr><td>Dự trữ</td><td class="mono">5%</td><td class="mono">2.100.000.000</td><td>DAO kiểm soát · khoá tối thiểu 24 tháng</td></tr>
+        <tr class="total"><td><strong>Tổng</strong></td><td class="mono">100%</td><td class="mono">42.000.000.000</td><td>Cố định. Không lạm phát.</td></tr>
+      </tbody></table>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Người nắm giữ $OPRN có quyền quản trị gì?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Từ Giai đoạn 5 của lộ trình, người nắm giữ $OPRN có quyền quản trị on-chain đối với các tham số cốt lõi của giao thức:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>Lĩnh vực quản trị</th><th>Nội dung bỏ phiếu</th></tr></thead><tbody>
+        <tr><td>Lịch phát thải</td><td>Điều chỉnh cách phần thưởng được cấu trúc và phân phối giữa các pool</td></tr>
+        <tr><td>Mô hình quy kết</td><td>Cấu hình logic theo dõi đóng góp và phân bổ phần thưởng của mạng lưới</td></tr>
+        <tr><td>Tiêu chuẩn sổ đăng ký</td><td>Yêu cầu và ngưỡng chất lượng cho AI agent đăng ký trên mạng lưới</td></tr>
+        <tr><td>Phân bổ ngân quỹ</td><td>Cách triển khai quỹ ngân quỹ do DAO kiểm soát</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">Đề xuất quản trị được nộp và giải quyết on-chain. Trước Giai đoạn 5, giao thức vận hành theo các tham số được thiết lập khi ra mắt.</p>
+    </div></details>
+  </section>
+
+  <!-- ── 8. Chức Năng Node & Bảo Mật ─────────────────────── -->
+  <section class="faq-section" id="nodefn_vi">
+    <div class="section-header">
+      <div class="section-icon">⚙</div>
+      <span class="section-title">Chức Năng Node & Bảo Mật</span>
+      <span class="section-count">4 Câu Hỏi</span>
+    </div>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">Node của tôi thực sự làm gì?</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>Node của bạn là tầng thực thi của <em>giao thức</em> Operon — không phải môi trường chạy AI agent. AI agent vận hành trên hạ tầng do người vận hành của chúng lựa chọn. Node của bạn cung cấp hạ tầng phối hợp, xác minh và phân phối mà AI agent hoạt động thông qua. Bốn chức năng chính:</p>
+        <p><strong>Chứng nhận tuân thủ giao thức.</strong> Node của bạn có thể được chọn ngẫu nhiên để xác nhận rằng một giao dịch của AI agent tuân thủ các quy tắc giao thức — đúng schema, giao đúng hạn, trong phạm vi đã khai báo. Đây là các kiểm tra xác định, không phải đánh giá chất lượng chủ quan.</p>
+        <p><strong>Đo lường và kế toán.</strong> Node của bạn độc lập đếm số giao dịch Forge và số tiền phí trong mỗi epoch. Nhiều node cho ra cùng một kết quả — giúp việc phân phối Activity Pool có thể được xác minh.</p>
+        <p><strong>Registry và Discovery.</strong> Node của bạn duy trì một bản sao đồng bộ của agent registry. Khi người dùng tìm kiếm AI agent, truy vấn được xử lý bởi mạng lưới node — một chỉ mục phân tán ngày càng vững chắc khi có nhiều node trực tuyến hơn.</p>
+        <p><strong>Định tuyến tin nhắn.</strong> Trong quy trình làm việc đa agent, tin nhắn được chuyển tiếp qua mạng lưới node. Node của bạn xác minh tính tuân thủ schema và tính toàn vẹn của tin nhắn tại mỗi điểm chuyển tiếp.</p>
+        <p>Không cần GPU. Chạy được trên laptop thông thường hoặc VPS $5/tháng.</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">Node làm gì vào ngày đầu tiên?</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>Operon áp dụng <strong>mô hình kích hoạt từng bước</strong>. Khi TGE bắt đầu, node client ban đầu đăng ký NFT của bạn vào mạng lưới và duy trì uptime — đủ điều kiện nhận base emission ngay từ ngày đầu. Khi hoạt động trên Forge tăng lên, các chức năng node đầy đủ (chứng nhận, đo lường, registry, định tuyến) được kích hoạt dần. Testnet dự kiến mở trước TGE để bạn làm quen với client trước.</p>
+        <p>Đến Phase 3, AI agent bên thứ ba bắt đầu đăng ký và khối lượng công việc của node tăng theo mức sử dụng thực tế. Bạn nhận thu nhập từ TGE; công việc của node sâu hơn khi mạng lưới trưởng thành.</p>
+        <div class="callout"><div class="callout-label">Tiêu chuẩn ngành</div>Mọi đợt bán node lớn đều áp dụng kích hoạt từng bước. Aethir phát thưởng đầy đủ 15 ngày trước khi node thực hiện công việc xác minh. Guardian node của Sophon vẫn đang hoạt động dưới sequencer do foundation quản lý. Người vận hành nhận thu nhập trong khi mạng lưới họ đang góp phần xây dựng dần đi vào hoạt động.</div>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">Phần thưởng được lưu trữ ở đâu? Có thể xác minh không?</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>Toàn bộ token thưởng cho node được giữ trong hai smart contract đã nạp sẵn trên Arbitrum, được gửi vào trước lần phát thải đầu tiên:</p>
+        <table class="data-table" style="margin-top:12px;">
+          <thead><tr><th>Contract</th><th class="mono">Số dư</th><th>Mục đích</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Base Reward Contract</strong></td><td class="mono">6,300,000,000 $OPRN</td><td>Phát thải cơ bản hàng ngày. Giảm dần trong 4 năm.</td></tr>
+            <tr><td><strong>Performance Pool Contract</strong></td><td class="mono">4,200,000,000 $OPRN</td><td>Thưởng uptime, thưởng cấp vesting, phần thưởng hoạt động.</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:14px;">Địa chỉ cả hai contract được công bố khi TGE. Số dư có thể xác minh công khai trên Arbiscan bất kỳ lúc nào. Token không được mint theo yêu cầu — mọi token bạn nhận được đã được nạp trước khi bạn claim lần đầu. Performance Pool còn liên tục nhận dòng tiền từ phần bị tịch thu của các lệnh claim tăng tốc.</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">Operon đảm bảo AI agent trên Forge đáng tin cậy bằng cách nào?</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>Operon vận hành theo cơ chế <strong>trust gradient</strong> (mức độ tin cậy theo tầng). Mạng lưới node chứng nhận mọi giao dịch về tính tuân thủ giao thức — thời gian phản hồi, tính phù hợp schema, trạng thái giao hàng, tính toàn vẹn tin nhắn. Đây là các đảm bảo xác định, trên chuỗi.</p>
+        <p>Không có giao thức nào có thể nhìn vào bên trong môi trường thực thi của một AI agent bất kỳ. Operon giải quyết vấn đề này thông qua hệ thống tin cậy nhiều lớp:</p>
+        <p><strong>Tại TGE:</strong> Mọi người vận hành AI agent đăng ký khai báo trên chuỗi — mô hình sử dụng, chính sách xử lý dữ liệu, khu vực pháp lý của hạ tầng. Các thông tin này công khai, bất biến và có thể kiểm toán. Vi phạm sẽ làm giảm điểm uy tín vĩnh viễn. Vi phạm nhiều lần sẽ bị smart contract tự động gỡ khỏi Forge.</p>
+        <p><strong>Sau TGE:</strong> Xác minh mô hình theo xác suất — sử dụng canary query để phát hiện khai báo mô hình sai lệch trên phương diện thống kê.</p>
+        <p><strong>Phase 3 trở đi:</strong> Môi trường sandbox execution tùy chọn và mã hóa được chứng nhận quyền riêng tư cho AI agent xử lý dữ liệu nhạy cảm.</p>
+        <div class="callout"><div class="callout-label">Nguyên tắc</div>Operon cung cấp thông tin bạn cần để đánh giá AI agent nào đáng tin cậy. Sự tin cậy được xây dựng trên chuỗi, không phải được mặc định.</div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ── 9. Rủi Ro & Quy Định ───────────────────────────────────── -->
+  <section class="faq-section" id="risk_vi"><div class="section-header"><div class="section-icon">⚑</div><span class="section-title">Rủi Ro & Quy Định</span><span class="section-count">2 Câu Hỏi</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Sở hữu node có đảm bảo lợi nhuận không?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p><strong>Không.</strong> Phần thưởng node phụ thuộc vào tăng trưởng mạng lưới, áp dụng AI agent, điều kiện thị trường token, và chỉ số hiệu suất của chính nhà vận hành. Lịch phát thải được xác định trước, nhưng giá trị $OPRN do thị trường quyết định. Activity Pool chỉ tăng nếu sử dụng Forge và giao thức tăng trưởng.</p>
+      <div class="callout gold"><div class="callout-label">Tuyên bố miễn trừ trách nhiệm</div>Tham gia bán node Operon liên quan đến rủi ro tài chính và không có lợi nhuận nào được đảm bảo. Tài liệu này chỉ dành cho mục đích thông tin và không cấu thành lời khuyên đầu tư. Người tham gia nên thực hiện thẩm định của riêng mình.</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon có sẵn ở Hoa Kỳ không?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Người Mỹ bị loại trừ khỏi phần token của đợt bán do cân nhắc quy định. Hạn chế địa lý cụ thể sẽ được công bố trong điều khoản bán chính thức tại <strong>operon.network</strong> trước khi ra mắt. Việc mua NFT node có thể khác nhau theo khu vực pháp lý; người mua có trách nhiệm xác định tính đủ điều kiện theo luật địa phương áp dụng.</p>
+    </div></details>
+  </section>
+
+</main>
+
+<div class="cta-banner"><a href="hero-prototype-O.html">Quay lại Trang chủ<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a></div>
+
+<footer class="site-footer">
+  <div class="footer-logo">OPER<span>ON</span></div>
+  <div class="footer-url">operon.network</div>
+  <p class="footer-disc">Tài liệu này chỉ nhằm mục đích cung cấp thông tin và không cấu thành lời chào mua, mời gọi hoặc tư vấn đầu tư. Các điều khoản bán hàng cuối cùng, tokenomics và tham số bán node sẽ được công bố tại operon.network trước khi mở bán. Operon là một giao thức đang phát triển — các tham số có thể được điều chỉnh; mọi cập nhật sẽ được thông báo công khai trước khi mở bán.</p>
+</footer>
+
+
+<script>
+// FAQ-local interactions: details toggle, search filter, scroll-spy section observer.
+// Language switching is handled by proto-o-i18n.js via URL navigation (no in-place swap).
+(function () {
+  document.querySelectorAll('details').forEach(function (d) {
+    d.addEventListener('toggle', function () { d.classList.toggle('open', d.open); });
+  });
+
+  document.querySelectorAll('.search-input').forEach(function (input) {
+    input.addEventListener('input', function () {
+      var scope = input.closest('.lang-content') || document;
+      var q = input.value.trim().toLowerCase();
+      var anyVisible = false;
+      scope.querySelectorAll('.faq-item').forEach(function (item) {
+        var show = !q || item.innerText.toLowerCase().includes(q);
+        item.style.display = show ? '' : 'none';
+        if (show) anyVisible = true;
+      });
+      scope.querySelectorAll('.faq-section').forEach(function (section) {
+        var items = section.querySelectorAll('.faq-item');
+        var hasVisible = false;
+        items.forEach(function (i) { if (i.style.display !== 'none') hasVisible = true; });
+        section.style.display = hasVisible ? '' : 'none';
+      });
+      var noResults = scope.querySelector('.no-results');
+      if (noResults) noResults.style.display = anyVisible ? 'none' : 'block';
+    });
+  });
+
+  // Scroll-spy: highlight the nav-pill matching the currently visible section.
+  var scope = document.querySelector('.lang-content.active') || document;
+  var sections = scope.querySelectorAll('.faq-section');
+  var pills = scope.querySelectorAll('.nav-pill');
+  if (sections.length && pills.length && 'IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          pills.forEach(function (p) { p.classList.remove('active'); });
+          var target = scope.querySelector('.nav-pill[href="#' + e.target.id + '"]');
+          if (target) target.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+    sections.forEach(function (s) { observer.observe(s); });
+  }
+})();
+</script>
+<script src="/proto-o-i18n.js" defer></script>
+</body>
+</html>
