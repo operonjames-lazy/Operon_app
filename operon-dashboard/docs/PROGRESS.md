@@ -809,3 +809,51 @@ Iteration churned through several visual directions on O — Tracle-strength SVG
 - Hero visual direction not picked — M/N/O all built as reference, none integrated. Spiraled because the brief was ambiguous; better picked up with a single static reference image rather than incremental prompts.
 
 ---
+
+## 2026-04-26 (session 2) — hero-prototype-O fleshed out + two new tab prototypes (agents, nodes)
+
+Marketing-site session, continuation of the morning's hero iteration. Picked O as the candidate to flesh out fully and built two companion tab prototypes alongside it. Read Master Context v3.4 and pitch v6 for the first time mid-session; copy aligned to v34 + `apps/website/website-copy-spec.md` going forward. **Nothing committed — three uncommitted prototype HTML files only.**
+
+### Completed (all uncommitted, all in `apps/website/`)
+
+**`hero-prototype-O.html` — full home-page prototype.** Iterated heavily; final state:
+
+- **Hero zone** with hex tessellation backdrop (replaced organic radial blob): 480-cell flat-top hex grid with `animation-delay = ringDistance * 0.15s` pulse rippling outward from a center hex behind the headline. Resting opacity 0.022; pulse peak 0.18 stroke / 0.012 fill; cycle 7.5s with ~3s active wave + 4.5s calm.
+- Hero copy: H1 "The open agent / protocol." (white, no gradient) + "Step into the agent economy." subhead. Buttons: "Launch app ↗" + "Explore our agents". Removed: hero pill, node-sale countdown, dashboard mockup.
+- **Status: Live** pill in nav (green-blink dot) sitting left of "Launch App". Both CTAs use a deep sapphire/amethyst gradient `#4a3acc → #2d2496 → #161a5e` with inner sheen + bottom shadow + violet halo (iterated from white → flat blue → ugly punchy purple → final deep).
+- **Scroll cue** at hero bottom anchoring `#features` smooth-scroll.
+- **Three primitives** with rewritten copy aligned to v34 / pitch v6 / source-of-truth `App.tsx`:
+  - **01 Coordinate · Operon Forge** (theme-purple): copy now leads with the marketplace product. Visual replaced from workflow-pipeline → 3×2 agent tile grid (Quill / Chorus / Verify / Pulse / Zenith / Atelier) with rotating "spotlight" tile every 1.6s + search bar + "Live at TGE" status row.
+  - **02 Verify** (theme-green): "Trust earned, not claimed." Visual: Quill (OPN-202, orange `#ff9500`) drafting hooks across 4 platforms (X / LinkedIn / Instagram / YouTube) with rotating active-platform tab, platform-tagged hook copy typewriter, then "✓ attested" + ★4.8 + 7,284 attestations counter ticking up. Subtitle: AUTONOMOUS CONTENT INTELLIGENCE. Quill icon SVG path lifted verbatim from `AgentsPage.tsx:386`.
+  - **03 Distribute** (theme-amber): "Distribution is the product." Lane labels reframed: Operators → **Node operators**, Builders → **Agent builders**, Verifiers → **Referral cascade**. Counter + lane bumps animation kept.
+- **Per-card color themes** via CSS-variable overrides: `.theme-blue / .theme-green / .theme-amber / .theme-purple`. Each swaps card fill, border gradient, inner glow, and exterior shadow stack.
+- **Node section** (after primitives): animated ERC-721 license card with 4 soft corner spotlights (no harsh cone, no point-source orb — both removed mid-iteration), edge glints (4 streaks + 2 corner sparkles), 3D float keyframe (rotateY -9° → 0° → 9° over 7s), and 3.6s box-shadow glow pulse. License ID `#00042` rendered as white→ice gradient text. License card got entry animation (scale 0.78 → 1.0 with bouncy overshoot via `cubic-bezier(0.34, 1.56, 0.64, 1)`) on scroll-into-view.
+- **Three reward streams** (themed): Base rewards (amber, $OPRN/day counter ticks), Activity pool (purple, 10-bar pulsing equalizer), Network attribution (green, 5-level cascade pulse — labels switched from L1-L5 to abstract `●` per user direction "don't state referral cascade or number of levels"). All three rcards stagger on scroll-into-view (delays 0.50/0.65/0.80s).
+- **Buyer "How it works"** (replacing builder-flow steps): Buy / Run or delegate / Earn from network activity, with big translucent 01/02/03 numerals.
+- **Why now** band: 3 bigstat cards (theme-amber `$100B+` / theme-blue `50%` / theme-purple `100K`) with IntersectionObserver count-up from 0 over 1.4s with cubic ease-out. Tagline: "The gap is infrastructure — not capability. That's the play."
+- **FAQ teaser**: 4 tiles in 2×2 grid with hover-glow and arrow shift; "What is Operon?" / "What is a node?" / "Technical requirements to run a node?" (renamed from "Do I need technical skills?") / "How are rewards generated?".
+- **Final CTA**: rewritten from "Ready to ship your agent in production?" → **"From pilot to production."** (callback to original hero copy).
+- **Footer**: brand + 3-column links (Product / Network / Resources) + chains.
+
+**`hero-prototype-O-agents.html` — new file.** Standalone Agents tab. Sections: Page hero ("Live agents at work.") + 4-stat band (6 / 12 / 200+ / 100+) → Featured Quill agent in 2-col card with embedded live demo + canonical OPN-202 copy from `App.tsx:123-131` (`cs1Title` / `cs1Desc`) → 3×2 grid of 6 OPN-2XX consumer agents (Quill orange / Zenith gold / Meridian cyan / Atelier purple / Arbiter green / Epoch gray — colors lifted from `AgentsPage.tsx`) → Suite A (OPN-001-006: Herald/Scout/Bridge/Ledger/Curator/Relay) + Suite B (OPN-101-106: Pulse/Advocate/Scribe/Anchor/Chorus/Verify) compact tiles → final CTA → footer.
+
+**`hero-prototype-O-nodes.html` — new file.** Standalone Nodes tab. Sections: Page hero ("What is a node?") → animated license card showcase (full spotlight + glint stack ported from O) → 4 node functions in 2×2 (Protocol Compliance Attestation / Activity Metering / Registry & Discovery / OAMS Routing — copy from Master §7) → 3 reward stream cards (themed, ported) → 40-tier pricing chart (linear scale `$500 → $3,354`, JS-generated bars with hover labels) + 4-stat band → 3-step buy flow → 6-tile FAQ (technical reqs, chain choice, transferability + 6mo lock + NFT-bound emissions per Master §15, reward streams, open-ended sale per spec §1, vOP mechanics) → final CTA → footer.
+
+All 3 prototypes share nav (with cross-tab links between Operon / Agents / Nodes) and footer. Tab pages skip the hex grid (home-page-only flourish) and use a softer radial-glow hero instead.
+
+### Decisions / direction shifts
+
+- **Read v34 + pitch v6 mid-session.** Up to that point I'd been improvising copy from memory + the App.tsx ticker. Master clarified: Distribute is the product (not earnings-flow plumbing), Verify framing is "track record / Agent Reputation Directory" (not threshold-signed audit log), Coordinate manifests as Operon Forge (open marketplace, not orchestration runtime). User accepted the rewrites.
+- **Tagline placement rejected.** v34 §10 approved primary "Own a node. Power the AI agent economy. Earn as the network grows." — pitched as final-CTA replacement. User: "too salesy." Final CTA stayed as "From pilot to production." instead.
+- **Spec contradiction noted, not yet reconciled.** `apps/website/website-copy-spec.md` re-locks "5-level on-chain referral cascade" + "referral cascade" terminology for production `App.tsx`. User explicitly stripped both from prototype O ("don't state referral cascade or the number of levels"). Prototype = stylistic intent; App.tsx = canonical. If/when O ports to App.tsx, this needs reconciliation.
+
+### Open / next session
+
+- **Pick a candidate.** Three uncommitted prototype HTML files are sitting in `apps/website/`. None integrated into `App.tsx` yet. User has been iterating prototypes for two sessions; need a "ship this one" call before porting.
+- **Port-or-discard decision.** If O / O-agents / O-nodes ship: substantial rewrite of `apps/website/App.tsx` + the agents/nodes routes. If they're reference-only (like K2 / M / N from session 1), they should move to a `_prototypes/` subdir and stop competing with the live site.
+- **6 non-EN locales still drift.** Same gap flagged in session 1 — `App.tsx` non-EN blocks (~lines 405–2350) carry pre-deck framing. Wait until EN copy locks before translating; use v34 §10 *Translation Terminology* table.
+- **Reconcile cascade vocabulary.** Prototype O strips it for stylistic reasons; spec re-locks it for production. Resolve before porting.
+- **`FAQPage.tsx` still dead code** (carry-over from session 1).
+- **Carry-over follow-ups still open:** `.playwright-mcp/` to `.gitignore`; lockfile split-brain.
+
+---
