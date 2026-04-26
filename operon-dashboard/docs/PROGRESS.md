@@ -4,6 +4,61 @@ Append-only session log. One dated entry per coding session. Do not edit previou
 
 ---
 
+## 2026-04-26 (session 4) — Runtime verification + push to origin
+
+Continuation of the 2026-04-26 livenet drift remediation. The earlier entry documented the migrations applied + the 28 fixes landed in working tree. This appendix captures the runtime verification step that was deferred during the doc-only commit, and the resulting push to GitHub.
+
+### Runtime verification matrix
+
+| Surface | Method | Result |
+|---|---|---|
+| TypeScript | `npx tsc --noEmit` | exit 0 |
+| Contracts | `cd contracts && npx hardhat test` | 64 passing |
+| Production build | `npx next build` | green, 63 routes |
+| mig 023 RPC shape (supabase-js layer) | `scripts/_verify-rpc-shape.mjs` (temp, since deleted) | `admin_partner_leaderboard` / `admin_partner_pipeline` / `admin_user_purchase_counts` / `try_reconcile_lock` all return correct JSON shapes through the supabase-js `db.rpc(...)` path |
+| `/api/health` | curl, 5 concurrent | 200; rate-limit non-blocking in dev (no Upstash) — correct |
+| `/api/cron/reconcile` auth gates | curl no/wrong/right Bearer | 401 / 401 / 200 |
+| `/api/cron/reconcile` flow | curl with auth | runs to completion, advisory lock acquires |
+| `/api/admin/{partners.list, partners.pipeline, partners.status, users/search, events/replay, announcements}` | curl no auth | 401 unauthenticated — proves routes compile + auth gate fires before RPC; no import-time errors |
+| `/` smoke | Playwright | 0 console errors, Connect button renders |
+| `/sale` page | Playwright (not connected) | 0 console errors, tier strip + buy form render, dropped "Live updates" badge correctly absent |
+| `/nodes` not connected | Playwright | 0 console errors, "Connect wallet" empty-state renders |
+| `pnpm test:e2e:ui` | Playwright | 2 passed, 1 skipped (documented full-chain stub). Smoke spec verifies wagmi mock connector mounts cleanly under `NEXT_PUBLIC_E2E=1` |
+| i18n parity (6 languages, including the 3 new `nodes.pending.*` keys) | `AssertEqual<>` proofs at translations.ts export site | tsc-enforced |
+
+Not runtime-verified (would require a real wallet + signed SIWE):
+- Pending-attribution banner *visually* rendering with a connected wallet (banner is gated on `address` truthy + localStorage marker matching wallet — the localStorage write path is exercised, the banner JSX compiles, translations present in all 6 dicts)
+- Killswitch toggle UI flow end-to-end
+- Suspended-partner mig-021 enforcement under a real purchase event
+
+### Test infra fixes (incidental to verification)
+
+- `e2e/ui/referral-capture.spec.ts` had a pre-existing race: `page.evaluate` read sessionStorage before `ReferralCapture`'s `useEffect` had run. Replaced with `page.waitForFunction(...)` polling for the persisted value. Failure existed under both `NEXT_PUBLIC_E2E=0` and `=1`, so was not regressed by R16's wagmi mock connector wire-up.
+- `playwright.config.ts` was Unix-only. The inline `E2E=1 NEXT_PUBLIC_E2E=1 PORT=${PORT} pnpm dev` prefix breaks on Windows cmd.exe (the shell Playwright spawns on Windows). Switched to `npx next dev --port ${PORT}` and rely on the `env` block for the env vars — works on Windows + Unix without `cross-env`. Also explicitly passes `--port` so the harness on `${PORT}` (3100) doesn't collide with a developer's already-running `pnpm dev` on the script-default 3001.
+- `/test-results`, `/playwright-report`, `/playwright/.cache` added to `.gitignore`.
+
+### Push
+
+7 commits pushed to `origin/main` (`343b916..3e6ff1e`):
+
+```
+3e6ff1e  fix: ship-readiness R15 — close 28 review findings, remediate live-DB drift
+7a4d1a0  docs: end-of-session update 2026-04-26 (session 3)
+f7941ed  docs: end-of-session update 2026-04-26 (session 3)
+83f25af  docs: end-of-session update 2026-04-26 (session 2)
+f371f95  docs: end-of-session update 2026-04-26
+373a790  website: realign EN copy to current pitch deck
+b070869  website: save hero prototypes — K2 (beam + spill) is the chosen candidate
+```
+
+Auth switched to `operonjames-lazy` per the project memory note (default account lacks push access). Working tree is now even with `origin/main`.
+
+### What remains for livenet (unchanged from earlier entry)
+
+Operator-owed list in [docs/LIVENET_TEST_RUNBOOK.md](LIVENET_TEST_RUNBOOK.md) is unchanged. None of the runtime verification above moves any of those items — they all need credentials, real wallets, or vendor dashboards.
+
+---
+
 ## 2026-04-26 — Livenet drift remediation: applied 4 missing migrations + 28 ship-readiness fixes
 
 ### Migration drift discovered + closed
