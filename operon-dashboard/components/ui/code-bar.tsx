@@ -82,30 +82,38 @@ export function CodeBar({ code, label }: CodeBarProps) {
           <span className="flex-1 font-mono text-sm text-ice tracking-wide truncate">{code}</span>
         </div>
         <button
+          type="button"
+          aria-label={t('code.copyCode')}
+          aria-live="polite"
           onClick={() => copyCode(code)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice cursor-pointer"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice focus-visible:outline-offset-2 cursor-pointer"
           title={t('code.copyCode')}
         >
           {codeCopied ? (
-            <span className="text-xs text-green font-medium">OK</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-ice font-semibold">{t('code.copied')}</span>
           ) : (
             <CopyIcon />
           )}
         </button>
         <button
+          type="button"
+          aria-label={t('code.share')}
           onClick={handleShare}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice cursor-pointer"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice focus-visible:outline-offset-2 cursor-pointer"
           title={t('code.share')}
         >
           <ShareIcon />
         </button>
         <button
+          type="button"
+          aria-label={t('code.copyLink')}
+          aria-live="polite"
           onClick={() => copyLink(referralUrl)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice cursor-pointer"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice focus-visible:outline-offset-2 cursor-pointer"
           title={t('code.copyLink')}
         >
           {linkCopied ? (
-            <span className="text-xs text-green font-medium">OK</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-ice font-semibold">{t('code.copied')}</span>
           ) : (
             <LinkIcon />
           )}

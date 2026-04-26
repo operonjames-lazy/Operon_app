@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useSidebarStore } from '@/stores/sidebar';
 import { useLanguageStore } from '@/stores/language';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { Language } from '@/types/api';
 
 const languages: { value: Language; label: string }[] = [
@@ -22,6 +23,7 @@ interface HeaderProps {
 export function Header({ announcement }: HeaderProps) {
   const { toggle } = useSidebarStore();
   const { language: lang, setLanguage: setLang } = useLanguageStore();
+  const { t } = useTranslation();
   const [langOpen, setLangOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -50,8 +52,12 @@ export function Header({ announcement }: HeaderProps) {
           {/* Language selector */}
           <div className="relative" ref={dropdownRef}>
             <button
+              type="button"
+              aria-label={t('header.language')}
+              aria-haspopup="listbox"
+              aria-expanded={langOpen}
               onClick={() => setLangOpen((p) => !p)}
-              className="flex items-center gap-1.5 rounded-full border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.03)] px-3 py-2 font-mono text-[11px] font-medium tracking-widest uppercase text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice cursor-pointer min-h-[40px]"
+              className="flex items-center gap-1.5 rounded-full border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.03)] px-3 py-2 font-mono text-[11px] font-medium tracking-widest uppercase text-t2 transition-colors hover:border-[rgba(147,197,253,0.32)] hover:text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice focus-visible:outline-offset-2 cursor-pointer min-h-[40px]"
             >
               {languages.find((l) => l.value === lang)?.label}
               <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
@@ -59,9 +65,12 @@ export function Header({ announcement }: HeaderProps) {
               </svg>
             </button>
             {langOpen && (
-              <div className="absolute right-0 top-full mt-1 w-28 overflow-hidden rounded-xl border border-[rgba(147,197,253,0.18)] bg-[rgba(10,15,28,0.96)] backdrop-blur-md shadow-[0_10px_30px_-8px_rgba(2,5,13,0.8)]">
+              <div role="listbox" aria-label={t('header.language')} className="absolute right-0 top-full mt-1 w-28 overflow-hidden rounded-xl border border-[rgba(147,197,253,0.18)] bg-[rgba(10,15,28,0.96)] backdrop-blur-md shadow-[0_10px_30px_-8px_rgba(2,5,13,0.8)]">
                 {languages.map((l) => (
                   <button
+                    type="button"
+                    role="option"
+                    aria-selected={lang === l.value}
                     key={l.value}
                     onClick={() => {
                       setLang(l.value);

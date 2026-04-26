@@ -17,6 +17,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { STABLECOIN_ADDRESSES, SALE_CONTRACT_ADDRESSES, TOKEN_DECIMALS, CHAIN_IDS } from '@/lib/wagmi/contracts';
 import { formatUsd, formatUsdShort, formatNum } from '@/lib/format';
 import { isAuthenticated } from '@/lib/api/fetch';
+import { getExplorerTxUrl } from '@/lib/explorer';
 import type { Chain, PaymentToken } from '@/types/api';
 
 const ERC20_ABI = [
@@ -30,12 +31,6 @@ const SALE_ABI = [
 ] as const;
 
 type PurchaseStep = 'idle' | 'approving' | 'approved' | 'purchasing' | 'success' | 'error';
-
-const isTestnet = process.env.NEXT_PUBLIC_NETWORK_MODE === 'testnet';
-function getExplorerTxUrl(chain: 'arbitrum' | 'bsc'): string {
-  if (chain === 'arbitrum') return isTestnet ? 'https://sepolia.arbiscan.io/tx/' : 'https://arbiscan.io/tx/';
-  return isTestnet ? 'https://testnet.bscscan.com/tx/' : 'https://bscscan.com/tx/';
-}
 
 export default function SalePage() {
   const { address, isConnected } = useAccount();

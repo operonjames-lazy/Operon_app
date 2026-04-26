@@ -24,10 +24,9 @@ export default function HomePage() {
       <div className="relative flex flex-col items-center justify-center min-h-[60vh] gap-6 overflow-hidden">
         <div className="hex-backdrop" aria-hidden />
         <div className="relative z-10 flex flex-col items-center gap-6 text-center">
-          <span className="status-pill">
-            <span className="dot" />
-            <span className="text-t3">Network</span>
-            <span className="text-green font-semibold">live</span>
+          <span className="status-pill" role="status">
+            <span className="dot" aria-hidden />
+            <span className="text-t3">{t('home.networkStatus')}</span>
           </span>
           <h1 className="font-display text-4xl font-bold text-white tracking-tight">
             {t('home.welcome')}

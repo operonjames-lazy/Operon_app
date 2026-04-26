@@ -17,7 +17,7 @@ export default function AdminOverviewPage() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 animate-pulse">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-24 rounded-lg border border-border bg-card" />
+          <div key={i} className="h-24 rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)]" />
         ))}
       </div>
     );
@@ -45,13 +45,13 @@ export default function AdminOverviewPage() {
             Controls →
           </Link>
         </div>
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 text-xs">
+        <div className="flex items-center gap-1 rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] p-1 text-xs">
           {[7, 30, 90].map((d) => (
             <button
               key={d}
               onClick={() => setDays(d)}
               className={`px-2 py-1 rounded ${
-                days === d ? 'bg-card-hover text-t1' : 'text-t3 hover:text-t1'
+                days === d ? 'bg-[rgba(8,12,24,0.85)] text-t1' : 'text-t3 hover:text-t1'
               }`}
             >
               {d}d
@@ -116,7 +116,7 @@ export default function AdminOverviewPage() {
               {stats.attribution.noCodeCount + stats.attribution.communityCount + stats.attribution.eppCount} purchases
             </p>
           </div>
-          <div className="flex h-10 w-full overflow-hidden rounded-md border border-border">
+          <div className="flex h-10 w-full overflow-hidden rounded-md border border-[rgba(147,197,253,0.10)]">
             <div
               className="bg-t4 transition-all"
               style={{ width: `${pct(stats.attribution.noCodeCents)}%` }}
@@ -227,12 +227,12 @@ function AttributionRow({
   pct: number;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-bg p-3">
+    <div className="stat-tile p-3">
       <div className="flex items-center gap-2">
         <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
-        <span className="text-xs text-t3">{label}</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-t3">{label}</span>
       </div>
-      <p className="mt-1 text-lg font-bold text-t1 tabular-nums">{formatUsdShort(cents)}</p>
+      <p className="mt-1 font-mono text-lg font-bold text-white tabular-nums">{formatUsdShort(cents)}</p>
       <p className="text-[11px] text-t3">
         {pct.toFixed(1)}% · {count} purchases
       </p>

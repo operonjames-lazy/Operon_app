@@ -39,7 +39,8 @@ const pageKeys = {
   'home.tierLabel': 'Tier {tier}', 'home.investedLabel': '{amount} invested',
   'sale.tierProgressLine': 'Tier {tier} · {remaining} / {supply} remaining', 'sale.pendingTxSummary': '{qty} node(s) on {chain}',
   'tierBar.tier': 'Tier {tier}', 'tierBar.pricePerNode': '{price} per node', 'tierBar.soldOfSupply': '{sold} / {supply} sold', 'tierBar.currentTier': 'Current Tier',
-  'code.copyCode': 'Copy code', 'code.share': 'Share', 'code.copyLink': 'Copy referral link', 'code.shareTitle': 'Operon Node Sale', 'code.shareText': 'Use my referral code: {code}',
+  'code.copyCode': 'Copy code', 'code.share': 'Share', 'code.copyLink': 'Copy referral link', 'code.shareTitle': 'Operon Node Sale', 'code.shareText': 'Use my referral code: {code}', 'code.copied': 'Copied',
+  'home.networkStatus': 'Network live', 'qty.max': 'Max: {max}', 'qty.decrease': 'Decrease quantity', 'qty.increase': 'Increase quantity', 'nav.adminPanel': 'Admin panel', 'header.language': 'Language', 'header.closeMenu': 'Close menu',
 } as const;
 
 // ─── Traditional Chinese (繁中) ──────────────────────────────────────────
@@ -82,7 +83,8 @@ const pageKeysTc: Record<keyof typeof pageKeys, string> = {
   'home.tierLabel': '第 {tier} 層', 'home.investedLabel': '已投資 {amount}',
   'sale.tierProgressLine': '第 {tier} 層 · 剩餘 {remaining} / {supply}', 'sale.pendingTxSummary': '{qty} 個節點，於 {chain}',
   'tierBar.tier': '第 {tier} 層', 'tierBar.pricePerNode': '每節點 {price}', 'tierBar.soldOfSupply': '已售 {sold} / {supply}', 'tierBar.currentTier': '當前層級',
-  'code.copyCode': '複製代碼', 'code.share': '分享', 'code.copyLink': '複製推薦連結', 'code.shareTitle': 'Operon 節點銷售', 'code.shareText': '請使用我的推薦碼：{code}',
+  'code.copyCode': '複製代碼', 'code.share': '分享', 'code.copyLink': '複製推薦連結', 'code.shareTitle': 'Operon 節點銷售', 'code.shareText': '請使用我的推薦碼：{code}', 'code.copied': '已複製',
+  'home.networkStatus': '網絡運行中', 'qty.max': '上限：{max}', 'qty.decrease': '減少數量', 'qty.increase': '增加數量', 'nav.adminPanel': '管理後台', 'header.language': '語言', 'header.closeMenu': '關閉選單',
 };
 
 // ─── Simplified Chinese (简中) ───────────────────────────────────────────
@@ -125,7 +127,8 @@ const pageKeysSc: Record<keyof typeof pageKeys, string> = {
   'home.tierLabel': '第 {tier} 层', 'home.investedLabel': '已投资 {amount}',
   'sale.tierProgressLine': '第 {tier} 层 · 剩余 {remaining} / {supply}', 'sale.pendingTxSummary': '{qty} 个节点，于 {chain}',
   'tierBar.tier': '第 {tier} 层', 'tierBar.pricePerNode': '每节点 {price}', 'tierBar.soldOfSupply': '已售 {sold} / {supply}', 'tierBar.currentTier': '当前层级',
-  'code.copyCode': '复制代码', 'code.share': '分享', 'code.copyLink': '复制推荐链接', 'code.shareTitle': 'Operon 节点销售', 'code.shareText': '请使用我的推荐码：{code}',
+  'code.copyCode': '复制代码', 'code.share': '分享', 'code.copyLink': '复制推荐链接', 'code.shareTitle': 'Operon 节点销售', 'code.shareText': '请使用我的推荐码：{code}', 'code.copied': '已复制',
+  'home.networkStatus': '网络运行中', 'qty.max': '上限：{max}', 'qty.decrease': '减少数量', 'qty.increase': '增加数量', 'nav.adminPanel': '管理后台', 'header.language': '语言', 'header.closeMenu': '关闭菜单',
 };
 
 // ─── Korean (한국어) ─────────────────────────────────────────────────────
@@ -168,7 +171,8 @@ const pageKeysKo: Record<keyof typeof pageKeys, string> = {
   'home.tierLabel': '{tier} 등급', 'home.investedLabel': '{amount} 투자',
   'sale.tierProgressLine': '{tier} 등급 · {remaining} / {supply} 잔여', 'sale.pendingTxSummary': '{chain}의 노드 {qty}개',
   'tierBar.tier': '{tier} 등급', 'tierBar.pricePerNode': '노드당 {price}', 'tierBar.soldOfSupply': '{sold} / {supply} 판매됨', 'tierBar.currentTier': '현재 등급',
-  'code.copyCode': '코드 복사', 'code.share': '공유', 'code.copyLink': '추천 링크 복사', 'code.shareTitle': 'Operon 노드 판매', 'code.shareText': '제 추천 코드를 사용하세요: {code}',
+  'code.copyCode': '코드 복사', 'code.share': '공유', 'code.copyLink': '추천 링크 복사', 'code.shareTitle': 'Operon 노드 판매', 'code.shareText': '제 추천 코드를 사용하세요: {code}', 'code.copied': '복사됨',
+  'home.networkStatus': '네트워크 활성', 'qty.max': '최대: {max}', 'qty.decrease': '수량 감소', 'qty.increase': '수량 증가', 'nav.adminPanel': '관리자 패널', 'header.language': '언어', 'header.closeMenu': '메뉴 닫기',
 };
 
 // ─── Vietnamese (Tiếng Việt) ─────────────────────────────────────────────
@@ -211,7 +215,8 @@ const pageKeysVi: Record<keyof typeof pageKeys, string> = {
   'home.tierLabel': 'Cấp {tier}', 'home.investedLabel': 'Đã đầu tư {amount}',
   'sale.tierProgressLine': 'Cấp {tier} · còn lại {remaining} / {supply}', 'sale.pendingTxSummary': '{qty} node trên {chain}',
   'tierBar.tier': 'Cấp {tier}', 'tierBar.pricePerNode': '{price} mỗi node', 'tierBar.soldOfSupply': 'đã bán {sold} / {supply}', 'tierBar.currentTier': 'Cấp hiện tại',
-  'code.copyCode': 'Sao chép mã', 'code.share': 'Chia sẻ', 'code.copyLink': 'Sao chép liên kết giới thiệu', 'code.shareTitle': 'Operon Bán Node', 'code.shareText': 'Dùng mã giới thiệu của tôi: {code}',
+  'code.copyCode': 'Sao chép mã', 'code.share': 'Chia sẻ', 'code.copyLink': 'Sao chép liên kết giới thiệu', 'code.shareTitle': 'Operon Bán Node', 'code.shareText': 'Dùng mã giới thiệu của tôi: {code}', 'code.copied': 'Đã sao chép',
+  'home.networkStatus': 'Mạng đang hoạt động', 'qty.max': 'Tối đa: {max}', 'qty.decrease': 'Giảm số lượng', 'qty.increase': 'Tăng số lượng', 'nav.adminPanel': 'Bảng quản trị', 'header.language': 'Ngôn ngữ', 'header.closeMenu': 'Đóng menu',
 };
 
 // ─── Thai (ไทย) ──────────────────────────────────────────────────────────
@@ -254,7 +259,8 @@ const pageKeysTh: Record<keyof typeof pageKeys, string> = {
   'home.tierLabel': 'ระดับ {tier}', 'home.investedLabel': 'ลงทุนแล้ว {amount}',
   'sale.tierProgressLine': 'ระดับ {tier} · เหลือ {remaining} / {supply}', 'sale.pendingTxSummary': '{qty} โหนดบน {chain}',
   'tierBar.tier': 'ระดับ {tier}', 'tierBar.pricePerNode': '{price} ต่อโหนด', 'tierBar.soldOfSupply': 'ขายแล้ว {sold} / {supply}', 'tierBar.currentTier': 'ระดับปัจจุบัน',
-  'code.copyCode': 'คัดลอกรหัส', 'code.share': 'แชร์', 'code.copyLink': 'คัดลอกลิงก์แนะนำ', 'code.shareTitle': 'Operon ขายโหนด', 'code.shareText': 'ใช้รหัสแนะนำของฉัน: {code}',
+  'code.copyCode': 'คัดลอกรหัส', 'code.share': 'แชร์', 'code.copyLink': 'คัดลอกลิงก์แนะนำ', 'code.shareTitle': 'Operon ขายโหนด', 'code.shareText': 'ใช้รหัสแนะนำของฉัน: {code}', 'code.copied': 'คัดลอกแล้ว',
+  'home.networkStatus': 'เครือข่ายทำงาน', 'qty.max': 'สูงสุด: {max}', 'qty.decrease': 'ลดจำนวน', 'qty.increase': 'เพิ่มจำนวน', 'nav.adminPanel': 'แผงผู้ดูแล', 'header.language': 'ภาษา', 'header.closeMenu': 'ปิดเมนู',
 };
 
 // ─── Export ──────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useUserSearch } from '@/hooks/useAdmin';
 
 export default function AdminUsersPage() {
@@ -30,14 +31,11 @@ export default function AdminUsersPage() {
           placeholder="0x... / uuid / email / @tg / OPRN-XXXX"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="flex-1 rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-t1 placeholder:text-t4 focus:border-green focus:outline-none"
+          className="flex-1 rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-4 py-2.5 text-sm text-t1 placeholder:text-t4 focus:border-[rgba(147,197,253,0.45)] focus:outline-none"
         />
-        <button
-          type="submit"
-          className="rounded-lg bg-green px-5 py-2 text-sm font-semibold text-black hover:bg-green-hover"
-        >
+        <Button type="submit" variant="primary" size="md">
           Search
-        </button>
+        </Button>
       </form>
 
       {!committed && (
@@ -65,7 +63,7 @@ export default function AdminUsersPage() {
               </thead>
               <tbody>
                 {data.results.map((u) => (
-                  <tr key={u.id} className="border-t border-border hover:bg-card-hover/40">
+                  <tr key={u.id} className="border-t border-[rgba(147,197,253,0.10)] hover:bg-[rgba(8,12,24,0.85)]/40">
                     <td className="py-2">
                       <Link href={`/admin/users/${u.id}`} className="font-mono text-xs text-ice hover:underline">
                         {u.primary_wallet.slice(0, 8)}...{u.primary_wallet.slice(-6)}

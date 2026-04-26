@@ -79,13 +79,13 @@ export default function AdminPayoutsPage() {
         />
       </div>
 
-      <div className="flex gap-1 rounded-lg border border-border bg-card p-1 text-sm w-fit">
+      <div className="flex gap-1 rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] p-1 text-sm w-fit">
         {(['unpaid', 'milestones'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-3 py-1.5 rounded capitalize ${
-              tab === t ? 'bg-card-hover text-t1' : 'text-t3 hover:text-t1'
+              tab === t ? 'bg-[rgba(8,12,24,0.85)] text-t1' : 'text-t3 hover:text-t1'
             }`}
           >
             {t === 'unpaid' ? 'Unpaid commissions' : 'Milestone bonuses'}
@@ -132,7 +132,7 @@ export default function AdminPayoutsPage() {
               </thead>
               <tbody>
                 {milestones.data?.rows.map((r) => (
-                  <tr key={r.user_id} className="border-t border-border">
+                  <tr key={r.user_id} className="border-t border-[rgba(147,197,253,0.10)]">
                     <td className="py-2">
                       <Link
                         href={`/admin/users/${r.user_id}`}
@@ -202,7 +202,7 @@ function PayoutBatch({ batch, onPaid }: { batch: UnpaidBatch; onPaid: () => void
   const oldestDays = Math.round((Date.now() - new Date(batch.oldest).getTime()) / 86_400_000);
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="card">
       <div className="flex items-center justify-between p-4">
         <div className="flex-1 min-w-0">
           <Link
@@ -227,7 +227,7 @@ function PayoutBatch({ batch, onPaid }: { batch: UnpaidBatch; onPaid: () => void
         </div>
       </div>
       {open && (
-        <div className="border-t border-border p-4 space-y-3 text-sm">
+        <div className="border-t border-[rgba(147,197,253,0.10)] p-4 space-y-3 text-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-[10px] uppercase tracking-widest text-t3">Tx hash</label>
@@ -236,7 +236,7 @@ function PayoutBatch({ batch, onPaid }: { batch: UnpaidBatch; onPaid: () => void
                 value={txHash}
                 onChange={(e) => setTxHash(e.target.value)}
                 placeholder="0x..."
-                className="w-full rounded-md border border-border bg-bg px-3 py-1.5 font-mono text-xs text-t1"
+                className="w-full rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-1.5 font-mono text-xs text-t1"
               />
             </div>
             <div>
@@ -246,7 +246,7 @@ function PayoutBatch({ batch, onPaid }: { batch: UnpaidBatch; onPaid: () => void
                 value={fromWallet}
                 onChange={(e) => setFromWallet(e.target.value)}
                 placeholder="0x..."
-                className="w-full rounded-md border border-border bg-bg px-3 py-1.5 font-mono text-xs text-t1"
+                className="w-full rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-1.5 font-mono text-xs text-t1"
               />
             </div>
           </div>
@@ -255,7 +255,7 @@ function PayoutBatch({ batch, onPaid }: { batch: UnpaidBatch; onPaid: () => void
             <table className="mt-2 w-full text-xs">
               <tbody>
                 {batch.rows.map((r) => (
-                  <tr key={r.id} className="border-t border-border">
+                  <tr key={r.id} className="border-t border-[rgba(147,197,253,0.10)]">
                     <td className="py-1 font-mono text-[10px] text-t3">{r.purchase_tx.slice(0, 10)}…</td>
                     <td className="py-1">L{r.level}</td>
                     <td className="py-1 text-right tabular-nums">{formatUsdShort(r.commission_usd)}</td>
@@ -299,11 +299,11 @@ function StatTile({
   tone?: 'default' | 'amber' | 'gold';
 }) {
   const ring =
-    tone === 'amber' ? 'border-amber/30' : tone === 'gold' ? 'border-gold/25' : 'border-border';
+    tone === 'amber' ? 'border-amber/30' : tone === 'gold' ? 'border-gold/25' : '';
   return (
-    <div className={`rounded-lg border bg-card p-4 ${ring}`}>
-      <p className="text-[10px] uppercase tracking-widest text-t3">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-t1 tabular-nums">{value}</p>
+    <div className={`stat-tile p-4 ${ring}`}>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-t3">{label}</p>
+      <p className="mt-1 font-mono text-2xl font-bold text-white tabular-nums">{value}</p>
       {sub && <p className="mt-1 text-xs text-t3">{sub}</p>}
     </div>
   );

@@ -178,7 +178,7 @@ export default function AdminSalePage() {
                 {tiersQ.data.rows.map((t) => {
                   const pct = t.total_supply > 0 ? (t.total_sold / t.total_supply) * 100 : 0;
                   return (
-                    <tr key={t.tier} className="border-t border-border">
+                    <tr key={t.tier} className="border-t border-[rgba(147,197,253,0.10)]">
                       <td className="py-2 text-t1 font-semibold">T{t.tier}</td>
                       <td className="py-2 text-right tabular-nums text-t1">{formatUsd(t.price_usd)}</td>
                       <td className="py-2 text-right tabular-nums text-t2">
@@ -237,7 +237,7 @@ function TierActions({
           key={chain}
           disabled={!!busy}
           onClick={() => onAction(chain, !tier.is_active)}
-          className="rounded border border-border bg-card px-2 py-1 text-[11px] text-t2 hover:bg-card-hover disabled:opacity-50"
+          className="rounded border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-2 py-1 text-[11px] text-t2 hover:bg-[rgba(8,12,24,0.85)] disabled:opacity-50"
         >
           {tier.is_active ? 'Deactivate' : 'Activate'} {chain === 'arbitrum' ? 'Arb' : 'BSC'}
         </button>
@@ -265,11 +265,11 @@ function WithdrawCard({
     <Card title="Withdraw sale proceeds">
       <div className="mb-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
         {balances.map((b) => (
-          <div key={`${b.chain}-${b.token}`} className="rounded border border-border bg-bg p-2">
-            <p className="uppercase tracking-widest text-t3">
+          <div key={`${b.chain}-${b.token}`} className="stat-tile p-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-t3">
               {b.chain} · {b.token}
             </p>
-            <p className="mt-1 font-bold tabular-nums text-t1">
+            <p className="mt-1 font-mono font-bold tabular-nums text-white">
               {b.cents === null ? (
                 <span className="text-red">{b.error || 'n/a'}</span>
               ) : (
@@ -288,7 +288,7 @@ function WithdrawCard({
           <select
             value={chain}
             onChange={(e) => setChain(e.target.value as 'arbitrum' | 'bsc')}
-            className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-t1"
+            className="rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-1.5 text-sm text-t1"
           >
             <option value="arbitrum">Arbitrum</option>
             <option value="bsc">BSC</option>
@@ -299,7 +299,7 @@ function WithdrawCard({
           <select
             value={token}
             onChange={(e) => setToken(e.target.value as 'USDC' | 'USDT')}
-            className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-t1"
+            className="rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-1.5 text-sm text-t1"
           >
             <option value="USDC">USDC</option>
             <option value="USDT">USDT</option>
@@ -312,7 +312,7 @@ function WithdrawCard({
             placeholder="0x..."
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="w-full rounded-md border border-border bg-bg px-3 py-1.5 font-mono text-xs text-t1 placeholder:text-t4"
+            className="w-full rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-1.5 font-mono text-xs text-t1 placeholder:text-t4"
           />
         </div>
         <Button

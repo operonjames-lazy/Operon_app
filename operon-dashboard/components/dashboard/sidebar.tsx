@@ -205,7 +205,7 @@ export function Sidebar({ walletAddress, isEpp }: SidebarProps) {
                 className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gold hover:bg-gold-bg hover:border-gold-border border border-transparent min-h-[44px] transition-colors"
               >
                 <span className="shrink-0"><AdminIcon /></span>
-                Admin panel
+                {t('nav.adminPanel')}
               </Link>
             </>
           )}

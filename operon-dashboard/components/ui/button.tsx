@@ -62,10 +62,18 @@ export function Button({
   className = '',
   ...rest
 }: ButtonProps) {
+  // While loading, swap the gradient primary for a clearly distinct
+  // "in-flight" surface — ice-tinted + dim — so users don't keep
+  // tapping during the 5–15s confirmation window.
+  const loadingOverride = loading && variant === 'primary'
+    ? 'bg-[rgba(59,130,246,0.10)] border border-[rgba(147,197,253,0.32)] text-ice shadow-none animate-pulse-dot'
+    : '';
+
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 font-semibold tracking-wide transition-all duration-200 cursor-pointer ${variantStyles[variant]} ${sizeStyles[size]} ${
-        loading ? 'pointer-events-none opacity-70' : ''
+      aria-busy={loading || undefined}
+      className={`inline-flex items-center justify-center gap-2 font-semibold tracking-wide transition-all duration-200 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice focus-visible:outline-offset-2 ${loadingOverride || variantStyles[variant]} ${sizeStyles[size]} ${
+        loading ? 'pointer-events-none' : ''
       } ${className}`}
       disabled={disabled || loading}
       {...rest}

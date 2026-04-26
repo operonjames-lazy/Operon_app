@@ -149,7 +149,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               <select
                 value={overrideTier}
                 onChange={(e) => setOverrideTier(e.target.value)}
-                className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-t1"
+                className="w-full rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-2 text-sm text-t1"
               >
                 <option value="">Select tier…</option>
                 {EPP_TIERS.map((t) => (
@@ -166,7 +166,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 onChange={(e) => setOverrideReason(e.target.value)}
                 rows={3}
                 placeholder="e.g. Confirmed off-platform referrals with partner"
-                className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-t1 placeholder:text-t4"
+                className="w-full rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-2 text-sm text-t1 placeholder:text-t4"
               />
             </div>
             {overrideErr && <p className="text-xs text-red">{overrideErr}</p>}
@@ -202,7 +202,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               <select
                 value={statusTarget}
                 onChange={(e) => setStatusTarget(e.target.value as PartnerStatus)}
-                className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-t1"
+                className="w-full rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-2 text-sm text-t1"
               >
                 {PARTNER_STATUSES.map((s) => (
                   <option key={s} value={s} disabled={s === partner.status}>
@@ -218,7 +218,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 onChange={(e) => setStatusReason(e.target.value)}
                 rows={3}
                 placeholder="e.g. Violated T&Cs § 4.2 — terms-breach ticket #123"
-                className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-t1 placeholder:text-t4"
+                className="w-full rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-2 text-sm text-t1 placeholder:text-t4"
               />
             </div>
             {statusErr && <p className="text-xs text-red">{statusErr}</p>}
@@ -303,7 +303,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               </thead>
               <tbody>
                 {purchases.map((p) => (
-                  <tr key={p.id} className="border-t border-border">
+                  <tr key={p.id} className="border-t border-[rgba(147,197,253,0.10)]">
                     <td className="py-2 text-xs text-t3">{new Date(p.created_at).toLocaleString()}</td>
                     <td className="py-2 text-xs">{p.chain}</td>
                     <td className="py-2 text-xs">T{p.tier}</td>
@@ -349,7 +349,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               </thead>
               <tbody>
                 {commissions.recent.map((c) => (
-                  <tr key={c.id} className="border-t border-border">
+                  <tr key={c.id} className="border-t border-[rgba(147,197,253,0.10)]">
                     <td className="py-2 text-xs text-t3">{new Date(c.created_at).toLocaleString()}</td>
                     <td className="py-2 text-xs">L{c.level}</td>
                     <td className="py-2 text-right tabular-nums text-t1">{formatUsd(c.commission_usd)}</td>
@@ -386,7 +386,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               </thead>
               <tbody>
                 {referralsMade.slice(0, 50).map((r) => (
-                  <tr key={`${r.referred_wallet}-${r.created_at}`} className="border-t border-border">
+                  <tr key={`${r.referred_wallet}-${r.created_at}`} className="border-t border-[rgba(147,197,253,0.10)]">
                     <td className="py-2 text-xs text-t3">{new Date(r.created_at).toLocaleString()}</td>
                     <td className="py-2 text-xs">L{r.level}</td>
                     <td className="py-2 font-mono text-xs text-t2">{r.code_used}</td>
@@ -407,7 +407,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         <Card title={`Admin actions on this user · ${auditActions.length}`}>
           <ul className="space-y-2 text-sm">
             {auditActions.map((a, i) => (
-              <li key={i} className="border-t border-border pt-2 first:border-t-0 first:pt-0">
+              <li key={i} className="border-t border-[rgba(147,197,253,0.10)] pt-2 first:border-t-0 first:pt-0">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs text-t2">{a.action}</span>
                   <span className="text-[11px] text-t3">{new Date(a.created_at).toLocaleString()}</span>
@@ -435,9 +435,9 @@ function KV({ label, value }: { label: string; value: React.ReactNode }) {
 
 function Stat({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'amber' }) {
   return (
-    <div className={`rounded border ${tone === 'amber' ? 'border-amber/30' : 'border-border'} bg-bg p-3`}>
-      <p className="text-[10px] uppercase tracking-widest text-t3">{label}</p>
-      <p className="mt-1 text-base font-bold text-t1 tabular-nums">{value}</p>
+    <div className={`stat-tile p-3 ${tone === 'amber' ? 'border-amber/30' : ''}`}>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-t3">{label}</p>
+      <p className="mt-1 font-mono text-base font-bold text-white tabular-nums">{value}</p>
     </div>
   );
 }

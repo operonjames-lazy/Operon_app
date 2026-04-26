@@ -152,7 +152,7 @@ export default function AdminHealthPage() {
             <select
               value={replayChain}
               onChange={(e) => setReplayChain(e.target.value as 'arbitrum' | 'bsc')}
-              className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-t1"
+              className="rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-1.5 text-sm text-t1"
             >
               <option value="arbitrum">Arbitrum</option>
               <option value="bsc">BSC</option>
@@ -165,7 +165,7 @@ export default function AdminHealthPage() {
               value={replayTx}
               onChange={(e) => setReplayTx(e.target.value)}
               placeholder="0x..."
-              className="w-full rounded-md border border-border bg-bg px-3 py-1.5 font-mono text-xs text-t1"
+              className="w-full rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-1.5 font-mono text-xs text-t1"
             />
           </div>
           <Button
@@ -188,11 +188,11 @@ export default function AdminHealthPage() {
           value={auditQ}
           onChange={(e) => setAuditQ(e.target.value)}
           placeholder="Filter: action or target id"
-          className="mb-3 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-t1 placeholder:text-t4"
+          className="mb-3 w-full rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-2 text-sm text-t1 placeholder:text-t4"
         />
         <div className="max-h-[480px] overflow-y-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-card">
+            <thead className="sticky top-0 bg-[rgba(8,12,24,0.85)]">
               <tr className="text-left text-xs uppercase tracking-wider text-t3">
                 <th className="py-2">When</th>
                 <th className="py-2">Actor</th>
@@ -203,7 +203,7 @@ export default function AdminHealthPage() {
             </thead>
             <tbody>
               {audit.data?.rows.map((a) => (
-                <tr key={a.id} className="border-t border-border">
+                <tr key={a.id} className="border-t border-[rgba(147,197,253,0.10)]">
                   <td className="py-2 text-[11px] text-t3">{new Date(a.created_at).toLocaleString()}</td>
                   <td className="py-2 font-mono text-[11px] text-t2">
                     {a.admin_user.slice(0, 6)}…{a.admin_user.slice(-4)}
@@ -255,11 +255,11 @@ function HealthTile({
         ? 'border-amber/30'
         : tone === 'red'
           ? 'border-red/30'
-          : 'border-border';
+          : '';
   return (
-    <div className={`rounded-lg border bg-card p-4 ${ring}`}>
-      <p className="text-[10px] uppercase tracking-widest text-t3">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-t1 tabular-nums">{value}</p>
+    <div className={`stat-tile p-4 ${ring}`}>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-t3">{label}</p>
+      <p className="mt-1 font-mono text-2xl font-bold text-white tabular-nums">{value}</p>
     </div>
   );
 }

@@ -80,13 +80,13 @@ export default function AdminPartnersPage() {
         </p>
       </div>
 
-      <div className="flex gap-1 rounded-lg border border-border bg-card p-1 text-sm w-fit">
+      <div className="flex gap-1 rounded-lg border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] p-1 text-sm w-fit">
         {(['leaderboard', 'pipeline', 'invites'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-3 py-1.5 rounded capitalize ${
-              tab === t ? 'bg-card-hover text-t1' : 'text-t3 hover:text-t1'
+              tab === t ? 'bg-[rgba(8,12,24,0.85)] text-t1' : 'text-t3 hover:text-t1'
             }`}
           >
             {t}
@@ -103,7 +103,7 @@ export default function AdminPartnersPage() {
                 key={s}
                 onClick={() => setSort(s)}
                 className={`rounded border px-2 py-0.5 capitalize ${
-                  sort === s ? 'border-green text-green' : 'border-border text-t2 hover:text-t1'
+                  sort === s ? 'border-[rgba(147,197,253,0.45)] text-ice' : 'border-[rgba(147,197,253,0.10)] text-t2 hover:text-t1'
                 }`}
               >
                 {s}
@@ -128,7 +128,7 @@ export default function AdminPartnersPage() {
                 </thead>
                 <tbody>
                   {partners.data.rows.map((p) => (
-                    <tr key={p.id} className="border-t border-border">
+                    <tr key={p.id} className="border-t border-[rgba(147,197,253,0.10)]">
                       <td className="py-2">
                         <Link
                           href={`/admin/users/${p.user_id}`}
@@ -188,7 +188,7 @@ export default function AdminPartnersPage() {
               </thead>
               <tbody>
                 {pipeline.data.rows.map((r) => (
-                  <tr key={r.user_id} className="border-t border-border">
+                  <tr key={r.user_id} className="border-t border-[rgba(147,197,253,0.10)]">
                     <td className="py-2">
                       <Link
                         href={`/admin/users/${r.user_id}`}
@@ -247,7 +247,7 @@ export default function AdminPartnersPage() {
                   max={100}
                   value={inviteCount}
                   onChange={(e) => setInviteCount(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
-                  className="w-24 rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-t1"
+                  className="w-24 rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-1.5 text-sm text-t1"
                 />
               </div>
               <Button variant="primary" size="sm" onClick={generateInvites} loading={inviteBusy}>
@@ -278,7 +278,7 @@ export default function AdminPartnersPage() {
                   </thead>
                   <tbody>
                     {invites.data.rows.map((r) => (
-                      <tr key={r.invite_code} className="border-t border-border">
+                      <tr key={r.invite_code} className="border-t border-[rgba(147,197,253,0.10)]">
                         <td className="py-2 font-mono text-xs text-t1">{r.invite_code}</td>
                         <td className="py-2 text-xs text-t2">{r.intended_name || '—'}</td>
                         <td className="py-2">
@@ -329,9 +329,9 @@ function InviteFunnel({ rows }: { rows: InviteRow[]; total: string }) {
 
 function Stat({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'green' }) {
   return (
-    <div className={`rounded border ${tone === 'green' ? 'border-green/30' : 'border-border'} bg-bg p-3`}>
-      <p className="text-[10px] uppercase tracking-widest text-t3">{label}</p>
-      <p className="mt-1 text-base font-bold text-t1 tabular-nums">{value}</p>
+    <div className={`stat-tile p-3 ${tone === 'green' ? 'border-green/30' : ''}`}>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-t3">{label}</p>
+      <p className="mt-1 font-mono text-base font-bold text-white tabular-nums">{value}</p>
     </div>
   );
 }

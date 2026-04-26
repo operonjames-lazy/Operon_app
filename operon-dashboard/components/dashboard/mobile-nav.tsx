@@ -98,8 +98,10 @@ export function MobileNav() {
           <div className="mb-3 flex items-center justify-between">
             <p className="font-display text-sm font-semibold text-t1">{t('nav.more')}</p>
             <button
+              type="button"
+              aria-label={t('header.closeMenu')}
               onClick={() => setSheetOpen(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t3 hover:text-ice cursor-pointer"
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] text-t3 hover:text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice focus-visible:outline-offset-2 cursor-pointer"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

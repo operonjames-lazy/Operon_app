@@ -23,14 +23,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Auth status banner */}
         {isAuthenticating && (
-          <div className="border-b border-border bg-card px-4 py-2 text-center text-xs text-t3">
+          <div role="status" aria-live="polite" className="border-b border-[rgba(147,197,253,0.10)] bg-[rgba(59,130,246,0.06)] px-4 py-2 text-center text-xs text-ice">
             {t('auth.signingIn')}
           </div>
         )}
         {authError && (
-          <div className="border-b border-red/20 bg-red/5 px-4 py-2 flex items-center justify-center gap-2 text-xs text-red">
+          <div role="alert" aria-live="assertive" className="border-b border-red/30 bg-red/5 px-4 py-2 flex items-center justify-center gap-2 text-xs text-red">
             <span>{t('auth.signInFailed')}: {authError}</span>
-            <button onClick={authenticate} className="text-ice underline cursor-pointer">{t('btn.retry')}</button>
+            <button type="button" onClick={authenticate} className="text-ice underline cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice focus-visible:outline-offset-2">{t('btn.retry')}</button>
           </div>
         )}
 

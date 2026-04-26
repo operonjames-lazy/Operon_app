@@ -3,6 +3,7 @@
 import type { Chain, NodeStatus } from '@/types/api';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { getExplorerTxUrl } from '@/lib/explorer';
 
 interface NodeCardProps {
   tokenId: number;
@@ -15,23 +16,15 @@ interface NodeCardProps {
   estDailyReward: number;
 }
 
-const chainConfig: Record<Chain, { label: string; explorer: string; badge: 'blue' | 'gold' }> = {
-  arbitrum: {
-    label: 'Arbitrum',
-    explorer: 'https://arbiscan.io/tx/',
-    badge: 'blue',
-  },
-  bsc: {
-    label: 'BNB Chain',
-    explorer: 'https://bscscan.com/tx/',
-    badge: 'gold',
-  },
+const chainConfig: Record<Chain, { label: string; badge: 'blue' | 'gold' }> = {
+  arbitrum: { label: 'Arbitrum', badge: 'blue' },
+  bsc: { label: 'BNB Chain', badge: 'gold' },
 };
 
-const statusConfig: Record<NodeStatus, { label: string; color: string }> = {
-  active: { label: 'Active', color: 'bg-green' },
-  delegated: { label: 'Delegated', color: 'bg-blue' },
-  locked: { label: 'Locked', color: 'bg-amber' },
+const statusConfig: Record<NodeStatus, { labelKey: string; color: string }> = {
+  active: { labelKey: 'nodes.status.active', color: 'bg-green' },
+  delegated: { labelKey: 'nodes.status.delegated', color: 'bg-blue' },
+  locked: { labelKey: 'nodes.status.locked', color: 'bg-amber' },
 };
 
 export function NodeCard({
@@ -58,8 +51,8 @@ export function NodeCard({
           <Badge variant="default">{t('home.tierLabel', { tier })}</Badge>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className={`h-2 w-2 rounded-full ${statusInfo.color} shadow-[0_0_8px_currentColor]`} />
-          <span className="font-mono text-[10px] uppercase tracking-widest text-t3">{statusInfo.label}</span>
+          <span className={`h-2 w-2 rounded-full ${statusInfo.color} shadow-[0_0_8px_currentColor]`} aria-hidden />
+          <span className="font-mono text-[10px] uppercase tracking-widest text-t3">{t(statusInfo.labelKey)}</span>
         </div>
       </div>
 
@@ -79,7 +72,7 @@ export function NodeCard({
         <div>
           <p className="font-mono text-[10px] uppercase tracking-widest text-t4">{t('nodeCard.txHash')}</p>
           <a
-            href={`${chainInfo.explorer}${txHash}`}
+            href={`${getExplorerTxUrl(chain)}${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
             className="font-mono text-ice hover:underline"

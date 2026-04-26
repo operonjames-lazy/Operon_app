@@ -81,7 +81,7 @@ export default function AdminSettingsPage() {
             placeholder="English (required)"
             value={newEn}
             onChange={(e) => setNewEn(e.target.value)}
-            className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-t1"
+            className="w-full rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-2 text-sm text-t1"
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <input
@@ -89,14 +89,14 @@ export default function AdminSettingsPage() {
               placeholder="Traditional Chinese (optional)"
               value={newTc}
               onChange={(e) => setNewTc(e.target.value)}
-              className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-t1"
+              className="rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-2 text-sm text-t1"
             />
             <input
               type="text"
               placeholder="Simplified Chinese (optional)"
               value={newSc}
               onChange={(e) => setNewSc(e.target.value)}
-              className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-t1"
+              className="rounded-md border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-3 py-2 text-sm text-t1"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export default function AdminSettingsPage() {
             {createErr && <span className="text-xs text-red">{createErr}</span>}
           </div>
         </div>
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-[rgba(147,197,253,0.10)]">
           {announcements.data?.rows.map((a) => (
             <li key={a.id} className="flex items-start justify-between gap-3 py-3">
               <div className="flex-1 min-w-0">
@@ -137,7 +137,7 @@ export default function AdminSettingsPage() {
               <div className="flex gap-1">
                 <button
                   onClick={() => toggleAnnouncement(a.id, !a.is_active)}
-                  className="rounded border border-border bg-card px-2 py-1 text-[11px] text-t2 hover:bg-card-hover"
+                  className="rounded border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-2 py-1 text-[11px] text-t2 hover:bg-[rgba(8,12,24,0.85)]"
                 >
                   {a.is_active ? 'Hide' : 'Activate'}
                 </button>
@@ -194,7 +194,7 @@ export default function AdminSettingsPage() {
         {i18n.data && (
           <ul className="space-y-2 text-sm">
             {i18n.data.rows.map((r) => (
-              <li key={r.locale} className="flex items-center justify-between border-t border-border pt-2 first:border-t-0 first:pt-0">
+              <li key={r.locale} className="flex items-center justify-between border-t border-[rgba(147,197,253,0.10)] pt-2 first:border-t-0 first:pt-0">
                 <div>
                   <span className="font-mono text-xs text-t1">{r.locale.toUpperCase()}</span>
                   {' · '}
@@ -255,7 +255,7 @@ function KillSwitchRow({
   }
 
   return (
-    <tr className="border-t border-border">
+    <tr className="border-t border-[rgba(147,197,253,0.10)]">
       <td className="py-2 font-mono text-xs text-t2">{row.key}</td>
       <td className="py-2">
         {row.disabled ? (
@@ -270,7 +270,7 @@ function KillSwitchRow({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Reason (required)"
-            className="w-full rounded border border-border bg-bg px-2 py-1 text-xs text-t1"
+            className="w-full rounded border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-2 py-1 text-xs text-t1"
           />
         ) : (
           <span className="text-xs text-t3">{row.reason || '—'}</span>
