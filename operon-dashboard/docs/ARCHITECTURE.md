@@ -77,13 +77,14 @@ operon-dashboard/
 │   ├── admin.ts               # requireAdmin + logAdminAction + generateInviteCode
 │   ├── admin-signer.ts        # ADMIN_PRIVATE_KEY → ethers.Contract
 │   ├── commission.ts          # Thin RPC wrapper (atomic commission call)
+│   ├── explorer.ts            # getExplorerTxUrl(chain) — testnet/mainnet aware. Used by NodeCard + sale/page.tsx.
 │   ├── nonce.ts               # SIWE nonce store
 │   ├── rate-limit.ts          # Upstash rate limiter (fails closed in prod)
 │   ├── logger.ts              # Structured logging
 │   ├── supabase.ts            # Server + browser client factories
 │   ├── rpc.ts                 # Provider + fallback transports
 │   ├── webhooks/process-event.ts  # Parse + verify + process purchase events
-│   ├── wagmi/                 # chain config, contract addresses, transports
+│   ├── wagmi/                 # chain config, contract addresses, transports + RainbowKit theme
 │   ├── i18n/                  # 6-language dictionary + useTranslation hook + rainbowkit-locale mapping
 │   └── api/                   # Fetch helpers, route constants
 ├── contracts/
@@ -500,6 +501,57 @@ Abandoned after 5 retries → Telegram alert.
 | Pending transaction recovery | localStorage key `operon_pending_tx` |
 
 TanStack Query config (in `app/providers.tsx`): `staleTime: 30s`, `retry: 2`, `refetchOnWindowFocus: true`. Cache invalidation happens via explicit `queryClient.invalidateQueries` calls in purchase flow success handlers and via Supabase Realtime events for tier changes.
+
+---
+
+## Design System
+
+Token source of truth: `app/globals.css` (Tailwind v4 `@theme inline` block). Aligned with the marketing site's prototype-O — see `apps/website/hero-prototype-O.html` for the visual reference.
+
+### Colour roles
+
+| Role | Token | Usage |
+|---|---|---|
+| Primary brand | `--color-ice` `#93C5FD`, `--color-glow` `#3B82F6` | Active nav, primary CTA gradients, focus rings, link colour, total amounts |
+| Nodes accent | `--color-gold` `#d4a853` | Anything node-flavoured (chain badges for BNB, EPP partner badges, tier hover states) |
+| **Status only** | `--color-green` `#4ecb8d` | Reserved for sale-active / payout-confirmed / commission-earned / health-OK / "Onboarded" / connection indicator. **Never primary CTA.** |
+| Warning | `--color-amber` `#F59E0B` | Pending banners, locked status, "rewards at TGE", borderline health |
+| Error | `--color-red` `#EF4444` | Failed payouts, error toasts, destructive admin actions |
+| Text | `--color-t1` ... `--color-t4` | Decreasing opacity scale on `#02050d` body bg |
+
+### CSS primitives
+
+Defined in `app/globals.css`:
+
+- **`.card`** — gradient-bordered panel via padding-box + border-box trick + multi-stop blue border + multi-shadow. Optional `.card-glow` adds the soft top-half inner glow. Use for any first-class section container.
+- **`.stat-tile`** — lighter weight than `.card` for KPI tiles. `bg-[rgba(0,0,0,0.25)] border border-[rgba(147,197,253,0.08)]`.
+- **`.btn-primary`** / **`.btn-ghost`** — pill CTAs. Primary is the navy/purple gradient; ghost is the outline pill. Mirrors the website's `.cta-primary` / `.cta-ghost`. Component equivalents: `<Button variant="primary" />` / `variant="secondary" />`.
+- **`.status-pill`** — neutral chrome pill with green dot, used for "Sale live" etc.
+- **`.hex-backdrop`** — faint hex-grid radial spotlight, used only on the disconnected Overview hero.
+
+### A11y conventions
+
+- Global `:focus-visible { outline: 2px solid var(--color-ice); outline-offset: 2px; }`.
+- `prefers-reduced-motion` media query disables decorative blink/pulse/fadeIn animations.
+- Icon-only buttons carry `aria-label={t(...)}`; copy/share buttons add `aria-live="polite"` for screen-reader confirmation.
+- Lang dropdown uses `aria-haspopup="listbox"` + `aria-expanded` + `role="listbox"` + `aria-selected`.
+- Auth banner uses `role="status" aria-live="polite"` (in-flight) and `role="alert" aria-live="assertive"` (error).
+- `Button` `loading` state sets `aria-busy={true}` and renders a visually distinct ice-tinted dim surface (not just opacity drop) to make in-flight transactions obvious during the 5-15s confirmation window.
+
+### Fonts
+
+Loaded via `next/font/google` in `app/layout.tsx`:
+
+| Variable | Family | Use |
+|---|---|---|
+| `--font-inter` | Inter (400-900) | Body text |
+| `--font-jetbrains` | JetBrains Mono (400-500) | Numeric values, addresses, labels with `tracking-[0.18em]` |
+| `--font-unbounded` | Unbounded (300/600/700/800) | Display headings (`font-display`) |
+| `--font-be-vietnam` | Be Vietnam Pro (vietnamese subset) | `[data-lang="vi"]` override on EPP onboarding for precomposed Vietnamese diacritic glyphs (R5-BUG-09) |
+
+### EPP onboarding exception
+
+`app/epp/onboard/page.tsx` uses its own self-contained design system (Cormorant Garamond serif, gold accents, letter/invitation aesthetic). Intentionally not aligned to the dashboard primitives — it's a deliberately different surface and the Vietnamese font fix is coupled to its `<style jsx global>` block.
 
 ---
 

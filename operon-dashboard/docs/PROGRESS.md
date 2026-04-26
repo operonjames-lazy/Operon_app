@@ -961,3 +961,85 @@ All 3 prototypes share nav (with cross-tab links between Operon / Agents / Nodes
 - **Carry-over follow-ups still open:** `.playwright-mcp/` to `.gitignore`; lockfile split-brain.
 
 ---
+
+## 2026-04-26 (session 5) — Dashboard theme port + audit fixes + website SEO/a11y sweep
+
+Big multi-surface session. User asked to align the dashboard product with the new prototype-O marketing site, then asked for a review of website + app and to "fix them all". Landed in 6 commits (5 dashboard, 1 workspace).
+
+### Completed
+
+**`c6169e4` — `feat: align dashboard theme with website prototype-O`**
+
+Pure paint, no behaviour changes:
+- `app/globals.css`: replaced flat dark tokens with the prototype-O card palette (`--color-card-fill-top/bot`, `--color-card-border-top/mid1/mid2/bot`, `--color-card-inner-glow/mid`). New primitives: `.card`, `.card-glow`, `.stat-tile`, `.btn-primary`, `.btn-ghost`, `.status-pill`, `.hex-backdrop`. Demoted `--color-green` from primary brand to status-only; promoted ice (`#93C5FD`) + glow (`#3B82F6`) to primary.
+- `app/layout.tsx`: swapped `DM_Sans` / `DM_Mono` → `Inter` / `JetBrains_Mono`; added `Unbounded` via `next/font` (was previously declared in CSS but never loaded so `font-display` fell back to system). `Be_Vietnam_Pro` retained for the Vietnamese override per R5-BUG-09.
+- `lib/wagmi/theme.ts`: RainbowKit theme rebuilt around navy/blue accent (`accentColor: '#3B82F6'`), gradient connect-button shadows, ice/blue modal borders. Green is now used only for `connectionIndicator`.
+- Sidebar / Header / MobileNav repainted: ice-blue logo two-tone (`Oper<span class="text-ice">on</span>`), `rgba(59,130,246,0.15)` active nav state, status pill chrome, navy modal/dropdown surfaces.
+- 11 UI primitives repainted (Card, Button, Badge, StatCard, TierBar, ChainSelector, QuantitySelector, FeedItem, MetricTile, CodeBar, ProgressBar). Card primitive now uses gradient-border via padding-box + border-box trick mirroring the website's `.fcard`.
+- 6 page-level files repainted: `(app)/page.tsx` (Overview adds faint `.hex-backdrop` to disconnected hero), `(app)/sale/page.tsx`, `(app)/nodes/page.tsx`, `(app)/referrals/page.tsx`, `(app)/resources/page.tsx`, `(admin)/admin/layout.tsx`.
+- EPP onboarding (`app/epp/onboard/page.tsx`) intentionally untouched — its self-contained letter/invitation aesthetic with serif type is a deliberate brand choice.
+
+**`afcf212` — `fix(sale): tier strip overflow on max-w-2xl container`**
+
+40 tiers with `flex-1` and min-content text exceeded the parent's 672px width by ~3×, squashing each tile to ~16px and pushing the strip past the right edge. Wrapped in `overflow-x-auto` + `min-w-max` inner so each tile keeps a readable 68/76px (mobile/desktop), stacked tier label + price on two lines, added a ref + `useEffect` that calls `scrollIntoView({ inline: 'center' })` on mount and on tier advancement so buyers land on their pricing region instead of T1. Edge gradient fades hint at hidden tiers; thin ice-tinted scrollbar (Firefox + WebKit).
+
+**`81ca2c2` — `fix: a11y, i18n, dead-link, and admin sweep`**
+
+Closes 11 audit findings (background `audit` agent ran post-redesign and surfaced them):
+- 7 new translation keys × 6 locales: `home.networkStatus`, `qty.max`, `qty.decrease`, `qty.increase`, `code.copied`, `nav.adminPanel`, `header.language`, `header.closeMenu`. Routed through `useTranslation()` in disconnected hero, QuantitySelector, sidebar admin link, CodeBar, and NodeCard status labels (the latter reuses pre-existing `nodes.status.*` keys).
+- New `lib/explorer.ts` extracts `getExplorerTxUrl()` previously duplicated in `sale/page.tsx`. Threaded through `NodeCard` so node tx-hash links honour `NEXT_PUBLIC_NETWORK_MODE` (was hardcoded to mainnet, leaving testnet links broken on /nodes).
+- Auth banner (`(app)/layout.tsx:25-35`) repainted to ice/blue tokens + `role="status" aria-live="polite"` (was using legacy `bg-card border-border` and silent to screen readers during the SIWE prompt window).
+- `Button` `loading` state visually distinct: gradient swapped for ice-tinted dim surface + `animate-pulse-dot` + `aria-busy` so users don't keep tapping during the 5-15s confirmation window.
+- Global `:focus-visible` outline (`2px solid var(--color-ice)` + 2px offset) in `globals.css`.
+- `prefers-reduced-motion` media query disables `*` animations + the `.dot` blink + `animate-pulse-dot` + `animate-fade-in` decorative animations (WCAG 2.3.3).
+- `aria-label` added to lang picker (with `aria-haspopup="listbox"` + `aria-expanded`), mobile sheet close button, CodeBar copy/share/link buttons (with `aria-live="polite"` on the copy ones), and QuantitySelector +/- buttons.
+- `/resources` 9 dead `href="#"` placeholders now render as `<div aria-disabled="true">` "Coming soon" tiles instead of `target="_blank"` anchors that scrolled-to-top in production. Live URLs (Operon website, FAQ) keep their anchor.
+- Admin sub-pages sweep (delegated to background general-purpose agent, results verified): all 8 inner pages (`overview`, `users`, `users/[id]`, `sale`, `partners`, `payouts`, `health`, `settings`) repainted to the new theme primitives. Replaced the raw `bg-green` Search button on `/admin/users` with `<Button variant="primary">`. Preserved `text-green` / `bg-green/X` only where they semantically signal success / paid / active / OK / health-OK status. One demotion: partners-page sort indicator (was `border-green text-green`, demoted to ice — sort isn't a status semantic).
+
+**`259c9f9` — `fix: post-review cleanup — skeletons, error.tsx, wallet label`**
+
+Self-review after the audit-fix sweep surfaced four issues my own audit didn't catch:
+- All 3 `loading.tsx` files (overview / sale / nodes) used `bg-card rounded-lg`. Since the theme port made `--color-card` translucent (rgba 0.65), skeletons rendered nearly invisible. Switched to opaque `bg-[rgba(12,18,36,0.85)]` + ice-tinted border, matching the page-level skeleton style.
+- `/sale` `error.tsx` had a hardcoded English "Your funds are safe" paragraph. Routed through new `error.fundsSafe` key × 6 locales.
+- `/sale` page footer "Wallet:" label hardcoded English. Routed through new `sale.walletLabel` key × 6 locales.
+
+**`886840e` — `fix(website): canonical URL points at directory URL`** *(workspace repo)*
+
+Self-review caught a worse-than-original-audit bug: my first `fix-seo-meta.mjs` run pointed every canonical at `/<lang>/hero-prototype-O.html`, but the public URL Google should index is `/<lang>/`. And `/index.html` files (build-i18n copies of the prototype file) retained their stale canonical from before my second pass — so EN `/index.html` was canonicalising to `/hero-prototype-O.html` and locale `/ja/index.html` was actually canonicalising to `/hero-prototype-O.html` (the EN URL!), telling Google to deindex every localised home. Fix: `urlFor()` returns `/` for EN root and `/<lang>/` for locale homes (both `index.html` and `hero-prototype-O.html` share that canonical); `index.html` added to `PAGES` with `metaForPage()` falling back to the prototype-O entries. 35 files re-processed.
+
+**`40ddab9` — `fix(website): SEO + a11y + dead-link sweep across prototype-O pages`** *(workspace repo)*
+
+Closes the website audit findings, plus tracks the prototype-O HTML output that was previously uncommitted:
+- New `apps/website/scripts/`: `fix-seo-meta.mjs`, `fix-a11y-contrast.mjs`, `fix-locale-anchors.mjs`. All idempotent post-build steps. Run order: `build-i18n.mjs` → `fix-seo-meta.mjs` → `fix-a11y-contrast.mjs` → `fix-locale-anchors.mjs`.
+- Per-locale `<link rel="canonical">` + 7 `hreflang` alternates + `x-default` in every page head (was: every locale canonicalising back to EN root, telling Google to deindex 6 non-EN URLs).
+- Localised `<title>` + `<meta description>` in all 6 non-EN dirs (was: identical English in every locale; search engines saw 7 duplicates).
+- `proto-o-i18n.js` loaded via absolute `/proto-o-i18n.js` (was relative; resolved to `/<lang>/proto-o-i18n.js` and 404'd, breaking the lang switcher on every localised page).
+- 6 `/nodes` page FAQ tiles deep-link to specific FAQ sections (`#basics`, `#transfer`, `#earnings`, `#sale`) instead of `href="#"` scroll-to-top. Locale variants suffixed (`#basics_ja`, etc.) by `fix-locale-anchors.mjs` to match the section IDs in `/<lang>/hero-prototype-O-faq.html`.
+- Home page FAQ tile #3 Q/A mismatch fixed: "Technical requirements to run a node?" / "No. The client runs on a laptop…" → "Do I need a GPU to run a node?" / "No. …no GPU required." Updated in EN HTML + 6 locale dicts (`zh-cn` / `zh-tw` / `ko` / `ja` / `th` / `vi`).
+- Global `:focus-visible` rule (was: only `.lang-switcher`; CTAs / nav / FAQ tiles all keyboard-invisible).
+- `prefers-reduced-motion` media query disables hex-grid pulse, blink-green dots, `fadeUp` / `spotIn` / etc.
+- `--t4` contrast bump (alpha 0.45 → 0.62 on prototype-O; 0.30 → 0.55 on FAQ) so small labels meet WCAG AA against `#02050d`.
+- `a[href="#"]` / `a[href=""]` rendered as `opacity: 0.5; cursor: not-allowed; pointer-events: none` — every dead placeholder link (footer columns, "Read the deck", footer Resources) reads as disabled instead of scroll-to-top.
+- Production `/index.html` regenerated from `hero-prototype-O.html` via `build-i18n` (was stale — missing the gold "Nodes" nav style and other recent updates).
+
+### Verification
+
+- `npx tsc --noEmit` exit 0 after every commit
+- `npx next build` succeeds — every route compiled (Static + Dynamic)
+- Playwright at 1440 + 375: chrome, sidebar, /sale tier strip + buy box, /resources disabled tiles, /admin gate, lang dropdown opening with proper `aria-haspopup` + `listbox` + `aria-selected`, switching to TC translates the entire app including new keys ("Network live" → "網絡運行中", SOON badges)
+- Two background `audit` agents (one per surface) read 11 + 14 substantive findings before the fix passes; ~95% closed in this session, deferred items captured below
+
+### Decisions
+
+- **Green demoted to status-only.** Per the prototype-O brief: ice/glow blue is primary, gold is for nodes, green is reserved for sale-active / payout-confirmed / commission-earned / health-OK. Implemented across primitives + admin sweep. Where green appeared as primary brand colour (Search button, sort indicator, CTAs, totals, badges), it was demoted to ice. Where it semantically signals success (status indicators, paid badges, "Onboarded" stat ring), it stayed.
+- **EPP onboarding deliberately not repainted.** Self-contained letter/invitation aesthetic with serif Cormorant Garamond is a deliberate brand choice; the i18n flow + Vietnamese diacritic font fix (R5-BUG-09) are coupled to its `<style jsx global>` block. Touching it would have broken the Vietnamese precomposed-glyph fix without value.
+- **Tier strip rebuilt as horizontal scroller, not compact bar.** The website mockup uses a rich price-progression visual showing every tier; collapsing to a TierBar (used elsewhere) would lose information density. Auto-scroll-to-active replaces the affordance loss from off-screen tiers.
+
+### Open / next session
+
+- **Three open items from the dashboard audit deferred** (lower-severity, batched as backlog): card primitive `:hover` state declared via `transition-colors` but no `.card:hover` rule — hover does nothing; `feed-item.tsx` purchase-amount in green (semantically defensible as "money in" — verify with design intent); skeleton contrast borderline (~3.5:1) on OLED — bump if it bothers users.
+- **Four open items from the website audit deferred** (the bigger sweeps from the audit's "propose, don't unilaterally do" list): mobile breakpoint < 480px (single existing `@media (max-width: 760px)` is the only query — sub-390px viewports likely overflow); inline `<style>` extraction (~70K lines duplicated across 4 prototypes × 7 locales — extract to `/proto-o.css`); EN root FAQ ships all 7 langs in one 3603-line file (~85% byte savings if non-EN sections moved out); Open Graph + Twitter Card meta tags missing on every prototype-O page (social previews blank).
+- **Build pipeline drift risk.** `build-i18n.mjs` doesn't currently know about canonical / hreflang / focus-visible / dead-link CSS. The 3 new fix-* scripts are post-build idempotent steps; future contributors must chain them or canonical / a11y will silently regress. Worth folding into `build-i18n.mjs` or adding a `package.json` `build` script that runs the chain.
+- **Operator-side mainnet items still owed** (carry-over from R14 / R15 sessions): Vercel env rotation, mainnet contract deploy, webhook rewire, live smoke test, Gnosis Safe novation. None touched this session.
+
+---

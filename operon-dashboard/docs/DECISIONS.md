@@ -267,6 +267,32 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 
 ---
 
+## D29 — Demote `--color-green` from primary brand to status-only signal
+**Date:** 2026-04-26
+**Why:** The dashboard originally used green (`#22C55E`, then `#4ecb8d`) as primary brand: logo badge, active nav state, primary CTA, totals, "Search" buttons, sort indicators, focus rings. The new marketing site (prototype-O) uses ice (`#93C5FD`) + glow (`#3B82F6`) blue as primary, with green reserved for "live"/"online"/"earned" status indicators only. Two surfaces fighting over the same colour role made the brand visually inconsistent end-to-end and meant a green "Search" button next to a green payout badge implied false equivalence (action ≡ confirmed-status).
+**Options considered:**
+1. Keep green as primary on the dashboard, accept the website ↔ app brand drift. Rejected — splits the visual identity at the most-trafficked seam (marketing → app).
+2. Demote green from the dashboard primary, but keep `connectButtonBackground` green for RainbowKit. Rejected — RainbowKit's `accentColor` drives the connect button; a single colour can't be both primary and "status-only".
+3. **Demote green to status-only across the dashboard.** Promote ice/glow blue to primary. Repaint chrome, primitives, and pages. Chosen.
+**Decision:** Green is reserved for: sale-active pill, payout-confirmed badge, commission-earned amount, health-OK ring, "Onboarded" partner stat, RainbowKit `connectionIndicator`, `attest-head` checkmark, NodeCard `active` status dot. **Never primary CTA, never active nav, never logo, never focus ring.** Primary CTA is the navy/purple gradient (`.btn-primary` / `<Button variant="primary">`). Active nav state is `rgba(59,130,246,0.15)` ice-blue tint. Focus ring is `2px solid var(--color-ice)`.
+**Affected code:** [app/globals.css](../app/globals.css) (token redefinitions + new `.card` / `.stat-tile` / `.btn-primary` / `.btn-ghost` / `.status-pill` / `.hex-backdrop` primitives); [lib/wagmi/theme.ts](../lib/wagmi/theme.ts) (RainbowKit theme rebuilt around `#3B82F6` accent); 11 UI primitives (`components/ui/*`); 6 page-level files (`app/(app)/*` + `app/(admin)/admin/layout.tsx`); 8 admin sub-pages swept in the same commit.
+**Carve-out:** `app/epp/onboard/page.tsx` is intentionally not aligned — its serif Cormorant Garamond + gold accent is a deliberate brand choice (formal letter / invitation) and the Vietnamese diacritic font fix (R5-BUG-09) is coupled to its `<style jsx global>` block. Any future copy changes there should preserve the existing aesthetic.
+
+---
+
+## D30 — Resources page placeholder hrefs render as disabled "Coming soon" tiles, not dead anchors
+**Date:** 2026-04-26
+**Why:** Audit caught nine `href="#"` placeholders on `app/(app)/resources/page.tsx` (pitch manual, brand assets, T&Cs, whitepaper, Medium, Telegram, Discord, X, etc.) that would scroll-to-top + open in a new tab in production. The `# TODO(james)` block at the top of the file documented they were "owed", but the UI gave the user no signal that the link was disabled.
+**Options considered:**
+1. Hide the cards entirely until URLs land. Rejected — the layout shows the user *what's coming*, which is informationally useful (esp. for partners scanning for the EPP pitch deck).
+2. Block click via JS but keep the anchor styling. Rejected — looks identical to a working link, screen readers still announce it as a link.
+3. **Render a `<div aria-disabled="true">` with reduced opacity + cursor:not-allowed + a "Coming soon" badge in the requested locale.** The user can see what's coming, can't accidentally click, and assistive tech announces the disabled state. Chosen.
+**Decision:** `app/(app)/resources/page.tsx` checks each item's href via `isDead(href)`. Dead → `<div aria-disabled="true">` + `t('nav.comingSoon')` badge. Live → `<a target="_blank" rel="noopener noreferrer">`. Same pattern applies to the website's `<a href="#">` placeholders via a global CSS rule in `apps/website/scripts/fix-a11y-contrast.mjs` (rule injected into every prototype-O HTML page's inline `<style>`).
+**When to revisit:** When the operator provides real URLs (D-pending Resources URLs above), update the `DOWNLOADS` / `LINKS` / `COMMUNITY` const arrays at the top of `resources/page.tsx`. The dead-tile rendering will automatically flip to live anchors.
+**Affected code:** [app/(app)/resources/page.tsx](../app/(app)/resources/page.tsx); [apps/website/scripts/fix-a11y-contrast.mjs](../../apps/website/scripts/fix-a11y-contrast.mjs).
+
+---
+
 ## D28 — `referral_code_chain_state.status='revoked'` as a terminal, drain-excluded status
 **Date:** 2026-04-22
 **Why:** Ship-readiness R14 caught a money-safety defect: `/api/admin/referrals/remove` called `removeReferralCode` on-chain then set `referral_code_chain_state.status='failed'`. The drain query in `/api/cron/reconcile` and `/api/dev/drain-referrals` selects `status IN ('pending','failed') AND attempts < 10`, so the next tick picked up the row, saw `validCodes[hash]=false` (the admin just removed it), called `addReferralCode` again, and all four post-conditions in `syncReferralCodeOnChain` passed — the code was silently re-registered on-chain within 5 minutes. Admin revocations were unenforceable.
@@ -283,10 +309,11 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 # Pending Decisions
 
 ## D-pending — Resources page content URLs
-**Context:** The Resources page at `app/(app)/resources/page.tsx` has 9 placeholder `href="#"` links for partner materials (pitch manual, brand assets, T&Cs), useful links (whitepaper, FAQ, Medium), and community links (Telegram, Discord, X). UI is intentionally kept — layout is locked. Only hrefs need filling in.
-**Concern:** Shipping with dead links is bad UX. Before mainnet launch, every `#` needs to be either a real URL or the item should be hidden.
-**Decision:** Pending — content owed by operator.
-**How to resolve:** Operator provides URLs; update the `DOWNLOADS` / `LINKS` / `COMMUNITY` const arrays at the top of `app/(app)/resources/page.tsx`.
+**Context:** The Resources page at `app/(app)/resources/page.tsx` has 9 placeholder `href="#"` items for partner materials (pitch manual, brand assets, T&Cs), useful links (whitepaper, Medium), and community links (Telegram, Discord, X). FAQ and Website hrefs are real.
+**Status (2026-04-26 / D30):** Per D30, dead-href items now render as disabled "Coming soon" tiles instead of dead `<a target="_blank">` anchors that scroll-to-top. The pre-mainnet blocker is no longer "this is broken UI"; it's "we have no T&Cs / brand assets / whitepaper to ship". The dashboard can now ship without these and users will see a coherent "coming soon" state.
+**Concern:** Operator must still produce the underlying assets before partners can be effectively onboarded — no T&Cs PDF means no enforceable contract; no pitch deck means no sales asset; no Telegram link means no support channel. The dashboard not crashing is necessary but not sufficient.
+**Decision:** Pending — content owed by operator. UI is forward-compatible: replacing `href: '#'` with a real URL flips that single tile to a live anchor without any other change.
+**How to resolve:** Operator provides URLs; update the `DOWNLOADS` / `LINKS` / `COMMUNITY` const arrays at the top of `app/(app)/resources/page.tsx`. Same applies to the marketing site's footer columns and "Read the deck" CTA — see `apps/website/hero-prototype-O.html` footer block.
 
 ---
 
