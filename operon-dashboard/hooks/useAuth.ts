@@ -45,6 +45,98 @@ export function useAuth() {
   // removal racing the next render.
   const initialMountRef = useRef(true);
 
+  // `authenticate` is declared up here (instead of after the effects that
+  // call it) so the React Compiler's TDZ rule doesn't fire on the closures
+  // below. Functionally the order doesn't change runtime behaviour — effect
+  // bodies run after render, by which time the const initialiser has
+  // already executed — but the compiler analysis is order-sensitive.
+  const authenticate = useCallback(async () => {
+    if (!address || !chainId) return;
+
+    setIsAuthenticating(true);
+    setAuthError(null);
+
+    try {
+      // 1. Fetch nonce
+      const nonceRes = await fetch('/api/auth/nonce');
+      if (!nonceRes.ok) throw new Error('Failed to get nonce');
+      const { nonce } = await nonceRes.json();
+
+      // 2. Create SIWE message
+      const message = new SiweMessage({
+        domain: window.location.host,
+        address,
+        statement: 'Sign in to Operon Dashboard',
+        uri: window.location.origin,
+        version: '1',
+        chainId,
+        nonce,
+        issuedAt: new Date().toISOString(),
+      });
+      const messageStr = message.prepareMessage();
+
+      // 3. Sign message
+      const signature = await signMessageAsync({ message: messageStr });
+
+      // 4. Send to backend — server sets httpOnly cookie in response
+      const authRes = await fetch('/api/auth/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address,
+          message: messageStr,
+          signature,
+          referralCode: pendingReferralCode || undefined,
+        }),
+      });
+
+      if (!authRes.ok) {
+        const err = await authRes.json();
+        throw new Error(err.message || 'Authentication failed');
+      }
+
+      // 5. Cookie is set by the server response — consume the referral code
+      clearPendingReferralCode();
+      // R5-BUG-07: any purchase tx that was queued in MetaMask before the
+      // browser closed is outside our control — the wallet owns the
+      // request queue. Completing SIWE means this is a fresh session, so
+      // the stale pending_tx bookkeeping is no longer relevant and should
+      // not continue to fire the "pending transaction" recovery banner on
+      // the Sale page. Clearing it here is hygiene, not a security gate.
+      // See docs/DECISIONS.md D24 for why we cannot cancel the MetaMask
+      // request itself.
+      try { localStorage.removeItem('operon_pending_tx'); } catch {}
+      setIsAuthed(true);
+      authedAddressRef.current = address.toLowerCase();
+      // Ship-readiness R1: on the wallet-switch path above, `clearSession`
+      // + `invalidateQueries` run BEFORE SIWE re-completes, so the first
+      // round of re-fetches hit 401 and the `retry: 2` cascade lands the
+      // referrals/nodes/dashboard pages in their error boundary well
+      // before this SIWE authenticate() resolves. The expiry listener
+      // (L168) invalidates on 401 but only when `isAuthed` is true —
+      // during SIWE it's false, so the stuck-error queries are never
+      // re-attempted on their own. Invalidate wallet-scoped keys here,
+      // the moment the new cookie is live, so the error-state queries
+      // re-fire with the fresh session and the tester never sees the
+      // lingering page-level error boundary.
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      await queryClient.invalidateQueries({ queryKey: ['nodes'] });
+      await queryClient.invalidateQueries({ queryKey: ['referrals'] });
+      await queryClient.invalidateQueries({ queryKey: ['sale', 'status'] });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Authentication failed';
+      // User rejected signature is not an error — they can retry
+      if (msg.includes('User rejected') || msg.includes('user rejected')) {
+        setAuthError(null);
+      } else {
+        setAuthError(msg);
+        console.error('Auth error:', msg);
+      }
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }, [address, chainId, signMessageAsync, pendingReferralCode, clearPendingReferralCode, queryClient]);
+
   // Merged connect + adopt-cookie + re-auth effect. Deliberately replaces
   // the two-effect shape that shipped earlier in this session: two effects
   // with overlapping deps produced a stale-closure race where the adopt
@@ -186,93 +278,6 @@ export function useAuth() {
     window.addEventListener('operon:auth-expired', onExpired);
     return () => window.removeEventListener('operon:auth-expired', onExpired);
   }, [isAuthed, queryClient]);
-
-  const authenticate = useCallback(async () => {
-    if (!address || !chainId) return;
-
-    setIsAuthenticating(true);
-    setAuthError(null);
-
-    try {
-      // 1. Fetch nonce
-      const nonceRes = await fetch('/api/auth/nonce');
-      if (!nonceRes.ok) throw new Error('Failed to get nonce');
-      const { nonce } = await nonceRes.json();
-
-      // 2. Create SIWE message
-      const message = new SiweMessage({
-        domain: window.location.host,
-        address,
-        statement: 'Sign in to Operon Dashboard',
-        uri: window.location.origin,
-        version: '1',
-        chainId,
-        nonce,
-        issuedAt: new Date().toISOString(),
-      });
-      const messageStr = message.prepareMessage();
-
-      // 3. Sign message
-      const signature = await signMessageAsync({ message: messageStr });
-
-      // 4. Send to backend — server sets httpOnly cookie in response
-      const authRes = await fetch('/api/auth/wallet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address,
-          message: messageStr,
-          signature,
-          referralCode: pendingReferralCode || undefined,
-        }),
-      });
-
-      if (!authRes.ok) {
-        const err = await authRes.json();
-        throw new Error(err.message || 'Authentication failed');
-      }
-
-      // 5. Cookie is set by the server response — consume the referral code
-      clearPendingReferralCode();
-      // R5-BUG-07: any purchase tx that was queued in MetaMask before the
-      // browser closed is outside our control — the wallet owns the
-      // request queue. Completing SIWE means this is a fresh session, so
-      // the stale pending_tx bookkeeping is no longer relevant and should
-      // not continue to fire the "pending transaction" recovery banner on
-      // the Sale page. Clearing it here is hygiene, not a security gate.
-      // See docs/DECISIONS.md D24 for why we cannot cancel the MetaMask
-      // request itself.
-      try { localStorage.removeItem('operon_pending_tx'); } catch {}
-      setIsAuthed(true);
-      authedAddressRef.current = address.toLowerCase();
-      // Ship-readiness R1: on the wallet-switch path above, `clearSession`
-      // + `invalidateQueries` run BEFORE SIWE re-completes, so the first
-      // round of re-fetches hit 401 and the `retry: 2` cascade lands the
-      // referrals/nodes/dashboard pages in their error boundary well
-      // before this SIWE authenticate() resolves. The expiry listener
-      // (L168) invalidates on 401 but only when `isAuthed` is true —
-      // during SIWE it's false, so the stuck-error queries are never
-      // re-attempted on their own. Invalidate wallet-scoped keys here,
-      // the moment the new cookie is live, so the error-state queries
-      // re-fire with the fresh session and the tester never sees the
-      // lingering page-level error boundary.
-      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      await queryClient.invalidateQueries({ queryKey: ['nodes'] });
-      await queryClient.invalidateQueries({ queryKey: ['referrals'] });
-      await queryClient.invalidateQueries({ queryKey: ['sale', 'status'] });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Authentication failed';
-      // User rejected signature is not an error — they can retry
-      if (msg.includes('User rejected') || msg.includes('user rejected')) {
-        setAuthError(null);
-      } else {
-        setAuthError(msg);
-        console.error('Auth error:', msg);
-      }
-    } finally {
-      setIsAuthenticating(false);
-    }
-  }, [address, chainId, signMessageAsync, pendingReferralCode, clearPendingReferralCode]);
 
   return {
     isAuthenticated: isAuthed,

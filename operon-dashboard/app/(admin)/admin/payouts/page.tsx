@@ -98,7 +98,7 @@ export default function AdminPayoutsPage() {
           {unpaid.isLoading && <p className="text-xs text-t3">Loading…</p>}
           {unpaid.data && unpaid.data.batches.length === 0 && (
             <Card>
-              <p className="text-sm text-t3">No unpaid commissions. You're caught up.</p>
+              <p className="text-sm text-t3">No unpaid commissions. You&apos;re caught up.</p>
             </Card>
           )}
           {unpaid.data?.batches.map((b) => (

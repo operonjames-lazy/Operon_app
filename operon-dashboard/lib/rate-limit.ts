@@ -6,7 +6,7 @@ import { NextRequest } from 'next/server';
  * Returns a Response if rate limited, null if allowed.
  */
 
-let _ratelimitInstances: Record<string, { limit: (key: string) => Promise<{ success: boolean }> }> = {};
+const _ratelimitInstances: Record<string, { limit: (key: string) => Promise<{ success: boolean }> }> = {};
 
 /**
  * Returns `null` ONLY when Upstash isn't configured AND we're running in

@@ -1,14 +1,21 @@
 // Shared nonce verification logic
 // Used by both /api/auth/nonce (generation) and /api/auth/wallet (verification)
 
-let redisClient: any = null;
+// Redis client is lazily imported and we don't depend on a specific surface
+// beyond `set`/`del`, so a structural type captures everything we use.
+interface NonceRedisClient {
+  set: (key: string, value: string, opts?: { ex?: number }) => Promise<unknown>;
+  del: (key: string) => Promise<number>;
+}
+
+let redisClient: NonceRedisClient | null = null;
 const memStore = new Map<string, number>();
 
-async function getRedis() {
+async function getRedis(): Promise<NonceRedisClient | null> {
   if (redisClient) return redisClient;
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     const { Redis } = await import('@upstash/redis');
-    redisClient = Redis.fromEnv();
+    redisClient = Redis.fromEnv() as unknown as NonceRedisClient;
     return redisClient;
   }
   return null;

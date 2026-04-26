@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { timingSafeEqual } from 'node:crypto';
 import { createServerSupabase } from '@/lib/supabase';
 
 export const maxDuration = 60;
@@ -44,9 +45,8 @@ export async function GET(request: NextRequest) {
   }
   const authHeader = request.headers.get('authorization') || '';
   const expected = `Bearer ${process.env.CRON_SECRET}`;
-  const crypto = require('crypto');
   try {
-    if (!crypto.timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))) {
+    if (!timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
   } catch {

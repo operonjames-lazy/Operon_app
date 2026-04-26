@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent, queuePendingVerification } from '@/lib/webhooks/process-event';
 import { rateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
@@ -14,14 +15,13 @@ function verifyQuickNodeSignature(body: string, signature: string | null): boole
     logger.error('Missing QuickNode signature header', { route: 'webhook/quicknode' });
     return false;
   }
-  const crypto = require('crypto');
-  const hmac = crypto.createHmac('sha256', process.env.QUICKNODE_WEBHOOK_SECRET);
+  const hmac = createHmac('sha256', process.env.QUICKNODE_WEBHOOK_SECRET);
   hmac.update(body);
   const digest = hmac.digest('hex');
   const sigBuf = Buffer.from(signature);
   const digBuf = Buffer.from(digest);
   if (sigBuf.length !== digBuf.length) return false;
-  return crypto.timingSafeEqual(sigBuf, digBuf);
+  return timingSafeEqual(sigBuf, digBuf);
 }
 
 export async function POST(request: NextRequest) {
