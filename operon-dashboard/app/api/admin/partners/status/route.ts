@@ -34,6 +34,9 @@ export async function POST(request: NextRequest) {
   if (!userId || !status || !reason) {
     return Response.json({ error: 'missing_fields' }, { status: 400 });
   }
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) {
+    return Response.json({ error: 'invalid_user_id', field: 'userId' }, { status: 400 });
+  }
   if (!VALID_STATUSES.has(status)) {
     return Response.json({ error: 'invalid_status' }, { status: 400 });
   }

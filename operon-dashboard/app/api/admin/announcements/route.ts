@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
+import { assertNotKilled } from '@/lib/killswitches';
 import { createServerSupabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
@@ -24,6 +25,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.announcements.create');
+  if (killed) return killed;
 
   let body: { message_en?: string; message_tc?: string; message_sc?: string; is_active?: boolean };
   try { body = await request.json(); } catch { return Response.json({ error: 'invalid_json' }, { status: 400 }); }
@@ -60,6 +63,8 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.announcements.toggle');
+  if (killed) return killed;
 
   let body: { id?: string; is_active?: boolean };
   try { body = await request.json(); } catch { return Response.json({ error: 'invalid_json' }, { status: 400 }); }
@@ -92,6 +97,8 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
+  const killed = await assertNotKilled('admin.announcements.delete');
+  if (killed) return killed;
 
   const id = new URL(request.url).searchParams.get('id');
   if (!id) return Response.json({ error: 'missing_id' }, { status: 400 });

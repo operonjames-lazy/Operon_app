@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent, queuePendingVerification } from '@/lib/webhooks/process-event';
+import { rateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 
 function verifyQuickNodeSignature(body: string, signature: string | null): boolean {
@@ -25,6 +26,10 @@ function verifyQuickNodeSignature(body: string, signature: string | null): boole
 
 export async function POST(request: NextRequest) {
   try {
+    // Coarse IP-keyed brute-force budget; see alchemy/route.ts for rationale.
+    const limited = await rateLimit(request, 'webhook:quicknode', 120);
+    if (limited) return limited;
+
     const rawBody = await request.text();
     const signature = request.headers.get('x-qn-signature');
 

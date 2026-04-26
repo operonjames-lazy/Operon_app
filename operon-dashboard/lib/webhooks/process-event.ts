@@ -6,6 +6,9 @@ import { logger } from '@/lib/logger';
 
 const NODE_PURCHASED_EVENT = 'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)';
 
+export const NODE_PURCHASED_TOPIC0 =
+  new ethers.Interface([NODE_PURCHASED_EVENT]).getEvent('NodePurchased')!.topicHash;
+
 export function getTokenName(chain: string, tokenAddress: string): 'USDC' | 'USDT' | null {
   const addresses = STABLECOIN_ADDRESSES[chain as 'arbitrum' | 'bsc'];
   if (!addresses) return null;
@@ -286,6 +289,25 @@ export async function processPurchaseEvent(event: ParsedPurchaseEvent) {
     });
   } catch (err) {
     logger.error('Tier increment failed', { txHash: event.txHash, error: String(err) });
+    // The commission RPC committed successfully — `purchases` has the row, so
+    // the reconcile cron's `knownTxHashes` short-circuit will skip this tx and
+    // never re-attempt the tier counter. Queue an explicit retry under a
+    // distinct kind so the cron picks it up via the failed-events drain
+    // instead of the gap-filler. Idempotency is provided by the
+    // `tier_increments` PK so retries are safe.
+    try {
+      await supabase.from('failed_events').insert({
+        tx_hash: event.txHash,
+        chain: event.chain,
+        event_data: event,
+        error_message: `tier_increment_error: ${String(err)}`,
+        status: 'pending',
+        kind: 'tier_increment_error',
+        next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      });
+    } catch (queueErr) {
+      logger.error('Failed to queue tier-increment retry', { txHash: event.txHash, error: String(queueErr) });
+    }
   }
 
   // NOTE: Personal referral code generation used to happen here. It now

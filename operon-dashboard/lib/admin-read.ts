@@ -64,16 +64,6 @@ export async function getOverviewStats(): Promise<OverviewStats> {
   return data as OverviewStats;
 }
 
-export async function getAttribution(): Promise<OverviewStats['attribution']> {
-  const db = createServerSupabase();
-  const { data, error } = await db.rpc('admin_attribution');
-  if (error) {
-    logger.error('admin_attribution rpc failed', { error: error.message });
-    throw new Error(error.message);
-  }
-  return data as OverviewStats['attribution'];
-}
-
 export interface DailyRevenuePoint {
   date: string; // YYYY-MM-DD
   cents: number;

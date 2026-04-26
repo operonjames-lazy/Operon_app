@@ -1051,6 +1051,20 @@ section { margin-bottom: 40px; }
   animation: blink 2s ease infinite;
 }
 
+.sibling-demo {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  color: var(--soft); text-decoration: none;
+  border: 1px solid rgba(147,197,253,0.18);
+  background: rgba(37,99,235,0.06);
+  padding: 5px 12px; border-radius: 20px; transition: all 0.2s;
+}
+.sibling-demo:hover { color: var(--ice); background: rgba(37,99,235,0.18); border-color: rgba(147,197,253,0.4); }
+.sibling-demo .sd-eyebrow { font-size: 9px; letter-spacing: 0.16em; color: rgba(139,163,199,0.6); text-transform: uppercase; }
+.sibling-demo .sd-arrow { color: var(--ice); transition: transform 0.2s; }
+.sibling-demo:hover .sd-arrow { transform: translateX(2px); }
+@media (max-width: 640px) { .sibling-demo { display: none; } }
+
 .lang-select-wrap { position: relative; }
 
 .lang-select-btn {
@@ -1117,6 +1131,7 @@ section { margin-bottom: 40px; }
     </svg>
   </a>
   <div style="display:flex;align-items:center;gap:12px;">
+    <a class="sibling-demo" href="/quill/" title="View OPN-202 Quill — autonomous content intelligence"><span class="sd-eyebrow">also live</span>OPN-202 · QUILL<span class="sd-arrow">→</span></a>
     <div class="nav-tag">OPN-201 · ZENITH</div>
     <div class="lang-select-wrap">
       <button class="lang-select-btn" id="lang-toggle" onclick="toggleLangDropdown()"><span id="lang-current">繁</span></button>

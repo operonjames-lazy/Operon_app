@@ -77,20 +77,27 @@ export async function GET(request: NextRequest) {
     if (ids.size === 0) return Response.json({ results: [] });
 
     const idArr = Array.from(ids).slice(0, 50);
-    const [{ data: users }, { data: partners }, { data: purchases }] = await Promise.all([
+    // D-P9: purchase counting must use the admin_user_purchase_counts RPC
+    // (mig 023) instead of `.in(...).select('user_id')` + JS reduce. The
+    // PostgREST row cap silently truncates at scale (a power user can
+    // exceed 1k purchase rows), and the search-result `purchase_count`
+    // column shows the cap value forever after.
+    const [{ data: users }, { data: partners }, { data: counts }] = await Promise.all([
       db
         .from('users')
         .select('id, primary_wallet, email, display_name, language, is_epp, created_at, referral_code')
         .in('id', idArr),
       db.from('epp_partners').select('user_id, referral_code, tier').in('user_id', idArr),
-      db.from('purchases').select('user_id').in('user_id', idArr),
+      db.rpc('admin_user_purchase_counts', { p_user_ids: idArr }),
     ]);
 
     const partnerByUser = new Map((partners ?? []).map((p) => [p.user_id, p]));
-    const purchaseCountByUser = new Map<string, number>();
-    for (const p of purchases ?? []) {
-      purchaseCountByUser.set(p.user_id, (purchaseCountByUser.get(p.user_id) || 0) + 1);
-    }
+    const purchaseCountByUser = new Map<string, number>(
+      (counts ?? []).map((c: { user_id: string; purchase_count: number | string }) => [
+        c.user_id,
+        Number(c.purchase_count) || 0,
+      ]),
+    );
 
     const results = (users ?? [])
       .map((u) => {

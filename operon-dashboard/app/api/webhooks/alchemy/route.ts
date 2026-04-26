@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent, queuePendingVerification } from '@/lib/webhooks/process-event';
+import { rateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 
 function verifyAlchemySignature(body: string, signature: string | null): boolean {
@@ -28,6 +29,12 @@ function verifyAlchemySignature(body: string, signature: string | null): boolean
 
 export async function POST(request: NextRequest) {
   try {
+    // Coarse IP-keyed brute-force budget. Sits before signature verify so a
+    // misbehaving IP can't hammer the HMAC compare path forever. Real Alchemy
+    // delivery comes from a small set of IPs and is well under this rate.
+    const limited = await rateLimit(request, 'webhook:alchemy', 120);
+    if (limited) return limited;
+
     const rawBody = await request.text();
     const signature = request.headers.get('x-alchemy-signature');
 

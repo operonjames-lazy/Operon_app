@@ -328,15 +328,32 @@ export default function SalePage() {
   }, [approveSuccess, approveHash, step]);
 
   useEffect(() => {
-    if (purchaseSuccess && purchaseHash && step === 'purchasing') {
+    if (purchaseSuccess && purchaseHash && step === 'purchasing' && address) {
       setStep('success');
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
+      // Record a short-lived "purchase confirmed on-chain, waiting for backend
+      // attribution" marker so /nodes can show a pending banner instead of
+      // the blanket "No Nodes Yet" empty state. The webhook → commission RPC
+      // path is async (typically 1–5 min on testnet, faster on mainnet); on
+      // localhost without a public URL it never fires until the operator
+      // replays the tx. Either way we owe the buyer a clear UI signal.
+      try {
+        const pending = {
+          txHash: purchaseHash,
+          chain: selectedChain,
+          wallet: address.toLowerCase(),
+          tier: sale?.currentTier ?? null,
+          quantity,
+          createdAt: Date.now(),
+        };
+        localStorage.setItem('operon_pending_attribution', JSON.stringify(pending));
+      } catch {}
       // Invalidate caches so nodes page shows fresh data
       queryClient.invalidateQueries({ queryKey: ['nodes'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['sale'] });
     }
-  }, [purchaseSuccess, purchaseHash, step, queryClient]);
+  }, [purchaseSuccess, purchaseHash, step, queryClient, address, selectedChain, sale?.currentTier, quantity]);
 
   // Persist pending transaction in localStorage (scoped to wallet)
   //
@@ -963,29 +980,26 @@ export default function SalePage() {
         </div>
       )}
 
-      {/* Realtime status — when offline, surface a manual refresh so a
-          dropped Realtime connection (paused Supabase, crashed dev-indexer)
-          can be recovered without the user needing to F5. */}
-      {isConnected && (
+      {/* Realtime status — show the offline-with-refresh banner only when
+          Realtime is genuinely unreachable. The earlier "Live updates" green-
+          dot was misleading: it tracked the Realtime publication of
+          `sale_tiers`/`sale_config`, not the webhook → commission ingestion
+          path that buyers actually care about. The per-purchase pending
+          banner on /nodes (operon_pending_attribution) handles that side. */}
+      {isConnected && !connected && (
         <div className="flex items-center justify-center gap-1.5 text-xs text-t4">
-          <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-green animate-pulse-dot' : 'bg-t4'}`} />
-          {connected ? (
-            t('sale.liveUpdates')
-          ) : (
-            <>
-              {t('sale.realtimeOffline')}{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  queryClient.invalidateQueries({ queryKey: ['sale'] });
-                  queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-                }}
-                className="text-ice underline cursor-pointer"
-              >
-                {t('sale.refreshNow')}
-              </button>
-            </>
-          )}
+          <span className="h-1.5 w-1.5 rounded-full bg-t4" />
+          {t('sale.realtimeOffline')}{' '}
+          <button
+            type="button"
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['sale'] });
+              queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            }}
+            className="text-ice underline cursor-pointer"
+          >
+            {t('sale.refreshNow')}
+          </button>
         </div>
       )}
     </div>

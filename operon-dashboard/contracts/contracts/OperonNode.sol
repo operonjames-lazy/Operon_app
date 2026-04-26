@@ -30,6 +30,11 @@ contract OperonNode is ERC721Enumerable, Ownable2Step, Pausable {
     constructor() ERC721("Operon Node", "OPNODE") Ownable(msg.sender) {}
 
     // --- Admin Functions ---
+    //
+    // R-87: every onlyOwner method below is Safe-direct (no application
+    // caller). `setMinter` is set once during deploy by `contracts/scripts/
+    // deploy.ts`; `setTransferLockExpiry` is reserved for the post-Phase-1
+    // delegation flow; `pause`/`unpause` are emergency-only via the Safe.
     function setMinter(address _minter) external onlyOwner {
         address old = minter;
         minter = _minter;

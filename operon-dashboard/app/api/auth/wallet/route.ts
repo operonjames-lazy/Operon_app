@@ -221,6 +221,12 @@ async function maybeCreateEppPartner(
       lastError = error;
       continue;
     }
+    // 23505 on uniq_epp_invite_id = a concurrent onboarding redeemed this invite first.
+    // Surface a specific error so the client maps it to "invite already used".
+    if (error.code === '23505' && (error.message?.includes('uniq_epp_invite_id') || error.message?.includes('invite_id'))) {
+      logger.warn('EPP invite redeemed concurrently', { inviteId: invite.id });
+      return { ok: false, error: 'invite_used' };
+    }
     lastError = error;
     break;
   }

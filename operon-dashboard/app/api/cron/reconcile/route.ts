@@ -25,6 +25,16 @@ const MAX_BLOCK_RANGE: Record<string, number> = {
   bsc: 10000,
 };
 
+// Per-chain finality budget for the gap-filler. Arbitrum L2 is essentially
+// 1-block-final once posted to L1 (~250ms blocks); BSC reorgs ~3 blocks under
+// the new finality model. Pick conservative-but-not-wasteful values per chain
+// rather than a single 10-block constant that adds ~25s of unnecessary lag on
+// Arbitrum.
+const CONFIRMATIONS: Record<'arbitrum' | 'bsc', number> = {
+  arbitrum: 3,
+  bsc: 5,
+};
+
 const CHAINS: Array<'arbitrum' | 'bsc'> = ['arbitrum', 'bsc'];
 
 export async function GET(request: NextRequest) {
@@ -44,6 +54,19 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServerSupabase();
+
+  // Advisory lock — prevents two reconcile runs racing on signer nonces if a
+  // tick takes longer than the cron interval (or if the schedule is flipped
+  // to every-minute during an incident). `try_reconcile_lock()` lives in
+  // migration 023 and uses a session-scoped pg_try_advisory_lock. Skipped
+  // ticks return cleanly without touching the DB.
+  const { data: gotLock, error: lockErr } = await supabase.rpc('try_reconcile_lock');
+  if (lockErr) {
+    logger.warn('reconcile lock RPC failed; allowing run to proceed', { error: lockErr.message });
+  } else if (gotLock === false) {
+    return Response.json({ ok: true, skipped: 'lock_held' });
+  }
+
   const results: Record<string, { eventsFound: number; gapsFilled: number }> = {};
 
   for (const chain of CHAINS) {
@@ -97,17 +120,15 @@ export async function GET(request: NextRequest) {
 
       // Ship-readiness R5: require N confirmations for the gap-filler path.
       // `queryFilter` can in principle return logs from a chain reorg; by
-      // only processing events where blockNumber <= latestBlock - CONFIRMS
-      // we bound reorg risk. Arb/BSC finality makes the risk tiny but it is
-      // cheap to enforce, and the webhook path already effectively respects
-      // this because Alchemy/QuickNode wait for finality before firing.
-      const CONFIRMATIONS = 10;
+      // only processing events where blockNumber <= latestBlock - CONFIRMS[chain]
+      // we bound reorg risk. Per-chain values reflect finality profile.
+      const minConfirms = CONFIRMATIONS[chain];
       for (const event of events) {
         if (!('args' in event)) continue;
         const txHash = event.transactionHash;
 
         if (knownTxHashes.has(txHash)) continue;
-        if (event.blockNumber > latestBlock - CONFIRMATIONS) {
+        if (event.blockNumber > latestBlock - minConfirms) {
           // Not yet final — skip this run, next reconcile pass picks it up.
           continue;
         }
@@ -181,9 +202,12 @@ export async function GET(request: NextRequest) {
   }
 
   // ═══ Retry failed_events ═══
-  // Two kinds of failures to handle differently:
+  // Three kinds of failures to handle differently:
   //  - kind='pending_verification' → re-run verifyOnChain; process only if 'ok'
   //  - kind='process_error'        → re-run processReferralAttribution (RPC is idempotent)
+  //  - kind='tier_increment_error' → commission RPC already committed; the
+  //      retry below re-runs processReferralAttribution (returns duplicate)
+  //      then increment_tier_sold (idempotent via tier_increments PK).
   try {
     const { data: failedEvents } = await supabase
       .from('failed_events')

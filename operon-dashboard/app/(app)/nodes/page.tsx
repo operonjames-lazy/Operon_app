@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { StatCard } from '@/components/ui/stat-card';
 import { NodeCard } from '@/components/ui/node-card';
@@ -11,10 +12,58 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import Link from 'next/link';
 import { formatUsd } from '@/lib/format';
 
+interface PendingAttribution {
+  txHash: string;
+  chain: string;
+  wallet: string;
+  tier: number | null;
+  quantity: number;
+  createdAt: number;
+}
+
+const PENDING_TTL_MS = 15 * 60 * 1000;
+
+function readPendingAttribution(connectedWallet: string | undefined): PendingAttribution | null {
+  if (typeof window === 'undefined' || !connectedWallet) return null;
+  try {
+    const raw = localStorage.getItem('operon_pending_attribution');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PendingAttribution;
+    if (!parsed.txHash || !parsed.wallet || !parsed.createdAt) return null;
+    if (parsed.wallet !== connectedWallet.toLowerCase()) return null;
+    if (Date.now() - parsed.createdAt > PENDING_TTL_MS) {
+      localStorage.removeItem('operon_pending_attribution');
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export default function NodesPage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const { data, isLoading, isError, refetch } = useNodes();
   const { t } = useTranslation();
+  const [pending, setPending] = useState<PendingAttribution | null>(null);
+
+  // Hydrate pending-attribution marker from localStorage on mount + on
+  // wallet change. Drop the marker once the purchase shows up in `data`
+  // (matched by tx_hash) or after the TTL expires.
+  useEffect(() => {
+    setPending(readPendingAttribution(address));
+  }, [address]);
+
+  useEffect(() => {
+    if (!pending || !data) return;
+    const txMatch = (data.nodes ?? []).some(
+      (n) => n.txHash?.toLowerCase() === pending.txHash.toLowerCase(),
+    );
+    if (txMatch) {
+      try { localStorage.removeItem('operon_pending_attribution'); } catch {}
+      setPending(null);
+    }
+  }, [pending, data]);
 
   if (!isConnected) {
     return (
@@ -51,6 +100,7 @@ export default function NodesPage() {
   if (!data || data.totalOwned === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        {pending && <PendingAttributionBanner pending={pending} />}
         <h2 className="text-xl font-bold text-t1">{t('nodes.noNodes')}</h2>
         <p className="text-t3">{t('nodes.noNodesDesc')}</p>
         <Link href="/sale">
@@ -62,6 +112,7 @@ export default function NodesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {pending && <PendingAttributionBanner pending={pending} />}
       {/* Emission Hero */}
       <Card>
         <div className="text-center py-6 space-y-2">
@@ -119,5 +170,48 @@ export default function NodesPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+function PendingAttributionBanner({ pending }: { pending: PendingAttribution }) {
+  const { t } = useTranslation();
+  const explorer =
+    pending.chain === 'arbitrum'
+      ? `https://arbiscan.io/tx/${pending.txHash}`
+      : `https://bscscan.com/tx/${pending.txHash}`;
+  const ageMin = Math.floor((Date.now() - pending.createdAt) / 60000);
+  const overdue = ageMin >= 5;
+  const shortHash = `${pending.txHash.slice(0, 6)}…${pending.txHash.slice(-4)}`;
+
+  return (
+    <Card>
+      <div className="flex items-start gap-3 p-1">
+        <div
+          className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${
+            overdue ? 'bg-amber animate-pulse' : 'bg-blue animate-pulse'
+          }`}
+          aria-hidden
+        />
+        <div className="flex-1 text-sm space-y-1">
+          <div className="text-t1 font-medium">
+            {t('nodes.pending.title')}
+          </div>
+          <div className="text-t3">
+            {t('nodes.pending.body').replace('{tx}', shortHash)}
+          </div>
+          {overdue && (
+            <div className="text-amber text-xs">{t('nodes.pending.overdue')}</div>
+          )}
+          <a
+            href={explorer}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue text-xs hover:underline inline-block"
+          >
+            {t('sale.viewExplorer')} ↗
+          </a>
+        </div>
+      </div>
+    </Card>
   );
 }

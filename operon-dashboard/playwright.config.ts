@@ -54,7 +54,13 @@ export default defineConfig({
     // Inline env + `pnpm dev` — works in Git Bash on Windows and in
     // Unix shells. If you need cmd.exe / PowerShell compatibility, add
     // `cross-env` as a devDep and prefix: `cross-env E2E=1 PORT=…`.
-    command: `E2E=1 PORT=${PORT} pnpm dev`,
+    // Cross-platform: env vars come from the `env` block below, not from an
+    // inline `E2E=1 ... pnpm dev` prefix. The inline form fails on Windows
+    // cmd.exe (the spawn shell Playwright uses on Windows) because cmd does
+    // not parse Unix-style `VAR=VAL command` prefixes. We also pass --port
+    // explicitly so the harness doesn't collide with a developer's
+    // already-running `pnpm dev` on the script-default 3001.
+    command: `npx next dev --port ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     stdout: 'ignore',
@@ -62,7 +68,11 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       NODE_ENV: 'development',
+      // `E2E=1` is the server-only breadcrumb (next.config / route handlers).
+      // `NEXT_PUBLIC_E2E=1` reaches the client wagmi config so it mounts
+      // the mock connector instead of the real RainbowKit transports.
       E2E: '1',
+      NEXT_PUBLIC_E2E: '1',
       PORT: String(PORT),
     },
   },

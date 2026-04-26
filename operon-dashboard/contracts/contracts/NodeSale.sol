@@ -142,6 +142,26 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard {
     }
 
     // --- Admin Functions ---
+    //
+    // Wiring map (R-87 — Pass-5 orphan-inverse):
+    //   onlyOwner (Safe-direct, no application caller):
+    //     setTier, setMaxPerWallet, setAcceptedToken, setTreasury,
+    //     setNodeContract, setMaxBatchSize, setTierPaused, adminMint
+    //   onlyOwner (wired through dashboard):
+    //     pause            ← /api/admin/sale/pause
+    //     unpause          ← /api/admin/sale/unpause
+    //     withdrawFunds    ← /api/admin/sale/withdraw
+    //     setAdmin         ← Safe-direct, called once during Gnosis Safe handover
+    //   onlyAdmin (rotating hot key, wired through dashboard):
+    //     setTierActive    ← /api/admin/sale/tier-active
+    //     addReferralCode  ← /api/cron/reconcile (referral_code_chain_state drain)
+    //     addReferralCodes ← (batch helper; reserved)
+    //     removeReferralCode ← /api/admin/referrals/remove
+    //
+    // Post-Gnosis-Safe novation, the four `pause`/`unpause`/`withdraw`/
+    // `setAdmin` paths route through the Safe via Owner2Step `acceptOwnership`.
+    // The dashboard hot-key calls for those will revert by design — see
+    // OPERATIONS.md §3 "Before mainnet" for the runbook.
     function adminMint(address to, uint256 tierId, uint256 quantity) external onlyOwner nonReentrant {
         require(to != address(0), "NodeSale: zero address");
         require(quantity > 0, "NodeSale: quantity must be > 0");

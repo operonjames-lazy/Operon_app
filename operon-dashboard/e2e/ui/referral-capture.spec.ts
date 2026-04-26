@@ -25,7 +25,14 @@ test.describe('referral capture', () => {
     const code = 'OPR-TEST12';
     await page.goto(`/?ref=${code}`);
 
-    // The app writes the referral to sessionStorage. Read back.
+    // ReferralCapture's useEffect runs after hydration, so `page.goto`
+    // resolving on `load` is too early. Wait for the Zustand store to
+    // actually persist the code into sessionStorage (typical: <100ms).
+    await page.waitForFunction(
+      () => Object.values(window.sessionStorage).some(v => v?.includes('OPR-TEST12')),
+      { timeout: 5_000 },
+    );
+
     const captured = await page.evaluate(() => {
       const keys = Object.keys(window.sessionStorage);
       for (const k of keys) {
@@ -37,6 +44,12 @@ test.describe('referral capture', () => {
     expect(captured, 'expected ?ref= query to land in sessionStorage').not.toBeNull();
 
     await page.reload();
+
+    // Same race on reload — wait for the post-hydration write before reading.
+    await page.waitForFunction(
+      () => Object.values(window.sessionStorage).some(v => v?.includes('OPR-TEST12')),
+      { timeout: 5_000 },
+    );
 
     const stillCaptured = await page.evaluate(() => {
       const keys = Object.keys(window.sessionStorage);

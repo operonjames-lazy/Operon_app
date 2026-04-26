@@ -25,4 +25,27 @@ END $$;
 -- Reset tier state to match a fresh contract deploy: tier 1 active, all
 -- others inactive, zero sold everywhere. Indexer events will advance from
 -- here.
-UPDATE sale_tiers SET total_sold = 0, is_active = (tier = 1);
+--
+-- Ship-readiness R15: this UPDATE was previously unconditional. On a DB
+-- that already has real purchases (operator runs migrations on the live
+-- DB after some test purchases land, tester re-runs the list, CI replay)
+-- the wipe leaves `purchases` / `referral_purchases` intact while
+-- `sale_tiers.total_sold` flips to 0 — dashboards then misreport tier
+-- state and admin tier-active toggles land on wrong data. Migration 017
+-- was originally added as a compensating no-op for re-runs; that path
+-- only protects re-applies AFTER 017 has landed. The guard below makes
+-- 014 itself safe on first apply too. Per CLAUDE.md Rule 13 applied
+-- migrations are immutable, but 014 has not been applied to mainnet
+-- (CLAUDE.md "Build Status" — 014/015/016/017 deferred) so editing the
+-- guard in is appropriate. On a fresh DB the behaviour is unchanged.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM purchases LIMIT 1) THEN
+    RAISE NOTICE '014: purchases exist — skipping tier reset (safe no-op).';
+  ELSIF EXISTS (SELECT 1 FROM referral_purchases LIMIT 1) THEN
+    RAISE NOTICE '014: referral_purchases exist — skipping tier reset (safe no-op).';
+  ELSE
+    UPDATE sale_tiers SET total_sold = 0, is_active = (tier = 1);
+    RAISE NOTICE '014: tier state reset (fresh DB, no purchases).';
+  END IF;
+END $$;

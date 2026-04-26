@@ -125,6 +125,12 @@ export function useAuth() {
         await queryClient.invalidateQueries({ queryKey: ['nodes'] });
         await queryClient.invalidateQueries({ queryKey: ['referrals'] });
         await queryClient.invalidateQueries({ queryKey: ['sale', 'status'] });
+        // Admin queries are not wallet-keyed but still operator-confidential —
+        // a wallet flip from one admin to another (or to a non-admin) should
+        // not leave the prev wallet's admin data on screen during the
+        // layout-level redirect. removeQueries (not invalidate) so the cache
+        // entries are dropped entirely.
+        await queryClient.removeQueries({ queryKey: ['admin'] });
       })().catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,6 +180,7 @@ export function useAuth() {
         await queryClient.invalidateQueries({ queryKey: ['nodes'] });
         await queryClient.invalidateQueries({ queryKey: ['referrals'] });
         await queryClient.invalidateQueries({ queryKey: ['sale', 'status'] });
+        await queryClient.removeQueries({ queryKey: ['admin'] });
       })().catch(() => {});
     }
     window.addEventListener('operon:auth-expired', onExpired);

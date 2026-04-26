@@ -5,6 +5,7 @@ import { assertNotKilled } from '@/lib/killswitches';
 import { processReferralAttribution } from '@/lib/commission';
 import {
   parseNodePurchasedLog,
+  NODE_PURCHASED_TOPIC0,
   type ParsedPurchaseEvent,
 } from '@/lib/webhooks/process-event';
 import { getProvider, getSaleContract } from '@/lib/rpc';
@@ -63,7 +64,13 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'tx_reverted' }, { status: 409 });
   }
 
-  const matching = receipt.logs.find((l) => l.address.toLowerCase() === saleAddr);
+  // Match the sale-contract log specifically by NodePurchased topic0 — not just
+  // any log emitted from the sale contract. A future tx that emits an admin
+  // event before NodePurchased (or contains both in the same tx) would
+  // otherwise pick up the wrong log and fail to parse.
+  const matching = receipt.logs.find(
+    (l) => l.address.toLowerCase() === saleAddr && l.topics[0] === NODE_PURCHASED_TOPIC0,
+  );
   if (!matching) {
     return Response.json({ error: 'no_sale_log_in_tx' }, { status: 409 });
   }
