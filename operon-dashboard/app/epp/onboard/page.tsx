@@ -40,7 +40,7 @@ type InviteState =
   | { status: 'invalid' | 'used' | 'expired' }
   | { status: 'ok'; expiresInDays: number | null };
 
-const TERMS_VERSION = '1.0';
+const TERMS_VERSION = '1.1';
 
 export default function EppOnboardPage() {
   const router = useRouter();

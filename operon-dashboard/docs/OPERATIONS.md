@@ -70,7 +70,15 @@ Variable groups in `.env.example`:
   `TG_ADMIN_CHAT_ID` (abandoned-event alerts)
 - **Contract deploy** — `TREASURY_ADDRESS`, `DEPLOYER_PRIVATE_KEY`,
   `TOKEN_DECIMALS`, `ARBITRUM_SEPOLIA_RPC_URL`, `BSC_TESTNET_RPC_URL`,
-  `USDC_ADDRESS`, `USDT_ADDRESS` (consumed by `contracts/scripts/*` only)
+  `USDC_ADDRESS`, `USDT_ADDRESS` (consumed by `contracts/scripts/*` only),
+  plus NodeSale v2 voucher inputs: `VOUCHER_SIGNER_ADDRESS` (constructor
+  arg — public key the contract verifies signatures against), `LOCAL_TIER_CAP`
+  (per-chain hard cap per tier; default 1250), `ADMIN_CAP_PER_TIER` (admin-mint
+  budget per tier; default 1250). The matching `VOUCHER_SIGNER_PRIVATE_KEY`
+  lives only on the API server (read by `lib/voucher.ts`) and is rotated by
+  generating a new keypair, calling `setVoucherSigner(newAddress)` from the
+  owner Safe, and swapping the env var. Never `NEXT_PUBLIC_*`. Vouchers
+  signed with the prior key remain valid until their `deadline` lapses.
 - **Dev endpoints** (commented in template) — `DEV_ENDPOINTS_ENABLED`,
   `DEV_INDEXER_SECRET`. Must NEVER be set in production.
 
