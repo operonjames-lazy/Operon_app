@@ -63,6 +63,14 @@ async function maybeAttachReferrer(
 ): Promise<void> {
   if (!referralCode) return;
 
+  // Normalize before lookup. Codes are stored canonically uppercase (see
+  // lib/referrals/validate.ts) but a user clicking `?ref=opr-k7vm` from a
+  // hand-typed URL or auto-linked email would otherwise miss attribution
+  // here while purchase-time validation succeeds — buyer gets the discount,
+  // upline gets zero commissions in perpetuity for that buyer.
+  const normalizedCode = referralCode.trim().toUpperCase();
+  if (!normalizedCode) return;
+
   // Existing referrer row? Referrer is immutable; never overwrite.
   const { data: existing } = await supabase
     .from('referrals')
@@ -79,7 +87,7 @@ async function maybeAttachReferrer(
   const { data: eppOwner } = await supabase
     .from('epp_partners')
     .select('user_id')
-    .eq('referral_code', referralCode)
+    .eq('referral_code', normalizedCode)
     .maybeSingle();
   if (eppOwner) {
     ownerId = eppOwner.user_id;
@@ -93,7 +101,7 @@ async function maybeAttachReferrer(
     const { data: communityOwner } = await supabase
       .from('users')
       .select('id, primary_wallet')
-      .eq('referral_code', referralCode)
+      .eq('referral_code', normalizedCode)
       .maybeSingle();
     if (communityOwner) {
       ownerId = communityOwner.id;
@@ -102,14 +110,14 @@ async function maybeAttachReferrer(
   }
 
   if (!ownerId) {
-    logger.warn('Unknown referral code at signup — ignoring', { referralCode });
+    logger.warn('Unknown referral code at signup — ignoring', { referralCode: normalizedCode });
     return;
   }
 
   // Same-wallet self-referral: reject. Also reject same-user-id as a sanity
   // guard in case a user has multiple codes in future.
   if (ownerWallet && ownerWallet.toLowerCase() === referredWallet.toLowerCase()) {
-    logger.warn('Self-referral attempted at signup', { referredWallet, referralCode });
+    logger.warn('Self-referral attempted at signup', { referredWallet, referralCode: normalizedCode });
     return;
   }
   if (ownerId === referredUserId) {
@@ -121,7 +129,7 @@ async function maybeAttachReferrer(
     referrer_id: ownerId,
     referred_id: referredUserId,
     level: 1,
-    code_used: referralCode,
+    code_used: normalizedCode,
   });
 }
 

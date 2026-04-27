@@ -195,7 +195,13 @@ export async function POST(request: NextRequest) {
   // RPC returns either the success envelope or an `{ error, ... }`
   // envelope ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â relay errors directly to the client.
   const data = rpcData as
-    | { reservation_id: string; tier: number; unit_price_cents: number; expires_at: string }
+    | {
+        reservation_id: string;
+        tier: number;
+        unit_price_cents: number;
+        expected_amount_cents: number;
+        expires_at: string;
+      }
     | { error: string; [k: string]: unknown };
 
   if ('error' in data) {
@@ -241,12 +247,13 @@ export async function POST(request: NextRequest) {
   }
 
   return Response.json({
-    reservationId:        data.reservation_id,
+    reservationId:         data.reservation_id,
     reservationIdBytes32,
-    tier:                 data.tier,
-    unitPriceCents:       data.unit_price_cents,
+    tier:                  data.tier,
+    unitPriceCents:        data.unit_price_cents,
+    expectedAmountCents:   data.expected_amount_cents,
     discountBps,
-    expiresAt:            data.expires_at,
+    expiresAt:             data.expires_at,
     // BigInts can't be JSON-serialised ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â stringify them so the client
     // can pass them straight back into ethers.Contract(...).purchaseWithVoucher
     // which accepts string-encoded big numbers.

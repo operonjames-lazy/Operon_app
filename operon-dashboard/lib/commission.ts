@@ -28,8 +28,60 @@ const STRUCTURAL_MISMATCH_ERRORS = new Set([
   'token_mismatch',
 ]);
 
-function alertVoucherMismatch(context: Record<string, unknown>) {
+/**
+ * First-sighting gate. Returns true ONLY if there is no `failed_events` row
+ * yet for this (txHash, chain) pair. The webhook flow's order is:
+ *   1. processPurchaseWithReservation calls RPC, RPC errors with mismatch
+ *   2. alertVoucherMismatch fires (this gate runs) — first time, no row → alert
+ *   3. processPurchaseWithReservation throws
+ *   4. Caller catches throw and inserts failed_events row (retry_count=0)
+ *
+ * On any cron retry from step (4):
+ *   - The row exists → gate returns false → suppress.
+ *
+ * Earlier draft compared retry_count < 1 instead of row-existence; that
+ * caused a double-page because retry_count is still 0 when the cron's first
+ * retry calls back into this function before bumping. Row-existence is the
+ * unambiguous "alert already fired" signal.
+ */
+async function isFirstSighting(txHash: string, chain: string): Promise<boolean> {
+  try {
+    const supabase = createServerSupabase();
+    const { data, error } = await supabase
+      .from('failed_events')
+      .select('id')
+      .eq('tx_hash', txHash)
+      .eq('chain', chain)
+      .maybeSingle();
+    if (error) {
+      // Fail open: if we can't read failed_events, don't suppress the alert —
+      // better to over-page than to silently miss a real drift event.
+      logger.warn('isFirstSighting lookup failed; alerting anyway', {
+        txHash,
+        chain,
+        error: error.message,
+      });
+      return true;
+    }
+    return !data;
+  } catch (err) {
+    logger.warn('isFirstSighting threw; alerting anyway', {
+      txHash,
+      chain,
+      error: String(err),
+    });
+    return true;
+  }
+}
+
+async function alertVoucherMismatch(context: Record<string, unknown>) {
   if (!process.env.TG_BOT_TOKEN || !process.env.TG_ADMIN_CHAT_ID) return;
+  const txHash = String(context.txHash ?? '');
+  const chain = String(context.chain ?? '');
+  if (txHash && chain && !(await isFirstSighting(txHash, chain))) {
+    // Already paged for this tx; skip retry-induced duplicates.
+    return;
+  }
   fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -39,14 +91,14 @@ function alertVoucherMismatch(context: Record<string, unknown>) {
         'VOUCHER DRIFT OR COMPROMISE',
         '',
         `Error: ${String(context.error)}`,
-        `Tx: ${String(context.txHash)}`,
-        `Chain: ${String(context.chain)}`,
+        `Tx: ${txHash}`,
+        `Chain: ${chain}`,
         `Reservation: ${String(context.reservationId)}`,
       ].join('\n'),
     }),
   }).catch((err) => {
     logger.error('Telegram alert failed for voucher mismatch', {
-      txHash: context.txHash,
+      txHash,
       error: String(err),
     });
   });
@@ -285,7 +337,10 @@ export async function processPurchaseWithReservation(
   const result = data as Record<string, unknown>;
   if (result?.error) {
     if (typeof result.error === 'string' && STRUCTURAL_MISMATCH_ERRORS.has(result.error)) {
-      alertVoucherMismatch({
+      // Awaited so the failed_events lookup completes before the Telegram
+      // dispatch (the dispatch itself remains fire-and-forget inside the
+      // helper — we only block on the dedup query, ~50ms).
+      await alertVoucherMismatch({
         error: result.error,
         txHash: purchase.txHash,
         chain: purchase.chain,

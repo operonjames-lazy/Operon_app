@@ -13,7 +13,7 @@ import { useTierRealtime } from '@/hooks/useTierRealtime';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { STABLECOIN_ADDRESSES, SALE_CONTRACT_ADDRESSES, TOKEN_DECIMALS, CHAIN_IDS } from '@/lib/wagmi/contracts';
 import { formatUsd, formatUsdShort, formatNum } from '@/lib/format';
-import { isAuthenticated } from '@/lib/api/fetch';
+import { isAuthenticated, authFetch } from '@/lib/api/fetch';
 import { getExplorerTxUrl } from '@/lib/explorer';
 import type { Chain, PaymentToken } from '@/types/api';
 
@@ -447,6 +447,12 @@ export default function SalePage() {
     if (purchaseSuccess && purchaseHash && step === 'purchasing' && address) {
       setStep('success');
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
+      // Voucher is single-use on-chain (`usedReservations[reservationId] = true`
+      // in NodeSale.sol) — once the purchase confirms, the reservation row is
+      // dead. Drop the local Reservation state so a stale countdown can't
+      // tick under the success modal, "Buy More" can't land on a consumed
+      // voucher, and the visibility-hidden auto-reset has nothing to leak.
+      setReservation(null);
       // Record a short-lived "purchase confirmed on-chain, waiting for backend
       // attribution" marker so /nodes can show a pending banner instead of
       // the blanket "No Nodes Yet" empty state. The webhook → commission RPC
@@ -536,14 +542,14 @@ export default function SalePage() {
     if (!reservation) return;
     if (submitFiredForRef.current === purchaseHash) return;
     submitFiredForRef.current = purchaseHash;
-    fetch('/api/sale/reservations/submit', {
+    authFetch('/api/sale/reservations/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         reservationId: reservation.reservationId,
         txHash: purchaseHash,
       }),
-    }).catch(() => { /* fire and forget */ });
+    }).catch(() => { /* fire and forget; authFetch fires auth-expired on 401 */ });
   }, [purchaseHash, reservation]);
 
   // Reset local sale-flow state on wallet switch (R4-01). Wagmi updates
@@ -594,6 +600,10 @@ export default function SalePage() {
     function reset() {
       setStep('idle');
       setQuantity(1);
+      // Reservation is nulled in the success effect above as soon as the
+      // tx confirms; defensive null here as belt-and-braces in case effect
+      // ordering ever changes.
+      setReservation(null);
       resetApprove();
       resetPurchase();
     }
@@ -633,7 +643,7 @@ export default function SalePage() {
 
   async function validateCode(code: string) {
     try {
-      const res = await fetch('/api/sale/validate-code', {
+      const res = await authFetch('/api/sale/validate-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
@@ -666,7 +676,7 @@ export default function SalePage() {
     setErrorMsg('');
     setStep('reserving');
     try {
-      const res = await fetch('/api/sale/reserve', {
+      const res = await authFetch('/api/sale/reserve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -835,7 +845,7 @@ export default function SalePage() {
           <p className="text-t2 relative">{t('sale.youNowOwn', { count: quantity, tier: sale?.currentTier || 1 })}</p>
           <div className="flex gap-3 justify-center mt-4 relative">
             <Button variant="primary" onClick={() => window.location.href = '/nodes'}>{t('sale.viewNodes')}</Button>
-            <Button variant="secondary" onClick={() => { resetApprove(); resetPurchase(); setStep('idle'); setQuantity(1); }}>{t('sale.buyMore')}</Button>
+            <Button variant="secondary" onClick={() => { resetApprove(); resetPurchase(); setReservation(null); setStep('idle'); setQuantity(1); }}>{t('sale.buyMore')}</Button>
           </div>
         </div>
       )}

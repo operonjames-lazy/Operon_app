@@ -5,9 +5,10 @@ import { createServerSupabase } from '@/lib/supabase';
 /**
  * GET /api/admin/health
  *
- * Single call returns failed_events queue stats and the most recent
- * reconciliation_log run. failed_events aggregation happens in Postgres so
- * the health panel cannot undercount at PostgREST row limits.
+ * Aggregates: failed_events queue stats, most recent reconciliation_log run,
+ * and the cross-table money invariants from `admin_money_invariants` (mig 031).
+ * failed_events + invariants aggregation happens in Postgres so the health
+ * panel cannot undercount at PostgREST row limits.
  */
 export async function GET(request: NextRequest) {
   const admin = await requireAdmin(request);
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest) {
   const [
     { data: failedEventsHealth, error: failedEventsHealthError },
     { data: reconcile },
+    { data: invariants, error: invariantsError },
   ] = await Promise.all([
     db.rpc('admin_failed_events_health'),
     db
@@ -26,6 +28,7 @@ export async function GET(request: NextRequest) {
       .order('run_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    db.rpc('admin_money_invariants'),
   ]);
 
   if (failedEventsHealthError) {
@@ -56,6 +59,9 @@ export async function GET(request: NextRequest) {
       lastDurationMs: reconcile?.duration_ms ?? null,
       lastEventsFound: reconcile?.events_found ?? null,
     },
+    moneyInvariants: invariantsError
+      ? { error: 'admin_money_invariants_failed', details: invariantsError.message }
+      : (invariants ?? null),
     contractBalancesCents: {
       arbitrumUsdc: null,
       arbitrumUsdt: null,

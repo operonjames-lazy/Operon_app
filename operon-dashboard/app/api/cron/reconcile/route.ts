@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, createHash } from 'node:crypto';
 import { createServerSupabase } from '@/lib/supabase';
 
 export const maxDuration = 60;
@@ -392,7 +392,89 @@ export async function GET(request: NextRequest) {
   // codes are now applied off-chain via voucher signing (see lib/voucher.ts).
   // The Phase 5 cleanup deleted the drain pass that used to live here.
 
-    return Response.json({ ok: true, results, reservationsExpired });
+  // Cross-table money-flow invariants. Runs once per cron tick (~5 min) and
+  // pages on any non-zero drift. Catches the class of bug where webhook→DB
+  // ingest drifts out of agreement with sale_tiers / tier_increments / on-chain
+  // state — exactly the surface the mig 030 amount-mismatch regression hit.
+  //
+  // Telegram dedup goes through `cron_alert_should_fire(kind, signature)` (mig
+  // 032). The signature is a stable hash of the drift content, so a sticky
+  // drift fires at most once per hour (the function's default reminder
+  // cadence) and a *changing* drift fires immediately on every change.
+  let invariants: Record<string, unknown> | null = null;
+  try {
+    const { data: inv, error: invErr } = await supabase.rpc('admin_money_invariants');
+    if (invErr) {
+      logger.warn('admin_money_invariants RPC failed', { error: invErr.message });
+    } else if (inv) {
+      invariants = inv as Record<string, unknown>;
+      if (invariants.ok === false && process.env.TG_BOT_TOKEN && process.env.TG_ADMIN_CHAT_ID) {
+        // Stable signature: hash the *deltas* on each drifted tier, not the
+        // raw counters. Same drift magnitude → same signature, even while
+        // additional purchases tick up the absolute counts. Without this,
+        // every successful sale on a drifted tier produces a fresh signature
+        // and re-fires Telegram, defeating the mig-032 sentinel during exactly
+        // the moments we want it most (active selling).
+        type DriftRow = {
+          tier: number;
+          sale_tiers_total_sold: number;
+          tier_increments_sum: number;
+          purchases_sum: number;
+        };
+        const driftRows = (Array.isArray(invariants.tier_drift) ? invariants.tier_drift : []) as DriftRow[];
+        const deltaPayload = JSON.stringify({
+          tier_drift: driftRows
+            .map((r) => ({
+              tier: r.tier,
+              total_sold_minus_purchases: (r.sale_tiers_total_sold ?? 0) - (r.purchases_sum ?? 0),
+              total_sold_minus_increments: (r.sale_tiers_total_sold ?? 0) - (r.tier_increments_sum ?? 0),
+            }))
+            // Defensive: sort here too, even though mig 033's jsonb_agg already
+            // sorts by tier. The hash is now insensitive to upstream churn.
+            .sort((a, b) => a.tier - b.tier),
+          stuck_failed_events: invariants.stuck_failed_events ?? 0,
+          completed_no_purchase: invariants.completed_no_purchase ?? 0,
+        });
+        const signature = createHash('sha256').update(deltaPayload).digest('hex').slice(0, 32);
+
+        const { data: shouldFire, error: gateErr } = await supabase.rpc(
+          'cron_alert_should_fire',
+          {
+            p_kind: 'money_invariant_drift',
+            p_signature: signature,
+          },
+        );
+        if (gateErr) {
+          logger.warn('cron_alert_should_fire failed; alerting anyway', { error: gateErr.message });
+        }
+        if (gateErr || shouldFire === true) {
+          const summary = [
+            'MONEY-INVARIANT DRIFT',
+            '',
+            `Tier drift rows: ${driftRows.length}`,
+            `Stuck failed_events: ${invariants.stuck_failed_events}`,
+            `Completed reservations w/o purchases: ${invariants.completed_no_purchase}`,
+            `Measured: ${invariants.measured_at}`,
+            `Sig: ${signature}`,
+          ].join('\n');
+          fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: process.env.TG_ADMIN_CHAT_ID,
+              text: summary,
+            }),
+          }).catch((tgErr) => {
+            logger.error('Telegram alert failed for invariant drift', { error: String(tgErr) });
+          });
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn('admin_money_invariants threw', { error: String(err) });
+  }
+
+    return Response.json({ ok: true, results, reservationsExpired, invariants });
   } finally {
     // Always release the lease, even if a thrown exception escapes the route.
     // The TTL would eventually clear it, but explicit release means the next
