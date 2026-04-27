@@ -156,7 +156,9 @@ export default function AdminSalePage() {
         onSubmit={(body) => postAction('withdraw', '/api/admin/sale/withdraw', body)}
       />
 
-      {/* Tiers */}
+      {/* Tiers — read-only. Activation is backend-only under voucher checkout
+          (complete_reservation auto-advances tiers when total_supply hits;
+          NodeSale v2 has no setTierActive). */}
       <Card title="Tiers">
         {tiersQ.isLoading && <p className="text-xs text-t3">Loading…</p>}
         {tiersQ.data && (
@@ -171,7 +173,6 @@ export default function AdminSalePage() {
                   <th className="pb-2 text-right">Revenue</th>
                   <th className="pb-2">Status</th>
                   <th className="pb-2 text-right">Contract ID</th>
-                  <th className="pb-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -196,19 +197,6 @@ export default function AdminSalePage() {
                         )}
                       </td>
                       <td className="py-2 text-right font-mono text-xs text-t3">{t.contract_tier_id}</td>
-                      <td className="py-2 text-right">
-                        <TierActions
-                          tier={t}
-                          busy={busy}
-                          onAction={(chain, active) =>
-                            postAction(
-                              `tier-${t.tier}-${chain}-${active}`,
-                              '/api/admin/sale/tier-active',
-                              { chain, tierId: t.contract_tier_id, active },
-                            )
-                          }
-                        />
-                      </td>
                     </tr>
                   );
                 })}
@@ -217,31 +205,6 @@ export default function AdminSalePage() {
           </div>
         )}
       </Card>
-    </div>
-  );
-}
-
-function TierActions({
-  tier,
-  busy,
-  onAction,
-}: {
-  tier: TierRow;
-  busy: string | null;
-  onAction: (chain: 'arbitrum' | 'bsc', active: boolean) => void;
-}) {
-  return (
-    <div className="flex justify-end gap-1">
-      {(['arbitrum', 'bsc'] as const).map((chain) => (
-        <button
-          key={chain}
-          disabled={!!busy}
-          onClick={() => onAction(chain, !tier.is_active)}
-          className="rounded border border-[rgba(147,197,253,0.10)] bg-[rgba(8,12,24,0.7)] px-2 py-1 text-[11px] text-t2 hover:bg-[rgba(8,12,24,0.85)] disabled:opacity-50"
-        >
-          {tier.is_active ? 'Deactivate' : 'Activate'} {chain === 'arbitrum' ? 'Arb' : 'BSC'}
-        </button>
-      ))}
     </div>
   );
 }

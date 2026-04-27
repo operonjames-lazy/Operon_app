@@ -8,7 +8,7 @@
 
 ## Done (this session, no action needed)
 
-- ✅ Migrations 014 + 019 + 021 + 023 + **024 + 025 + 026** applied to hosted Supabase (live):
+- ✅ Migrations 014 + 019 + 021 + 023 + **024 + 025 + 026 + 027** applied to hosted Supabase (live):
   - `sale_tiers` now has all 40 tiers (1+2 sold counters preserved by mig 014's new guard)
   - `admin_killswitches` table exists, 12 base keys + 3 announcement keys seeded
   - `process_purchase_and_commissions` now skips uplines whose `epp_partners.status != 'active'`
@@ -18,7 +18,7 @@
   - **NEW (will be reverted in Phase 5):** `referral_code_chain_state.owner_wallet` column (mig 024) — Pattern A patch superseded by voucher checkout
 - ✅ 28 `/review-ship` findings closed in code (5 blocking, 11 required, 12 advisory)
 - ✅ Suspended-partner commission audit run — **0 bad rows, $0 exposure** (no partners suspended yet)
-- ✅ `npx tsc --noEmit`, **`npx hardhat test` (53 tests, all voucher-binding suites included)**, `npx next build` all green
+- ✅ `npx tsc --noEmit`, **`npx hardhat test` (54 tests, all voucher-binding suites included)**, `npx next build` all green
 - ✅ NodeSale v2 voucher architecture shipped — solves the self-referral on-chain bypass + the per-chain tier-supply divergence flagged in 2026-04-27 independent review (see DECISIONS D31)
 
 ---
@@ -27,6 +27,25 @@
 
 These cannot be done from a code session — they need your credentials, real
 wallets, or vendor dashboards. Order matters; later items depend on earlier ones.
+
+### 0. Apply post-review DB hardening migrations
+
+Before deploying or testing the v2 purchase path, apply the follow-up
+migrations in order:
+
+- `028_harden_voucher_reservations.sql` - service-role-only reservation RPCs,
+  atomic reservation-aware event ingest, DB quantity/TTL/discount clamps
+- `029_admin_failed_events_health.sql` - Postgres aggregation for admin health
+  failed-event stats
+
+Then run:
+
+```bash
+node scripts/verify-pending-migrations.mjs
+```
+
+Expected: 025, 026, 027, 028, and 029 probes are present/clean. Do not promote
+the Vercel build if either 028 or 029 is missing.
 
 ### 1. Vercel Production env audit
 
@@ -73,7 +92,7 @@ replay is impossible by construction.
 ```bash
 cd contracts
 npx hardhat compile
-npx hardhat test                                      # all 53 must pass
+npx hardhat test                                      # all 54 must pass
 # Set per-chain env (export TREASURY_ADDRESS / VOUCHER_SIGNER_ADDRESS /
 # USDC_ADDRESS / USDT_ADDRESS / TOKEN_DECIMALS / LOCAL_TIER_CAP /
 # ADMIN_CAP_PER_TIER first):
@@ -126,6 +145,12 @@ will fail at signing time with no operator-side warning.
 
 ### 4. Vendor webhook subscriptions
 
+Cutover gate: do not merge/promote the v2 app unless all four move together:
+v2 contracts deployed, `SALE_CONTRACT_*` / `NEXT_PUBLIC_SALE_CONTRACT_*` envs
+updated, Alchemy/QuickNode subscriptions pointed at the new sale addresses,
+and the v2 `NodePurchased` topic0 below saved in vendor dashboards. A partial
+cutover makes the purchase pipeline go silent.
+
 #### Alchemy (Arbitrum)
 
 1. Alchemy dashboard → Webhooks → Create Webhook → **Address Activity**
@@ -139,7 +164,7 @@ will fail at signing time with no operator-side warning.
 
 1. QuickNode → Streams → Create Stream → Log filter
 2. Network: BNB Chain / Mainnet
-3. Filter: address = `NEXT_PUBLIC_SALE_CONTRACT_BSC`; topic0 = `0x6591bdbb6081a7574c59839f425dbc80961b4ab0c0d444bd5d095fe42dd1e501` (= `keccak256("NodePurchased(address,uint256,uint256,bytes32,uint256,address)")`). **Recompute before saving** in case the ABI shifted: `node -e "console.log(require('ethers').id('NodePurchased(address,uint256,uint256,bytes32,uint256,address)'))"`. A stale topic0 silently matches zero events.
+3. Filter: address = `NEXT_PUBLIC_SALE_CONTRACT_BSC`; topic0 = `0x4b9a825ea680b6c6549be3e426dbda4f7a5c1aa250b4d04c0b35372945172614` (= `keccak256("NodePurchased(address,uint256,uint256,bytes32,bytes32,uint256,address)")`). **Recompute before saving** in case the ABI shifted: `node -e "console.log(require('ethers').id('NodePurchased(address,uint256,uint256,bytes32,bytes32,uint256,address)'))"`. A stale topic0 silently matches zero events.
 4. Destination: Webhook → `https://app.operon.network/api/webhooks/quicknode`
 5. HMAC signing secret: `QUICKNODE_WEBHOOK_SECRET` verbatim. Header: `x-qn-signature`
 6. Test → expect 200
@@ -201,7 +226,7 @@ Safe-direct ownership:
 - [ ] Confirm Sentry is receiving events (force a 500 from a non-prod endpoint, watch the dashboard)
 - [ ] Confirm Telegram alerts fire (force a `failed_events.attempts >= 5` row, watch the channel)
 - [ ] Confirm `/api/health` returns 200 with `status: "healthy"` and `contracts.status === "ok"` on mainnet (the route now fails-closed on missing addresses when `NEXT_PUBLIC_NETWORK_MODE=mainnet`)
-- [ ] Run `verify-migrations.mjs` against live DB one more time. Should report all 26 migrations live (23 pre-v2 + 024 owner_wallet + 025 cron lock lease + 026 sale_reservations).
+- [ ] Run `verify-pending-migrations.mjs` against live DB one more time. Should report 025 + 026 + 027 + 028 + 029 present/clean, including `process_purchase_with_reservation` and `admin_failed_events_health`.
 
 ---
 

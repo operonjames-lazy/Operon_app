@@ -18,6 +18,39 @@ import { createServerSupabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
 const ZERO_CODE_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
+const STRUCTURAL_MISMATCH_ERRORS = new Set([
+  'amount_mismatch',
+  'code_hash_mismatch',
+  'tier_mismatch',
+  'quantity_mismatch',
+  'buyer_mismatch',
+  'chain_mismatch',
+  'token_mismatch',
+]);
+
+function alertVoucherMismatch(context: Record<string, unknown>) {
+  if (!process.env.TG_BOT_TOKEN || !process.env.TG_ADMIN_CHAT_ID) return;
+  fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: process.env.TG_ADMIN_CHAT_ID,
+      text: [
+        'VOUCHER DRIFT OR COMPROMISE',
+        '',
+        `Error: ${String(context.error)}`,
+        `Tx: ${String(context.txHash)}`,
+        `Chain: ${String(context.chain)}`,
+        `Reservation: ${String(context.reservationId)}`,
+      ].join('\n'),
+    }),
+  }).catch((err) => {
+    logger.error('Telegram alert failed for voucher mismatch', {
+      txHash: context.txHash,
+      error: String(err),
+    });
+  });
+}
 
 /**
  * Resolve a NodePurchased event's `codeHash` back to the human-readable
@@ -30,9 +63,8 @@ const ZERO_CODE_HASH = '0x000000000000000000000000000000000000000000000000000000
  *
  * Implementation is an O(N) scan: pull every distinct code from both
  * tables and compute `keccak256(utf8Bytes(code))` in JS, matching the
- * contract's and frontend's hash convention (see
- * `lib/referrals/sync-on-chain.ts codeHashFor` and
- * `app/(app)/sale/page.tsx`). N is in the low thousands under current
+ * contract's and frontend's hash convention (see `lib/voucher.ts codeToHash`
+ * and `app/(app)/sale/page.tsx`). N is in the low thousands under current
  * scale; each hash is <1 ms, so the full scan stays well under 100 ms.
  * If total codes ever grow past ~100k, add an indexed `code_hash bytea`
  * column to both tables and switch to a single SQL lookup.
@@ -202,4 +234,74 @@ export async function processReferralAttribution(
     purchaseId: result.purchase_id,
     commissionsCreated: result.commissions_created ?? 0,
   };
+}
+
+/**
+ * Voucher-sale ingest path. The database function validates the on-chain
+ * event against the original sale_reservations row, then writes purchase,
+ * commissions, reservation completion, and global inventory in one
+ * transaction. This is the only path v2 purchase events should use.
+ */
+export async function processPurchaseWithReservation(
+  purchase: PurchaseEvent,
+  reservationId: string,
+): Promise<Record<string, unknown>> {
+  if (!/^0x[a-fA-F0-9]{40}$/i.test(purchase.buyerWallet)) {
+    logger.error('Invalid buyer wallet format', { wallet: purchase.buyerWallet });
+    throw new Error('invalid_buyer_wallet');
+  }
+  if (!Number.isInteger(purchase.totalPaidUsd) || purchase.totalPaidUsd < 0) {
+    logger.error('Invalid totalPaidUsd', { totalPaidUsd: purchase.totalPaidUsd });
+    throw new Error('invalid_amount');
+  }
+  if (!/^0x[a-fA-F0-9]{64}$/.test(purchase.codeHash)) {
+    logger.error('Invalid codeHash format', { codeHash: purchase.codeHash });
+    throw new Error('invalid_code_hash');
+  }
+
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase.rpc('process_purchase_with_reservation', {
+    p_reservation_id: reservationId,
+    p_tx_hash:        purchase.txHash.toLowerCase(),
+    p_chain:          purchase.chain,
+    p_buyer_wallet:   purchase.buyerWallet.toLowerCase(),
+    p_tier:           purchase.tier,
+    p_quantity:       purchase.quantity,
+    p_token:          purchase.token ?? 'USDC',
+    p_amount_usd:     purchase.totalPaidUsd,
+    p_code_hash:      purchase.codeHash.toLowerCase(),
+    p_block_number:   purchase.blockNumber,
+  });
+
+  if (error) {
+    logger.error('process_purchase_with_reservation RPC failed', {
+      txHash: purchase.txHash,
+      reservationId,
+      error: error.message,
+    });
+    throw new Error(error.message);
+  }
+
+  const result = data as Record<string, unknown>;
+  if (result?.error) {
+    if (typeof result.error === 'string' && STRUCTURAL_MISMATCH_ERRORS.has(result.error)) {
+      alertVoucherMismatch({
+        error: result.error,
+        txHash: purchase.txHash,
+        chain: purchase.chain,
+        reservationId,
+        buyerWallet: purchase.buyerWallet,
+        tier: purchase.tier,
+        quantity: purchase.quantity,
+      });
+    }
+    logger.error('process_purchase_with_reservation rejected', {
+      txHash: purchase.txHash,
+      reservationId,
+      result,
+    });
+    throw new Error(`process_purchase_with_reservation_rejected: ${JSON.stringify(result)}`);
+  }
+
+  return result;
 }

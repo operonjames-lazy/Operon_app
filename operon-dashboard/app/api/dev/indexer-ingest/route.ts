@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import {
+  markReservationFailedForEvent,
   parseNodePurchasedLog,
   processPurchaseEvent,
   queuePendingVerification,
@@ -13,7 +14,7 @@ import { assertDevAuth } from '@/lib/dev-auth';
  * Dev-only ingest endpoint used by scripts/dev-indexer.mjs to feed polled
  * on-chain events into the same processPurchaseEvent pipeline that the
  * Alchemy/QuickNode webhooks use in production. Strictly gated by
- * `assertDevAuth` — NODE_ENV must not be production, DEV_ENDPOINTS_ENABLED
+ * `assertDevAuth`: NODE_ENV must not be production, DEV_ENDPOINTS_ENABLED
  * must be '1', and the request body must carry a valid HMAC signature
  * derived from DEV_INDEXER_SECRET. Bypass paths are intentionally absent.
  */
@@ -61,15 +62,16 @@ export async function POST(request: NextRequest) {
   // event on-chain, process on success, queue pending_verification on
   // unreachable, reject on explicit failure. An earlier revision of this
   // route processed optimistically on 'unreachable' so local testers would
-  // see immediate state updates — that divergence meant dev couldn't
-  // reproduce the real retry branch and, worse, invited the same
-  // optimistic-processing shortcut into prod on copy-paste. Do not restore
-  // it. If the tester's RPC is flaky, fix the RPC or use the admin replay
-  // endpoint — do not weaken this path.
-  // Pass event so verifyOnChain re-parses the on-chain log and rejects
-  // any payload drift (ship-readiness B6). HMAC-authed, but still defense-in-depth.
+  // see immediate state updates. That divergence meant dev couldn't
+  // reproduce the real retry branch and invited the same shortcut into prod.
+  // Do not restore it. If the tester's RPC is flaky, fix the RPC or use the
+  // admin replay endpoint; do not weaken this path.
+  //
+  // Pass event so verifyOnChain re-parses the on-chain log and rejects any
+  // payload drift (ship-readiness B6). HMAC-authed, but still defense-in-depth.
   const verified = await verifyOnChain(txHash, chain, saleAddr, event);
   if (verified === 'failed') {
+    await markReservationFailedForEvent(event, 'dev_on_chain_verification_failed');
     return Response.json({ ok: false, error: 'verify_failed' }, { status: 400 });
   }
   if (verified === 'unreachable') {

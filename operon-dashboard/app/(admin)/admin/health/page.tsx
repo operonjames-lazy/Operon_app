@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useHealth, useAuditLog } from '@/hooks/useAdmin';
 import { authFetch } from '@/lib/api/fetch';
@@ -84,35 +83,21 @@ export default function AdminHealthPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Card title="Failed events — by kind">
-          {health.data && Object.keys(health.data.failedEventKinds).length === 0 ? (
-            <p className="text-xs text-t3">None outstanding.</p>
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {health.data &&
-                Object.entries(health.data.failedEventKinds).map(([k, v]) => (
-                  <li key={k} className="flex items-center justify-between">
-                    <span className="font-mono text-xs text-t2">{k}</span>
-                    <span className="tabular-nums text-t1">{v}</span>
-                  </li>
-                ))}
-            </ul>
-          )}
-        </Card>
-        <Card title="Referral-code sync queue">
-          {health.data ? (
-            <ul className="space-y-1 text-sm">
-              <Row label="Pending" value={formatNum(health.data.syncQueue.pending)} />
-              <Row label="Failed" value={formatNum(health.data.syncQueue.failed)} />
-              <Row label="Synced" value={formatNum(health.data.syncQueue.synced)} />
-              <Row label="Revoked" value={formatNum(health.data.syncQueue.revoked)} />
-            </ul>
-          ) : (
-            <p className="text-xs text-t3">Loading…</p>
-          )}
-        </Card>
-      </div>
+      <Card title="Failed events — by kind">
+        {health.data && Object.keys(health.data.failedEventKinds).length === 0 ? (
+          <p className="text-xs text-t3">None outstanding.</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {health.data &&
+              Object.entries(health.data.failedEventKinds).map(([k, v]) => (
+                <li key={k} className="flex items-center justify-between">
+                  <span className="font-mono text-xs text-t2">{k}</span>
+                  <span className="tabular-nums text-t1">{v}</span>
+                </li>
+              ))}
+          </ul>
+        )}
+      </Card>
 
       <Card title="Reconcile cron — last run">
         {health.data ? (
@@ -227,15 +212,6 @@ export default function AdminHealthPage() {
         </div>
       </Card>
     </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <li className="flex items-center justify-between">
-      <span className="text-t3">{label}</span>
-      <span className="tabular-nums text-t1">{value}</span>
-    </li>
   );
 }
 

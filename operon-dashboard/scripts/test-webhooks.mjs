@@ -139,14 +139,21 @@ function saleContractAddress(chain) {
 // (b) fail on-chain re-verification. Exercises the signature-verify path
 // without needing a real chain read.
 function synthesiseLog({ chain, saleAddr }) {
+  // NodeSale v2 voucher checkout — keep ABI in sync with
+  // lib/webhooks/process-event.ts NODE_PURCHASED_EVENT.
   const iface = new ethers.Interface([
-    'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)',
+    'event NodePurchased(address indexed buyer, uint256 indexed tier, uint256 quantity, bytes32 indexed reservationId, bytes32 codeHash, uint256 totalPaid, address token)',
   ]);
-  // Buyer: a fixed demo address. Tier 0, qty 1, no code, 500 USDC (6-dec) or 500 USDT (18-dec).
+  // Buyer: a fixed demo address. Tier 1, qty 1, no code, 500 USDC (6-dec) or 500 USDT (18-dec).
+  // A non-zero reservationId is required by parseNodePurchasedLog — use a
+  // recognisable filler so the synthetic log is obvious in the failed_events
+  // table.
   const buyer = '0x1234567890123456789012345678901234567890';
-  const tier = 0n;
+  const tier = 1n;
   const quantity = 1n;
   const codeHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+  const reservationId =
+    '0x000000000000000000000000000000000000000000000000deadbeefdeadbeef';
   const totalPaid = chain === 'bsc' ? ethers.parseUnits('500', 18) : ethers.parseUnits('500', 6);
   // Token address — must match STABLECOIN_ADDRESSES for the chain (else the
   // route rejects as unknown-token, D-P2). Use whichever is set in env.
@@ -154,17 +161,12 @@ function synthesiseLog({ chain, saleAddr }) {
     ? (process.env.NEXT_PUBLIC_TESTNET_USDT_BSC || '0x0000000000000000000000000000000000000000')
     : (process.env.NEXT_PUBLIC_TESTNET_USDC_ARB || '0x0000000000000000000000000000000000000000');
 
-  const topic = iface.getEvent('NodePurchased').topicHash;
-  const topics = [
-    topic,
-    ethers.zeroPadValue(buyer, 32),
-  ];
-  // Non-indexed args: tier, quantity, codeHash, totalPaid, token
+  // Indexed args become topics 1..3; non-indexed args become data.
   const data = iface.encodeEventLog(
     'NodePurchased',
-    [buyer, tier, quantity, codeHash, totalPaid, token],
-  ).data;
-  return { topics, data, address: saleAddr, blockNumber: '0xdeadbeef' };
+    [buyer, tier, quantity, reservationId, codeHash, totalPaid, token],
+  );
+  return { topics: data.topics, data: data.data, address: saleAddr, blockNumber: '0xdeadbeef' };
 }
 
 // Fetch a real log off-chain via RPC. Used in live-tx mode.
@@ -178,7 +180,7 @@ async function fetchRealLog({ chain, txHash, saleAddr }) {
       const receipt = await provider.getTransactionReceipt(txHash);
       if (!receipt) continue;
       const iface = new ethers.Interface([
-        'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)',
+        'event NodePurchased(address indexed buyer, uint256 indexed tier, uint256 quantity, bytes32 indexed reservationId, bytes32 codeHash, uint256 totalPaid, address token)',
       ]);
       const topic = iface.getEvent('NodePurchased').topicHash;
       const match = receipt.logs.find(

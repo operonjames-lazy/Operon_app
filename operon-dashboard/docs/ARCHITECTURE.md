@@ -260,15 +260,7 @@ reconciliation_log          -- one row per reconcile cron run
 ├── events_found, gaps_filled
 ├── run_at, duration_ms
 
-referral_code_chain_state   -- per-code × chain queue for on-chain registration
-├── code, chain              -- composite primary key
-├── status VARCHAR(20)       -- 'pending' | 'synced' | 'failed'
-├── discount_bps INT         -- bps to register with addReferralCode
-├── tx_hash, last_error
-├── attempts INT             -- capped at 10 before status → 'failed'
-└── created_at, updated_at   -- partial index on (status, updated_at) where status <> 'synced'
-                             -- Drained by cron (prod) or /api/dev/drain-referrals (local).
-                             -- Required so a discounted purchase's codeHash passes NodeSale.validCodes.
+-- (referral_code_chain_state was dropped in migration 027 — Phase 5 cleanup)
 
 payout_periods, payout_transfers  -- legacy biweekly rollup, superseded by paid_at on referral_purchases
 ```
@@ -325,16 +317,15 @@ Authoritative types live in `types/api.ts`. All routes return JSON. Error envelo
 
 | Route | Method | Purpose |
 |---|---|---|
-| `/api/cron/reconcile` | GET | Vercel cron every 5 min (`*/5 * * * *`). From `reconciliation_log.to_block + 1` to `latestBlock - 10 confirmations` (reorg-safe, MAX_BLOCK_RANGE=10000 cap), re-ingest any `NodePurchased` events missing from `purchases`. Also retries up to 20 `failed_events` per run (5-attempt cap → Telegram alert) and drains up to 200 `referral_code_chain_state` rows per run (10-attempt cap → Telegram alert). Queue depth ≥ 500 also fires a Telegram backlog alert |
+| `/api/cron/reconcile` | GET | Vercel cron every 5 min (`*/5 * * * *`). From `reconciliation_log.to_block + 1` to `latestBlock - 10 confirmations` (reorg-safe, MAX_BLOCK_RANGE=10000 cap), re-ingest any `NodePurchased` events missing from `purchases` (calls `complete_reservation` for the tier counter + auto-advance). Sweeps expired `sale_reservations` via `expire_old_reservations`. Retries up to 20 `failed_events` per run (5-attempt cap → Telegram alert). The Phase 5 cleanup removed the `referral_code_chain_state` drain — voucher checkout validates codes off-chain |
 
 ### Dev (NODE_ENV != 'production', HMAC-gated via `DEV_INDEXER_SECRET`)
 
-Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/dev-indexer.mjs` calls all three every ~5 seconds. All go through `lib/dev-auth.ts` which fail-closes on missing `DEV_ENDPOINTS_ENABLED=1`, missing secret, or bad signature.
+Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/dev-indexer.mjs` calls both every ~5 seconds. All go through `lib/dev-auth.ts` which fail-closes on missing `DEV_ENDPOINTS_ENABLED=1`, missing secret, or bad signature.
 
 | Route | Method | Purpose |
 |---|---|---|
 | `/api/dev/indexer-ingest` | POST | Receive parsed `NodePurchased` events from the poller; runs the same `verifyOnChain` → `processPurchaseEvent` pipeline as prod webhooks |
-| `/api/dev/drain-referrals` | POST | Drain `referral_code_chain_state` pending rows (max 20 per call) — local equivalent of the cron's referral-sync block |
 | `/api/dev/replay-failed-events` | POST | Retry `failed_events` — local equivalent of the cron's retry block, including Telegram alert on 5-retry abandon |
 
 ### Admin (all gated by `requireAdmin()`)
@@ -345,7 +336,6 @@ Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/de
 |---|---|---|
 | `/api/admin/sale/pause` | POST | Call `pause()` on NodeSale contracts |
 | `/api/admin/sale/unpause` | POST | Inverse |
-| `/api/admin/sale/tier-active` | POST | Call `setTierActive(tierId, active)` to promote the next tier as inventory sells out. Paired with the deploy-time decision to only activate tier 0 (see `DECISIONS.md`) |
 | `/api/admin/sale/withdraw` | POST | Call `withdrawFunds(token, to)` to sweep stablecoin balance to treasury. Only in-app path to collect sale proceeds; emits `FundsWithdrawn(token, to, amount)` on-chain |
 | `/api/admin/events/replay` | POST | Re-fetch a tx, re-run commission RPC (idempotent) |
 | `/api/admin/events/resolve` | POST | Mark a `failed_events` row resolved with reason |
@@ -353,10 +343,11 @@ Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/de
 | `/api/admin/partners/status` | POST | Suspend / terminate / reactivate an EPP partner; required reason. Wired from the user-detail page |
 | `/api/admin/payouts/mark-paid` | POST | Record manual USDC sends, writes `paid_at` / `payout_tx` / `paid_from_wallet` |
 | `/api/admin/epp/invites` | POST | Batch generate `EPP-XXXX` invite codes, return CSV |
-| `/api/admin/referrals/reset` | POST | Reset a `referral_code_chain_state` row from `failed` → `pending, attempts=0` so the next drain retries. Use on codes that hit the 10-attempt cap |
-| `/api/admin/referrals/remove` | POST | Call `removeReferralCode(codeHash)` to revoke a code from the contract's `validCodes` mapping. Historical purchases + DB bindings unchanged; only future on-chain purchases lose the discount |
+| `/api/admin/referrals/reset` | POST | **Orphaned in Phase 5** — touches the dead `referral_code_chain_state` table. Pending removal once the table is dropped |
 | `/api/admin/killswitches` | POST | Toggle a per-endpoint kill switch (migration 019). Lets the operator disable individual admin actions without redeploying |
 | `/api/admin/announcements` | POST/PATCH | Create / update site-wide announcement banner. GET returns the list |
+
+> **Removed in Phase 5:** `/api/admin/sale/tier-active` (NodeSale v2 has no `setTierActive`; tier promotion is auto-driven by `complete_reservation`); `/api/admin/referrals/remove` (no `validCodes` mapping to revoke against); `/api/dev/drain-referrals` (sync queue gone).
 
 **Read surface** — pure reads that back the admin UI panel. Allowlist-gated; aggregate reads use Postgres RPCs (migration 020) so PostgREST row-cap truncation cannot under-report money totals.
 
@@ -379,7 +370,7 @@ Local-only substitutes for Vercel cron + Alchemy/QuickNode webhooks. `scripts/de
 
 `lib/admin-read.ts` is the server-side aggregation module — thin wrappers over `admin_overview_stats` and `admin_daily_revenue`. `hooks/useAdmin.ts` is the client-side React-Query layer (one hook per read endpoint plus `useIsAdmin`). New aggregate code must follow REVIEW_ADDENDUM **D-P9**: admin dashboards aggregate via Postgres RPC, never client-side `.reduce()` over an unbounded SELECT. Migration 022 added `admin_milestones_pending` (closing a route 020 missed) and re-bucketed `admin_overview_stats.revenue.today` to UTC-date so the "Today" KPI tile equals the rightmost bar of the daily-revenue chart. Migration 023 added the partner-leaderboard / pipeline / user-purchase-count RPCs, completing the D-P9 sweep that 020 started.
 
-Kill-switch enforcement on mutation routes lives in [`lib/killswitches.ts`](../lib/killswitches.ts). Each mutation route calls `assertNotKilled('<key>')` after `requireAdmin()` and returns its 503 Response if non-null. Keys are flat strings like `admin.sale.pause`. Current wired set: `admin.{sale.pause,sale.unpause,sale.tier-active,sale.withdraw,events.replay,events.resolve,partners.tier,partners.status,payouts.mark-paid,epp.invites,referrals.remove,referrals.reset,announcements.create,announcements.toggle,announcements.delete}`. Reads are uncached so a freshly-toggled switch takes effect on the next request.
+Kill-switch enforcement on mutation routes lives in [`lib/killswitches.ts`](../lib/killswitches.ts). Each mutation route calls `assertNotKilled('<key>')` after `requireAdmin()` and returns its 503 Response if non-null. Keys are flat strings like `admin.sale.pause`. Current wired set: `admin.{sale.pause,sale.unpause,sale.withdraw,events.replay,events.resolve,partners.tier,partners.status,payouts.mark-paid,epp.invites,referrals.reset,announcements.create,announcements.toggle,announcements.delete}`. Reads are uncached so a freshly-toggled switch takes effect on the next request. Migration 019 still seeds `admin.sale.tier-active` and `admin.referrals.remove` keys; both are unused by code and will be cleared in the follow-up table-drop migration.
 
 The cron `/api/cron/reconcile` calls `try_reconcile_lock()` (migration 023) at handler entry — a `pg_try_advisory_lock(1330005838)` wrapper. Concurrent runs (Vercel cold-start race, or the schedule flipped to `* * * * *` during an incident) return cleanly with `{ skipped: 'lock_held' }` rather than racing on signer nonces in `addReferralCode` calls.
 

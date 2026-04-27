@@ -1,17 +1,26 @@
 import { NextRequest } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent, queuePendingVerification } from '@/lib/webhooks/process-event';
+import {
+  markReservationFailedForEvent,
+  parseNodePurchasedLog,
+  processPurchaseEvent,
+  queuePendingVerification,
+  verifyOnChain,
+} from '@/lib/webhooks/process-event';
 import { rateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 
 function verifyAlchemySignature(body: string, signature: string | null): boolean {
   // Ship-readiness R5: previously returned `NODE_ENV === 'development'` when
   // the signing key was missing, which meant localhost accepted unsigned
-  // POSTs from any caller. Tester's local flow uses dev-indexer →
-  // /api/dev/indexer-ingest instead, so this route has no legitimate dev
+  // POSTs from any caller. Tester's local flow uses dev-indexer, which posts
+  // to /api/dev/indexer-ingest instead, so this route has no legitimate dev
   // caller and opening it up is pure risk. Fail-closed regardless of env.
   if (!process.env.ALCHEMY_WEBHOOK_SIGNING_KEY) {
-    logger.error('ALCHEMY_WEBHOOK_SIGNING_KEY not configured — rejecting all webhooks', { route: 'webhook/alchemy', env: process.env.NODE_ENV });
+    logger.error('ALCHEMY_WEBHOOK_SIGNING_KEY not configured; rejecting all webhooks', {
+      route: 'webhook/alchemy',
+      env: process.env.NODE_ENV,
+    });
     return false;
   }
   if (!signature) {
@@ -62,7 +71,7 @@ export async function POST(request: NextRequest) {
       // from the receipt's on-chain log and rejects any payload drift (B6).
       const verified = await verifyOnChain(event.txHash, 'arbitrum', saleContractAddress, event);
       if (verified === 'failed') {
-        // Forged or reverted — drop it.
+        await markReservationFailedForEvent(event, 'on_chain_verification_failed');
         continue;
       }
       if (verified === 'unreachable') {

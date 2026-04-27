@@ -173,21 +173,27 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 | `010_commission_rpc.sql` | Atomic `process_purchase_and_commissions` Postgres function (superseded by 012) |
 | `011_review_fixes.sql` | BIGINT upgrade for `purchases.amount_usd` + `epp_partners.invite_id` UNIQUE constraint |
 | `012_community_commission.sql` | `CREATE OR REPLACE` of commission RPC — adds community referrer earning path (flat 10-3-2-1-1 for users with `users.referral_code` but no `epp_partners` row) and affiliate L5=1% so every EPP tier stays strictly ≥ community |
-| `013_referral_chain_state.sql` | `referral_code_chain_state` queue (per code × chain) tracking whether each code has been mirrored onto the `NodeSale` contract via `addReferralCode`. Drained by `/api/cron/reconcile` in production and `/api/dev/drain-referrals` in local dev. Required for `/api/sale/validate-code` to ever return `synced` |
+| `013_referral_chain_state.sql` | `referral_code_chain_state` queue. Dropped in migration 027 (Phase 5 cleanup). Historical record only. |
 | `014_seed_full_tier_curve.sql` | Fills in tiers 6-40 of the `sale_tiers` table and resets tier state so the DB matches a fresh contract deploy. ⚠ Originally contained an unconditional `UPDATE sale_tiers SET total_sold = 0`. R15 (2026-04-26) edited 014 in place to add a purchase-count guard around that UPDATE — the in-place edit was justified because 014 had not yet been applied to any environment when the edit landed. The migration is now safe to apply on a populated DB (the guarded UPDATE no-ops if any purchases exist). 017 remains as the original compensating control for re-runs. |
 | `015_purchase_audit_fields.sql` | `CREATE OR REPLACE` of the commission RPC to compute applied `discount_bps` from tier base price vs event `amount_usd`, and persist resolved referral code string in `purchases.code_used`. Closes the per-code audit gap from DECISIONS D09. |
 | `016_overpay_anomaly.sql` | `CREATE OR REPLACE` of the commission RPC to split "paid exactly equal to list" from "paid more than list" in the `discount_bps` derivation. Overpay now emits `RAISE WARNING` with the event context (tx, chain, tier, qty, base_total, amount_usd) instead of being silently masked as 0% discount. Commission math unchanged. |
 | `017_guard_tier_reset.sql` | Compensating control for migration 014's unconditional `UPDATE sale_tiers SET total_sold = 0` — guarded version that skips the reset if any `purchases` or `referral_purchases` row exists. CLAUDE.md Rule 13 (applied migrations are immutable) forbids editing 014; this file carries the same intent safely. Always apply 017 after 014 on any re-run. |
-| `018_revoked_referral_status.sql` | Adds terminal `'revoked'` status to `referral_code_chain_state` (CHECK constraint). Required because `/api/admin/referrals/remove` previously set `'failed'`, which the drain loop treats as retry-eligible — admin revocations were silently re-registered on-chain within 5 minutes. Ship-readiness R14. |
+| `018_revoked_referral_status.sql` | Adds terminal `'revoked'` status to `referral_code_chain_state`. Dropped together with the table in migration 027. Historical record only. |
 | `019_admin_killswitches.sql` | `admin_killswitches` per-endpoint toggle table (seeded with the 12 known admin-mutation keys). Lets the operator disable individual admin actions without redeploying. |
 | `020_admin_read_rpcs.sql` | 5 STABLE admin-read RPCs (`admin_attribution`, `admin_overview_stats`, `admin_daily_revenue`, `admin_unpaid_grouped`, `admin_user_commission_totals`) that move every aggregate from JS `.reduce()` over unbounded `SELECT`s into Postgres. Closes D-9 (Overview + Payouts money-math truncation at sale scale) and Pass-3 (user-detail lifetime commissions under-reported for partners with >500 rows). Pattern enforced by new REVIEW_ADDENDUM **D-P9**. |
 | `021_partner_status_commission_filter.sql` | `CREATE OR REPLACE` of `process_purchase_and_commissions`. The chain walk now reads `epp_partners.status` and skips uplines whose status is not `'active'`. Before this, `/api/admin/partners/status` set `'suspended'`/`'terminated'` and audit-logged but the RPC ignored the column, so suspended partners kept earning on every new purchase. Historical `referral_purchases` rows untouched — existing owed payouts remain payable; only NEW purchases skip non-active uplines. Surfaced by /grill review of the admin panel. |
 | `022_admin_overview_today_utc_milestones_rpc.sql` | Two read-side fixes: (1) `admin_overview_stats.revenue.today` re-keyed from rolling-24h to UTC-date bucket so the "Today" KPI tile equals the rightmost bar of `admin_daily_revenue`'s chart on the same page. (2) New `admin_milestones_pending()` RPC + `/api/admin/payouts/milestones` rewrite to use it (the route was missed in 020's D-9 sweep). Also fixes a 100×-too-high threshold/bonus bug in the route's TS table — numeric-separator literal `1_000_000_00` parses to 100,000,000 cents, not the $10,000 the comment claimed. RPC uses migration 010's authoritative thresholds. |
-| `023_admin_partner_rpcs_and_cron_lock.sql` | Three D-P9 closures + cron concurrency lock + 3 announcement killswitch keys. New STABLE RPCs `admin_partner_leaderboard()`, `admin_partner_pipeline()`, `admin_user_purchase_counts()` move the last partner-related aggregates from JS `.reduce()` over unbounded `SELECT`s into Postgres (D-P9 sweep that 020 missed — the 100× threshold bug in `app/api/admin/partners/pipeline/route.ts` was a symptom). New `try_reconcile_lock()` returns `pg_try_advisory_lock(1330005838)` so two concurrent `/api/cron/reconcile` ticks don't race on signer nonces. Idempotent INSERT seeds `admin.announcements.{create,toggle,delete}` keys consumed by the announcement route's new `assertNotKilled` calls. |
+| `023_admin_partner_rpcs_and_cron_lock.sql` | Three D-P9 closures + cron concurrency lock + 3 announcement killswitch keys. New STABLE RPCs `admin_partner_leaderboard()`, `admin_partner_pipeline()`, `admin_user_purchase_counts()` move the last partner-related aggregates from JS `.reduce()` over unbounded `SELECT`s into Postgres (D-P9 sweep that 020 missed — the 100× threshold bug in `app/api/admin/partners/pipeline/route.ts` was a symptom). New `try_reconcile_lock()` returns `pg_try_advisory_lock(1330005838)` so two concurrent `/api/cron/reconcile` ticks don't race on signer nonces. Idempotent INSERT seeds `admin.announcements.{create,toggle,delete}` keys consumed by the announcement route's new `assertNotKilled` calls. **Note:** the session-scoped `try_reconcile_lock` is dropped in migration 025 — superseded by the row-based TTL lease that survives PgBouncer connection pooling. |
+| `025_cron_lock_lease.sql` | Replaces 023's session-scoped advisory lock with a row-based TTL lease. New table `cron_locks(name, expires_at)` + RPCs `try_acquire_cron_lock(name, ttl_seconds)` and `release_cron_lock(name)`. Drops `try_reconcile_lock` from 023. Reason: Supabase pooler holds session-scoped advisory locks across HTTP requests, which can leave the lock effectively permanent. TTL-based lease self-heals: a crashed run releases its lease within the TTL window even if the explicit release never fires. `/api/cron/reconcile` calls these with TTL=300s (5× the route's 60s maxDuration). |
+| `026_sale_reservations.sql` | NodeSale v2 voucher checkout DB layer. New `sale_reservations` table (status state machine: reserved → submitted → completed, with expired/failed/cancelled terminals) + `sale_tiers.max_per_wallet` column + four RPCs (`reserve_node_purchase`, `mark_reservation_submitted`, `complete_reservation`, `mark_reservation_failed`, `expire_old_reservations`). Atomic global inventory hold via `FOR UPDATE` on `sale_tiers.is_active`; backend becomes the single source of truth across Arb + BSC. Powers `/api/sale/reserve`, `/api/sale/reservations/submit`, `/api/cron/reconcile` reservation-expiry sweep, and webhook → `complete_reservation` linking. Phase 3 of the voucher refactor (D31). |
+| `027_drop_referral_code_chain_state.sql` | Phase 5 cleanup follow-on (D32, F66.1). Drops the orphaned `referral_code_chain_state` table (and with it migration 018's `'revoked'` CHECK constraint) and clears the orphan `admin_killswitches` rows for `admin.sale.tier-active` / `admin.referrals.remove` / `admin.referrals.reset`. Idempotent (`DROP TABLE IF EXISTS`, conditional `DELETE`). Safe to re-run on a clean DB. |
+| `028_harden_voucher_reservations.sql` | Voucher checkout hardening (post-external-review, D-P10/A-P7/R-P6). `ENABLE + FORCE ROW LEVEL SECURITY` on `sale_reservations`. Tightens table CHECK on `quantity` to `<= 100` to match contract `MAX_BATCH_SIZE`. New atomic ingest RPC `process_purchase_with_reservation(reservation_id, tx_hash, chain, buyer, tier, quantity, token, amount_usd, code_hash, block_number)` that locks the reservation `FOR UPDATE`, verifies every event field against the row (chain/buyer/tier/quantity/token/code_hash/amount via `(unit_price * quantity * (10000 - discount_bps)) / 10000`), then writes purchases + commissions + reservation completion + tier increment in one transaction. Replaces the prior split call to `processReferralAttribution` + `complete_reservation`. Recreates `reserve_node_purchase` with tightened DB-level clamps (`quantity <= 100`, `discount_bps <= 1500`, `ttl_seconds 60..900`). REVOKEs `EXECUTE` on every voucher RPC + `process_purchase_and_commissions` + `increment_tier_sold` from `PUBLIC, anon, authenticated`; GRANTs to `service_role` only. |
+| `029_admin_failed_events_health.sql` | New STABLE RPC `admin_failed_events_health()` returning `{pending, retrying, abandoned, oldest, kinds}`. Replaces the unbounded `SELECT` reduce in `/api/admin/health` (D-P9). REVOKEs from `PUBLIC, anon, authenticated`; GRANTs `service_role` only. |
+| `030_lock_down_anon_grants.sql` | **Sweep migration — pending operator apply at 2026-04-27 EOD.** Closes the broader anon-key data-exposure surface that 028's named REVOKEs missed. `REVOKE ALL ON ALL TABLES`/`SEQUENCES`/`FUNCTIONS IN SCHEMA public FROM anon, authenticated` + `ALTER DEFAULT PRIVILEGES` so future migrations are locked-down by default. Re-grants the minimum the browser actually needs: `SELECT ON sale_tiers, sale_config TO anon, authenticated` (Realtime subscriptions in `hooks/useTierRealtime.ts`). Re-grants `service_role` everything explicitly. Background: 2026-04-27 empirical anon-key probe returned full purchase / user-email / partner-payout-queue records via direct PostgREST table reads; the `admin_*` read RPCs from migrations 020/022/023 were all anon-callable; `release_cron_lock` was a DoS lever. See PROGRESS.md session 43 for the full audit. |
 
-(Migration 007 does not exist.)
+(Migration 007 does not exist. Migration 017 is documented above but is unapplied — superseded in spirit by the in-place guard in 014. Migration 024 was deleted before apply per D32.)
 
-**Live DB state as of 2026-04-26** (from runtime probe + remediation): migrations 001-006, 008-016, 018, 020, 022 were applied progressively over the project's lifetime. Migrations 014, 019, 021, 023 were applied in order on 2026-04-26 after the R15 drift discovery — see `docs/PROGRESS.md` for the apply log. 017 has been superseded in spirit by the in-place guard added to 014; reapply is still safe and a no-op given the purchase-count short-circuit.
+**Live DB state as of 2026-04-27 EOD** (from runtime probe + remediation): migrations 001-006, 008-016, 018, 020, 022 were applied progressively over the project's lifetime. Migrations 014, 019, 021, 023 were applied in order on 2026-04-26 after the R15 drift discovery. Migrations 025, 026, 027 were applied in order on 2026-04-27 morning. Migrations 028 + 029 were applied on 2026-04-27 afternoon after the external-review fix-pack landed. **Migration 030 is written but pending operator apply** (closes the broader anon-key data-exposure surface — see PROGRESS.md session 43). Migration 024 was deleted before apply (D32). Migration 017 has been superseded in spirit by the in-place guard added to 014; reapply is still safe and a no-op given the purchase-count short-circuit.
 
 ---
 
@@ -349,38 +355,18 @@ Calls `NodeSale.withdrawFunds(token, to)` which sweeps the full ERC-20 balance h
 
 **This is the only in-app path to collect sale proceeds.** Run it per chain / per accepted token after each settlement window.
 
-#### Promote the next tier (`setTierActive`)
+#### Promote the next tier
 
-```bash
-curl -X POST https://app.operon.network/api/admin/sale/tier-active \
-  -H "Authorization: Bearer <jwt>" \
-  -H "Content-Type: application/json" \
-  -d '{"chain":"arbitrum","tierId":1,"active":true}'
-```
+NodeSale v2 has no `setTierActive` — tier promotion is auto-driven by the `complete_reservation` RPC the moment `total_sold` reaches `total_supply` for the active tier (see migration 026). No operator action required. The Phase 5 cleanup removed the `/api/admin/sale/tier-active` endpoint along with the matching admin UI button.
 
-Paired with the deploy-time change that only activates tier 0 (see `contracts/scripts/deploy.ts`). Call this to flip the next tier on as inventory sells out. `tierId` is the **contract index** (0..39), not the 1-indexed DB tier. DB tier 1 = contract index 0.
+#### Revoke / refuse a referral code
 
-#### Reset a stuck referral-code sync
+NodeSale v2 has no `validCodes` mapping; voucher signing reads code state from the DB at sign time via `lib/referrals/validate.ts`. To stop a code being usable:
 
-```bash
-curl -X POST https://app.operon.network/api/admin/referrals/reset \
-  -H "Authorization: Bearer <jwt>" \
-  -H "Content-Type: application/json" \
-  -d '{"code":"OPR-ABC123","chain":"arbitrum"}'
-```
+  - **EPP partner code:** set `epp_partners.status = 'suspended'` (or `'terminated'`) via `/api/admin/partners/status` — `validateReferralCode()` returns `partner_inactive` for any non-`active` partner so the voucher RPC will refuse to sign.
+  - **Community code:** there is no admin path today. If one becomes necessary, the cheapest implementation is a new `users.referral_code_disabled` boolean checked by `validateReferralCode()`.
 
-Resets a `referral_code_chain_state` row from `failed` back to `pending` with `attempts=0` so the next cron drain retries. If `chain` is omitted, resets both chains. 404 if the code/chain is not queued.
-
-#### Revoke a referral code on-chain
-
-```bash
-curl -X POST https://app.operon.network/api/admin/referrals/remove \
-  -H "Authorization: Bearer <jwt>" \
-  -H "Content-Type: application/json" \
-  -d '{"code":"OPR-ABUSE1","chain":"both"}'
-```
-
-Calls `NodeSale.removeReferralCode(codeHash)` and tombstones the queue row so subsequent drains don't re-add the code. Historical purchases and DB-level referral bindings are NOT touched — only future on-chain purchases lose their discount. Use when a code is confirmed abused or mistakenly issued.
+The Phase 5 cleanup removed `/api/admin/referrals/remove` (it called the deleted `removeReferralCode` contract function).
 
 #### Suspend / terminate / reactivate an EPP partner
 
@@ -406,7 +392,7 @@ curl -X POST https://app.operon.network/api/admin/killswitches \
 
 Sets / clears a row in `admin_killswitches` (migration 019). Lets the operator freeze individual actions (e.g. invite generation during an audit) without redeploying.
 
-Enforcement: 11 mutation routes call `assertNotKilled('<key>')` from [`lib/killswitches.ts`](../lib/killswitches.ts) right after `requireAdmin()`. When the row's `disabled = true`, the helper returns a `503` with the audit-logged reason. Reads are uncached so a freshly-toggled switch takes effect on the next request. The `admin.events.replay`, `admin.events.resolve`, `admin.partners.tier`, `admin.partners.status`, `admin.payouts.mark-paid`, `admin.epp.invites`, `admin.referrals.remove`, `admin.referrals.reset`, `admin.sale.pause`, `admin.sale.unpause`, `admin.sale.tier-active`, `admin.sale.withdraw` keys are wired today — see migration 019 for the full seed list.
+Enforcement: mutation routes call `assertNotKilled('<key>')` from [`lib/killswitches.ts`](../lib/killswitches.ts) right after `requireAdmin()`. When the row's `disabled = true`, the helper returns a `503` with the audit-logged reason. Reads are uncached so a freshly-toggled switch takes effect on the next request. The `admin.events.replay`, `admin.events.resolve`, `admin.partners.tier`, `admin.partners.status`, `admin.payouts.mark-paid`, `admin.epp.invites`, `admin.referrals.reset`, `admin.sale.pause`, `admin.sale.unpause`, `admin.sale.withdraw` keys are wired today — see migration 019 for the full seed list. Migration 019 also seeds `admin.sale.tier-active` and `admin.referrals.remove`; both are unused after the Phase 5 cleanup deleted those endpoints and will be cleared in the follow-up table-drop migration.
 
 #### Announcement banner
 
@@ -577,9 +563,8 @@ Run this on testnet before any mainnet deploy. Every item must pass.
 > Two pieces of the system **cannot fire on `pnpm dev`**:
 >
 > 1. **Vercel cron** (`/api/cron/reconcile`) runs only on Vercel-deployed
->    instances. Locally, the failed-events drain, the
->    `referral_code_chain_state` drain, and the missed-event gap-filler are
->    all silent. To exercise the path locally, hit the route manually:
+>    instances. Locally, the failed-events drain and the missed-event
+>    gap-filler are silent. To exercise the path locally, hit the route manually:
 >    `curl -H "Authorization: Bearer $CRON_SECRET" $URL/api/cron/reconcile`.
 >    For a real test of the schedule itself, deploy to a Vercel preview
 >    and watch the function logs.

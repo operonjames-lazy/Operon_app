@@ -31,3 +31,36 @@ Append-only log of ship-readiness reviews.
 ## 2026-04-22 | admin panel advisory closures | C-P4 + S-76/A-8 | 0 open | admin panel fully review-clean
 - C-P4 closed — `app/(admin)/admin/layout.tsx` gains a header comment documenting English-only admin JSX as deliberate (operator-only, single user). Revisit trigger: a second admin who doesn't read EN.
 - S-76/A-8 closed — `/api/admin/users/search` strip regex extended from `[%_]` to `[%_,()"\\]` to remove PostgREST .or()-filter metachars that previously produced silent garbage results. Deliberately keeps `.`, `:`, `@`, `-` since they're safe inside .or() values (only structural in the key half of `field.op.value`), so email / UUID / OPR-XXXX / wallet searches still function.
+
+## 2026-04-27 | data + reliability + ops + compliance | Phase 1 (sale_reservations) + Phase 2 (NodeSale v2 voucher contract) | 2 required, 3 advisory, 1 praise
+- D-P1 (money is integer cents) → REAL ISSUE: none — `unit_price_cents BIGINT`, `discount_bps INTEGER`. Clean.
+- D-P4 (idempotency via UNIQUE) → REAL ISSUE: none — `complete_reservation` rides on `tier_increments` PK; `usedReservations[bytes32]` enforces voucher-side replay.
+- D-P6 (applied migrations immutable) → REAL ISSUE: none — 026 is new; no edits to applied files.
+- O-P1 (migrations applied via script, not edited) → REAL ISSUE: none.
+- O-P2 (build + tests pass) → REAL ISSUE: none — tsc 0, hardhat 53/53, lint 0 errors / 43 warnings.
+- R-P1 (reconcile branches on kind) → REAL ISSUE: none — new failed_events inserts in `route.ts:174-225` use `kind='process_error'` and `kind='tier_increment_error'` matching existing retry-pass branching.
+- R-P5 (cron lookback covers gap) → REAL ISSUE: none — preserved at `route.ts:127-128`.
+- **Co-P3 (terms_version increments when T&Cs change) → REAL ISSUE**: commit `e2db200` edited section 4 of EPP T&C in 6 languages but did NOT bump `TERMS_VERSION = '1.0'` in `app/epp/onboard/page.tsx:43`. Required fix.
+- **O-P5 (env var docs current) → REAL ISSUE**: Phase 2 deploy.ts adds `VOUCHER_SIGNER_ADDRESS`, `LOCAL_TIER_CAP`, `ADMIN_CAP_PER_TIER` env reads not in `docs/OPERATIONS.md` or `.env.example`. Required fix.
+- NO CHECK CAUGHT (advisory): Pass 1 — `complete_reservation` accepts `'expired'` reservations for recovery and increments `total_sold` without checking against `total_supply`. If a freed-and-recovered reservation collides with a new reservation that took the freed slot, `total_sold` can exceed `total_supply` for that tier. Bound is the contract's `localTierCap` per-chain; backend total_sold drift is operationally reconcilable but not currently alerted.
+- NO CHECK CAUGHT (advisory): `setLocalTierCap` comment claims "Lowering below localTierSold simply prevents further purchases until localTierSold catches up" — but `localTierSold` is monotonically increasing, so it never catches up downward. Permanent block until cap raised.
+- NO CHECK CAUGHT (advisory): `adminMint` records `tierMinPrice[tierId]` as the per-node price on `OperonNode`. For a tier where setTierMinPrice was never called, this is 0. No revert; produces nodes with price=0 audit record.
+- PRAISE: Phase 2 contract diff is a meaningful simplification (-1107/+788). Strict CEI in `purchaseWithVoucher`, comprehensive test coverage of voucher binding (buyer / chain / contract / deadline / replay / signer / tampered payload). Migration 026's `reserve_node_purchase` uses `FOR UPDATE` on the active tier as the load-bearing concurrency primitive and returns structured-error envelopes for client display.
+
+
+## 2026-04-27 | Phase 5 cleanup + F66.1 + migration drift fix | security+data+api+reliability+ops + REVIEW_ADDENDUM | 0 blocking, 2 required, 2 advisory, 2 praise | approve with comments
+- Pass 5 orphan inverse → REAL ISSUE: `mark_reservation_failed` (migration 026) has zero callers. All four `verifyOnChain('failed')` branches (alchemy/quicknode webhooks, cron reconcile retry, dev indexer-ingest) abandon the failed_events row but don't link the reservation. A reverted-tx purchase leaves its `sale_reservations` row in 'submitted' forever; `expire_old_reservations` deliberately ignores 'submitted' so inventory leaks against the active tier cap. Pre-existing voucher-design gap (Phase 3, D31), surfaced now by F66.1's full webhook-flow review.
+- Pass 4 → REAL ISSUE: webhook ABI is v2-only — no fallback to v1 `NodePurchased` topic0. Until operator deploys v2 contract AND updates `SALE_CONTRACT_*` env AND reconfigures Alchemy/QuickNode subscription topic0, no purchase events parse. Failure mode is "silent skip → buyer pays, dashboard never reflects". Operator-checklist item, not a code fix.
+- D-P9 → REAL ISSUE (pre-existing): `/api/admin/health` reads `failed_events` via `db.from(...).select('status, created_at')` and JS-reduces. Unbounded SELECT under PostgREST's implicit row cap. Pre-existing pattern, surfaced by the syncQueue removal review. Move to RPC.
+- Pass 1 → ADVISORY: legacy v1 `failed_events.kind='tier_increment_error'` rows would explode in the new retry path (`bytes32ToUuid(undefined)` → throws → retry++ → 5x → abandoned + Telegram). Live-DB probe shows `failed_events: []` so academic, but worth a kind-guard if any accumulate before contract cutover.
+- PRAISE: new `scripts/verify-pending-migrations.mjs` caught migrations 025+026 unapplied — Phase 3+4 voucher code was live in repo but the DB layer wasn't. Closes R15's "no automation enforces apply" gap. Wire into `/review-ship` step 0.
+- PRAISE: `verifyOnChain` field-mismatch list now includes `reservationId` (process-event.ts:228) — closes a forge surface that the v2 design otherwise widens (since reservationId is the inventory-tracking pivot).
+- NO CHECK CAUGHT: Pass 5 orphan inverse caught the unused `mark_reservation_failed` — there's no addendum check that says "every public RPC introduced by a migration must have a caller within N sessions of the migration landing." Candidate for a new R-Pn check after one more occurrence.
+
+## 2026-04-27 | REVIEW_ADDENDUM gap-fill from external review | 5 new project-specific checks added
+Five new checks filed for the categories my internal /review-full pass missed earlier today:
+- D-P10 — Postgres function EXECUTE permissions revoked from PUBLIC + anon + authenticated. Filed against the missed Critical (RPC public-execute via anon key in browser).
+- A-P7 — Inter-layer numeric bounds match the most restrictive consumer (DB CHECK / RPC validate / API route / contract require). Filed against the missed Medium (SQL allowed quantity≤1000 vs contract MAX_BATCH_SIZE=100).
+- R-P6 — Webhook event → DB-state convergence is one atomic RPC with full field verification. Filed against the missed High (complete_reservation didn't verify event fields against the reservation row; commission write before reservation linking).
+- O-P7 — Threat-model claims in DECISIONS.md are grep-verified against code constants. Filed against the missed Medium (D31 cited MAX_DISCOUNT_BPS but the contract has no such constant).
+- O-P8 — Refactor sweep: every caller of the OLD path is updated when a new path becomes canonical. Filed against the missed High (admin/dev replay routes still on legacy increment_tier_sold after F66 made complete_reservation canonical).

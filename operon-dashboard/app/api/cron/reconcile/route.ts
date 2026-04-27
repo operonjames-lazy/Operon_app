@@ -4,15 +4,20 @@ import { createServerSupabase } from '@/lib/supabase';
 
 export const maxDuration = 60;
 import { ethers } from 'ethers';
-import { processReferralAttribution } from '@/lib/commission';
-import { tokenAmountToCents, verifyOnChain, type ParsedPurchaseEvent } from '@/lib/webhooks/process-event';
+import { processPurchaseWithReservation } from '@/lib/commission';
+import { markReservationFailedForEvent, tokenAmountToCents, verifyOnChain, type ParsedPurchaseEvent } from '@/lib/webhooks/process-event';
 import { getTokenName } from '@/lib/webhooks/process-event';
 import { TOKEN_DECIMALS } from '@/lib/wagmi/contracts';
 import { getProvider, getSaleContract } from '@/lib/rpc';
+import { bytes32ToUuid } from '@/lib/voucher';
 import { logger } from '@/lib/logger';
-import { syncReferralCodeOnChain } from '@/lib/referrals/sync-on-chain';
 
-const NODE_PURCHASED_EVENT = 'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)';
+// NodeSale v2 voucher checkout - see lib/webhooks/process-event.ts for the
+// canonical signature; this constant must stay in sync.
+const NODE_PURCHASED_EVENT =
+  'event NodePurchased(address indexed buyer, uint256 indexed tier, uint256 quantity, bytes32 indexed reservationId, bytes32 codeHash, uint256 totalPaid, address token)';
+
+const ZERO_BYTES32 = '0x' + '0'.repeat(64);
 
 // Default lookback for first run only (no prior reconciliation_log entry).
 // Subsequent runs use the last reconciled block from the DB.
@@ -37,6 +42,7 @@ const CONFIRMATIONS: Record<'arbitrum' | 'bsc', number> = {
 };
 
 const CHAINS: Array<'arbitrum' | 'bsc'> = ['arbitrum', 'bsc'];
+const SUBMITTED_TX_FAILURE_GRACE_MS = 10 * 60 * 1000;
 
 export async function GET(request: NextRequest) {
   // Verify cron secret (Vercel cron jobs include this header)
@@ -55,12 +61,12 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServerSupabase();
 
-  // Cron lease — prevents two reconcile runs racing on signer nonces if a
+  // Cron lease prevents two reconcile runs racing on signer nonces if a
   // tick takes longer than the cron interval (or if the schedule is flipped
   // to every-minute during an incident). `try_acquire_cron_lock` lives in
   // migration 025 and uses a row-based TTL lease, replacing the session-
   // scoped advisory lock from migration 023 (which leaked across PostgREST
-  // pooled connections). TTL = 300s gives 5× headroom over `maxDuration: 60`
+  // pooled connections). TTL = 300s gives 5x headroom over `maxDuration: 60`
   // so a crashed run releases its lease within five minutes even if the
   // explicit `release_cron_lock` below never fires.
   const RECONCILE_LOCK_NAME = 'reconcile';
@@ -76,14 +82,13 @@ export async function GET(request: NextRequest) {
   }
 
   const results: Record<string, { eventsFound: number; gapsFilled: number }> = {};
-  const referralSync = { attempted: 0, synced: 0, failed: 0, queueDepth: 0 };
   let reservationsExpired = 0;
   try {
 
   // Voucher checkout: sweep reservations whose 12-min TTL elapsed without a
   // tx_hash. `expire_old_reservations` is a no-op when the queue is empty,
   // so the call is cheap on every tick. Submitted reservations (with a
-  // tx_hash) are NOT touched here — the on-chain side is the ground truth
+  // tx_hash) are NOT touched here - the on-chain side is the ground truth
   // for those, and the gap-filler below will mark them completed/failed.
   try {
     const { data: expired, error: expErr } = await supabase.rpc('expire_old_reservations');
@@ -94,6 +99,70 @@ export async function GET(request: NextRequest) {
     }
   } catch (err) {
     logger.warn('expire_old_reservations threw', { error: String(err) });
+  }
+
+  // Submitted reservations are normally completed by NodePurchased logs. A
+  // reverted tx emits no purchase log, and an arbitrary successful tx submitted
+  // by a client also emits no sale log. After a grace window, inspect receipts
+  // and release those reservations explicitly.
+  try {
+    const staleCutoff = new Date(Date.now() - SUBMITTED_TX_FAILURE_GRACE_MS).toISOString();
+    const { data: staleSubmitted } = await supabase
+      .from('sale_reservations')
+      .select('id, chain, tx_hash')
+      .eq('status', 'submitted')
+      .not('tx_hash', 'is', null)
+      .lte('submitted_at', staleCutoff)
+      .limit(20);
+
+    const nodePurchasedTopic = new ethers.Interface([NODE_PURCHASED_EVENT])
+      .getEvent('NodePurchased')!.topicHash;
+
+    for (const row of staleSubmitted || []) {
+      const chain = row.chain as 'arbitrum' | 'bsc';
+      const txHash = row.tx_hash as string;
+      const saleAddr = getSaleContract(chain)?.toLowerCase();
+      if (!saleAddr || !txHash) continue;
+
+      try {
+        const provider = await getProvider(chain);
+        const receipt = await provider.getTransactionReceipt(txHash);
+        if (!receipt) continue;
+
+        const hasSalePurchaseLog = receipt.logs.some(log =>
+          log.address.toLowerCase() === saleAddr && log.topics[0] === nodePurchasedTopic
+        );
+        if (receipt.status === 1 && hasSalePurchaseLog) {
+          continue;
+        }
+
+        const reason = receipt.status === 0
+          ? 'submitted_tx_reverted'
+          : 'submitted_tx_missing_node_purchased_log';
+        const { data: failed, error: failErr } = await supabase.rpc('mark_reservation_failed', {
+          p_reservation_id: row.id,
+          p_reason: reason,
+        });
+        if (failErr || (failed as { error?: string } | null)?.error) {
+          logger.error('Submitted reservation fail release rejected', {
+            reservationId: row.id,
+            txHash,
+            chain,
+            error: failErr?.message,
+            result: failed,
+          });
+        }
+      } catch (receiptErr) {
+        logger.warn('Submitted reservation receipt check failed', {
+          reservationId: row.id,
+          txHash,
+          chain,
+          error: String(receiptErr),
+        });
+      }
+    }
+  } catch (sweepErr) {
+    logger.warn('submitted reservation failure sweep failed', { error: String(sweepErr) });
   }
 
   for (const chain of CHAINS) {
@@ -136,7 +205,7 @@ export async function GET(request: NextRequest) {
 
       eventsFound = events.length;
 
-      // Batch existence check — one query instead of N sequential lookups
+      // Batch existence check - one query instead of N sequential lookups
       const eventTxHashes = events
         .filter((e): e is typeof e & { transactionHash: string } => 'args' in e)
         .map(e => e.transactionHash);
@@ -156,14 +225,14 @@ export async function GET(request: NextRequest) {
 
         if (knownTxHashes.has(txHash)) continue;
         if (event.blockNumber > latestBlock - minConfirms) {
-          // Not yet final — skip this run, next reconcile pass picks it up.
+          // Not yet final - skip this run, next reconcile pass picks it up.
           continue;
         }
         gapsFilled++;
 
-        // Convert raw token amount → USD cents via BigInt. Previously this
+        // Convert raw token amount to USD cents via BigInt. Previously this
         // passed `Number(event.args.totalPaid)` straight through, which was
-        // completely wrong — no decimal conversion at all.
+        // completely wrong: no decimal conversion at all.
         const tokenName = getTokenName(chain, event.args.token);
         if (!tokenName) {
           logger.error('Unknown token in reconciled event', { chain, txHash, token: event.args.token });
@@ -178,77 +247,52 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Contract emits 0-indexed tier IDs (0..39); DB sale_tiers is
-        // 1-indexed. Translate here so processReferralAttribution and
-        // increment_tier_sold both see the DB convention.
+        // Contract tier ids are 0..39; DB sale_tiers ids are 1..40.
         const contractTier = Number(event.args.tier);
-        if (contractTier < 0 || contractTier > 39) {
+        if (!Number.isInteger(contractTier) || contractTier < 0 || contractTier > 39) {
           logger.error('Invalid tier in reconciled event', { txHash, contractTier });
+          continue;
+        }
+        const tier = contractTier + 1;
+        const reservationId = String(event.args.reservationId).toLowerCase();
+        if (!/^0x[0-9a-f]{64}$/.test(reservationId) || reservationId === ZERO_BYTES32) {
+          logger.error('Invalid or zero reservationId in reconciled event', { txHash, reservationId });
           continue;
         }
         const purchaseEvent: ParsedPurchaseEvent = {
           txHash,
           chain,
           buyerWallet: event.args.buyer,
-          tier: contractTier + 1,
+          tier,
           quantity: Number(event.args.quantity),
           totalPaidUsd,
           token: tokenName,
           codeHash: event.args.codeHash,
+          reservationId,
           blockNumber: event.blockNumber,
         };
 
-        // Split commission write from tier-counter write so the failed_events
-        // row gets the right `kind` for replay routing. Previously this was a
-        // single try/catch and any failure here was silently logged before
-        // the cursor advanced at the end of the loop — meaning a purchase
-        // that paid treasury could permanently miss its commission rows
-        // (R-review HIGH-3). Now every gap-fill failure parks in failed_events
-        // and the queue's own retry pass (further down this route) drains it.
-        let commissionsOk = false;
         try {
-          await processReferralAttribution(purchaseEvent);
-          commissionsOk = true;
+          const reservationUuid = bytes32ToUuid(reservationId);
+          await processPurchaseWithReservation(purchaseEvent, reservationUuid);
+          continue;
         } catch (err) {
-          logger.error('Reconcile gap-fill: commission processing failed', { txHash, error: String(err) });
+          const message = String(err);
+          const kind = message.includes('reservation_') || message.includes('_mismatch')
+            ? 'reservation_link_error'
+            : 'process_error';
+          logger.error('Reconcile gap-fill: voucher purchase processing failed', { txHash, error: message });
           await supabase.from('failed_events').insert({
             tx_hash: purchaseEvent.txHash,
             chain: purchaseEvent.chain,
             event_data: purchaseEvent,
-            error_message: `reconcile_process_error: ${String(err)}`,
+            error_message: message,
             status: 'pending',
-            kind: 'process_error',
+            kind,
             next_retry_at: new Date(Date.now() + 60 * 1000).toISOString(),
           });
         }
-
-        if (commissionsOk) {
-          try {
-            await supabase.rpc('increment_tier_sold', {
-              p_tx_hash: purchaseEvent.txHash,
-              p_chain: purchaseEvent.chain,
-              p_tier: purchaseEvent.tier,
-              p_quantity: purchaseEvent.quantity,
-            });
-          } catch (err) {
-            // Commission RPC succeeded; only the tier counter failed. The
-            // retry pass re-runs processReferralAttribution (returns
-            // 'duplicate' via ON CONFLICT) then increment_tier_sold (idempotent
-            // via tier_increments PK), so the partial-success replay is safe.
-            logger.error('Reconcile gap-fill: tier increment failed', { txHash, error: String(err) });
-            await supabase.from('failed_events').insert({
-              tx_hash: purchaseEvent.txHash,
-              chain: purchaseEvent.chain,
-              event_data: purchaseEvent,
-              error_message: `reconcile_tier_increment_error: ${String(err)}`,
-              status: 'pending',
-              kind: 'tier_increment_error',
-              next_retry_at: new Date(Date.now() + 60 * 1000).toISOString(),
-            });
-          }
-        }
       }
-
       await supabase.from('reconciliation_log').insert({
         chain,
         from_block: fromBlock,
@@ -266,13 +310,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // ═══ Retry failed_events ═══
+  // Retry failed_events
   // Three kinds of failures to handle differently:
-  //  - kind='pending_verification' → re-run verifyOnChain; process only if 'ok'
-  //  - kind='process_error'        → re-run processReferralAttribution (RPC is idempotent)
-  //  - kind='tier_increment_error' → commission RPC already committed; the
-  //      retry below re-runs processReferralAttribution (returns duplicate)
-  //      then increment_tier_sold (idempotent via tier_increments PK).
+  //  - kind='pending_verification'  -> re-run verifyOnChain; process only if 'ok'
+  //  - kind='process_error'         -> retry atomic reservation-aware ingest
+  //  - kind='reservation_link_error' -> retry atomic reservation-aware ingest
   try {
     const { data: failedEvents } = await supabase
       .from('failed_events')
@@ -297,6 +339,7 @@ export async function GET(request: NextRequest) {
           // re-credited.
           const verified = await verifyOnChain(fe.tx_hash, fe.chain as 'arbitrum' | 'bsc', saleAddr, eventData);
           if (verified === 'failed') {
+            await markReservationFailedForEvent(eventData, 'retry_on_chain_verification_failed');
             await supabase.from('failed_events')
               .update({ status: 'abandoned', error_message: 'On-chain verification rejected', updated_at: new Date().toISOString() })
               .eq('id', fe.id);
@@ -306,16 +349,11 @@ export async function GET(request: NextRequest) {
             // still can't confirm; bump retry
             throw new Error('still unreachable');
           }
-          // verified === 'ok' → fall through to processing
+          // verified === 'ok' falls through to processing
         }
 
-        await processReferralAttribution(eventData);
-        await supabase.rpc('increment_tier_sold', {
-          p_tx_hash: eventData.txHash,
-          p_chain: eventData.chain,
-          p_tier: eventData.tier,
-          p_quantity: eventData.quantity,
-        });
+        const reservationUuid = bytes32ToUuid(eventData.reservationId);
+        await processPurchaseWithReservation(eventData, reservationUuid);
         await supabase.from('failed_events')
           .update({ status: 'resolved', updated_at: new Date().toISOString() })
           .eq('id', fe.id);
@@ -337,7 +375,7 @@ export async function GET(request: NextRequest) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: process.env.TG_ADMIN_CHAT_ID,
-              text: `⚠️ ABANDONED EVENT (${kind})\n\nTx: ${fe.tx_hash}\nChain: ${fe.chain}\nError: ${String(retryError)}`,
+              text: `ABANDONED EVENT (${kind})\n\nTx: ${fe.tx_hash}\nChain: ${fe.chain}\nError: ${String(retryError)}`,
             }),
           }).catch((tgErr) => {
             logger.error('Telegram alert failed for abandoned event', { txHash: fe.tx_hash, error: String(tgErr) });
@@ -349,122 +387,12 @@ export async function GET(request: NextRequest) {
     logger.error('Failed events retry failed', { route: 'cron/reconcile', error: String(retryQueueError) });
   }
 
-  // ─── Drain referral_code_chain_state sync queue ─────────────────────────
-  // Registers DB-generated referral codes on-chain so discounted purchases
-  // actually pass the contract's validCodes check. Retries failed attempts
-  // with backoff, gives up after 10 attempts.
-  //
-  // Ship-readiness R5: limit raised 50 → 200 per run. At */5 cron cadence,
-  // 50/run = 600/hour ceiling, which is not enough for a Phase 1 launch
-  // burst (2,000 rows = two chains × 1,000 wallets connecting in 30 min).
-  // maxDuration (60s) + conservative RPC rate-limits still bound the work
-  // per tick; the function returns on whichever ceiling hits first.
-  try {
-    // Ship-readiness R5 re-review: observe queue depth before the drain
-    // so operators can tell when ingress exceeds drain capacity. If the
-    // queue sits above a high-water threshold for 2 consecutive runs a
-    // Telegram alert fires so launch-day burst doesn't degrade silently.
-    //
-    // R14 (2026-04-22): `revoked` is terminal (see migration 018) and must
-    // stay out of the queue-depth count + drain select — otherwise admin
-    // removals get silently re-registered on the next tick.
-    const { count: depthCount } = await supabase
-      .from('referral_code_chain_state')
-      .select('*', { count: 'exact', head: true })
-      .in('status', ['pending', 'failed'])
-      .lt('attempts', 10);
-    referralSync.queueDepth = depthCount ?? 0;
+  // NodeSale v2 voucher checkout removed the `validCodes` mapping and the
+  // backend referral_code_chain_state sync queue along with it - referral
+  // codes are now applied off-chain via voucher signing (see lib/voucher.ts).
+  // The Phase 5 cleanup deleted the drain pass that used to live here.
 
-    // Threshold = 500 pending rows. Alert on every run while over-threshold
-    // is a tradeoff against spam: at */5 cadence a sustained backlog would
-    // alert 12×/hour. Operators can silence via TG_ADMIN_CHAT_ID env var if
-    // the noise becomes a problem; a stateful "2 consecutive runs" gate
-    // would need a new column on reconciliation_log (follow-up).
-    const QUEUE_DEPTH_ALERT_THRESHOLD = 500;
-    if (
-      referralSync.queueDepth >= QUEUE_DEPTH_ALERT_THRESHOLD &&
-      process.env.TG_BOT_TOKEN &&
-      process.env.TG_ADMIN_CHAT_ID
-    ) {
-      fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: process.env.TG_ADMIN_CHAT_ID,
-          text: `⚠️ REFERRAL SYNC BACKLOG\n\nDepth: ${referralSync.queueDepth} (threshold ${QUEUE_DEPTH_ALERT_THRESHOLD})\nIngress may be exceeding drain capacity.`,
-        }),
-      }).catch((tgErr) => {
-        logger.error('Telegram queue-depth alert failed', { error: String(tgErr) });
-      });
-    }
-
-    const { data: pendingCodes } = await supabase
-      .from('referral_code_chain_state')
-      .select('code, chain, discount_bps, owner_wallet, attempts')
-      .in('status', ['pending', 'failed'])
-      .lt('attempts', 10)
-      .order('updated_at', { ascending: true })
-      .limit(200);
-
-    for (const row of pendingCodes || []) {
-      referralSync.attempted += 1;
-      const result = await syncReferralCodeOnChain(
-        row.code,
-        row.owner_wallet,
-        row.discount_bps,
-        row.chain as 'arbitrum' | 'bsc',
-      );
-      if (result.ok) {
-        referralSync.synced += 1;
-        await supabase
-          .from('referral_code_chain_state')
-          .update({
-            status: 'synced',
-            tx_hash: result.txHash,
-            last_error: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('code', row.code)
-          .eq('chain', row.chain);
-      } else {
-        referralSync.failed += 1;
-        const nextAttempts = row.attempts + 1;
-        const permanent = nextAttempts >= 10;
-        await supabase
-          .from('referral_code_chain_state')
-          .update({
-            status: permanent ? 'failed' : 'pending',
-            attempts: nextAttempts,
-            last_error: result.error,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('code', row.code)
-          .eq('chain', row.chain);
-
-        if (permanent) {
-          logger.error('Referral code sync abandoned', {
-            code: row.code,
-            chain: row.chain,
-            error: result.error,
-          });
-          if (process.env.TG_BOT_TOKEN && process.env.TG_ADMIN_CHAT_ID) {
-            fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: process.env.TG_ADMIN_CHAT_ID,
-                text: `⚠️ ABANDONED REFERRAL CODE SYNC\n\nCode: ${row.code}\nChain: ${row.chain}\nError: ${result.error}`,
-              }),
-            }).catch(() => {});
-          }
-        }
-      }
-    }
-  } catch (syncErr) {
-    logger.error('Referral code sync pass failed', { error: String(syncErr) });
-  }
-
-    return Response.json({ ok: true, results, referralSync, reservationsExpired });
+    return Response.json({ ok: true, results, reservationsExpired });
   } finally {
     // Always release the lease, even if a thrown exception escapes the route.
     // The TTL would eventually clear it, but explicit release means the next

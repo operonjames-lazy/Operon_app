@@ -1,15 +1,20 @@
 import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
-import { verifyOnChain, type ParsedPurchaseEvent } from '@/lib/webhooks/process-event';
-import { processReferralAttribution } from '@/lib/commission';
+import {
+  markReservationFailedForEvent,
+  verifyOnChain,
+  type ParsedPurchaseEvent,
+} from '@/lib/webhooks/process-event';
+import { processPurchaseWithReservation } from '@/lib/commission';
 import { getSaleContract } from '@/lib/rpc';
+import { bytes32ToUuid } from '@/lib/voucher';
 import { logger } from '@/lib/logger';
 import { assertDevAuth } from '@/lib/dev-auth';
 
 /**
  * Dev-only: drain the `failed_events` queue, mirroring what
  * /api/cron/reconcile does in production. Closes hand-off #4 of the
- * local test journey — previously a tester purchase that landed in
+ * local test journey: previously a tester purchase that landed in
  * `pending_verification` (RPC flake during indexer startup) or
  * `process_error` state had no local replay path, so the purchase
  * appeared to vanish.
@@ -52,10 +57,20 @@ export async function POST(request: NextRequest) {
 
           // B6: pass stored event_data so the on-chain log is compared
           // field-by-field (parity with the production cron reconcile path).
-          const verified = await verifyOnChain(fe.tx_hash, fe.chain as 'arbitrum' | 'bsc', saleAddr, eventData);
+          const verified = await verifyOnChain(
+            fe.tx_hash,
+            fe.chain as 'arbitrum' | 'bsc',
+            saleAddr,
+            eventData,
+          );
           if (verified === 'failed') {
+            await markReservationFailedForEvent(eventData, 'dev_retry_on_chain_verification_failed');
             await supabase.from('failed_events')
-              .update({ status: 'abandoned', error_message: 'On-chain verification rejected', updated_at: new Date().toISOString() })
+              .update({
+                status: 'abandoned',
+                error_message: 'On-chain verification rejected',
+                updated_at: new Date().toISOString(),
+              })
               .eq('id', fe.id);
             out.abandoned += 1;
             continue;
@@ -63,16 +78,11 @@ export async function POST(request: NextRequest) {
           if (verified === 'unreachable') {
             throw new Error('still unreachable');
           }
-          // verified === 'ok' → fall through
+          // verified === 'ok' falls through.
         }
 
-        await processReferralAttribution(eventData);
-        await supabase.rpc('increment_tier_sold', {
-          p_tx_hash: eventData.txHash,
-          p_chain: eventData.chain,
-          p_tier: eventData.tier,
-          p_quantity: eventData.quantity,
-        });
+        const reservationUuid = bytes32ToUuid(eventData.reservationId);
+        await processPurchaseWithReservation(eventData, reservationUuid);
         await supabase.from('failed_events')
           .update({ status: 'resolved', updated_at: new Date().toISOString() })
           .eq('id', fe.id);
@@ -102,10 +112,13 @@ export async function POST(request: NextRequest) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: process.env.TG_ADMIN_CHAT_ID,
-              text: `⚠️ ABANDONED EVENT (dev ${kind})\n\nTx: ${fe.tx_hash}\nChain: ${fe.chain}\nError: ${String(retryError)}`,
+              text: `ABANDONED EVENT (dev ${kind})\n\nTx: ${fe.tx_hash}\nChain: ${fe.chain}\nError: ${String(retryError)}`,
             }),
           }).catch((tgErr) => {
-            logger.error('Telegram alert failed for abandoned dev event', { txHash: fe.tx_hash, error: String(tgErr) });
+            logger.error('Telegram alert failed for abandoned dev event', {
+              txHash: fe.tx_hash,
+              error: String(tgErr),
+            });
           });
         }
       }

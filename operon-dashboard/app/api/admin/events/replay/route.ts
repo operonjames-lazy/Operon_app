@@ -1,14 +1,14 @@
 import { NextRequest } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
 import { assertNotKilled } from '@/lib/killswitches';
-import { processReferralAttribution } from '@/lib/commission';
+import { processPurchaseWithReservation } from '@/lib/commission';
 import {
   parseNodePurchasedLog,
   NODE_PURCHASED_TOPIC0,
   type ParsedPurchaseEvent,
 } from '@/lib/webhooks/process-event';
 import { getProvider, getSaleContract } from '@/lib/rpc';
+import { bytes32ToUuid } from '@/lib/voucher';
 import { logger } from '@/lib/logger';
 
 /**
@@ -16,9 +16,8 @@ import { logger } from '@/lib/logger';
  * Body: { txHash: string, chain: 'arbitrum' | 'bsc' }
  *
  * Re-fetches the on-chain receipt for a given tx, parses the NodePurchased
- * log, and runs it back through processReferralAttribution. The underlying
- * RPC is idempotent (UNIQUE constraints on purchases.tx_hash and
- * referral_purchases.(purchase_tx, level)), so replay is safe.
+ * log, and runs it back through the voucher reservation ingest RPC. The
+ * underlying writes are idempotent, so replay is safe.
  *
  * Typical use: a webhook was dropped, reconciliation missed it, you want
  * to manually force-process a specific tx.
@@ -48,6 +47,7 @@ export async function POST(request: NextRequest) {
   if (!saleAddr) {
     return Response.json({ error: 'chain_not_configured' }, { status: 500 });
   }
+  const saleAddrLower = saleAddr.toLowerCase();
 
   let receipt;
   try {
@@ -64,12 +64,12 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'tx_reverted' }, { status: 409 });
   }
 
-  // Match the sale-contract log specifically by NodePurchased topic0 — not just
+  // Match the sale-contract log specifically by NodePurchased topic0, not just
   // any log emitted from the sale contract. A future tx that emits an admin
   // event before NodePurchased (or contains both in the same tx) would
   // otherwise pick up the wrong log and fail to parse.
   const matching = receipt.logs.find(
-    (l) => l.address.toLowerCase() === saleAddr && l.topics[0] === NODE_PURCHASED_TOPIC0,
+    (l) => l.address.toLowerCase() === saleAddrLower && l.topics[0] === NODE_PURCHASED_TOPIC0,
   );
   if (!matching) {
     return Response.json({ error: 'no_sale_log_in_tx' }, { status: 409 });
@@ -103,15 +103,8 @@ export async function POST(request: NextRequest) {
 
   let result;
   try {
-    result = await processReferralAttribution(parsed as ParsedPurchaseEvent);
-    // Also bump tier counter (idempotent)
-    const supabase = createServerSupabase();
-    await supabase.rpc('increment_tier_sold', {
-      p_tx_hash: parsed.txHash,
-      p_chain: parsed.chain,
-      p_tier: parsed.tier,
-      p_quantity: parsed.quantity,
-    });
+    const reservationUuid = bytes32ToUuid(parsed.reservationId);
+    result = await processPurchaseWithReservation(parsed as ParsedPurchaseEvent, reservationUuid);
   } catch (err) {
     logger.error('replay: processing failed', { error: String(err) });
     return Response.json({ error: 'processing_failed', detail: String(err) }, { status: 500 });

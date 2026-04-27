@@ -81,6 +81,8 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     // Defensive cap on quantity. Backend's reserve RPC enforces the same
     // bound; this is the contract-side belt to the backend's braces.
     uint256 public constant MAX_BATCH_SIZE = 100;
+    uint16  public constant MAX_DISCOUNT_BPS = 1500;
+    uint256 public constant MAX_TIER_ID = 39;
 
     // ─── Storage ──────────────────────────────────────────────────
     OperonNode public nodeContract;
@@ -168,12 +170,13 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
             voucher.quantity > 0 && voucher.quantity <= MAX_BATCH_SIZE,
             "NodeSale: invalid quantity"
         );
+        require(voucher.tierId <= MAX_TIER_ID, "NodeSale: tier out of range");
         require(
             localTierSold[voucher.tierId] + voucher.quantity <= localTierCap[voucher.tierId],
             "NodeSale: local tier cap"
         );
         require(voucher.unitPrice >= tierMinPrice[voucher.tierId], "NodeSale: price below min");
-        require(voucher.discountBps <= 10000, "NodeSale: discount > 100%");
+        require(voucher.discountBps <= MAX_DISCOUNT_BPS, "NodeSale: discount too high");
 
         // Signature verification (most expensive op — kept after the cheap
         // failure paths so a malformed voucher reverts before paying for ECDSA).
@@ -228,6 +231,7 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     function adminMint(address to, uint256 tierId, uint256 quantity) external onlyOwner nonReentrant {
         require(to != address(0), "NodeSale: zero address");
         require(quantity > 0, "NodeSale: quantity must be > 0");
+        require(tierId <= MAX_TIER_ID, "NodeSale: tier out of range");
         require(adminMinted[tierId] + quantity <= adminCap[tierId], "NodeSale: admin allocation exceeded");
 
         adminMinted[tierId] += quantity;
@@ -249,11 +253,13 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     }
 
     function setTierMinPrice(uint256 tierId, uint256 minPrice) external onlyOwner {
+        require(tierId <= MAX_TIER_ID, "NodeSale: tier out of range");
         tierMinPrice[tierId] = minPrice;
         emit TierMinPriceUpdated(tierId, minPrice);
     }
 
     function setLocalTierCap(uint256 tierId, uint256 cap) external onlyOwner {
+        require(tierId <= MAX_TIER_ID, "NodeSale: tier out of range");
         // We do not enforce cap >= localTierSold here on purpose — a redeploy
         // on a fresh chain has localTierSold=0, and a runtime cap raise is
         // also fine. Lowering below localTierSold simply prevents further
@@ -264,6 +270,7 @@ contract NodeSale is Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     }
 
     function setAdminCap(uint256 tierId, uint256 cap) external onlyOwner {
+        require(tierId <= MAX_TIER_ID, "NodeSale: tier out of range");
         adminCap[tierId] = cap;
         emit AdminCapUpdated(tierId, cap);
     }

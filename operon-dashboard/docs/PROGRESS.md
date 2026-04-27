@@ -1175,3 +1175,66 @@ Also: migration `024_referral_code_owner_wallet` (Pattern A self-referral patch 
 - **Operator-side mainnet items still owed** (carry-over): mainnet v2 contract deploy with `(treasury, voucherSigner)` constructor, Vercel env rotation including the new `VOUCHER_SIGNER_ADDRESS` + `VOUCHER_SIGNER_PRIVATE_KEY`, webhook rewire to v2 ABI, live smoke test of the full reserve→sign→buy→submit flow, Gnosis Safe novation (note: D26 references `setAdmin` which no longer exists in v2 — `voucherSigner` rotates via `setVoucherSigner` from the owner Safe instead).
 
 ---
+
+## 2026-04-27 — Session 41 — Phase 5 cleanup complete
+
+### What got done
+
+- **D32 landed.** Stripped the dead referral on-chain sync surface and migrated the webhook handler to voucher-aware reservation linking. F66 → ✅ Done. New F66.1 follow-up logged for the `referral_code_chain_state` table drop.
+- **Stripped from `lib/admin-signer.ts`:** `REFERRAL_ADMIN_ABI`, `TIER_ADMIN_ABI`, `getReferralAdminContract`, `getTierAdminContract`. Only `getAdminSaleContract` (pause/unpause) and `getTreasuryAdminContract` (withdraw) remain.
+- **Deleted:** `lib/referrals/sync-on-chain.ts`, `supabase/migrations/024_referral_code_owner_wallet.sql`, `app/api/admin/sale/tier-active/route.ts`, `app/api/dev/drain-referrals/route.ts`, and (collateral) `app/api/admin/referrals/remove/route.ts` (its only contract function `removeReferralCode` is gone).
+- **Trimmed callers:** `enqueueReferralSync` calls removed from `app/api/auth/wallet/route.ts`. The `referral_code_chain_state` drain block + `referralSync` response field removed from `app/api/cron/reconcile/route.ts`. The TierActions column + button + helper component removed from `app/(admin)/admin/sale/page.tsx`. The drain-poll + `DRAIN_URL` constant removed from `scripts/dev-indexer.mjs`.
+- **`NodePurchased` ABI updated to v2 in 4 places:** `lib/webhooks/process-event.ts`, `app/api/cron/reconcile/route.ts`, `scripts/dev-indexer.mjs`, `scripts/test-webhooks.mjs`. New signature has `uint256 indexed tier` + `bytes32 indexed reservationId`. `parseNodePurchasedLog` now treats the emitted tier as the DB id directly (no off-by-one translation) and rejects zero-bytes32 reservation ids. `verifyOnChain` field-mismatch list grew to include `reservationId`.
+- **Webhook → reservation linking.** `processPurchaseEvent` resolves `event.reservationId` via `bytes32ToUuid` and calls `complete_reservation(p_reservation_id, p_tx_hash, p_chain)`. Replaces the prior `increment_tier_sold` call — `complete_reservation` already handles tier-counter idempotency (via `tier_increments` PK) and auto-advances tiers when `total_supply` is hit. Reservation lookup failures park as `failed_events.kind="reservation_link_error"` for the cron retry path. The cron gap-filler + failed-events drain mirror the same flow.
+
+### Verification
+
+- `npx tsc --noEmit` clean (cleared stale `.next/types/validator.ts` first to flush references to the deleted route files).
+- `npx next build` clean — produced route table no longer lists `/api/admin/sale/tier-active`, `/api/admin/referrals/remove`, or `/api/dev/drain-referrals`.
+- `npx hardhat test` → 53/53 passing (voucher contract suites unaffected).
+- `pnpm test:webhooks --vendor alchemy --mode signature-only --chain arbitrum` synthesised a v2-ABI payload successfully (script aborted at the env check for `ALCHEMY_WEBHOOK_SIGNING_KEY`, well after `synthesiseLog` ran).
+- **Not verified end-to-end:** live webhook → `complete_reservation` against a real reservation row needs the v2 mainnet/testnet deploy + a real purchase. Flagged as the next-session smoke test once `VOUCHER_SIGNER_PRIVATE_KEY` + the v2 contract are wired.
+
+### Migration 024 deletion safety
+
+CLAUDE.md rule 13 forbids editing applied migrations. The R15 (2026-04-26) audit log records 014→019→021→023 as applied; 024 is not on that list. Deleting an unapplied migration file is rolling back intent, not state — the live DB is unchanged. If 024 turns out to have been applied off-log, the planned F66.1 table-drop migration will include `ALTER TABLE … DROP COLUMN owner_wallet` to converge.
+
+### Open / next session
+
+- **F66.1 (table drop migration).** New migration that drops the `referral_code_chain_state` table and clears the orphaned `admin.sale.tier-active` + `admin.referrals.remove` rows from `admin_killswitches`. After it lands, `/api/admin/referrals/reset` and the `referral_code_chain_state` reads in `/api/admin/health` can be deleted (currently kept so the table can be inspected pre-drop).
+- **Stale `e2e/full-chain/referral-sync.spec.ts`.** The test file is `.skip`-d but its premise (drain-referrals → `validCodes` readback) no longer exists. Candidate for deletion in F66.1.
+- **Operator-side mainnet items still owed** (carry-over from session 40): mainnet v2 contract deploy with `(treasury, voucherSigner)` constructor, Vercel env rotation including `VOUCHER_SIGNER_ADDRESS` + `VOUCHER_SIGNER_PRIVATE_KEY`, webhook rewire to v2 ABI, live smoke test of the full reserve→sign→buy→submit flow, Gnosis Safe novation.
+
+---
+
+## 2026-04-27 — Session 42 — F66.1 + migration drift remediation
+
+### What got done
+
+- **F66.1 landed** — the orphan `referral_code_chain_state` table is gone for good. Migration `027_drop_referral_code_chain_state.sql` drops the table (cascade clears migration 018's `'revoked'` CHECK) and clears the three orphan `admin_killswitches` rows seeded by migration 019 (`admin.sale.tier-active`, `admin.referrals.remove`, `admin.referrals.reset`). Idempotent — safe to re-run.
+- **Code cleanup:** deleted `/api/admin/referrals/reset` route + its parent dir; trimmed `syncQueue` reads from `/api/admin/health` route + matching `HealthReport` interface in `hooks/useAdmin.ts` + the "Referral-code sync queue" card in `app/(admin)/admin/health/page.tsx`. Removed the now-unused `Row` helper + `Badge` import from the health page. Refreshed the comment in `lib/referrals/validate.ts` to past-tense the orphan-table reference. Deleted the stale `e2e/full-chain/referral-sync.spec.ts`.
+- **Migration drift remediation (the session's surprise).** `scripts/verify-pending-migrations.mjs` (new) probes the live DB for the artifacts each unmention­ed-since-R15 migration creates. Result: **025, 026, AND 027 were all unapplied** on the live DB. Specifically:
+  - `try_acquire_cron_lock` / `release_cron_lock` (025) — missing. `/api/cron/reconcile` calls these on every tick, so the cron has been silently failing the lock acquire path every 5 minutes since session 40.
+  - `sale_reservations` table + `reserve_node_purchase` + `complete_reservation` + `expire_old_reservations` + `mark_reservation_submitted` + `mark_reservation_failed` + `sale_tiers.max_per_wallet` (026) — all missing. `/api/sale/reserve` and `/api/sale/reservations/submit` would 500 on first call against the live DB. The voucher checkout path was non-functional end-to-end despite shipping in Phase 3 + Phase 4.
+  - `referral_code_chain_state` table dropped (027) — not yet attempted; pending the new migration file.
+- **Applied in order on 2026-04-27:** 025 → 026 → 027. All three transactions committed cleanly. Re-probe confirmed every artifact present. Live DB now in sync with repo state for the first time since session 40.
+- **Doc updates:** OPERATIONS.md migration history adds rows for 025, 026, 027 + updated "Live DB state" line; FEATURES.md F66.1 → ✅ Done with drift narrative; ARCHITECTURE.md schema + admin route table + killswitches list dropped the orphan references.
+
+### Verification
+
+- `npx tsc --noEmit` clean
+- `npx next build` clean — `/api/admin/referrals/reset` no longer in the route table
+- Live DB probe via `scripts/verify-pending-migrations.mjs`: every 025/026/027 artifact present; orphan killswitch rows cleared
+- `pnpm dev` not run this session — UI changes (health page card removal) verified by build + typecheck only. Should be visually confirmed before next operator visit to `/admin/health`.
+
+### Process gap (R15 echoed)
+
+The R15 (2026-04-26) remediation note explicitly called out that "there is no automation that ensures a migration in the repo is applied to the DB" and made `scripts/verify-pending-migrations.mjs`-style probing a mandatory step 0 for `/review-ship`. F66 (session 41) wrote a new migration without running that probe; this session caught the resulting drift, but the same gap was reproducible after R15 explicitly flagged it. Codify by:
+  - Make `scripts/verify-pending-migrations.mjs` runnable per-name as a pre-commit check on any session that touches `supabase/migrations/`
+  - Or add a `migration_log` table + script that records what's been applied vs the file list in the repo
+
+### Open / next session
+
+- **Operator-side mainnet items still owed:** mainnet v2 contract deploy (treasury, voucherSigner) constructor + 40-tier seed; Vercel env rotation including `VOUCHER_SIGNER_ADDRESS` + `VOUCHER_SIGNER_PRIVATE_KEY`; Alchemy + QuickNode webhook rewire to v2 contract addresses + new `NodePurchased` topic0; live smoke test of the full reserve→sign→buy→submit→webhook→`complete_reservation` round-trip; Gnosis Safe novation (`transferOwnership` + Safe `acceptOwnership` two-tx handshake; `setVoucherSigner` rotates from the Safe under v2).
+- **Migration 017** still unapplied. R15 said it's superseded by the in-place guard in 014; consider deleting the file in a small future PR or re-applying for tidiness — pure choice.
+

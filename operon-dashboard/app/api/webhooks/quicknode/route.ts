@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { parseNodePurchasedLog, verifyOnChain, processPurchaseEvent, queuePendingVerification } from '@/lib/webhooks/process-event';
+import {
+  markReservationFailedForEvent,
+  parseNodePurchasedLog,
+  processPurchaseEvent,
+  queuePendingVerification,
+  verifyOnChain,
+} from '@/lib/webhooks/process-event';
 import { rateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 
@@ -8,7 +14,10 @@ function verifyQuickNodeSignature(body: string, signature: string | null): boole
   // Ship-readiness R5: fail-closed regardless of NODE_ENV. See the matching
   // comment in alchemy/route.ts for rationale.
   if (!process.env.QUICKNODE_WEBHOOK_SECRET) {
-    logger.error('QUICKNODE_WEBHOOK_SECRET not configured — rejecting all webhooks', { route: 'webhook/quicknode', env: process.env.NODE_ENV });
+    logger.error('QUICKNODE_WEBHOOK_SECRET not configured; rejecting all webhooks', {
+      route: 'webhook/quicknode',
+      env: process.env.NODE_ENV,
+    });
     return false;
   }
   if (!signature) {
@@ -58,6 +67,7 @@ export async function POST(request: NextRequest) {
         // any payload drift (ship-readiness B6).
         const verified = await verifyOnChain(event.txHash, 'bsc', saleContractAddress, event);
         if (verified === 'failed') {
+          await markReservationFailedForEvent(event, 'on_chain_verification_failed');
           continue;
         }
         if (verified === 'unreachable') {

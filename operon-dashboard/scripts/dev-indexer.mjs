@@ -57,7 +57,6 @@ const INITIAL_LOOKBACK_BLOCKS = 100;
 const MAX_BLOCK_CHUNK = 10;
 const BASE_URL = process.env.DEV_INDEXER_URL || 'http://localhost:3001';
 const INGEST_URL = `${BASE_URL}/api/dev/indexer-ingest`;
-const DRAIN_URL = `${BASE_URL}/api/dev/drain-referrals`;
 const REPLAY_URL = `${BASE_URL}/api/dev/replay-failed-events`;
 const DEV_SECRET = process.env.DEV_INDEXER_SECRET;
 if (!DEV_SECRET) {
@@ -85,8 +84,10 @@ async function postSigned(url, payload) {
   });
 }
 
+// NodeSale v2 voucher checkout — keep in sync with
+// lib/webhooks/process-event.ts NODE_PURCHASED_EVENT.
 const NODE_PURCHASED_EVENT =
-  'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)';
+  'event NodePurchased(address indexed buyer, uint256 indexed tier, uint256 quantity, bytes32 indexed reservationId, bytes32 codeHash, uint256 totalPaid, address token)';
 
 // List of RPCs to try in order. The first working one per chain is used.
 // Public endpoints are unreliable — BSC testnet in particular rate-limits
@@ -184,30 +185,6 @@ async function initChain(chain, cursor) {
     console.log(`[dev-indexer] ${chain}: resuming from block ${cursor[chain]} (${saleAddr} via ${rpc.url})`);
   }
   return { provider: rpc.provider, contract, saleAddr, chain };
-}
-
-async function drainReferralQueue() {
-  try {
-    const res = await postSigned(DRAIN_URL, {});
-    if (!res.ok) {
-      // Silently skip — the server may not be ready yet on startup
-      return;
-    }
-    const data = await res.json();
-    if (data.synced > 0 || data.failed > 0) {
-      console.log(`[dev-indexer] referral sync: attempted=${data.attempted} synced=${data.synced} failed=${data.failed}`);
-      // R6-BUG-02: surface per-row failure reasons so an operator can tell
-      // admin_mismatch / event_missing / validCodes_still_false apart at a
-      // glance rather than reading Supabase.
-      if (Array.isArray(data.errors) && data.errors.length > 0) {
-        for (const e of data.errors) {
-          console.warn(`[dev-indexer]   failed ${e.chain} ${e.code}: ${e.error}`);
-        }
-      }
-    }
-  } catch {
-    // dev server not up yet — ignore
-  }
 }
 
 async function replayFailedEvents() {
@@ -325,7 +302,6 @@ async function main() {
         console.error(`[dev-indexer] ${chain} poll failed`, err);
       }
     }
-    await drainReferralQueue();
     await replayFailedEvents();
 
     if (anySuccess) {

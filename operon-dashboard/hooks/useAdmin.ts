@@ -232,7 +232,6 @@ export function useMilestones() {
 export interface HealthReport {
   failedEvents: { pending: number; retrying: number; abandoned: number; oldest: string | null };
   failedEventKinds: Record<string, number>;
-  syncQueue: { pending: number; failed: number; synced: number; revoked: number };
   reconcile: { lastRunAt: string | null; lastDurationMs: number | null; lastEventsFound: number | null };
   contractBalancesCents: { arbitrumUsdc: number | null; arbitrumUsdt: number | null; bscUsdc: number | null; bscUsdt: number | null };
 }

@@ -2,12 +2,19 @@
  * Admin contract signer helpers.
  *
  * Loads ADMIN_PRIVATE_KEY from env and builds an ethers Wallet connected to
- * the right JSON-RPC provider. Used only by admin pause/unpause endpoints.
+ * the right JSON-RPC provider. Used only by admin pause/unpause/withdraw
+ * endpoints.
+ *
+ * NodeSale v2 voucher checkout removed the `admin` rotating role and its
+ * referral-code / tier-active surface; the only remaining hot-key callers are
+ * pause/unpause and withdrawFunds (all `onlyOwner`). For mainnet the cold
+ * `owner` is held by a Gnosis Safe — these helpers exist for the testnet flow
+ * where a single key is acceptable.
  *
  * SECURITY:
  *   - Key lives in Vercel env, never in code.
- *   - Testnet-only. For mainnet, plan to move to Gnosis Safe or another
- *     multi-sig — single hot key holding contract ownership is a real risk.
+ *   - Testnet-only. For mainnet, cold owner is the Safe; pause/unpause/withdraw
+ *     are called through the Safe.
  */
 
 import { ethers } from 'ethers';
@@ -19,21 +26,6 @@ const PAUSABLE_ABI = [
   'function pause() external',
   'function unpause() external',
   'function paused() external view returns (bool)',
-];
-
-const REFERRAL_ADMIN_ABI = [
-  'function addReferralCode(bytes32 codeHash, address owner, uint16 discountBps) external',
-  'function removeReferralCode(bytes32 codeHash) external',
-  'function validCodes(bytes32) external view returns (bool)',
-  'function codeDiscountBps(bytes32) external view returns (uint16)',
-  'function codeOwner(bytes32) external view returns (address)',
-  'function admin() external view returns (address)',
-  'event ReferralCodeAdded(bytes32 indexed codeHash, address indexed owner, uint16 discountBps)',
-];
-
-const TIER_ADMIN_ABI = [
-  'function setTierActive(uint256 tierId, bool active) external',
-  'function tiers(uint256) external view returns (uint256 price, uint256 publicSupply, uint256 adminSupply, uint256 publicSold, uint256 adminMinted, bool active)',
 ];
 
 const TREASURY_ADMIN_ABI = [
@@ -75,28 +67,6 @@ export async function getAdminSaleContract(
   chain: AdminChain
 ): Promise<ethers.Contract | AdminSignerError> {
   return getAdminContract(chain, PAUSABLE_ABI);
-}
-
-/**
- * Admin signer bound to the NodeSale contract with the referral-code
- * management ABI. Used by the background sync that mirrors DB-generated
- * referral codes into `validCodes` on-chain.
- */
-export async function getReferralAdminContract(
-  chain: AdminChain
-): Promise<ethers.Contract | AdminSignerError> {
-  return getAdminContract(chain, REFERRAL_ADMIN_ABI);
-}
-
-/**
- * Admin signer bound to the tier-management subset of NodeSale. Used by
- * `/api/admin/sale/tier-active` to promote the next tier when inventory
- * sells out. Paired with the deploy-time change that only activates tier 0.
- */
-export async function getTierAdminContract(
-  chain: AdminChain
-): Promise<ethers.Contract | AdminSignerError> {
-  return getAdminContract(chain, TIER_ADMIN_ABI);
 }
 
 /**

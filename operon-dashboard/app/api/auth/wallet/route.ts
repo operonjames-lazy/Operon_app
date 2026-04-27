@@ -6,7 +6,6 @@ import { getSecret } from '@/lib/auth';
 import { verifyNonce } from '@/lib/nonce';
 import { rateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
-import { enqueueReferralSync } from '@/lib/referrals/sync-on-chain';
 
 // ─── Personal referral code generation ──────────────────────────────────
 // Crockford-ish base32, no 0/O/1/I/L. ~30^6 = 729M combinations.
@@ -244,17 +243,9 @@ async function maybeCreateEppPartner(
     .update({ status: 'used', used_by: userId, used_at: new Date().toISOString() })
     .eq('id', invite.id);
 
-  // Queue the EPP code for on-chain registration with the EPP discount.
-  const { data: cfg } = await supabase
-    .from('sale_config')
-    .select('epp_discount_bps')
-    .single();
-  const eppDiscountBps = cfg?.epp_discount_bps ?? 1500;
-
-  // The Pattern A on-chain self-referral block requires the code's owner
-  // wallet at registration. The EPP partner's primary wallet is `walletLower`
-  // — the SIWE-verified caller — which is also their `users.primary_wallet`.
-  await enqueueReferralSync(supabase, partnerCode, walletLower, eppDiscountBps);
+  // Voucher checkout (NodeSale v2) validates referral codes off-chain at
+  // voucher-signing time (see lib/referrals/validate.ts), so EPP codes no
+  // longer need to be registered on-chain at onboarding.
 
   return { ok: true, referralCode: partnerCode };
 }
@@ -339,23 +330,13 @@ export async function POST(request: NextRequest) {
 
     // Assign a personal referral code if the user doesn't already have one.
     // This runs on first signup and also back-fills existing users who
-    // connected before this code path existed.
+    // connected before this code path existed. Voucher checkout (NodeSale v2)
+    // resolves codes off-chain at voucher-signing time, so no on-chain
+    // registration is needed here.
     const previousCode = user!.referral_code;
     const personalCode = await ensurePersonalCode(supabase, user!.id, user!.referral_code);
     if (personalCode && personalCode !== previousCode) {
       user!.referral_code = personalCode;
-      // Queue on-chain registration — cron /api/cron/reconcile drains the
-      // queue. Fire-and-forget: the auth response must not block on the
-      // contract call.
-      const { data: cfg } = await supabase
-        .from('sale_config')
-        .select('community_discount_bps')
-        .single();
-      const communityDiscountBps = cfg?.community_discount_bps ?? 1000;
-      // Pattern A: pass the code-owner wallet so the contract can reject
-      // same-wallet self-referral on-chain. The owner is the connected
-      // wallet itself — `walletLower` is the SIWE-verified address.
-      await enqueueReferralSync(supabase, personalCode, walletLower, communityDiscountBps);
     }
 
     // On first signup, attach the referrer if one was supplied.

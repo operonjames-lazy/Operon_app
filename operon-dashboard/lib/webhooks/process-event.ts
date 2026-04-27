@@ -1,13 +1,21 @@
 import { ethers } from 'ethers';
-import { processReferralAttribution } from '@/lib/commission';
+import { processPurchaseWithReservation } from '@/lib/commission';
 import { createServerSupabase } from '@/lib/supabase';
 import { STABLECOIN_ADDRESSES, TOKEN_DECIMALS } from '@/lib/wagmi/contracts';
+import { bytes32ToUuid } from '@/lib/voucher';
 import { logger } from '@/lib/logger';
 
-const NODE_PURCHASED_EVENT = 'event NodePurchased(address indexed buyer, uint256 tier, uint256 quantity, bytes32 codeHash, uint256 totalPaid, address token)';
+// NodeSale v2 voucher checkout. Indexed topics: buyer, tier, reservationId.
+// Data: quantity, codeHash, totalPaid, token. The reservationId topic links
+// the on-chain event back to the sale_reservations row created by the backend
+// reserve flow; see lib/voucher.ts uuidToBytes32 for the inverse mapping.
+const NODE_PURCHASED_EVENT =
+  'event NodePurchased(address indexed buyer, uint256 indexed tier, uint256 quantity, bytes32 indexed reservationId, bytes32 codeHash, uint256 totalPaid, address token)';
 
 export const NODE_PURCHASED_TOPIC0 =
   new ethers.Interface([NODE_PURCHASED_EVENT]).getEvent('NodePurchased')!.topicHash;
+
+const ZERO_BYTES32 = '0x' + '0'.repeat(64);
 
 export function getTokenName(chain: string, tokenAddress: string): 'USDC' | 'USDT' | null {
   const addresses = STABLECOIN_ADDRESSES[chain as 'arbitrum' | 'bsc'];
@@ -24,9 +32,10 @@ export interface ParsedPurchaseEvent {
   buyerWallet: string;
   tier: number;
   quantity: number;
-  totalPaidUsd: number; // cents — integer, converted via BigInt
+  totalPaidUsd: number; // cents, integer converted via BigInt
   token: 'USDC' | 'USDT';
   codeHash: string;
+  reservationId: string; // bytes32 hex from the indexed topic
   blockNumber: number;
 }
 
@@ -75,24 +84,30 @@ export function parseNodePurchasedLog(
     return null;
   }
 
-  // Validate tier. The contract emits 0-indexed tier IDs (0..39); the DB
-  // sale_tiers table is 1-indexed (1..40). Translate here so everything
-  // downstream sees the DB convention.
+  // Contract tier ids are 0..39; DB sale_tiers ids are 1..40.
   const contractTier = Number(parsed.args.tier);
-  if (contractTier < 0 || contractTier > 39) {
+  if (!Number.isInteger(contractTier) || contractTier < 0 || contractTier > 39) {
     logger.error('Invalid tier in event', { contractTier });
     return null;
   }
   const tier = contractTier + 1;
 
-  // Validate quantity
+  // Validate quantity. Contract caps at MAX_BATCH_SIZE = 100.
   const quantity = Number(parsed.args.quantity);
   if (quantity < 1 || quantity > 100) {
     logger.error('Invalid quantity in event', { quantity });
     return null;
   }
 
-  // Resolve token — reject unknown token addresses outright. The caller
+  // Reservation id: bytes32 indexed topic. Required (every v2 purchase goes
+  // through a backend-issued voucher), so reject anything without it.
+  const reservationId = String(parsed.args.reservationId).toLowerCase();
+  if (!/^0x[0-9a-f]{64}$/.test(reservationId) || reservationId === ZERO_BYTES32) {
+    logger.error('Invalid or zero reservationId in event', { reservationId });
+    return null;
+  }
+
+  // Resolve token: reject unknown token addresses outright. The caller
   // should push this to failed_events for manual review.
   const tokenName = getTokenName(chain, parsed.args.token);
   if (!tokenName) {
@@ -127,6 +142,7 @@ export function parseNodePurchasedLog(
     totalPaidUsd,
     token: tokenName,
     codeHash: parsed.args.codeHash,
+    reservationId,
     blockNumber: 0, // Set by caller
   };
 }
@@ -138,7 +154,7 @@ export type VerifyResult = 'ok' | 'failed' | 'unreachable';
  * confirm the payload's event fields match what the chain actually
  * emitted**.
  *
- * Fails CLOSED — if RPC is unreachable or times out, we return 'unreachable'
+ * Fails CLOSED: if RPC is unreachable or times out, we return 'unreachable'
  * and the caller must queue the event as pending_verification instead of
  * processing it.
  *
@@ -154,7 +170,7 @@ export async function verifyOnChain(
   txHash: string,
   chain: 'arbitrum' | 'bsc',
   saleContractAddress: string,
-  // Optional — when present, we compare the on-chain log field-by-field to
+  // Optional: when present, we compare the on-chain log field-by-field to
   // these values. Legacy call sites that only need "some purchase happened"
   // can omit it, but every real ingest path passes the parsed event so the
   // comparison is live.
@@ -191,7 +207,7 @@ export async function verifyOnChain(
     }
 
     // If the caller gave us an expected event shape, re-derive from the
-    // on-chain log and compare. Any field drift → fail.
+    // on-chain log and compare. Any field drift fails.
     if (expected) {
       const onChain = parseNodePurchasedLog(
         { topics: Array.from(matchingLog.topics), data: matchingLog.data },
@@ -208,6 +224,7 @@ export async function verifyOnChain(
       if (onChain.totalPaidUsd !== expected.totalPaidUsd) mismatches.push('totalPaidUsd');
       if (onChain.token !== expected.token) mismatches.push('token');
       if ((onChain.codeHash || '').toLowerCase() !== (expected.codeHash || '').toLowerCase()) mismatches.push('codeHash');
+      if (onChain.reservationId.toLowerCase() !== expected.reservationId.toLowerCase()) mismatches.push('reservationId');
       if (mismatches.length > 0) {
         logger.error('Webhook payload disagrees with on-chain log', {
           txHash,
@@ -222,7 +239,7 @@ export async function verifyOnChain(
 
     return 'ok';
   } catch (err) {
-    logger.warn('On-chain verification unreachable — queueing as pending_verification', {
+    logger.warn('On-chain verification unreachable; queueing as pending_verification', {
       txHash,
       chain,
       error: String(err),
@@ -250,27 +267,137 @@ export async function queuePendingVerification(event: ParsedPurchaseEvent): Prom
 }
 
 /**
+ * Release a submitted reservation when the tx tied to it is proven bad.
+ *
+ * We only mark failed if the reservation row already has the same tx_hash.
+ * A forged or drifted webhook payload should not be able to fail someone
+ * else's active reservation just by carrying their reservationId.
+ */
+export async function markReservationFailedForEvent(
+  event: ParsedPurchaseEvent,
+  reason: string,
+): Promise<boolean> {
+  const supabase = createServerSupabase();
+  let reservationUuid: string;
+  try {
+    reservationUuid = bytes32ToUuid(event.reservationId);
+  } catch (err) {
+    logger.warn('Could not convert reservationId while failing reservation', {
+      txHash: event.txHash,
+      reservationId: event.reservationId,
+      error: String(err),
+    });
+    return false;
+  }
+
+  const { data: row, error: rowError } = await supabase
+    .from('sale_reservations')
+    .select('id, status, tx_hash')
+    .eq('id', reservationUuid)
+    .maybeSingle();
+
+  if (rowError) {
+    logger.error('Failed reservation lookup errored', {
+      txHash: event.txHash,
+      reservationId: reservationUuid,
+      error: rowError.message,
+    });
+    return false;
+  }
+  if (!row || row.status !== 'submitted' || row.tx_hash?.toLowerCase() !== event.txHash.toLowerCase()) {
+    logger.warn('Skipped mark_reservation_failed: reservation is not submitted for this tx', {
+      txHash: event.txHash,
+      reservationId: reservationUuid,
+      status: row?.status,
+      rowTxHash: row?.tx_hash,
+    });
+    return false;
+  }
+
+  try {
+    const { getProvider, getSaleContract } = await import('@/lib/rpc');
+    const chain = event.chain as 'arbitrum' | 'bsc';
+    const saleAddr = getSaleContract(chain)?.toLowerCase();
+    if (!saleAddr) return false;
+    const provider = await getProvider(chain);
+    const receipt = await provider.getTransactionReceipt(event.txHash);
+    if (!receipt) return false;
+    if (receipt.status !== 0 && receipt.status !== 1) return false;
+    if (receipt.status === 1) {
+      const hasSalePurchaseLog = receipt.logs.some(log =>
+        log.address.toLowerCase() === saleAddr && log.topics[0] === NODE_PURCHASED_TOPIC0
+      );
+      if (hasSalePurchaseLog) {
+        logger.warn('Skipped mark_reservation_failed: tx succeeded with NodePurchased log', {
+          txHash: event.txHash,
+          reservationId: reservationUuid,
+        });
+        return false;
+      }
+    }
+  } catch (err) {
+    logger.warn('Skipped mark_reservation_failed: receipt safety check failed', {
+      txHash: event.txHash,
+      reservationId: reservationUuid,
+      error: String(err),
+    });
+    return false;
+  }
+
+  const { data, error } = await supabase.rpc('mark_reservation_failed', {
+    p_reservation_id: reservationUuid,
+    p_reason: reason,
+  });
+  if (error) {
+    logger.error('mark_reservation_failed RPC failed', {
+      txHash: event.txHash,
+      reservationId: reservationUuid,
+      error: error.message,
+    });
+    return false;
+  }
+
+  const result = data as { ok?: boolean; error?: string };
+  if (result?.error) {
+    logger.error('mark_reservation_failed rejected', {
+      txHash: event.txHash,
+      reservationId: reservationUuid,
+      result,
+    });
+    return false;
+  }
+  return true;
+}
+
+/**
  * Main webhook event processing path. Called AFTER the event has been
- * verified on-chain. Delegates commission math to the atomic Postgres RPC,
- * then bumps tier-sold counters.
+ * verified on-chain. The database validates the event against the original
+ * reservation and then writes purchase, commissions, reservation completion,
+ * and global inventory in one transaction.
  */
 export async function processPurchaseEvent(event: ParsedPurchaseEvent) {
   const supabase = createServerSupabase();
 
-  // 1. Commission processing — single atomic RPC
+  // 1. Commission processing: single atomic RPC
   try {
-    await processReferralAttribution(event);
+    const reservationUuid = bytes32ToUuid(event.reservationId);
+    await processPurchaseWithReservation(event, reservationUuid);
+    return;
   } catch (err) {
-    logger.error('Commission processing failed', { txHash: event.txHash, error: String(err) });
+    const message = String(err);
+    const kind = message.includes('reservation_') || message.includes('_mismatch')
+      ? 'reservation_link_error'
+      : 'process_error';
+    logger.error('Voucher purchase processing failed', { txHash: event.txHash, error: message });
     // Queue for retry (this is a different failure mode from pending_verification)
     try {
       await supabase.from('failed_events').insert({
         tx_hash: event.txHash,
         chain: event.chain,
         event_data: event,
-        error_message: String(err),
+        error_message: message,
         status: 'pending',
-        kind: 'process_error',
+        kind,
         next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       });
     } catch (queueErr) {
@@ -279,38 +406,4 @@ export async function processPurchaseEvent(event: ParsedPurchaseEvent) {
     return;
   }
 
-  // 2. Tier counter (separate idempotent RPC; already safe to call on dupes)
-  try {
-    await supabase.rpc('increment_tier_sold', {
-      p_tx_hash: event.txHash,
-      p_chain: event.chain,
-      p_tier: event.tier,
-      p_quantity: event.quantity,
-    });
-  } catch (err) {
-    logger.error('Tier increment failed', { txHash: event.txHash, error: String(err) });
-    // The commission RPC committed successfully — `purchases` has the row, so
-    // the reconcile cron's `knownTxHashes` short-circuit will skip this tx and
-    // never re-attempt the tier counter. Queue an explicit retry under a
-    // distinct kind so the cron picks it up via the failed-events drain
-    // instead of the gap-filler. Idempotency is provided by the
-    // `tier_increments` PK so retries are safe.
-    try {
-      await supabase.from('failed_events').insert({
-        tx_hash: event.txHash,
-        chain: event.chain,
-        event_data: event,
-        error_message: `tier_increment_error: ${String(err)}`,
-        status: 'pending',
-        kind: 'tier_increment_error',
-        next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-      });
-    } catch (queueErr) {
-      logger.error('Failed to queue tier-increment retry', { txHash: event.txHash, error: String(queueErr) });
-    }
-  }
-
-  // NOTE: Personal referral code generation used to happen here. It now
-  // happens at signup (POST /api/auth/wallet) so every connected wallet
-  // gets one regardless of whether they ever purchase. Removed from this path.
 }

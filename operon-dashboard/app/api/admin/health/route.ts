@@ -5,10 +5,9 @@ import { createServerSupabase } from '@/lib/supabase';
 /**
  * GET /api/admin/health
  *
- * Single call returns: failed_events queue stats, referral_code_chain_state
- * queue stats, and the most recent reconciliation_log run. Contract balances
- * are reported separately by /api/admin/sale/balance — that call is slower
- * (RPC round-trips) and we don't want it blocking this one.
+ * Single call returns failed_events queue stats and the most recent
+ * reconciliation_log run. failed_events aggregation happens in Postgres so
+ * the health panel cannot undercount at PostgREST row limits.
  */
 export async function GET(request: NextRequest) {
   const admin = await requireAdmin(request);
@@ -17,12 +16,10 @@ export async function GET(request: NextRequest) {
   const db = createServerSupabase();
 
   const [
-    { data: fe },
-    { data: sync },
+    { data: failedEventsHealth, error: failedEventsHealthError },
     { data: reconcile },
   ] = await Promise.all([
-    db.from('failed_events').select('status, created_at'),
-    db.from('referral_code_chain_state').select('status'),
+    db.rpc('admin_failed_events_health'),
     db
       .from('reconciliation_log')
       .select('run_at, duration_ms, events_found')
@@ -31,36 +28,29 @@ export async function GET(request: NextRequest) {
       .maybeSingle(),
   ]);
 
-  let pending = 0, retrying = 0, abandoned = 0, oldest: string | null = null;
-  for (const r of fe ?? []) {
-    if (r.status === 'pending') pending++;
-    else if (r.status === 'retrying') retrying++;
-    else if (r.status === 'abandoned') abandoned++;
-    if (r.status !== 'resolved' && (oldest === null || r.created_at < oldest)) {
-      oldest = r.created_at;
-    }
+  if (failedEventsHealthError) {
+    return Response.json(
+      { error: 'admin_failed_events_health_failed', details: failedEventsHealthError.message },
+      { status: 500 },
+    );
   }
 
-  // Kind breakdown — second query, cheap
-  const { data: kinds } = await db.from('failed_events').select('event_data, status').neq('status', 'resolved');
-  const failedEventKinds: Record<string, number> = {};
-  for (const r of kinds ?? []) {
-    const k = (r.event_data as { kind?: string })?.kind ?? 'unknown';
-    failedEventKinds[k] = (failedEventKinds[k] || 0) + 1;
-  }
-
-  const syncStats = { pending: 0, failed: 0, synced: 0, revoked: 0 };
-  for (const r of sync ?? []) {
-    if (r.status === 'pending') syncStats.pending++;
-    else if (r.status === 'failed') syncStats.failed++;
-    else if (r.status === 'synced') syncStats.synced++;
-    else if (r.status === 'revoked') syncStats.revoked++;
-  }
+  const fe = (failedEventsHealth ?? {}) as {
+    pending?: number;
+    retrying?: number;
+    abandoned?: number;
+    oldest?: string | null;
+    kinds?: Record<string, number>;
+  };
 
   return Response.json({
-    failedEvents: { pending, retrying, abandoned, oldest },
-    failedEventKinds,
-    syncQueue: syncStats,
+    failedEvents: {
+      pending: fe.pending ?? 0,
+      retrying: fe.retrying ?? 0,
+      abandoned: fe.abandoned ?? 0,
+      oldest: fe.oldest ?? null,
+    },
+    failedEventKinds: fe.kinds ?? {},
     reconcile: {
       lastRunAt: reconcile?.run_at ?? null,
       lastDurationMs: reconcile?.duration_ms ?? null,

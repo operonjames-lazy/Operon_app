@@ -51,11 +51,8 @@ import {
  *   { error: string, ...details }
  */
 
-const RESERVATION_TTL_SECONDS = 12 * 60; // 12 minutes — chosen to comfortably cover
-                                         // wallet review + chain confirmation time
-                                         // on both Arb (~1s) and BSC (~3s) without
-                                         // letting inventory sit too long for a
-                                         // buyer who'll never come back.
+const RESERVATION_TTL_SECONDS = 12 * 60; // 12 minutes for wallet review + confirmation.
+const MAX_DISCOUNT_BPS = 1500;
 
 interface ReserveBody {
   chain?: string;
@@ -77,7 +74,7 @@ export async function POST(request: NextRequest) {
   if (rateLimited) return rateLimited;
 
   // 2. Auth: caller must be signed in. We pull the buyer wallet from the
-  //    JWT, NOT the request body — a body-supplied wallet would let one
+  //    JWT, NOT the request body ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â a body-supplied wallet would let one
   //    user front-run another's reservation slot.
   const payload = await verifyTokenPayload(request);
   if (!payload?.sub || !payload?.wallet) {
@@ -128,7 +125,7 @@ export async function POST(request: NextRequest) {
     return jsonError('sale_closed', undefined, 423);
   }
 
-  // 4. Contract address required for this chain — without it the voucher
+  // 4. Contract address required for this chain ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â without it the voucher
   //    has no binding target and the contract on-chain doesn't exist yet.
   if (!isSaleContractDeployed(chain)) {
     return jsonError('contract_not_deployed', { chain }, 503);
@@ -145,7 +142,7 @@ export async function POST(request: NextRequest) {
   // 6. Validate the referral code if supplied. The same DB-only checks the
   //    /validate-code endpoint runs, but here we tie it to the
   //    authenticated caller so self-referral is always blocked (the
-  //    pre-auth quote endpoint can't be — no caller identity).
+  //    pre-auth quote endpoint can't be ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no caller identity).
   let discountBps = 0;
   let codeUsed: string | null = null;
   let codeHash = codeToHash(null);
@@ -156,6 +153,14 @@ export async function POST(request: NextRequest) {
       return jsonError('invalid_code', { reason: result.reason });
     }
     discountBps = result.discountBps;
+    if (discountBps > MAX_DISCOUNT_BPS) {
+      logger.error('Referral discount exceeds contract cap', {
+        code: result.normalizedCode,
+        discountBps,
+        maxDiscountBps: MAX_DISCOUNT_BPS,
+      });
+      return jsonError('discount_exceeds_cap', undefined, 500);
+    }
     codeUsed = result.normalizedCode;
     codeHash = codeToHash(result.normalizedCode);
   }
@@ -188,7 +193,7 @@ export async function POST(request: NextRequest) {
   }
 
   // RPC returns either the success envelope or an `{ error, ... }`
-  // envelope — relay errors directly to the client.
+  // envelope ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â relay errors directly to the client.
   const data = rpcData as
     | { reservation_id: string; tier: number; unit_price_cents: number; expires_at: string }
     | { error: string; [k: string]: unknown };
@@ -201,7 +206,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 8. Build the EIP-712 voucher. unitPrice is the FLOOR price (matches
-  //    sale_tiers.price_usd in cents → token base units); the contract
+  //    sale_tiers.price_usd in cents ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ token base units); the contract
   //    multiplies by (10000 - discountBps) / 10000 to compute the actual
   //    transfer amount, capped by MAX_DISCOUNT_BPS on-chain.
   const reservationIdBytes32 = uuidToBytes32(data.reservation_id);
@@ -229,7 +234,7 @@ export async function POST(request: NextRequest) {
       error: err instanceof Error ? err.message : String(err),
       reservationId: data.reservation_id,
     });
-    // The reservation row will expire on its own via the cleanup pass —
+    // The reservation row will expire on its own via the cleanup pass ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
     // we don't try to delete it here because a failed sign is recoverable
     // (operator fixes env, retries, or the buyer just creates a new one).
     return jsonError('voucher_signing_failed', undefined, 500);
@@ -242,7 +247,7 @@ export async function POST(request: NextRequest) {
     unitPriceCents:       data.unit_price_cents,
     discountBps,
     expiresAt:            data.expires_at,
-    // BigInts can't be JSON-serialised — stringify them so the client
+    // BigInts can't be JSON-serialised ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â stringify them so the client
     // can pass them straight back into ethers.Contract(...).purchaseWithVoucher
     // which accepts string-encoded big numbers.
     voucher: {

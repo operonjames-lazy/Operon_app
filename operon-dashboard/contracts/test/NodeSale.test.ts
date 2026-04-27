@@ -154,6 +154,16 @@ describe("NodeSale (v2 voucher checkout)", function () {
       const { sale } = await loadFixture(deployFixture);
       expect(await sale.MAX_BATCH_SIZE()).to.equal(100);
     });
+
+    it("MAX_DISCOUNT_BPS constant is 1500", async function () {
+      const { sale } = await loadFixture(deployFixture);
+      expect(await sale.MAX_DISCOUNT_BPS()).to.equal(1500);
+    });
+
+    it("MAX_TIER_ID constant is 39", async function () {
+      const { sale } = await loadFixture(deployFixture);
+      expect(await sale.MAX_TIER_ID()).to.equal(39);
+    });
   });
 
   describe("Happy path purchase", function () {
@@ -221,12 +231,12 @@ describe("NodeSale (v2 voucher checkout)", function () {
       expect(await usdc.balanceOf(treasury.address)).to.equal(expected);
     });
 
-    it("rejects discount > 100% (10001 bps)", async function () {
+    it("rejects discount above MAX_DISCOUNT_BPS", async function () {
       const { buyer, voucherSigner, usdc, sale, saleAddress, makeVoucher } = await loadFixture(deployFixture);
-      const v = makeVoucher({ token: await usdc.getAddress(), discountBps: 10001 });
+      const v = makeVoucher({ token: await usdc.getAddress(), discountBps: 1501 });
       const sig = await signVoucher(voucherSigner, saleAddress, v);
       await expect(sale.connect(buyer).purchaseWithVoucher(v, sig))
-        .to.be.revertedWith("NodeSale: discount > 100%");
+        .to.be.revertedWith("NodeSale: discount too high");
     });
 
     it("handles odd-price rounding via integer division", async function () {
@@ -319,6 +329,14 @@ describe("NodeSale (v2 voucher checkout)", function () {
       const tampered = { ...v, quantity: 5n };
       await expect(sale.connect(buyer).purchaseWithVoucher(tampered, sig))
         .to.be.revertedWith("NodeSale: bad voucher signer");
+    });
+
+    it("reverts when voucher tier is out of range", async function () {
+      const { buyer, voucherSigner, usdc, sale, saleAddress, makeVoucher } = await loadFixture(deployFixture);
+      const v = makeVoucher({ token: await usdc.getAddress(), tierId: 40n });
+      const sig = await signVoucher(voucherSigner, saleAddress, v);
+      await expect(sale.connect(buyer).purchaseWithVoucher(v, sig))
+        .to.be.revertedWith("NodeSale: tier out of range");
     });
   });
 
@@ -555,6 +573,12 @@ describe("NodeSale (v2 voucher checkout)", function () {
         .to.be.revertedWith("NodeSale: quantity must be > 0");
     });
 
+    it("rejects adminMint outside the 40-tier curve", async function () {
+      const { other, sale } = await loadFixture(deployFixture);
+      await expect(sale.adminMint(other.address, 40, 1))
+        .to.be.revertedWith("NodeSale: tier out of range");
+    });
+
     it("emits AdminMint with running totals", async function () {
       const { other, sale } = await loadFixture(deployFixture);
       await expect(sale.adminMint(other.address, 0, 2))
@@ -588,6 +612,16 @@ describe("NodeSale (v2 voucher checkout)", function () {
       const { other, sale } = await loadFixture(deployFixture);
       await expect(sale.connect(other).setAdminCap(0, 100))
         .to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+
+    it("owner config rejects tier ids outside the 40-tier curve", async function () {
+      const { sale } = await loadFixture(deployFixture);
+      await expect(sale.setTierMinPrice(40, 100))
+        .to.be.revertedWith("NodeSale: tier out of range");
+      await expect(sale.setLocalTierCap(40, 100))
+        .to.be.revertedWith("NodeSale: tier out of range");
+      await expect(sale.setAdminCap(40, 100))
+        .to.be.revertedWith("NodeSale: tier out of range");
     });
 
     it("only owner can pause", async function () {

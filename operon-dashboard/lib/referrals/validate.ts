@@ -10,9 +10,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * sole arbiter of "this code is real and not self-referral", and that
  * decision is signed into the voucher.
  *
- * This file deliberately does NOT consult `referral_code_chain_state`. That
- * table existed to mirror codes onto the contract; with vouchers the chain
- * state is irrelevant to validation. (Phase 5 cleanup will drop the table.)
+ * The `referral_code_chain_state` table that v1 used to mirror codes onto
+ * the contract was dropped in Phase 5 (migration 027); validation is now
+ * purely a DB lookup against `epp_partners` + `users.referral_code`.
  */
 
 export type CodeType = 'epp' | 'community';
