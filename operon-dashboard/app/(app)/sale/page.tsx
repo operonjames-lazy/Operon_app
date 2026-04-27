@@ -115,6 +115,14 @@ function reserveErrorMessage(
       return t('sale.codeInvalidBadge');
     case 'unauthorized':
       return t('sale.signInFirst');
+    case 'sale_paused':
+      return t('sale.stage.paused');
+    case 'sale_not_active':
+      // RPC defense-in-depth (mig 034) — surfaces the same condition as
+      // the API-layer sale_paused / sale_closed; fall through to a stage
+      // lookup so we map the underlying state correctly.
+      if (details?.stage === 'paused') return t('sale.stage.paused');
+      return t('sale.stage.closed');
     case 'sale_closed':
       return t('sale.stage.closed');
     case 'no_active_tier':

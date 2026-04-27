@@ -2,7 +2,12 @@ import { NextRequest } from 'next/server';
 import { ethers } from 'ethers';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
 import { assertNotKilled } from '@/lib/killswitches';
-import { getTreasuryAdminContract, type AdminChain } from '@/lib/admin-signer';
+import {
+  getTreasuryAdminContract,
+  assertAdminIsOwner,
+  getAdminSignerAddress,
+  type AdminChain,
+} from '@/lib/admin-signer';
 import { STABLECOIN_ADDRESSES } from '@/lib/wagmi/contracts';
 import { logger } from '@/lib/logger';
 
@@ -70,6 +75,25 @@ export async function POST(request: NextRequest) {
   const contract = await getTreasuryAdminContract(chain as AdminChain);
   if (!('withdrawFunds' in contract)) {
     return Response.json({ error: (contract as { error: string }).error }, { status: 500 });
+  }
+
+  // Safe-novation guard. If owner has rotated to a Safe, this hot-key
+  // call would revert on-chain — return a clear error pointing the
+  // operator at the Safe UI rather than burning gas on a doomed tx.
+  const signerAddr = getAdminSignerAddress();
+  if (signerAddr) {
+    const ownershipErr = await assertAdminIsOwner(contract as ethers.Contract, signerAddr);
+    if (ownershipErr) {
+      logger.warn('withdraw blocked: admin signer is no longer contract owner', {
+        chain,
+        admin: signerAddr,
+        detail: ownershipErr.detail,
+      });
+      return Response.json(
+        { error: ownershipErr.error, detail: ownershipErr.detail, chain },
+        { status: 503 },
+      );
+    }
   }
 
   try {

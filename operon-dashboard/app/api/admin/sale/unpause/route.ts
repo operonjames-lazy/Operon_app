@@ -1,7 +1,13 @@
 import { NextRequest } from 'next/server';
+import { ethers } from 'ethers';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
 import { assertNotKilled } from '@/lib/killswitches';
-import { getAdminSaleContract, type AdminChain } from '@/lib/admin-signer';
+import {
+  getAdminSaleContract,
+  assertAdminIsOwner,
+  getAdminSignerAddress,
+  type AdminChain,
+} from '@/lib/admin-signer';
 import { createServerSupabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
@@ -48,13 +54,21 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'audit_failed' }, { status: 500 });
   }
 
-  const results: Array<{ chain: AdminChain; status: string; txHash?: string; error?: string }> = [];
+  const results: Array<{ chain: AdminChain; status: string; txHash?: string; error?: string; detail?: string }> = [];
+  const signerAddr = getAdminSignerAddress();
 
   for (const chain of chains) {
     const contract = await getAdminSaleContract(chain);
     if (!('unpause' in contract)) {
       results.push({ chain, status: 'error', error: (contract as { error: string }).error });
       continue;
+    }
+    if (signerAddr) {
+      const ownershipErr = await assertAdminIsOwner(contract as ethers.Contract, signerAddr);
+      if (ownershipErr) {
+        results.push({ chain, status: 'error', error: ownershipErr.error, detail: ownershipErr.detail });
+        continue;
+      }
     }
     try {
       const tx = await (contract as unknown as { unpause: () => Promise<{ hash: string; wait: () => Promise<unknown> }> }).unpause();

@@ -1,7 +1,13 @@
 import { NextRequest } from 'next/server';
+import { ethers } from 'ethers';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
 import { assertNotKilled } from '@/lib/killswitches';
-import { getAdminSaleContract, type AdminChain } from '@/lib/admin-signer';
+import {
+  getAdminSaleContract,
+  assertAdminIsOwner,
+  getAdminSignerAddress,
+  type AdminChain,
+} from '@/lib/admin-signer';
 import { createServerSupabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
@@ -79,13 +85,25 @@ export async function POST(request: NextRequest) {
     logger.warn('sale_stage_set audit write failed', { error: String(err) });
   });
 
-  const results: Array<{ chain: AdminChain; status: string; txHash?: string; error?: string }> = [];
+  const results: Array<{ chain: AdminChain; status: string; txHash?: string; error?: string; detail?: string }> = [];
+
+  const signerAddr = getAdminSignerAddress();
 
   for (const chain of chains) {
     const contract = await getAdminSaleContract(chain);
     if (!('pause' in contract)) {
       results.push({ chain, status: 'error', error: (contract as { error: string }).error });
       continue;
+    }
+    // Safe-novation guard: if owner has rotated to a Safe, this hot-key
+    // call would revert on-chain. Detect before broadcasting and surface
+    // a clear "drive via Safe UI" error instead of a generic revert.
+    if (signerAddr) {
+      const ownershipErr = await assertAdminIsOwner(contract as ethers.Contract, signerAddr);
+      if (ownershipErr) {
+        results.push({ chain, status: 'error', error: ownershipErr.error, detail: ownershipErr.detail });
+        continue;
+      }
     }
     try {
       const tx = await (contract as unknown as { pause: () => Promise<{ hash: string; wait: () => Promise<unknown> }> }).pause();
