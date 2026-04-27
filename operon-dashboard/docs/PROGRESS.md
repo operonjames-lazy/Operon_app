@@ -1238,3 +1238,57 @@ The R15 (2026-04-26) remediation note explicitly called out that "there is no au
 - **Operator-side mainnet items still owed:** mainnet v2 contract deploy (treasury, voucherSigner) constructor + 40-tier seed; Vercel env rotation including `VOUCHER_SIGNER_ADDRESS` + `VOUCHER_SIGNER_PRIVATE_KEY`; Alchemy + QuickNode webhook rewire to v2 contract addresses + new `NodePurchased` topic0; live smoke test of the full reserve→sign→buy→submit→webhook→`complete_reservation` round-trip; Gnosis Safe novation (`transferOwnership` + Safe `acceptOwnership` two-tx handshake; `setVoucherSigner` rotates from the Safe under v2).
 - **Migration 017** still unapplied. R15 said it's superseded by the in-place guard in 014; consider deleting the file in a small future PR or re-applying for tidiness — pure choice.
 
+---
+
+## 2026-04-27 EOD — Session 43 — External-review fix-pack + P0 anon exposure discovery
+
+### What got done
+
+- **External security review of the Phase 5 fixes landed 5 findings:** RPC public-execute (CRITICAL), `complete_reservation` no field-verify + ordering (HIGH), admin/dev replay still on legacy `increment_tier_sold` (HIGH), no `MAX_DISCOUNT_BPS` in contract (MEDIUM), SQL `quantity <= 1000` vs contract `100` (MEDIUM).
+- **5 new REVIEW_ADDENDUM checks filed against the corresponding skill gaps:** D-P10 (Postgres function EXECUTE revoked from PUBLIC + anon + authenticated), A-P7 (inter-layer numeric bounds match strictest consumer), R-P6 (webhook → DB convergence is one atomic RPC with full field verification), O-P7 (DECISIONS.md threat-model claims grep-verified against code constants), O-P8 (refactor sweep — every old-path caller updated). All numbered with the next-available IDs in their categories, sourced to the 2026-04-27 external review.
+- **Code fixes for all 5 findings landed:** new migration `028_harden_voucher_reservations.sql` (REVOKE EXECUTE on the voucher RPCs + ENABLE FORCE RLS on `sale_reservations` + atomic `process_purchase_with_reservation` RPC + tightened CHECK to `quantity <= 100`); new migration `029_admin_failed_events_health.sql` (D-P9 admin health aggregation RPC); `MAX_DISCOUNT_BPS = 1500` constant added to `NodeSale.sol` with `require(voucher.discountBps <= MAX_DISCOUNT_BPS)`; `processPurchaseWithReservation` wrapper in `lib/commission.ts`; `markReservationFailedForEvent` helper wired into all four `verifyOnChain('failed')` branches (alchemy/quicknode/dev-indexer-ingest/cron); admin/events/replay + dev/replay-failed-events refactored to call `processPurchaseWithReservation`; `/api/admin/health` rewritten to use the `admin_failed_events_health` RPC.
+- **Migrations 028 + 029 applied 2026-04-27 afternoon.** Re-probe via `scripts/verify-pending-migrations.mjs` confirmed every artifact present, quantity CHECK now `<= 100`.
+- **Three independent review subagents (security/correctness/scale) ran in parallel against the fix-pack.** Each agent caught the others' blind spots; consolidated findings ordered the work for the operator.
+
+### P0 discovery — anon key exfiltrates the customer database
+
+After the agents flagged "anon EXECUTE on these RPCs is concerning" from `pg_proc` evidence, an empirical HTTP probe with the public `NEXT_PUBLIC_SUPABASE_ANON_KEY` returned **200 OK with real data** on:
+
+- `admin_overview_stats` — total revenue, sell-through, attribution breakdown
+- `admin_attribution`, `admin_milestones_pending`, `admin_unpaid_grouped` — full payout queue with `referrer_id`, `wallet`, `payout_wallet`, `commission_usd` per row
+- `admin_partner_pipeline`, `admin_partner_leaderboard` — partner identities, tiers, credited amounts, payout wallets, status
+- `admin_daily_revenue` — per-day revenue rollups
+- Direct table SELECT via PostgREST: `purchases`, `referral_purchases`, `epp_partners`, `users` (including `email`), `sale_tiers`, `admin_audit_log`
+- `release_cron_lock` returned `204 No Content` — a live DoS lever to evict the reconcile cron lease
+
+Migration 028 only revoked from the named voucher RPC subset; the broader admin_* read surface created in migrations 020/022/023 was never tightened, and Supabase grants `anon` SELECT on tables in `public` by default unless RLS is enabled. D-P7 ("RLS off, auth at API layer") protected writes (service-role bypasses RLS) but never closed the read surface.
+
+**Migration 030_lock_down_anon_grants.sql written this session** (REVOKE ALL on tables/sequences/functions from anon + authenticated, ALTER DEFAULT PRIVILEGES so future migrations don't regress, re-grant only `SELECT ON sale_tiers, sale_config` for the Realtime subscription in `hooks/useTierRealtime.ts`, re-grant `service_role` everything explicitly). **Pending operator apply.** Anon key rotation also pending operator action — the current key has been live with this exposure surface for an unknown duration; treat as compromised.
+
+### Skill / methodology updates
+
+- **`~/.claude/commands/review-full.md` rewritten.** Three additions: (1) adversarial framing as the default attention mode (not "review this PR" but "the developer trusts their own assumptions, find one thing they missed"); (2) explicit authorship-taint rule — if the diff was authored in this same conversation context, treat your prior reasoning trail as poison and re-read each file blind; (3) **Pass 2.5 — empirical probes for access-control claims**: when the diff touches auth / RBAC / RLS / GRANTs / public-vs-private credentials, the review must write a probe that actually attempts the access using the public-facing credential and paste the response. Inference from policy text alone is explicitly NOT a clean check. Subagent escalation demoted from "do NOT spawn" to optional for large/high-blast-radius diffs. The load-bearing rule is Pass 2.5 — if it had been in place at the original Phase 5 review, the in-thread reviewer would have written the HTTP probe and caught the Critical at first pass.
+- **5 new project-specific addendum entries** noted above (D-P10, A-P7, R-P6, O-P7, O-P8).
+- **3 new probe scripts:** `scripts/verify-pending-migrations.mjs` (extended for 028/029), `scripts/probe-rpc-privileges.mjs` (function-level EXECUTE audit via `pg_proc` + `has_function_privilege`), `scripts/probe-anon-exposure.mjs` (empirical HTTP probe via the public anon key — ran exactly the test that converted "concerning" to "I just exfiltrated the customer database").
+
+### Verification
+
+- 53/53 → 54/54 contract tests passing (new `MAX_DISCOUNT_BPS` test added).
+- `npx tsc --noEmit` clean post-fix-pack.
+- Migrations 028 + 029 applied + probed clean. Migration 030 written, **live apply pending operator**.
+
+### Open / next session — operator-owed before any further deploy
+
+1. **Apply migration 030.** Re-run `scripts/probe-anon-exposure.mjs`; every endpoint and table must return 401/403 except the two Realtime grants (`sale_tiers`, `sale_config`).
+2. **Rotate `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel env.** Treat the current key as compromised given the exposure window.
+3. **Math off-by-one in `process_purchase_with_reservation:243`.** Verified by hand: `(a*b*(10000-d))/10000` and the contract's two-step `t = a*b; t -= t*d/10000` produce off-by-one for inputs where `a*b*d/10000` has a fractional part. Currently masked because all `sale_tiers.price_usd` values end in 00 (whole dollars). Fires the moment any tier is set to a fractional-dollar price. Fix: either rewrite the SQL to two-step truncation matching the contract, or add `CHECK (price_usd % 100 = 0)` on `sale_tiers`.
+4. **Bound `voucher.tierId` in NodeSale.sol** with `require(voucher.tierId < 40)` + matching test in `NodeSale.test.ts`. Closes the leaked-signer "any uint256 tier" surface noted by the scale subagent and elevated by CTO review (admin Safe error window combined with signer leak).
+5. **Fast-path Telegram alert for `*_mismatch` envelope errors** from `process_purchase_with_reservation` (`amount_mismatch`, `code_hash_mismatch`, `tier_mismatch`, `quantity_mismatch`, `buyer_mismatch`, `chain_mismatch`, `token_mismatch`). Today these queue silently for ~25 min before the abandon-alert; they indicate signer compromise or DB drift and should page immediately.
+6. **Service-role key audit.** Verify `SUPABASE_SERVICE_KEY` is never in the browser bundle, never in logged error envelopes, never in Sentry breadcrumbs. The whole D-P10 + 030 model assumes the service key is server-only.
+7. **Cross-table invariant cron** — assert `sum(sale_tiers.total_sold) == sum(tier_increments.quantity)` per chain, `sum(purchases.quantity) == sum(sale_tiers.total_sold)`, `sum(referral_purchases.commission_usd WHERE paid_at IS NULL) == admin_unpaid_grouped's totalCents`. Silent drift between these is the failure mode commission systems eat. Add a job that runs daily and alerts on mismatch.
+8. **Doc sync sweep** — ARCHITECTURE.md still doesn't mention `process_purchase_with_reservation` as the canonical webhook ingest path (subagent flagged).
+
+### Process gap (R15 echo, third occurrence)
+
+Migrations 028 and 029 sat in the repo after the fix-pack landed and before the verification probe ran. Same drift pattern as F66/F66.1 caught last session. The codified fix in PROGRESS session 42 ("make `verify-pending-migrations.mjs` a pre-commit check") was not implemented this session and is now codified again here. Worth wiring as a real `pre-push` git hook before the next migration lands.
+
