@@ -9,6 +9,16 @@
   var SUPPORTED = ['en', 'zh-cn', 'zh-tw', 'ko', 'ja', 'th', 'vi'];
   var KEY = 'operon-lang';
 
+  function disablePlaceholderLinks() {
+    document.querySelectorAll('a[href="#"], a[href=""]').forEach(function (a) {
+      a.setAttribute('aria-disabled', 'true');
+      a.setAttribute('tabindex', '-1');
+      a.addEventListener('click', function (event) {
+        event.preventDefault();
+      });
+    });
+  }
+
   function detectBrowserLang() {
     var raw = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
     // Exact match (zh-cn, zh-tw, …)
@@ -71,8 +81,12 @@
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', wireSwitcher);
+    document.addEventListener('DOMContentLoaded', function () {
+      disablePlaceholderLinks();
+      wireSwitcher();
+    });
   } else {
+    disablePlaceholderLinks();
     wireSwitcher();
   }
 })();

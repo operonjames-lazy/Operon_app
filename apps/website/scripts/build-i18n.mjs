@@ -11,7 +11,8 @@
 // FAQ has its own pre-existing inline translations (lang-content data-lang="X").
 // Build splits them into per-language files using extractFaqLanguage().
 
-import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { execFileSync } from 'child_process';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -33,6 +34,7 @@ const HTML_LANG_MAP = {
 
 const DICT_FILES = ['hero-prototype-O.html', 'hero-prototype-O-agents.html', 'hero-prototype-O-nodes.html'];
 const FAQ_FILE = 'hero-prototype-O-faq.html';
+const POST_BUILD_SCRIPTS = ['fix-seo-meta.mjs', 'fix-locale-anchors.mjs', 'fix-a11y-contrast.mjs'];
 
 // Walks HTML for tags carrying data-i18n="key", finds their balanced closing tag
 // (handles nested same-name children, e.g. <span data-i18n><span class="v">$X</span></span>),
@@ -225,6 +227,13 @@ function build() {
     }
 
     console.log(`✓ ${lang} → apps/website/${lang}/`);
+  }
+
+  for (const script of POST_BUILD_SCRIPTS) {
+    const scriptPath = join(__dirname, script);
+    if (existsSync(scriptPath)) {
+      execFileSync(process.execPath, [scriptPath], { stdio: 'inherit' });
+    }
   }
 
   console.log('Build complete.');

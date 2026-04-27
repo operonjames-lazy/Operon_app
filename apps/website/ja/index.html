@@ -2518,36 +2518,6 @@
   outline: 2px solid var(--ice, #93C5FD);
   outline-offset: 3px;
 }
-
-/* === a11y: prefers-reduced-motion === */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    animation-delay: 0s !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  .radial-grid .hex,
-  .feed-label::before,
-  .status-pill .status-dot,
-  .hero-pill .dot,
-  .caret {
-    animation: none !important;
-  }
-}
-
-/* === a11y: keyboard focus === */
-:focus-visible {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-.lang-switcher:focus-visible,
-.lang-switcher:focus {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-}
 /* Dead-link disable: any anchor still pointing at "#" is a placeholder
    that scrolls-to-top in production. Visually demote it and stop the
    click. The footer "Read the deck" CTA, footer link columns, etc. all
@@ -3058,7 +3028,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
       <div class="faq-q" data-i18n="home.faq.q2">ノードとは?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a2">Arbitrum または BNB Smart Chain 上の恒久 ERC-721 ライセンス。ノードはエージェントの作業を協調・検証・流通させ、その対価として $OPRN を獲得します。ハードキャップは永続で 10 万。</p>
     </a>
-    <a class="faq-tile" href="hero-prototype-O-faq.html#basics">
+    <a class="faq-tile" href="hero-prototype-O-faq.html#basics_ja">
       <div class="faq-q" data-i18n="home.faq.q3">ノードの運用に GPU は必要ですか?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a3">特別な要件はありません。クライアントはノートPCか手頃な VPS で動作し、GPU 不要。自分で運用しない場合は、TGE 時に Node-as-a-Service が利用可能です。</p>
     </a>

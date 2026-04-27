@@ -2518,36 +2518,6 @@
   outline: 2px solid var(--ice, #93C5FD);
   outline-offset: 3px;
 }
-
-/* === a11y: prefers-reduced-motion === */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    animation-delay: 0s !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  .radial-grid .hex,
-  .feed-label::before,
-  .status-pill .status-dot,
-  .hero-pill .dot,
-  .caret {
-    animation: none !important;
-  }
-}
-
-/* === a11y: keyboard focus === */
-:focus-visible {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-.lang-switcher:focus-visible,
-.lang-switcher:focus {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-}
 /* Dead-link disable: any anchor still pointing at "#" is a placeholder
    that scrolls-to-top in production. Visually demote it and stop the
    click. The footer "Read the deck" CTA, footer link columns, etc. all
@@ -3056,7 +3026,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
       <div class="faq-q" data-i18n="home.faq.q2">โหนดคืออะไร?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a2">ใบอนุญาต ERC-721 ถาวรบน Arbitrum หรือ BNB Smart Chain โหนดทำหน้าที่ประสาน ตรวจสอบ และกระจายงานเอเจนต์ — และได้รับ $OPRN เป็นค่าตอบแทน Hard cap ที่ 100,000 ตลอดไป</p>
     </a>
-    <a class="faq-tile" href="hero-prototype-O-faq.html#basics">
+    <a class="faq-tile" href="hero-prototype-O-faq.html#basics_th">
       <div class="faq-q" data-i18n="home.faq.q3">ต้องใช้ GPU เพื่อรันโหนดหรือไม่?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a3">ไม่มี ไคลเอนต์รันบนแล็ปท็อปหรือ VPS ระดับกลาง — ไม่ต้องใช้ GPU ไม่อยากรันเอง? มี Node-as-a-Service ให้บริการตอน TGE</p>
     </a>

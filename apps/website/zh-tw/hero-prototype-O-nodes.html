@@ -999,36 +999,6 @@
   outline: 2px solid var(--ice, #93C5FD);
   outline-offset: 3px;
 }
-
-/* === a11y: prefers-reduced-motion === */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    animation-delay: 0s !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  .radial-grid .hex,
-  .feed-label::before,
-  .status-pill .status-dot,
-  .hero-pill .dot,
-  .caret {
-    animation: none !important;
-  }
-}
-
-/* === a11y: keyboard focus === */
-:focus-visible {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-.lang-switcher:focus-visible,
-.lang-switcher:focus {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-}
 /* Dead-link disable: any anchor still pointing at "#" is a placeholder
    that scrolls-to-top in production. Visually demote it and stop the
    click. The footer "Read the deck" CTA, footer link columns, etc. all

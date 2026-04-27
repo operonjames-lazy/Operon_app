@@ -84,16 +84,15 @@ async function processFile(absPath) {
 
   // 2. Strip any prior a11y blocks (idempotent re-apply when the rule
   //    contents change between runs) and re-inject the current ones.
-  const stripFocus = new RegExp(
-    `\\n?${FOCUS_SENTINEL.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}[\\s\\S]*?(?=<\\/style>|\\n\\/\\* === a11y: prefers-reduced-motion === \\*\\/)`,
-    'g'
-  );
-  const stripRM = new RegExp(
-    `\\n?${RM_SENTINEL.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}[\\s\\S]*?(?=<\\/style>)`,
-    'g'
-  );
   const before = html;
-  html = html.replace(stripFocus, '').replace(stripRM, '');
+  const firstA11y = html.indexOf(FOCUS_SENTINEL);
+  if (firstA11y !== -1) {
+    const styleClose = html.indexOf('</style>', firstA11y);
+    if (styleClose !== -1) {
+      const start = html[firstA11y - 1] === '\n' ? firstA11y - 1 : firstA11y;
+      html = html.slice(0, start) + html.slice(styleClose);
+    }
+  }
   if (html !== before) changed = true;
 
   // Now inject the current versions.

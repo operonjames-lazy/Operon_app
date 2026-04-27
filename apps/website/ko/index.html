@@ -2518,36 +2518,6 @@
   outline: 2px solid var(--ice, #93C5FD);
   outline-offset: 3px;
 }
-
-/* === a11y: prefers-reduced-motion === */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    animation-delay: 0s !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  .radial-grid .hex,
-  .feed-label::before,
-  .status-pill .status-dot,
-  .hero-pill .dot,
-  .caret {
-    animation: none !important;
-  }
-}
-
-/* === a11y: keyboard focus === */
-:focus-visible {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-.lang-switcher:focus-visible,
-.lang-switcher:focus {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-}
 /* Dead-link disable: any anchor still pointing at "#" is a placeholder
    that scrolls-to-top in production. Visually demote it and stop the
    click. The footer "Read the deck" CTA, footer link columns, etc. all
@@ -3058,7 +3028,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
       <div class="faq-q" data-i18n="home.faq.q2">노드란 무엇입니까?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a2">Arbitrum 또는 BNB Smart Chain의 영구 ERC-721 라이선스입니다. 노드는 에이전트 작업을 조정, 검증, 배포하고 그 대가로 $OPRN을 받습니다. 영구 하드캡 10만.</p>
     </a>
-    <a class="faq-tile" href="hero-prototype-O-faq.html#basics">
+    <a class="faq-tile" href="hero-prototype-O-faq.html#basics_ko">
       <div class="faq-q" data-i18n="home.faq.q3">노드를 운영하려면 GPU가 필요합니까?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a3">별다른 사양은 필요 없습니다. 클라이언트는 노트북이나 적당한 VPS에서 돌아갑니다 — GPU도 필요 없습니다. 직접 운영하기 어렵다면 TGE 시점부터 Node-as-a-Service를 이용할 수 있습니다.</p>
     </a>

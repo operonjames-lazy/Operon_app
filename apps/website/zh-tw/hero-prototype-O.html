@@ -2518,36 +2518,6 @@
   outline: 2px solid var(--ice, #93C5FD);
   outline-offset: 3px;
 }
-
-/* === a11y: prefers-reduced-motion === */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    animation-delay: 0s !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  .radial-grid .hex,
-  .feed-label::before,
-  .status-pill .status-dot,
-  .hero-pill .dot,
-  .caret {
-    animation: none !important;
-  }
-}
-
-/* === a11y: keyboard focus === */
-:focus-visible {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-.lang-switcher:focus-visible,
-.lang-switcher:focus {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-}
 /* Dead-link disable: any anchor still pointing at "#" is a placeholder
    that scrolls-to-top in production. Visually demote it and stop the
    click. The footer "Read the deck" CTA, footer link columns, etc. all
@@ -3058,7 +3028,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
       <div class="faq-q" data-i18n="home.faq.q2">什麼是節點？<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a2">在 Arbitrum 或 BNB Smart Chain 上的永久 ERC-721 授權。節點協調、驗證並分發智能體工作——並因此賺取 $OPRN。永久硬性上限 10 萬。</p>
     </a>
-    <a class="faq-tile" href="hero-prototype-O-faq.html#basics">
+    <a class="faq-tile" href="hero-prototype-O-faq.html#basics_zh_tw">
       <div class="faq-q" data-i18n="home.faq.q3">運行節點需要 GPU 嗎？<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a3">不需要。客戶端可在筆電或一般 VPS 上運行——無須 GPU。不想自運行？TGE 提供 Node-as-a-Service。</p>
     </a>

@@ -2518,36 +2518,6 @@
   outline: 2px solid var(--ice, #93C5FD);
   outline-offset: 3px;
 }
-
-/* === a11y: prefers-reduced-motion === */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    animation-delay: 0s !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  .radial-grid .hex,
-  .feed-label::before,
-  .status-pill .status-dot,
-  .hero-pill .dot,
-  .caret {
-    animation: none !important;
-  }
-}
-
-/* === a11y: keyboard focus === */
-:focus-visible {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-.lang-switcher:focus-visible,
-.lang-switcher:focus {
-  outline: 2px solid var(--ice, #93C5FD);
-  outline-offset: 3px;
-}
 /* Dead-link disable: any anchor still pointing at "#" is a placeholder
    that scrolls-to-top in production. Visually demote it and stop the
    click. The footer "Read the deck" CTA, footer link columns, etc. all
@@ -3058,7 +3028,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
       <div class="faq-q" data-i18n="home.faq.q2">Node là gì?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a2">Một giấy phép ERC-721 vĩnh viễn trên Arbitrum hoặc BNB Smart Chain. Node điều phối, xác thực và phân phối công việc của agent — và nhận $OPRN cho hoạt động đó. Hard cap 100,000 mãi mãi.</p>
     </a>
-    <a class="faq-tile" href="hero-prototype-O-faq.html#basics">
+    <a class="faq-tile" href="hero-prototype-O-faq.html#basics_vi">
       <div class="faq-q" data-i18n="home.faq.q3">Tôi có cần GPU để chạy node không?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a3">Không. Client chạy trên laptop hoặc VPS phổ thông — không cần GPU. Không muốn tự chạy? Node-as-a-Service có sẵn tại TGE.</p>
     </a>
