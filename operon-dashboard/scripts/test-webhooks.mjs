@@ -82,6 +82,16 @@ function parseArgs() {
       process.exit(0);
     }
   }
+  // No args at all: print usage and exit cleanly. The npm script invokes
+  // this with explicit --vendor / --mode flags; running it bare from the
+  // CLI used to hard-exit with code 2 and no output, leaving operators
+  // staring at a blank prompt. Now it shows the same help block as --help.
+  if (process.argv.length <= 2) {
+    console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(2, 36).join('\n'));
+    console.log('\nQuick run: pnpm test:webhooks (alchemy + quicknode signature-only)');
+    console.log('Or:        pnpm test:webhooks:alchemy   /   pnpm test:webhooks:quicknode');
+    process.exit(0);
+  }
   if (!out.vendor || !['alchemy', 'quicknode'].includes(out.vendor)) {
     fatal('--vendor alchemy|quicknode is required');
   }
