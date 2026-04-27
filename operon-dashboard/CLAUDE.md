@@ -40,20 +40,20 @@ See `docs/PRODUCT.md` for full programme mechanics.
 
 **Backend:** Next.js API routes on Vercel · Supabase Postgres + Realtime · Upstash Redis (rate limiting, fail-closed in production)
 
-**Contracts:** Solidity 0.8.24 · Hardhat · 64 tests passing · deployed to Arbitrum Sepolia testnet (mainnet pending). Role split — cold `owner` (Ownable2Step, Safe post-novation) holds treasury/price/pause/withdraw; hot `admin` (rotating key) holds `addReferralCode{s}` / `removeReferralCode` / `setTierActive` so Safe novation does not break operational flows.
+**Contracts:** Solidity 0.8.24 · Hardhat · suite covers v2 voucher checkout + cross-domain math convergence (run `cd contracts && npx hardhat test`) · deployed to Arbitrum Sepolia testnet (mainnet pending). Role split — cold `owner` (Ownable2Step, Safe post-novation) holds treasury/price/pause/withdraw; hot `admin` (rotating key) holds `addReferralCode{s}` / `removeReferralCode` / `setTierActive` so Safe novation does not break operational flows.
 
 **Indexing:** Alchemy webhooks (Arbitrum) · QuickNode webhooks (BSC) · 5-minute reconciliation cron as backup
 
 **Monitoring:** Sentry (configured). PostHog deferred to Phase 2 — earlier docs claimed an integration that does not exist in code.
 
-**Testing:** Hardhat (contracts, 64 tests) · Playwright (`@playwright/test`, E2E — scaffolded; `e2e/ui/*` runnable, `e2e/full-chain/*` stubbed pending fixture wiring)
+**Testing:** Hardhat (contracts) · Playwright (`@playwright/test`, E2E — scaffolded; `e2e/ui/*` runnable, `e2e/full-chain/*` stubbed pending fixture wiring)
 
 **Key commands:**
 ```bash
 pnpm install
 pnpm dev                                  # Next dev server
 npx next build                            # production build + TS check
-cd contracts && npx hardhat test          # 64 contract tests
+cd contracts && npx hardhat test          # smart contract suite
 pnpm test:e2e                             # Playwright UI smoke (requires pnpm dev-capable env)
 pnpm test:webhooks --vendor alchemy --mode signature-only   # local webhook harness
 

@@ -18,7 +18,7 @@
   - **NEW (will be reverted in Phase 5):** `referral_code_chain_state.owner_wallet` column (mig 024) — Pattern A patch superseded by voucher checkout
 - ✅ 28 `/review-ship` findings closed in code (5 blocking, 11 required, 12 advisory)
 - ✅ Suspended-partner commission audit run — **0 bad rows, $0 exposure** (no partners suspended yet)
-- ✅ `npx tsc --noEmit`, **`npx hardhat test` (54 tests, all voucher-binding suites included)**, `npx next build` all green
+- ✅ `npx tsc --noEmit`, **`npx hardhat test` (all suites pass — current count grows with regression coverage; check `npx hardhat test 2>&1 | tail -1` rather than copying a literal here)**, `npx next build` all green
 - ✅ NodeSale v2 voucher architecture shipped — solves the self-referral on-chain bypass + the per-chain tier-supply divergence flagged in 2026-04-27 independent review (see DECISIONS D31)
 
 ---
@@ -37,6 +37,26 @@ migrations in order:
   atomic reservation-aware event ingest, DB quantity/TTL/discount clamps
 - `029_admin_failed_events_health.sql` - Postgres aggregation for admin health
   failed-event stats
+- `030_lock_public_schema_and_rounding.sql` - revoke broad anon/authenticated
+  access on `public`, regrant narrow column SELECT on `sale_tiers` + `sale_config`
+  only. **Mandatory** — without this, anon/auth keys can read customer, partner,
+  commission, payout, audit, and admin aggregate data via PostgREST
+- `031_voucher_amount_canonicalisation.sql` - reverts mig 030's discount math
+  regression (off-by-one cent vs the contract on 38 of 40 tiers under discount),
+  introduces `sale_reservations.expected_amount_cents` as the single source of
+  truth for the post-discount amount, and disables RLS on `sale_config` so
+  Realtime postgres_changes are delivered to anon subscribers (mig 030's
+  column GRANT was a no-op while RLS was active with no public policy). Adds
+  `admin_money_invariants()` RPC (tier_drift / stuck_failed_events /
+  completed_no_purchase).
+- `032_cron_alert_sentinel.sql` - Telegram dedup for the cron's per-tick
+  invariant alert. New `cron_alert_sentinel` table + `cron_alert_should_fire`
+  RPC; without this, every cron tick that sees drift would page on-call.
+- `033_invariants_dedup_truthiness.sql` - self-review fixes: I3 actually
+  counts stuck rows (was dead code), `jsonb_agg` ordered for deterministic
+  signature hashes, `sale_reservations.discount_bps` table CHECK tightened
+  to `≤ 1500` to match the RPC clamp + the implicit cap in mig 031's
+  expected-amount CHECK.
 
 Then run:
 
@@ -44,8 +64,11 @@ Then run:
 node scripts/verify-pending-migrations.mjs
 ```
 
-Expected: 025, 026, 027, 028, and 029 probes are present/clean. Do not promote
-the Vercel build if either 028 or 029 is missing.
+Expected: 025, 026, 027, 028, 029, 030, **031, 032, and 033** probes are
+present/clean, including `admin_money_invariants` returning `ok: true`. Do
+not promote the Vercel build if 030 / 031 / 032 / 033 is missing — those
+four land together as the post-review hotfix bundle (anon lockdown +
+voucher math fix + realtime fix + Telegram dedup + invariant truthiness).
 
 ### 1. Vercel Production env audit
 
@@ -56,6 +79,21 @@ Confirm with:
 ```bash
 vercel env ls --environment production
 ```
+
+**Capture the audit as evidence, not memory.** Before promoting the build,
+paste the command's output (with secret values redacted to their `Updated`
+timestamp + key name only — never the value) below this line in the runbook
+copy you ship to operations:
+
+```
+# vercel env ls --environment production    (audit run YYYY-MM-DD)
+# <paste redacted output here>
+```
+
+A missing variable here is the most common cause of "production checkout
+hangs". The audit artifact forces "I checked" into evidence rather than
+relying on operator memory; it has caught two regressions in prior cycles
+that re-running the command after the fact missed.
 
 Required (from `.env.example`):
 
@@ -92,7 +130,7 @@ replay is impossible by construction.
 ```bash
 cd contracts
 npx hardhat compile
-npx hardhat test                                      # all 54 must pass
+npx hardhat test                                      # all suites must pass
 # Set per-chain env (export TREASURY_ADDRESS / VOUCHER_SIGNER_ADDRESS /
 # USDC_ADDRESS / USDT_ADDRESS / TOKEN_DECIMALS / LOCAL_TIER_CAP /
 # ADMIN_CAP_PER_TIER first):
@@ -226,7 +264,7 @@ Safe-direct ownership:
 - [ ] Confirm Sentry is receiving events (force a 500 from a non-prod endpoint, watch the dashboard)
 - [ ] Confirm Telegram alerts fire (force a `failed_events.attempts >= 5` row, watch the channel)
 - [ ] Confirm `/api/health` returns 200 with `status: "healthy"` and `contracts.status === "ok"` on mainnet (the route now fails-closed on missing addresses when `NEXT_PUBLIC_NETWORK_MODE=mainnet`)
-- [ ] Run `verify-pending-migrations.mjs` against live DB one more time. Should report 025 + 026 + 027 + 028 + 029 present/clean, including `process_purchase_with_reservation` and `admin_failed_events_health`.
+- [ ] Run `verify-pending-migrations.mjs` against live DB one more time. Should report 025 + 026 + 027 + 028 + 029 + **030 + 031 + 032** present/clean, including `process_purchase_with_reservation` (asserts equality vs precomputed, no recompute), `admin_failed_events_health`, `admin_money_invariants` returning `ok: true`, and `cron_alert_should_fire`.
 
 ---
 

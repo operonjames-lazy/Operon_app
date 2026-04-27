@@ -35,7 +35,7 @@ Technical architecture: stack, schema, routes, data flow, invariants. The "how i
 pnpm install
 pnpm dev                         # Next dev server
 npx next build                   # production build + TS check
-cd contracts && npx hardhat test # smart contract tests (64 tests)
+cd contracts && npx hardhat test # smart contract tests
 ```
 
 ---
@@ -89,7 +89,7 @@ operon-dashboard/
 │   └── api/                   # Fetch helpers, route constants
 ├── contracts/
 │   ├── contracts/             # NodeSale.sol, OperonNode.sol, interfaces, mocks
-│   ├── test/                  # Hardhat tests (64 passing, incl. "Admin role separation")
+│   ├── test/                  # Hardhat tests (incl. "Admin role separation" + amount-math convergence)
 │   ├── scripts/               # Deploy scripts — deploy.ts, deploy-mock-usdc.ts (Arb, 6 dec), deploy-mock-usdt.ts (BSC, 18 dec), export-abis.ts
 │   └── hardhat.config.ts
 ├── supabase/
