@@ -35,13 +35,13 @@ Feature implementation tracker. Stable IDs that never renumber.
 |---|---|---|---|
 | F01 | Wallet connect via RainbowKit (Arbitrum + BSC) | ✅ Done | `app/providers.tsx`, `lib/wagmi/config.ts`. MetaMask/WalletConnect/Rabby/Coinbase. |
 | F02 | SIWE authentication + JWT issuance | ✅ Done | `app/api/auth/nonce`, `/api/auth/wallet`, `hooks/useAuth.ts`, `lib/auth.ts`. 24h JWT in httpOnly `operon_session` cookie + non-httpOnly `operon_auth=1` flag for client-side state. |
-| F03 | Purchase flow — approve (exact) + purchase + wait 1 block + success modal | ✅ Done | `app/(app)/sale/page.tsx`. localStorage recovery for pending txs. |
+| F03 | Purchase flow — reserve + approve + purchaseWithVoucher + submit + wait 1 block + success modal | ✅ Done | `app/(app)/sale/page.tsx`. NodeSale v2 voucher checkout: 12-min reservation TTL + EIP-712 voucher locks chain/qty/token/price/discount; selector changes drop the reservation. localStorage recovery for pending txs preserved. See F61 (voucher signer) + F62 (sale_reservations RPCs). |
 | F04 | Sale status API + tier tables (40 tiers, collective supply) | ✅ Done | `app/api/sale/status`, `/sale/tiers`. Migration `001_initial_schema.sql` + `002_seed_data.sql`. |
 | F05 | Sale stage control via `sale_config` (active/paused/closed) | ✅ Done | Migration `005_sale_config.sql`. Admin-controllable via pause endpoints. |
 | F06 | Supabase Realtime tier sellout notifications | ✅ Done | `hooks/useTierRealtime.ts`. Tables in `supabase_realtime` publication. |
 | F07 | Self-referral disclaimer on sale page (6 languages) | ✅ Done | Translated `sale.selfReferralWarning` key. |
 | F08 | Referral code URL capture (`?ref=CODE`) across all routes | ✅ Done | `stores/referral-code.ts` + `ReferralCapture` component in providers. |
-| F09 | Referral code validation endpoint + discount lookup | ✅ Done | `app/api/sale/validate-code/route.ts`. |
+| F09 | Referral code validation endpoint + discount lookup | ✅ Done | `app/api/sale/validate-code/route.ts` — preview-only (drives the green/red badge as user types). Voucher checkout (F61) is the real gate; `/api/sale/reserve` calls the same `lib/referrals/validate.ts` and bakes the discount into the signed voucher. |
 
 ### Referrals & Commissions
 
@@ -165,6 +165,24 @@ These are placeholders. Each maps roughly to a planned scope area. Open decision
 | F48 | — | 🔵 Future | Reserved |
 | F49 | — | 🔵 Future | Reserved |
 | F50 | — | 🔵 Future | Reserved |
+
+---
+
+## NodeSale v2 voucher checkout (F61–F65)
+
+Allocated under the F61+ "Unforeseen" range per the ID rule. Replaces the
+direct `purchase()` flow with a backend-signed EIP-712 voucher; resolves the
+self-referral on-chain bypass and the per-chain tier-supply divergence
+flagged in the 2026-04-27 independent review.
+
+| # | Feature | Status | Notes |
+|---|---|---|---|
+| F61 | EIP-712 voucher signer + verification | ✅ Done | `lib/voucher.ts` signs with `VOUCHER_SIGNER_PRIVATE_KEY` against domain `("OperonNodeSale","2")`. Fail-closed consistency check rejects when derived address ≠ `VOUCHER_SIGNER_ADDRESS`. Contract verifies signatures in `purchaseWithVoucher` via `ECDSA.recover`. Bound fields: buyer, chainId, saleContract, tierId, quantity, token, unitPrice, discountBps, codeHash, reservationId, deadline. |
+| F62 | `sale_reservations` table + 5 RPCs (atomic global inventory hold) | ✅ Done | Migration 026. RPCs: `reserve_node_purchase`, `mark_reservation_submitted`, `complete_reservation`, `mark_reservation_failed`, `expire_old_reservations`. State machine: reserved → submitted → completed (terminal); reserved → expired (terminal); submitted → failed (terminal); reserved → cancelled (terminal). 12-min default TTL. |
+| F63 | `POST /api/sale/reserve` + `POST /api/sale/reservations/submit` | ✅ Done | Auth-gated. Reserve calls `reserve_node_purchase` then signs + returns voucher. Submit narrows the reconcile watch window via `mark_reservation_submitted`; webhook can complete via `reservationId` from event topic if submit fails. |
+| F64 | Frontend reserve→approve→buy flow + countdown UX | ✅ Done | `app/(app)/sale/page.tsx`. Reserve button gates Approve+Buy. `ReservationCountdown` banner shows mm:ss; under 60s flips amber. Selector changes (chain/qty/token/code/wallet) drop the active reservation. 7 new i18n keys × 6 locales. |
+| F65 | NodeSale v2 contract + 53-test suite | ✅ Done | `contracts/contracts/NodeSale.sol` + `test/NodeSale.test.ts`. Stripped `validCodes`, `purchase()`, `tiers` mapping, admin role. Added `PurchaseVoucher` struct, `tierMinPrice`/`localTierCap`/`localTierSold`/`adminCap`/`adminMinted`/`usedReservations` mappings, `voucherSigner`, `MAX_BATCH_SIZE` constant. New events `NodePurchased(buyer, tier, quantity, reservationId, codeHash, totalPaid, token)`, `AdminMint`, `VoucherSignerUpdated`. `scripts/deploy.ts` rewritten to `(treasury, voucherSigner)` constructor + 40-tier seed loop. |
+| F66 | Phase 5 cleanup — strip dead referral-sync surface | 🔜 Next | Strip `admin-signer.ts` referral ABI + `getReferralAdminContract`, drop `lib/referrals/sync-on-chain.ts`, drop migration 024 `owner_wallet` column, drop `/api/admin/sale/tier-active`, drop `/api/dev/drain-referrals`, update `lib/webhooks/process-event.ts` `NodePurchased` ABI to include `bytes32 indexed reservationId` and link tx → `sale_reservations` row. |
 
 ---
 

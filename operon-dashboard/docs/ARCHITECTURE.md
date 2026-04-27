@@ -150,9 +150,24 @@ sale_tiers                  -- 40 rows
 tier_increments             -- idempotency log for increment_tier_sold()
 ├── PK (tx_hash, chain)
 ├── tier, quantity
+
+sale_reservations           -- v2 voucher checkout (migration 026)
+├── id UUID PK              -- → bytes32 reservationId via lib/voucher.ts
+├── buyer_wallet, chain, tier, quantity, token
+├── unit_price_cents, discount_bps, code_used, code_hash
+├── status: 'reserved' | 'submitted' | 'completed' | 'expired' | 'failed' | 'cancelled'
+├── expires_at, tx_hash, submitted_at, completed_at
+└── partial indexes on (expires_at) + (buyer_wallet) + (tier) for status IN ('reserved','submitted')
 ```
 
-Both `sale_config` and `sale_tiers` are in the Supabase Realtime publication — clients subscribe via `useTierRealtime`.
+Both `sale_config` and `sale_tiers` are in the Supabase Realtime publication — clients subscribe via `useTierRealtime`. `sale_reservations` deliberately is NOT in the publication — the buyer's view of their own reservation is local component state from the `/api/sale/reserve` response, not server-pushed.
+
+`sale_reservations` RPCs (migration 026):
+- `reserve_node_purchase(buyer, chain, qty, token, discount_bps, code_used, code_hash, ttl_seconds)` — atomic with `SELECT … FOR UPDATE` on the active `sale_tiers` row
+- `mark_reservation_submitted(id, tx_hash)` — `'reserved' → 'submitted'`, idempotent for same tx_hash
+- `complete_reservation(id, tx_hash, chain)` — accepts `'reserved'|'submitted'|'expired'`, bumps `tier_increments` + `sale_tiers.total_sold`, auto-advances tier when supply hits
+- `mark_reservation_failed(id, reason)`
+- `expire_old_reservations()` — sweeps `'reserved' AND expires_at < now() AND tx_hash IS NULL` → `'expired'`. Called by reconcile cron.
 
 ### Purchases
 
@@ -284,7 +299,9 @@ Authoritative types live in `types/api.ts`. All routes return JSON. Error envelo
 | `/api/home/summary` | GET | Home-page stat tiles |
 | `/api/sale/status` | GET | Current sale stage + active tier |
 | `/api/sale/tiers` | GET | All 40 tiers with sold counts |
-| `/api/sale/validate-code` | POST | Check a referral code, return discount |
+| `/api/sale/validate-code` | POST | Preview-only — drives the green/red badge as the user types. Backed by `lib/referrals/validate.ts`. The voucher checkout (`/reserve`) re-validates, so this endpoint is UX, not a gate |
+| `/api/sale/reserve` | POST | NodeSale v2 voucher checkout entry point. Atomic FOR-UPDATE inventory hold via `reserve_node_purchase` RPC, then signs an EIP-712 voucher (12-min TTL by default). Returns `{reservationId, voucher, signature, ...}` for the dapp to pass to `purchaseWithVoucher` |
+| `/api/sale/reservations/submit` | POST | UX-optimisation. Records the broadcast tx hash on the reservation row so reconcile narrows its watch window. Webhook can still complete via `reservationId` from event topic if this call fails |
 | `/api/nodes/mine` | GET | User's owned nodes (token IDs read on-chain via `OperonNode.tokenOfOwnerByIndex`, see R5-BUG-05) |
 | `/api/referrals/summary` | GET | Commission totals, network, code |
 | `/api/referrals/activity` | GET | Recent referral events |
@@ -559,12 +576,19 @@ Loaded via `next/font/google` in `app/layout.tsx`:
 
 Located in `contracts/contracts/`:
 
-- **`NodeSale.sol`** — tiered pricing, per-wallet limits, referral discount verification, pause/unpause, admin-mint support, deadline + max-price-per-node guards, transfer lock helpers
-- **`OperonNode.sol`** — ERC-721 with transfer lock, minter role, getNodeInfo view
+- **`NodeSale.sol`** (v2 — voucher checkout) — EIP-712 signed `PurchaseVoucher` is the only purchase path. Domain: `("OperonNodeSale","2")`. The contract verifies signatures against `voucherSigner` and enforces local-only safety nets: `tierMinPrice` floor, `localTierCap` per chain, `MAX_BATCH_SIZE=100`, `MAX_DISCOUNT_BPS` cap, accepted-token gate, replay protection via `usedReservations[reservationId]`. Backend (`sale_reservations` + RPCs) is the global source of truth across both chains; the contract trusts the voucher's tier/qty/price/discount because the signing key is held server-side. `adminMint` uses a separate `adminCap`/`adminMinted` accounting and does not consume the public cap.
+- **`OperonNode.sol`** — ERC-721 with transfer lock, minter role, `getNodeInfo` view
 
-Hardhat test suite in `contracts/test/NodeSale.test.ts` — 64 tests, all passing, covers: tier boundaries, wallet limits, paused-state behaviour, wrong token rejection, insufficient balance/allowance, batch purchase, transfer lock, admin functions, deadline + max-price guards, caller-contract guard, max-batch-size, per-tier pause, discount rounding, adminMint, `getNodeInfo` for non-existent tokens, and the `admin` role separation (rotation, onlyAdmin enforcement on `addReferralCode{s}` / `removeReferralCode` / `setTierActive`, owner-retained treasury/price/pause/withdraw, discount cap ≤ 100%).
+Hardhat test suite in `contracts/test/NodeSale.test.ts` — **53 tests**, all passing, covers: voucher binding (buyer / chainId / saleContract / tier / qty / token / price / discount / codeHash / reservationId / deadline — every field is part of the digest, so a tampered voucher recovers a different signer and reverts), `voucherSigner` rotation, replay protection via `usedReservations`, local tier cap, min price floor, quantity bounds, pause, accepted-token gate, smart-contract-wallet acceptance via Mock, AdminMint accounting, owner-only configuration surface (treasury / accepted tokens / pause / withdraw / setVoucherSigner / Ownable2Step transfer), discount cap, withdraw guards, transfer lock.
 
-**Role separation (R7):** `NodeSale` exposes two on-chain roles. `owner` (Ownable2Step, cold Safe post-novation) controls treasury, price, pause, `setAcceptedToken`, `withdrawFunds`, `setAdmin`, and ownership handover. `admin` (rotating hot key, default = deployer at constructor time) controls `addReferralCode`, `addReferralCodes`, `removeReferralCode`, `setTierActive` — the functions that fire continuously in production and cannot wait on multi-sig latency. Owner rotates or zeros the admin via `setAdmin(address)`. The backend's `ADMIN_PRIVATE_KEY` in Vercel maps to the `admin` role. Pre-mainnet handover plan: see `docs/DECISIONS.md` → D-pending "Mainnet contract ownership via Gnosis Safe."
+**Voucher checkout flow:**
+1. Buyer hits `POST /api/sale/reserve` → backend calls `reserve_node_purchase` RPC (atomic `FOR UPDATE` on the active tier row, validates qty against `total_supply - total_sold - active_reservations`, validates code via `lib/referrals/validate.ts` with self-referral block) → inserts `sale_reservations` row → signs EIP-712 voucher with `VOUCHER_SIGNER_PRIVATE_KEY` and returns `{reservationId, voucher, signature, expiresAt}`
+2. Buyer's wallet `approve`s the exact `totalTokenAmount` to the sale contract, then calls `purchaseWithVoucher(voucher, signature)`
+3. Contract verifies: buyer == msg.sender, chainId == block.chainid, saleContract == address(this), block.timestamp <= deadline, `!usedReservations[reservationId]`, accepted token, qty within `[1, MAX_BATCH_SIZE]`, `localTierSold + qty <= localTierCap[tier]`, `unitPrice >= tierMinPrice[tier]`, `discountBps <= MAX_DISCOUNT_BPS`, `ECDSA.recover(digest, signature) == voucherSigner`. Marks `usedReservations[reservationId] = true` + bumps `localTierSold[tier]` (CEI), then `transferFrom` + `batchMint`. Emits `NodePurchased(buyer, tier, qty, reservationId, codeHash, totalPaid, token)`.
+4. Dapp fires `POST /api/sale/reservations/submit` with `{reservationId, txHash}` (fire-and-forget — webhook also catches via `reservationId` topic).
+5. Webhook (or 5-min reconcile cron) sees `NodePurchased`, looks up the reservation by `reservationId`, calls `complete_reservation` RPC → bumps `tier_increments` + `sale_tiers.total_sold`, auto-advances tier when supply hits.
+
+**Role layout (v2):** `Ownable2Step` `owner` (cold Safe post-novation) controls treasury / price floors / local caps / pause / withdraw / `setVoucherSigner` / ownership handover. The hot `admin` role and `setAdmin` were stripped — the v1 `addReferralCode{s}` / `removeReferralCode` / `setTierActive` functions that previously needed continuous low-latency operation are gone (referral codes live entirely off-chain now, tier promotion is auto-triggered on `complete_reservation`). The `voucherSigner` is the new continuously-rotating role, but it lives entirely off-chain — only its public address is stored on the contract. Compromise of `VOUCHER_SIGNER_PRIVATE_KEY` is bounded by `tierMinPrice × MAX_DISCOUNT_BPS` per voucher (no arbitrary discounts) and is rotated via `setVoucherSigner(newAddress)` from the owner Safe.
 
 ### Contract Deployment Status
 

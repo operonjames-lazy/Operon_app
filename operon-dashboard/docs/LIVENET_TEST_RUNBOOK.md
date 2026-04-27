@@ -1,20 +1,25 @@
 # Livenet Test Runbook — what's done, what you owe
 
-**State as of 2026-04-26.** Use this once before the next mainnet smoke test.
-After running, append to `docs/PROGRESS.md` and close out items as they land.
+**State as of 2026-04-27 (post-NodeSale-v2 voucher checkout).** Use this once before the next mainnet smoke test. After running, append to `docs/PROGRESS.md` and close out items as they land.
+
+> **Major shape change since the prior 2026-04-26 revision:** the contract is now NodeSale v2 (voucher checkout). Direct `purchase()` is gone. Deploy + env + smoke-test steps below have all been revised. The v1 contract addresses currently in `.env.local` are stale and must be replaced after the v2 deploy.
 
 ---
 
 ## Done (this session, no action needed)
 
-- ✅ Migrations 014 + 019 + 021 + 023 applied to hosted Supabase (live):
+- ✅ Migrations 014 + 019 + 021 + 023 + **024 + 025 + 026** applied to hosted Supabase (live):
   - `sale_tiers` now has all 40 tiers (1+2 sold counters preserved by mig 014's new guard)
   - `admin_killswitches` table exists, 12 base keys + 3 announcement keys seeded
   - `process_purchase_and_commissions` now skips uplines whose `epp_partners.status != 'active'`
-  - `admin_partner_leaderboard`, `admin_partner_pipeline`, `admin_user_purchase_counts`, `try_reconcile_lock` callable
+  - `admin_partner_leaderboard`, `admin_partner_pipeline`, `admin_user_purchase_counts` callable
+  - **NEW:** `cron_locks` table + `try_acquire_cron_lock` / `release_cron_lock` (mig 025) replaces session-scoped `pg_try_advisory_lock` (broken under PostgREST connection pooling)
+  - **NEW:** `sale_reservations` + `reserve_node_purchase` / `mark_reservation_submitted` / `complete_reservation` / `mark_reservation_failed` / `expire_old_reservations` (mig 026)
+  - **NEW (will be reverted in Phase 5):** `referral_code_chain_state.owner_wallet` column (mig 024) — Pattern A patch superseded by voucher checkout
 - ✅ 28 `/review-ship` findings closed in code (5 blocking, 11 required, 12 advisory)
 - ✅ Suspended-partner commission audit run — **0 bad rows, $0 exposure** (no partners suspended yet)
-- ✅ `npx tsc --noEmit`, `npx hardhat test` (64), `npx next build` all green
+- ✅ `npx tsc --noEmit`, **`npx hardhat test` (53 tests, all voucher-binding suites included)**, `npx next build` all green
+- ✅ NodeSale v2 voucher architecture shipped — solves the self-referral on-chain bypass + the per-chain tier-supply divergence flagged in 2026-04-27 independent review (see DECISIONS D31)
 
 ---
 
@@ -38,7 +43,11 @@ Required (from `.env.example`):
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `SUPABASE_DB_URL`
 - `JWT_SECRET` (rotated; **must not** match the placeholder lib/auth.ts guards against — refuses boot on prod+mainnet otherwise)
 - `CRON_SECRET` (rotated)
-- `ADMIN_WALLETS` (lowercased CSV), `ADMIN_PRIVATE_KEY` (testnet hot key; rotates again at Safe novation step 6)
+- `ADMIN_WALLETS` (lowercased CSV), `ADMIN_PRIVATE_KEY` (testnet hot key for the `pause`/`unpause`/`withdraw` Safe-bypass paths only; rotates at Safe novation step 6)
+- **NEW:** `VOUCHER_SIGNER_ADDRESS` (public address of the voucher signer — must equal what the contract was deployed with, or last `setVoucherSigner`'d to)
+- **NEW:** `VOUCHER_SIGNER_PRIVATE_KEY` (server-only, NEVER `NEXT_PUBLIC_*`. Used by `lib/voucher.ts` to EIP-712-sign every `PurchaseVoucher`. Rotate by: (1) generate new keypair, (2) `setVoucherSigner(newAddress)` from the owner Safe, (3) swap this env var. Active vouchers signed with the prior key remain valid until their `deadline` lapses — 12 min default.)
+- **NEW:** `LOCAL_TIER_CAP` (consumed by `contracts/scripts/deploy.ts`, default 1250 — per-chain hard cap per tier, deliberately slack so backend can route all volume to one chain)
+- **NEW:** `ADMIN_CAP_PER_TIER` (consumed by `contracts/scripts/deploy.ts`, default 1250 — `adminMint` budget per tier, independent of `LOCAL_TIER_CAP`)
 - `NEXT_PUBLIC_NETWORK_MODE=mainnet` (when switching from testnet)
 - `NEXT_PUBLIC_ALCHEMY_KEY`, `NEXT_PUBLIC_BSC_QUICKNODE_URL`
 - `ARBITRUM_RPC_URL`, `ARBITRUM_RPC_URL_FALLBACK`, `BSC_RPC_URL`, `BSC_RPC_URL_FALLBACK`
@@ -53,21 +62,37 @@ Required (from `.env.example`):
 **Must NOT be set** in production: `DEV_ENDPOINTS_ENABLED`, `DEV_INDEXER_SECRET`.
 PostHog vars: not used (claim removed from docs in this session).
 
-### 2. Mainnet contract deploy
+### 2. Mainnet contract deploy (NodeSale v2 — voucher checkout)
+
+**Pre-deploy:** generate the voucher signer keypair on a clean machine. The
+public address goes into `VOUCHER_SIGNER_ADDRESS` (committed via Vercel env);
+the private key goes into `VOUCHER_SIGNER_PRIVATE_KEY` on the API server only.
+Same key for both chains is fine — vouchers bind `chainId` so cross-chain
+replay is impossible by construction.
 
 ```bash
 cd contracts
 npx hardhat compile
-npx hardhat test                                      # all 64 must pass
+npx hardhat test                                      # all 53 must pass
+# Set per-chain env (export TREASURY_ADDRESS / VOUCHER_SIGNER_ADDRESS /
+# USDC_ADDRESS / USDT_ADDRESS / TOKEN_DECIMALS / LOCAL_TIER_CAP /
+# ADMIN_CAP_PER_TIER first):
 npx hardhat run scripts/deploy.ts --network arbitrum  # mainnet
 npx hardhat run scripts/deploy.ts --network bsc       # mainnet
 ```
+
+`deploy.ts` constructs `NodeSale(treasury, voucherSigner)`, then in a single
+script run sets the node contract, accepted tokens (USDC + USDT per chain),
+and seeds all 40 tiers via `setTierMinPrice` + `setLocalTierCap` +
+`setAdminCap`. Owner is the deployer at deploy time — rotate to the Safe
+post-novation (step 6).
 
 Capture the deployed `NodeSale` + `OperonNode` addresses per chain. Update Vercel env:
 
 - `NEXT_PUBLIC_SALE_CONTRACT_ARB` / `_BSC`
 - `NEXT_PUBLIC_NODE_CONTRACT_ARB` / `_BSC`
 - `SALE_CONTRACT_ARBITRUM` / `_BSC`
+- Confirm `VOUCHER_SIGNER_ADDRESS` matches what the deploy script printed (set this BEFORE deploy; if they diverge, `setVoucherSigner(realAddress)` from the deployer key before novation).
 
 ### 3. On-chain state verification
 
@@ -79,15 +104,19 @@ import { ethers } from 'ethers';
 const provider = new ethers.JsonRpcProvider(process.env.ARBITRUM_RPC_URL);
 const sale = new ethers.Contract(addr, [
   'function owner() view returns (address)',
-  'function admin() view returns (address)',
+  'function voucherSigner() view returns (address)',
   'function paused() view returns (bool)',
   'function treasury() view returns (address)',
+  'function tierMinPrice(uint256) view returns (uint256)',
+  'function localTierCap(uint256) view returns (uint256)',
 ], provider);
 console.log({
-  owner: await sale.owner(),       // should equal deployer (pre-Safe-novation)
-  admin: await sale.admin(),       // should equal hot key matching ADMIN_PRIVATE_KEY
-  paused: await sale.paused(),     // should be false at launch
-  treasury: await sale.treasury(), // should equal TREASURY_ADDRESS env
+  owner: await sale.owner(),                 // should equal deployer (pre-Safe-novation)
+  voucherSigner: await sale.voucherSigner(), // should equal VOUCHER_SIGNER_ADDRESS env
+  paused: await sale.paused(),               // should be false at launch
+  treasury: await sale.treasury(),           // should equal TREASURY_ADDRESS env
+  tier0MinPrice: (await sale.tierMinPrice(0)).toString(), // $500 in token base units
+  tier0LocalCap: (await sale.localTierCap(0)).toString(), // LOCAL_TIER_CAP env value
 });
 ```
 
@@ -143,24 +172,27 @@ On a Vercel preview deploy with mainnet contracts replaced by testnet:
 
 - [ ] `?ref=OPR-XXXXXX` link → fresh wallet → SIWE → `referrals` row inserted
 - [ ] `/sale` → paste a referral code → discount applied (10% community / 15% EPP)
-- [ ] Approve exact-amount USDC → purchase → success modal after ≥1 block confirmation
-- [ ] Within ~30s: webhook fires → `purchases` row + `referral_purchases` rows for each upline level → upline `credited_amount` increments → if threshold crossed, `tier` updates and `admin_audit_log` has `tier_auto_promote` row
+- [ ] **Reserve test**: Click Reserve → POST `/api/sale/reserve` returns `{reservationId, voucher, signature, expiresAt, ...}`. New `sale_reservations` row visible with `status='reserved'`. Countdown banner shows mm:ss.
+- [ ] Approve exact-amount USDC → `purchaseWithVoucher(voucher, signature)` → success modal after ≥1 block confirmation
+- [ ] After tx broadcast: dapp fires POST `/api/sale/reservations/submit` → reservation row flips to `status='submitted'` with `tx_hash` populated
+- [ ] Within ~30s of confirmation: webhook fires → reservation flips to `status='completed'`, `purchases` row created, `referral_purchases` rows for each upline level, upline `credited_amount` increments. If threshold crossed, `tier` updates and `admin_audit_log` has `tier_auto_promote` row.
 - [ ] `/nodes` page: pending banner clears once `purchases` ingestion completes
-- [ ] **Suspended-partner test**: in a separate flow, suspend an EPP partner via `/admin/users/<id>` → "Change status" → make a purchase that would have walked through that partner → confirm their `credited_amount` does NOT increment (mig 021 enforcement) and the chain falls through to next active upline
+- [ ] **Voucher expiry test**: reserve, then idle for 12+ minutes without approving. Countdown hits 00:00, banner clears, reservation row transitions to `status='expired'` on next reconcile cron tick. New Reserve click should succeed against the same tier (inventory was released).
+- [ ] **Self-referral test**: as a wallet that already has a personal `OPR-XXXXXX` code, attempt to use that exact code on Reserve. `/api/sale/reserve` returns `{error: 'invalid_code', reason: 'self_referral'}` and no voucher is signed. Confirm DB has no new reservation row.
+- [ ] **Suspended-partner test**: suspend an EPP partner via `/admin/users/<id>` → "Change status" → make a purchase that would have walked through that partner → confirm their `credited_amount` does NOT increment (mig 021 enforcement) and the chain falls through to next active upline
 - [ ] **Killswitch test**: `/admin/settings` → toggle `admin.epp.invites` to disabled → POST `/api/admin/epp/invites` → expect 503 with `{"error":"killed"}`. Toggle back to enabled → confirm next call succeeds.
-- [ ] **Cron test**: `curl -H "Authorization: Bearer $CRON_SECRET" $URL/api/cron/reconcile` → expect 200 with results object. Run twice rapidly → second call should return `{"skipped":"lock_held"}` (mig 023 advisory lock).
+- [ ] **Cron test**: `curl -H "Authorization: Bearer $CRON_SECRET" $URL/api/cron/reconcile` → expect 200 with results object including `reservationsExpired` count. Run twice rapidly → second call should return `{"skipped":"lock_held"}` (mig 025 row-based lease).
 
 ### 7. Gnosis Safe novation (mainnet only)
 
-After the smoke test passes and you're ready to flip from hot-key admin to
+After the smoke test passes and you're ready to flip from hot-key owner to
 Safe-direct ownership:
 
-1. From deployer wallet: `nodeSale.setAdmin(<fresh hot key address>)` (preserves operational paths)
-2. Update `ADMIN_PRIVATE_KEY` in Vercel Production to the fresh hot key (rotate)
-3. From deployer: `nodeSale.transferOwnership(<Safe address>)`
+1. **NodeSale v2 has no `admin` role.** The v1 `setAdmin` step is gone. Owner is the only privileged role on the contract; the `voucherSigner` is a public address (its private key lives off-chain in `VOUCHER_SIGNER_PRIVATE_KEY` and never touches a user wallet). If you need to rotate the voucher signer post-novation: generate a new keypair, then have the Safe call `setVoucherSigner(newAddress)`, then swap `VOUCHER_SIGNER_PRIVATE_KEY` in Vercel.
+2. (Optional) If `ADMIN_PRIVATE_KEY` is still being used by `/api/admin/sale/{pause,unpause,withdraw}`, rotate it on the same cadence as `VOUCHER_SIGNER_PRIVATE_KEY`. These admin endpoints will stop working after the next step — they are deprecated paths kept for emergency-pause-from-API in the testnet phase.
+3. From deployer wallet: `nodeSale.transferOwnership(<Safe address>)`
 4. Safe → call `nodeSale.acceptOwnership()` (Ownable2Step second step)
-5. From now on, `/api/admin/sale/{pause,unpause,withdraw}` will revert when called
-   from the hot key — this is by design. Drive those actions via Safe UI / SDK.
+5. From now on, `/api/admin/sale/{pause,unpause,withdraw}` will revert when called from the hot key — this is by design. Drive those actions via Safe UI / SDK.
 6. Update incident-response runbook (`docs/OPERATIONS.md §5`) to mention this.
 
 ### 8. Final pre-flight
@@ -169,7 +201,7 @@ Safe-direct ownership:
 - [ ] Confirm Sentry is receiving events (force a 500 from a non-prod endpoint, watch the dashboard)
 - [ ] Confirm Telegram alerts fire (force a `failed_events.attempts >= 5` row, watch the channel)
 - [ ] Confirm `/api/health` returns 200 with `status: "healthy"` and `contracts.status === "ok"` on mainnet (the route now fails-closed on missing addresses when `NEXT_PUBLIC_NETWORK_MODE=mainnet`)
-- [ ] Run `verify-migrations.mjs` against live DB one more time. Should report all 23 migrations live.
+- [ ] Run `verify-migrations.mjs` against live DB one more time. Should report all 26 migrations live (23 pre-v2 + 024 owner_wallet + 025 cron lock lease + 026 sale_reservations).
 
 ---
 

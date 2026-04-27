@@ -1103,3 +1103,75 @@ Static — drop on any web host. Cross-links use literal filenames (e.g. `hero-p
 - **Operator-side mainnet items still owed** (carry-over from R14 / R15): Vercel env rotation, mainnet contract deploy, webhook rewire, live smoke test, Gnosis Safe novation. None touched this session.
 
 ---
+
+## 2026-04-27 (session 7) — NodeSale v2 voucher checkout (Phases 1–4 of 5)
+
+Independent code review surfaced the on-chain self-referral bypass (15% treasury loss per case) plus a global tier-supply divergence between Arb and BSC. Resolved both architecturally by replacing direct `purchase()` with backend-signed EIP-712 voucher checkout. The contract becomes a local safety-net per chain; the backend becomes the global source of truth for inventory across both chains.
+
+### Completed
+
+**Phase 1 — DB.** Migration `026_sale_reservations.sql` adds `sale_reservations` table (full state machine: reserved → submitted → completed, with expired/failed/cancelled terminals) plus 5 RPCs:
+- `reserve_node_purchase(buyer, chain, qty, token, discount_bps, code_used, code_hash, ttl_seconds)` — atomic with `FOR UPDATE` on the active tier so concurrent calls can't oversubscribe across chains
+- `mark_reservation_submitted(id, tx_hash)`
+- `complete_reservation(id, tx_hash, chain)` — accepts `'reserved'|'submitted'|'expired'` for recovery; bumps `tier_increments` + `total_sold`; auto-advances tier
+- `mark_reservation_failed(id, reason)`
+- `expire_old_reservations()` — sweeps stale `reserved` rows; called by reconcile cron every 5 min
+
+Also: migration `024_referral_code_owner_wallet` (Pattern A self-referral patch — superseded by Phase 2 voucher; will be cleaned up in Phase 5) and migration `025_cron_lock_lease` (replaced session-scoped advisory lock with row-based TTL lease via `try_acquire_cron_lock` + `release_cron_lock` since PostgREST connection pooling broke `pg_try_advisory_lock`).
+
+**Phase 2 — Contract.** Rewrote `contracts/contracts/NodeSale.sol` for voucher checkout:
+- Stripped: `validCodes`, `codeOwner`, `codeDiscountBps`, `add/removeReferralCode`, `purchase()`, `tiers` mapping + `setTier` + `setTierActive`, `maxBatchSize` storage, `maxPerWallet`, `purchaseCount`, admin role + `onlyAdmin` modifier
+- Added: `PurchaseVoucher` struct (11 fields), EIP-712 typed-data verification (`OperonNodeSale` v2), `tierMinPrice` / `localTierCap` / `localTierSold` / `adminCap` / `adminMinted` / `usedReservations` mappings, `voucherSigner` state, `MAX_BATCH_SIZE=100` constant
+- New `purchaseWithVoucher(voucher, signature)` runs CEI-ordered checks (buyer/chainId/saleContract/deadline binding, replay protection via `usedReservations`, accepted token gate, qty bounds, `localTierCap`, `tierMinPrice` floor, `MAX_DISCOUNT_BPS` cap, ECDSA recover == `voucherSigner`) then marks `usedReservations` + bumps `localTierSold` before `transferFrom` + `batchMint`
+- `adminMint` separated from public cap (uses `adminCap`/`adminMinted`)
+- Tests: 53 passing (was 70). Dropped obsolete suites; added EIP-712 voucher-binding tests (buyer / chainId / saleContract / deadline / replay / signer rotation / tampered-field), local tier cap, min price floor, smart-contract-wallet acceptance via Mock, AdminMint, Owner-only configuration, Withdraw, Transfer lock.
+- `scripts/deploy.ts` now takes `(treasury, voucherSigner)` and seeds 40 tiers via `setTierMinPrice` + `setLocalTierCap` + `setAdminCap` in a tx loop. Reads new envs `VOUCHER_SIGNER_ADDRESS`, `LOCAL_TIER_CAP`, `ADMIN_CAP_PER_TIER`.
+
+**Phase 3 — Backend API.** New files:
+- `lib/voucher.ts` — EIP-712 signer with fail-closed consistency check (refuses to sign when `VOUCHER_SIGNER_PRIVATE_KEY` derives a different address than `VOUCHER_SIGNER_ADDRESS`). UUID↔bytes32 helpers for the `reservationId` field. Cents → token-base-units handles arb (6 dec) / bsc (18 dec).
+- `lib/referrals/validate.ts` — extracted from `/api/sale/validate-code`. Drops the now-obsolete on-chain `referral_code_chain_state` `pending_sync` / `revoked` checks since the contract no longer has a `validCodes` mapping.
+- `POST /api/sale/reserve` — auth-gated. Rate-limited 30/min/IP. Validates inputs, resolves token + sale-contract addresses for chain, validates referral code (caller-id self-referral block), calls `reserve_node_purchase` RPC for atomic FOR-UPDATE inventory hold, signs an EIP-712 voucher with `deadline = expires_at`. Returns reservation row + serialised voucher + signature.
+- `POST /api/sale/reservations/submit` — auth-gated. Verifies caller owns the reservation (defence-in-depth on top of UUID entropy), delegates the state-machine transition to `mark_reservation_submitted`. Idempotent for re-submit of the same `tx_hash`.
+- Reconcile cron now calls `expire_old_reservations()` at top.
+
+**Phase 4 — Frontend.** Reworked `app/(app)/sale/page.tsx`:
+- New "Reserve" button gates Approve + Buy. Calls `/api/sale/reserve` and stores the voucher locally; the buyer then has 12 minutes to approve + buy at the locked price.
+- Buy now calls `purchaseWithVoucher(voucher, signature)`. Removed the old `maxPricePerNode` slippage param + on-frontend `keccak256` codeHash derivation (both gone in v2).
+- New `ReservationCountdown` banner shows mm:ss remaining; under 60s flips to amber. Auto-resets when the deadline passes.
+- Selector resets (chain / qty / token / code / wallet switch) drop the active reservation since the voucher binds each.
+- After `purchaseHash` lands, fire-and-forget `POST /api/sale/reservations/submit` so reconcile narrows its watch window. Webhook can still complete via `reservationId` from the on-chain event if submit fails — submit is UX-optimisation, not a correctness gate.
+- 7 new i18n keys (`sale.reserving`, `sale.reserveAtPrice`, `sale.reservedExpiresIn`, `sale.voucherExpired`, `sale.reservationFailed`, `sale.tierQuantityExceeded`, `sale.walletLimitExceeded`) translated across all 6 locales.
+- `/api/sale/validate-code` refactored to call `lib/referrals/validate.ts`.
+
+**Required findings from /review-full closed:**
+- `TERMS_VERSION` bumped `'1.0' → '1.1'` since EPP T&C section 4 was edited (merkle-root mention removed, "subject to fraud review" added).
+- `VOUCHER_SIGNER_ADDRESS` / `LOCAL_TIER_CAP` / `ADMIN_CAP_PER_TIER` / `VOUCHER_SIGNER_PRIVATE_KEY` documented in OPERATIONS.md (`.env.example` is gitignored in this repo, so OPERATIONS.md is the tracked source of truth).
+
+### Decisions
+
+- **Backend is now global truth; contract is per-chain safety-net.** This solves the Critical-2 tier-supply divergence: the same global tier curve binds reservations across Arb + BSC because the API holds inventory atomically in `sale_reservations` before issuing any voucher. The contract still enforces a `localTierCap` per chain so a backend bug can't oversell on this chain, but the cap is intentionally slack — backend can route all volume to one chain if the other is down.
+- **Self-referral defended by signing key, not by contract storage.** The contract trusts whatever `discountBps` the voucher carries (capped on-chain by `MAX_DISCOUNT_BPS`). The backend signs with `VOUCHER_SIGNER_PRIVATE_KEY` only after `lib/referrals/validate.ts` blocks self-referral via `callerUserId === ownerUserId`. A leaked signer key bounds worst-case loss to `tierMinPrice × MAX_DISCOUNT_BPS` per voucher — not arbitrary discounts.
+- **EIP-712 domain version bumped to "2"** so v1 vouchers (none in flight, but a defensive choice) cannot be replayed against the new contract.
+
+### Verification
+
+- `npx tsc --noEmit` clean across both `contracts/` and `operon-dashboard/`
+- `npx hardhat test` → 53/53 pass (all voucher-binding suites green)
+- `npx next build` → both new routes registered (`/api/sale/reserve`, `/api/sale/reservations/submit`)
+- Lint clean on all new files; existing lint warnings unchanged
+- `/review-full` (single-pass, 6-pass methodology + REVIEW_ADDENDUM) found 0 blocking, 2 required, 3 advisory after Phase 1+2 — both required closed.
+- **Not verified end-to-end:** the live wallet → reserve → sign → buy round-trip needs `VOUCHER_SIGNER_PRIVATE_KEY` configured + a deployed v2 contract on testnet. Flagged as the verification gap before the next livenet test.
+
+### Open / next session
+
+- **Phase 5 (cleanup) outstanding.** Net deletions, but the webhook handler needs careful work because the `NodePurchased` event now carries `bytes32 indexed reservationId` instead of code-derived attribution:
+  - Strip `lib/admin-signer.ts` referral-admin ABI + `getReferralAdminContract`
+  - Drop `lib/referrals/sync-on-chain.ts`
+  - Drop migration `024` `owner_wallet` column (now obsolete — voucher path doesn't need it)
+  - Drop `/api/admin/sale/tier-active` route (contract no longer has `setTierActive`)
+  - Drop `/api/dev/drain-referrals`
+  - Update `lib/webhooks/process-event.ts` `NodePurchased` ABI to include `reservationId` and link tx → `sale_reservations` row in the handler
+- **Critical-2 contract-side tier divergence — RESOLVED** by voucher architecture. The user's "I am thinking how to resolve that" stance is no longer needed.
+- **Operator-side mainnet items still owed** (carry-over): mainnet v2 contract deploy with `(treasury, voucherSigner)` constructor, Vercel env rotation including the new `VOUCHER_SIGNER_ADDRESS` + `VOUCHER_SIGNER_PRIVATE_KEY`, webhook rewire to v2 ABI, live smoke test of the full reserve→sign→buy→submit flow, Gnosis Safe novation (note: D26 references `setAdmin` which no longer exists in v2 — `voucherSigner` rotates via `setVoucherSigner` from the owner Safe instead).
+
+---
