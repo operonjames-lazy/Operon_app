@@ -17,3 +17,19 @@ node_modules/
 
 # Archives / exports
 operon-tester-*.zip
+operon-website-*.zip
+operon-website-2026-*/
+
+# Loose design / verification screenshots at the repo root.
+# Operon-dashboard's own public/ assets are scoped under its package.
+/*.png
+/*.jpeg
+/*.jpg
+
+# MCP / Playwright cache directories left by tooling.
+.playwright-mcp/
+
+# Stray root-level pnpm-lock — workspace lockfiles live inside each package
+# (operon-dashboard/pnpm-lock.yaml). The root-level one was dropped from
+# tracking in the monorepo restructure (commit a127009).
+/pnpm-lock.yaml
