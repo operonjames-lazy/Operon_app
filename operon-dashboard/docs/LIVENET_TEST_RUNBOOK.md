@@ -231,6 +231,16 @@ Document outcome in `docs/DECISIONS.md` as a follow-up to D25.
 
 ### 6. Live testnet smoke (full purchase path, end-to-end)
 
+> **Why this is mandatory, not optional**: `pnpm test:e2e:chain` exists but
+> **the two full-chain Playwright specs are skipped** — the Hardhat node
+> fixture, Supabase test schema, and wagmi mock-connector branch are all
+> stubs (see `e2e/full-chain/purchase-arbitrum.spec.ts:18`). There is
+> **no automated reserve → approve → purchase → webhook → cron →
+> commission** proof in CI today. The checklist below is the substitute,
+> and it must be run end-to-end against a Vercel preview before mainnet
+> promotion. Wiring the full-chain fixture is a separately-scoped ~3-4 hr
+> task tracked in DECISIONS as a follow-up to D31.
+
 On a Vercel preview deploy with mainnet contracts replaced by testnet:
 
 - [ ] `?ref=OPR-XXXXXX` link → fresh wallet → SIWE → `referrals` row inserted
@@ -255,8 +265,27 @@ Safe-direct ownership:
 2. (Optional) If `ADMIN_PRIVATE_KEY` is still being used by `/api/admin/sale/{pause,unpause,withdraw}`, rotate it on the same cadence as `VOUCHER_SIGNER_PRIVATE_KEY`. These admin endpoints will stop working after the next step — they are deprecated paths kept for emergency-pause-from-API in the testnet phase.
 3. From deployer wallet: `nodeSale.transferOwnership(<Safe address>)`
 4. Safe → call `nodeSale.acceptOwnership()` (Ownable2Step second step)
-5. From now on, `/api/admin/sale/{pause,unpause,withdraw}` will revert when called from the hot key — this is by design. Drive those actions via Safe UI / SDK.
+5. From now on, `/api/admin/sale/{pause,unpause,withdraw}` returns a structured `{error: 'admin_not_owner', detail: '...'}` envelope instead of broadcasting a doomed tx — the post-mig-34 routes pre-check `contract.owner()` against `ADMIN_PRIVATE_KEY`'s derived address and bail out cleanly before burning gas. **The mainnet operator path for pause / unpause / withdraw is the Safe UI directly** (or a Safe SDK script). The app routes are intentionally dead post-novation; that's the design, not a bug.
 6. Update incident-response runbook (`docs/OPERATIONS.md §5`) to mention this.
+
+**Verifying the Safe-novation guard works:** after step 4, hit `/api/admin/sale/pause` once with `chain='arbitrum'` (or `'bsc'`). Expected response:
+
+```
+207 Multi-Status
+{
+  "ok": false,
+  "results": [
+    {
+      "chain": "arbitrum",
+      "status": "error",
+      "error": "admin_not_owner",
+      "detail": "On-chain owner is 0x<Safe>… but ADMIN_PRIVATE_KEY derives 0x<hot>…. Owner has rotated to a Safe — drive pause/unpause/withdraw via the Safe UI directly."
+    }
+  ]
+}
+```
+
+If you get a 200 instead, the Safe novation didn't actually land — re-check `nodeSale.owner()` against the Safe address.
 
 ### 8. Final pre-flight
 

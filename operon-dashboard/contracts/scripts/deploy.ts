@@ -1,4 +1,27 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
+
+// Mainnet network names from hardhat.config.ts. Any of these triggers
+// fail-closed env validation: missing TREASURY_ADDRESS, missing accepted
+// tokens, or missing TOKEN_DECIMALS/LOCAL_TIER_CAP/ADMIN_CAP_PER_TIER all
+// abort the deploy instead of silently using a fallback that would lock
+// real funds into the wrong wallet or ship a sale that accepts no tokens.
+const MAINNET_NETWORKS = new Set(["arbitrum", "arbitrumOne", "bsc"]);
+
+function isMainnet(): boolean {
+  return MAINNET_NETWORKS.has(network.name);
+}
+
+function requireEnv(key: string, why: string): string {
+  const v = process.env[key];
+  if (!v || v === "0x" + "0".repeat(40)) {
+    throw new Error(
+      `[deploy] ${key} is required on mainnet (${network.name}). ${why}\n` +
+      `Set it explicitly before running deploy:\n` +
+      `  export ${key}=<value>`,
+    );
+  }
+  return v;
+}
 
 /**
  * NodeSale v2 deploy script.
@@ -31,10 +54,31 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying contracts with account:", deployer.address);
 
-  const treasuryAddress = process.env.TREASURY_ADDRESS || deployer.address;
+  // Treasury fallback to the deployer is acceptable on local/testnet (the
+  // deployer is the operator's hot wallet anyway) but a deploy footgun on
+  // mainnet — sale proceeds would land in the dev wallet, not the cold
+  // multisig that actually receives funds. Force explicit env on mainnet.
+  let treasuryAddress: string;
+  if (isMainnet()) {
+    treasuryAddress = requireEnv(
+      "TREASURY_ADDRESS",
+      "This is the wallet that receives every USDC/USDT payment from buyers. " +
+      "Falling back to the deployer would lock real proceeds in the dev key.",
+    );
+  } else {
+    treasuryAddress = process.env.TREASURY_ADDRESS || deployer.address;
+  }
+
   const voucherSignerAddress = process.env.VOUCHER_SIGNER_ADDRESS;
   if (!voucherSignerAddress) {
     throw new Error("VOUCHER_SIGNER_ADDRESS env var is required");
+  }
+  if (isMainnet()) {
+    requireEnv(
+      "VOUCHER_SIGNER_ADDRESS",
+      "Mismatched signer at deploy time would brick every voucher signed " +
+      "on the API server until rotated via setVoucherSigner.",
+    );
   }
 
   // --- Deploy OperonNode ---
@@ -62,8 +106,26 @@ async function main() {
   console.log("NodeContract set on NodeSale:", nodeAddress);
 
   // --- Set accepted tokens (USDC / USDT) ---
-  const usdcAddress = process.env.USDC_ADDRESS;
-  const usdtAddress = process.env.USDT_ADDRESS;
+  // Mainnet REQUIRES at least one stablecoin be accepted, otherwise the
+  // sale contract would deploy in a state where every purchase reverts on
+  // "token not accepted". Testnet allows skipping if the operator is
+  // staging the deploy in pieces.
+  let usdcAddress = process.env.USDC_ADDRESS;
+  let usdtAddress = process.env.USDT_ADDRESS;
+  if (isMainnet()) {
+    // At least one of the two must be set; ideally both. We don't hard-
+    // require both because some deployments may launch USDC-only and add
+    // USDT after a separate due-diligence pass.
+    if (!usdcAddress && !usdtAddress) {
+      throw new Error(
+        "[deploy] mainnet deploy requires at least one of USDC_ADDRESS or USDT_ADDRESS " +
+        "to be set. Sale contract would otherwise deploy with no accepted tokens, " +
+        "reverting every purchase. Set the canonical token addresses for the chain.",
+      );
+    }
+    if (usdcAddress) usdcAddress = requireEnv("USDC_ADDRESS", "Canonical USDC address for the chain.");
+    if (usdtAddress) usdtAddress = requireEnv("USDT_ADDRESS", "Canonical USDT address for the chain.");
+  }
   if (usdcAddress) {
     await (await nodeSale.setAcceptedToken(usdcAddress, true)).wait();
     console.log("USDC accepted:", usdcAddress);
@@ -77,6 +139,11 @@ async function main() {
   // 40-tier price curve: Tier 1 at $500, +5% per tier (see docs/PRODUCT.md).
   // Contract tier indices are 0..39; the backend's DB tier column is
   // 1-indexed (display tier = contract index + 1).
+  if (isMainnet()) {
+    requireEnv("TOKEN_DECIMALS",     "6 on Arbitrum, 18 on BSC. Wrong value silently scales every tier price.");
+    requireEnv("LOCAL_TIER_CAP",     "Per-chain hard cap per tier (e.g. 1250). Defaulting on mainnet would over-cap one chain.");
+    requireEnv("ADMIN_CAP_PER_TIER", "Admin-mint budget per tier (e.g. 1250). Defaulting on mainnet would mis-size the admin allocation.");
+  }
   const TOKEN_DECIMALS = parseInt(process.env.TOKEN_DECIMALS || "6");
   const LOCAL_TIER_CAP = parseInt(process.env.LOCAL_TIER_CAP || "1250");
   const ADMIN_CAP_PER_TIER = parseInt(process.env.ADMIN_CAP_PER_TIER || "1250");
