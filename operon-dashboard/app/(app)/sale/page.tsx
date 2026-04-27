@@ -3,12 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, useChainId, useSwitchChain, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { encodePacked, keccak256, formatUnits } from 'viem';
+import { formatUnits } from 'viem';
 import { useAccountModal } from '@rainbow-me/rainbowkit';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { TierBar } from '@/components/ui/tier-bar';
 import { ChainSelector } from '@/components/ui/chain-selector';
 import { QuantitySelector } from '@/components/ui/quantity-selector';
 import { useSaleStatus } from '@/hooks/useSaleStatus';
@@ -26,11 +23,139 @@ const ERC20_ABI = [
   { name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
 ] as const;
 
+// NodeSale v2 voucher checkout. The 11-field PurchaseVoucher struct must be
+// passed as a single tuple; ethers/viem encode it positionally so the order
+// here MUST match NodeSale.sol's struct definition byte-for-byte.
 const SALE_ABI = [
-  { name: 'purchase', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'tierId', type: 'uint256' }, { name: 'quantity', type: 'uint256' }, { name: 'token', type: 'address' }, { name: 'codeHash', type: 'bytes32' }, { name: 'deadline', type: 'uint256' }, { name: 'maxPricePerNode', type: 'uint256' }], outputs: [] },
+  {
+    name: 'purchaseWithVoucher',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'voucher',
+        type: 'tuple',
+        components: [
+          { name: 'buyer', type: 'address' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'saleContract', type: 'address' },
+          { name: 'tierId', type: 'uint256' },
+          { name: 'quantity', type: 'uint256' },
+          { name: 'token', type: 'address' },
+          { name: 'unitPrice', type: 'uint256' },
+          { name: 'discountBps', type: 'uint16' },
+          { name: 'codeHash', type: 'bytes32' },
+          { name: 'reservationId', type: 'bytes32' },
+          { name: 'deadline', type: 'uint256' },
+        ],
+      },
+      { name: 'signature', type: 'bytes' },
+    ],
+    outputs: [],
+  },
 ] as const;
 
-type PurchaseStep = 'idle' | 'approving' | 'approved' | 'purchasing' | 'success' | 'error';
+type PurchaseStep = 'idle' | 'reserving' | 'approving' | 'approved' | 'purchasing' | 'success' | 'error';
+
+/**
+ * Voucher reservation countdown banner. Renders mm:ss remaining + a status
+ * tint (blue while there's runway, amber under 60s) so the buyer can pace
+ * their wallet interaction. Pure display — auto-expiry is handled by the
+ * effect on the page.
+ */
+function ReservationCountdown({
+  expiresAt,
+  nowMs,
+  t,
+}: {
+  expiresAt: number;
+  nowMs: number;
+  t: (key: string, params?: Record<string, string | number>) => string;
+}) {
+  const remainingMs = Math.max(0, expiresAt - nowMs);
+  const minutes = Math.floor(remainingMs / 60000);
+  const seconds = Math.floor((remainingMs % 60000) / 1000);
+  const isUrgent = remainingMs < 60_000;
+  const tintClass = isUrgent
+    ? 'border-amber/40 bg-amber/10 text-amber'
+    : 'border-[rgba(147,197,253,0.25)] bg-[rgba(59,130,246,0.10)] text-ice';
+  return (
+    <div className={`mb-3 rounded-lg border ${tintClass} px-3 py-2 text-center text-[11px]`}>
+      {t('sale.reservedExpiresIn', {
+        minutes: String(minutes),
+        seconds: seconds < 10 ? `0${seconds}` : String(seconds),
+      })}
+    </div>
+  );
+}
+
+/**
+ * Map the structured-error envelope returned by /api/sale/reserve to a
+ * user-visible message. Errors fall into three groups:
+ *   1. Inventory / pricing — show what's available
+ *   2. Auth / config — generic recoverable
+ *   3. Validation — usually the buyer's input is wrong
+ */
+function reserveErrorMessage(
+  code: string | undefined,
+  details: Record<string, unknown> | undefined,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
+  switch (code) {
+    case 'tier_quantity_exceeded': {
+      const available = typeof details?.available === 'number' ? details.available : 0;
+      return t('sale.tierQuantityExceeded', { available });
+    }
+    case 'wallet_limit_exceeded': {
+      const max = typeof details?.walletMax === 'number' ? details.walletMax : 0;
+      const used = typeof details?.walletUsed === 'number' ? details.walletUsed : 0;
+      return t('sale.walletLimitExceeded', { max, used });
+    }
+    case 'invalid_code':
+      return t('sale.codeInvalidBadge');
+    case 'unauthorized':
+      return t('sale.signInFirst');
+    case 'sale_closed':
+      return t('sale.stage.closed');
+    case 'no_active_tier':
+      return t('sale.noActiveTier');
+    case 'contract_not_deployed':
+    case 'token_not_configured':
+    case 'config_unavailable':
+    case 'voucher_signing_failed':
+    case 'reservation_failed':
+    default:
+      return t('sale.reservationFailed');
+  }
+}
+
+// Mirror of the API response from POST /api/sale/reserve. Voucher BigInts
+// arrive stringified (JSON-safe) so we re-coerce to bigint here. Once held
+// in state, the reservation locks chain + qty + token + code + price for
+// the buyer until expiresAt — any selector change resets it.
+interface Reservation {
+  reservationId: string;
+  reservationIdBytes32: string;
+  tier: number;
+  unitPriceCents: number;
+  discountBps: number;
+  expiresAt: number; // ms epoch
+  totalTokenAmount: bigint;
+  voucher: {
+    buyer: `0x${string}`;
+    chainId: bigint;
+    saleContract: `0x${string}`;
+    tierId: bigint;
+    quantity: bigint;
+    token: `0x${string}`;
+    unitPrice: bigint;
+    discountBps: number;
+    codeHash: `0x${string}`;
+    reservationId: `0x${string}`;
+    deadline: bigint;
+  };
+  signature: `0x${string}`;
+}
 
 export default function SalePage() {
   const { address, isConnected } = useAccount();
@@ -56,11 +181,15 @@ export default function SalePage() {
   const [codeFromUrl, setCodeFromUrl] = useState(false);
   const [codeToast, setCodeToast] = useState('');
   const [codeToastVariant, setCodeToastVariant] = useState<'success' | 'error'>('success');
-  // pending_sync retry state. Capped so we don't poll forever if the drain
-  // hits its own attempt ceiling (10). Resets on code change.
-  const [pendingSyncRetries, setPendingSyncRetries] = useState(0);
-  const PENDING_SYNC_RETRY_CAP = 10;
-  const PENDING_SYNC_RETRY_INTERVAL_MS = 8000;
+
+  // Voucher reservation. Non-null when the buyer holds an active reservation
+  // (status='reserved' or 'submitted'); reset on any selector change because
+  // the voucher binds chain+qty+token+price+code into the signature.
+  const [reservation, setReservation] = useState<Reservation | null>(null);
+  // Live ms-epoch tick for the countdown UI. Driven by an interval below; we
+  // intentionally re-render once a second rather than relying on Date.now()
+  // inside render (which wouldn't trigger React updates).
+  const [nowMs, setNowMs] = useState(() => Date.now());
   // Chain the approve/purchase tx was submitted on, captured at click time.
   // `useWaitForTransactionReceipt` defaults to the currently-active wagmi
   // chain, which is wrong if the user flips MetaMask mid-flight — the hook
@@ -149,16 +278,6 @@ export default function SalePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sale?.usedReferralCode]);
 
-  // Re-validate the code whenever the user switches chain — the pending_sync
-  // state is per-chain, so a code that passes on Arbitrum may still be
-  // syncing on BSC (or vice versa).
-  useEffect(() => {
-    if (referralCode) {
-      validateCode(referralCode);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedChain]);
-
   // Re-validate the code once the user connects — self-referral can only be
   // detected by `/api/sale/validate-code` when the caller is authenticated,
   // so the pre-signin capture path returns valid for anything including the
@@ -205,34 +324,17 @@ export default function SalePage() {
   const discountedPrice = discountBps > 0
     ? Math.floor(pricePerNode - (pricePerNode * discountBps / 10000))
     : pricePerNode;
-  // Integer-only token-amount math. `decimals - 2` converts USD cents to the
-  // token's base unit via pure BigInt multiplication, avoiding the float
-  // division (`cents / 100`) that the previous implementation used. USDC is
-  // 6 decimals on Arbitrum (scale = 10^4) and USDT is 18 decimals on BSC
-  // (scale = 10^16). Violated D-P1 "no float math for money" in the prior
-  // code; this path now respects it end-to-end.
+  // Integer-only token-amount math used for the on-screen quote totals only.
+  // The actual token amount the contract pulls is taken from
+  // `reservation.totalTokenAmount` once the buyer has reserved — the
+  // pre-reservation total is a preview, not a contract input.
   const tokenScale = BigInt(10) ** BigInt(decimals - 2);
-  const totalTokenAmount = BigInt(totalCents) * tokenScale;
-  const maxPricePerNodeToken = BigInt(pricePerNode) * tokenScale;
+  const previewTokenAmount = BigInt(totalCents) * tokenScale;
 
-  // Code hash for contract.
-  //
-  // R5-BUG-06: gate on `codeValid === true`. The NodeSale contract applies
-  // a discount whenever `validCodes[codeHash]` is true (NodeSale.sol L94),
-  // independent of any frontend check. For self-referral the backend
-  // `/api/sale/validate-code` returns `{valid:false, reason:'self_referral'}`
-  // and the UI surfaces a red "invalid" badge — but if we still hand the
-  // contract the buyer's own code hash, the on-chain mapping still matches
-  // (the code is validly registered) and the buyer gets the 10% off they
-  // were told they wouldn't. Zeroing the hash when the backend hasn't
-  // affirmed `valid:true` forces the contract onto its `if (codeHash != 0
-  // && validCodes[...])` false branch → full price. This same gate also
-  // protects against `pending_sync` and format-fail cases; only an
-  // explicitly valid response discounts.
-  const ZERO_CODE_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as const;
-  const codeHash = codeValid === true && referralCode
-    ? keccak256(encodePacked(['string'], [referralCode.toUpperCase()]))
-    : ZERO_CODE_HASH;
+  // Voucher checkout drops the on-chain `validCodes` mapping — the backend
+  // bakes the discount into the signed voucher and the contract trusts that
+  // discountBps subject to the on-chain MAX_DISCOUNT_BPS cap. Frontend no
+  // longer needs to derive a codeHash for contract consumption.
 
   // R5-BUG-02: pin reads to the *selected* chain, not the wallet's current
   // chain. On Arb, when the wallet briefly reports a stale chainId after
@@ -260,12 +362,17 @@ export default function SalePage() {
     query: { enabled: !!address && !!tokenAddress && !!saleAddress },
   });
 
-  // Defensive BigInt comparison — wagmi's `useReadContract` data type is
-  // `unknown`-flavoured in older v3 versions, so guard against the rare case
-  // where the provider returns a Number for allowance (would silently drop
-  // precision on the 18-decimal BSC USDT path).
-  const hasAllowance = typeof allowance === 'bigint' && allowance >= totalTokenAmount;
-  const hasSufficientBalance = typeof balance === 'bigint' && balance >= totalTokenAmount;
+  // Once the buyer has reserved, the contract will pull exactly
+  // `reservation.totalTokenAmount` (already accounting for the discount the
+  // voucher locked in). Pre-reservation we use the live preview total so
+  // the "insufficient balance" hint can render before the user clicks
+  // Reserve. Defensive BigInt comparison — wagmi's `useReadContract` data
+  // type is `unknown`-flavoured in older v3 versions, so guard against the
+  // rare case where the provider returns a Number for allowance (would
+  // silently drop precision on the 18-decimal BSC USDT path).
+  const requiredTokenAmount = reservation?.totalTokenAmount ?? previewTokenAmount;
+  const hasAllowance = typeof allowance === 'bigint' && allowance >= requiredTokenAmount;
+  const hasSufficientBalance = typeof balance === 'bigint' && balance >= requiredTokenAmount;
 
   // Approve transaction
   const { writeContract: approve, data: approveHash, error: approveWriteError, reset: resetApprove } = useWriteContract();
@@ -393,6 +500,52 @@ export default function SalePage() {
     }
   }, [address, step]);
 
+  // 1Hz tick while a reservation is active. Stops as soon as reservation
+  // is null (post-success / post-expiry / pre-reserve) so we're not paying
+  // a re-render-per-second tax on the idle page.
+  useEffect(() => {
+    if (!reservation) return;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [reservation]);
+
+  // Auto-expire the reservation client-side when the voucher deadline passes.
+  // The contract enforces `block.timestamp <= deadline` so a stale voucher
+  // would revert anyway — this just keeps the UI honest. Don't fire when the
+  // user is mid-purchase (their tx may still confirm in time on-chain).
+  useEffect(() => {
+    if (!reservation) return;
+    if (step === 'purchasing' || step === 'success') return;
+    if (nowMs >= reservation.expiresAt) {
+      setReservation(null);
+      setStep('idle');
+      setErrorMsg(t('sale.voucherExpired'));
+    }
+  }, [reservation, nowMs, step, t]);
+
+  // Fire-and-forget reservation submit once the wallet broadcasts the buy
+  // tx. The webhook can complete the reservation on its own via the
+  // reservationId emitted in NodePurchased, so this endpoint is purely a UX
+  // optimization: it narrows the watch window so a slow webhook doesn't
+  // leave the row in 'reserved' for the full 12-min TTL. We don't await or
+  // surface errors — the worst case is the reservation completes via the
+  // webhook path one block later than it could have.
+  const submitFiredForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!purchaseHash) return;
+    if (!reservation) return;
+    if (submitFiredForRef.current === purchaseHash) return;
+    submitFiredForRef.current = purchaseHash;
+    fetch('/api/sale/reservations/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reservationId: reservation.reservationId,
+        txHash: purchaseHash,
+      }),
+    }).catch(() => { /* fire and forget */ });
+  }, [purchaseHash, reservation]);
+
   // Reset local sale-flow state on wallet switch (R4-01). Wagmi updates
   // `address` in place on MetaMask account changes; without this, the new
   // wallet would see stale Purchase Complete, stale errors, or a stuck
@@ -416,6 +569,9 @@ export default function SalePage() {
       setPendingRecovery(null);
       setTxSlow(false);
       setSubmittedChainId(undefined);
+      // Voucher binds buyer wallet — wallet B can't sign for a voucher
+      // wallet A reserved against. Drop it so the new wallet starts fresh.
+      setReservation(null);
       resetApprove();
       resetPurchase();
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
@@ -475,33 +631,12 @@ export default function SalePage() {
     setTxSlow(false);
   }, [step]);
 
-  // Reset retries when the code changes (user typed new code, URL changed).
-  useEffect(() => {
-    setPendingSyncRetries(0);
-  }, [referralCode]);
-
-  // pending_sync retry driver. Fires a single timeout per render while
-  // `pendingSyncRetries` is in [1, CAP]; cleans up on unmount or on any
-  // change to the dependency set. This replaces the orphan setTimeout that
-  // previously lived inside validateCode().
-  useEffect(() => {
-    if (pendingSyncRetries === 0 || pendingSyncRetries > PENDING_SYNC_RETRY_CAP) return;
-    if (!referralCode) return;
-    const code = referralCode;
-    const timer = setTimeout(() => {
-      validateCode(code);
-      setPendingSyncRetries((n) => n + 1);
-    }, PENDING_SYNC_RETRY_INTERVAL_MS);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingSyncRetries, referralCode]);
-
   async function validateCode(code: string) {
     try {
       const res = await fetch('/api/sale/validate-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, chain: selectedChain }),
+        body: JSON.stringify({ code }),
       });
       const data = await res.json();
       setCodeValid(data.valid);
@@ -509,28 +644,88 @@ export default function SalePage() {
       if (!data.valid && data.reason === 'self_referral') {
         setCodeToastVariant('error');
         setCodeToast(t('sale.selfReferralBlocked'));
-        setPendingSyncRetries(0);
-      } else if (!data.valid && data.reason === 'pending_sync') {
-        setCodeToastVariant('error');
-        setCodeToast(t('sale.pendingSync'));
-        // Trigger the retry effect instead of firing a bare setTimeout from
-        // within an async function. Bare setTimeout had no cleanup path, so
-        // navigating away or swapping codes left orphan retries polling
-        // /api/sale/validate-code every 8 s for the tab's lifetime. The
-        // effect below handles timer cleanup + a hard retry cap.
-        setPendingSyncRetries((n) => (n === 0 ? 1 : n));
-      } else {
-        // Any other resolution (valid, invalid code, self-ref) stops retries.
-        setPendingSyncRetries(0);
       }
     } catch {
       setCodeValid(false);
     }
   }
 
+  async function handleReserve() {
+    if (!isCorrectChain) return;
+    if (!isAuthenticated()) {
+      setErrorMsg(t('sale.signInFirst'));
+      return;
+    }
+    // Mid-flight reset: if the user clicks Reserve again, drop any prior
+    // approve/purchase hash so a stale receipt observer can't fire success
+    // for the new flow. The selector-change handlers also call these but
+    // an explicit re-reserve is its own user-initiated reset path.
+    resetApprove();
+    resetPurchase();
+    setReservation(null);
+    setErrorMsg('');
+    setStep('reserving');
+    try {
+      const res = await fetch('/api/sale/reserve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chain: selectedChain,
+          quantity,
+          token: paymentToken,
+          code: codeValid === true && referralCode ? referralCode : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setStep('error');
+        setErrorMsg(reserveErrorMessage(data.error, data, t));
+        return;
+      }
+      // Coerce stringified BigInts back. The voucher must be passed to the
+      // contract as a tuple of BigInts (uint256/uint16/etc.) — wagmi's
+      // ABI encoder rejects strings on uint slots.
+      const v = data.voucher;
+      const reserved: Reservation = {
+        reservationId:        data.reservationId,
+        reservationIdBytes32: data.reservationIdBytes32,
+        tier:                 data.tier,
+        unitPriceCents:       data.unitPriceCents,
+        discountBps:          data.discountBps,
+        expiresAt:            new Date(data.expiresAt).getTime(),
+        // Total = unitPrice × qty × (10000 - discountBps) / 10000, all in
+        // token base units. The voucher carries unitPrice (pre-discount)
+        // so we re-derive the post-discount total here for the approve
+        // amount + balance check.
+        totalTokenAmount:     (BigInt(v.unitPrice) * BigInt(v.quantity) *
+                                BigInt(10000 - v.discountBps)) / BigInt(10000),
+        voucher: {
+          buyer:         v.buyer as `0x${string}`,
+          chainId:       BigInt(v.chainId),
+          saleContract:  v.saleContract as `0x${string}`,
+          tierId:        BigInt(v.tierId),
+          quantity:      BigInt(v.quantity),
+          token:         v.token as `0x${string}`,
+          unitPrice:     BigInt(v.unitPrice),
+          discountBps:   v.discountBps,
+          codeHash:      v.codeHash as `0x${string}`,
+          reservationId: v.reservationId as `0x${string}`,
+          deadline:      BigInt(v.deadline),
+        },
+        signature: data.signature as `0x${string}`,
+      };
+      setReservation(reserved);
+      setStep('idle'); // Ready for Approve / Purchase
+    } catch (err) {
+      setStep('error');
+      setErrorMsg(err instanceof Error ? err.message : t('sale.reservationFailed'));
+    }
+  }
+
   function handleApprove() {
     if (!tokenAddress || !saleAddress) return;
     if (!isCorrectChain) return;
+    if (!reservation) return; // Approve gated on an active reservation
     // R4-05: block writes until SIWE completes, otherwise a pre-SIWE Approve
     // queued in MetaMask can survive a close+reopen and be confirmed before
     // the replayed sign-in (MetaMask serves requests in FIFO order).
@@ -553,54 +748,29 @@ export default function SalePage() {
       address: tokenAddress as `0x${string}`,
       abi: ERC20_ABI,
       functionName: 'approve',
-      args: [saleAddress as `0x${string}`, totalTokenAmount],
+      args: [saleAddress as `0x${string}`, reservation.totalTokenAmount],
     });
   }
 
   function handlePurchase() {
     if (!saleAddress) return;
     if (!isCorrectChain) return;
-    // R4-05: same SIWE guard as handleApprove above.
+    if (!reservation) return;
     if (!isAuthenticated()) {
       setErrorMsg(t('sale.signInFirst'));
       return;
     }
-    // DB tiers are 1-indexed, the contract is 0-indexed. Guard against the
-    // currentTier being missing or malformed before subtracting.
-    if (!sale?.currentTier || sale.currentTier < 1) {
-      setStep('error');
-      setErrorMsg(t('sale.noActiveTier'));
-      return;
-    }
-    // R5 review: see handleApprove — reset the purchase mutation so a
-    // stale hash from a previous successful purchase does not make the
-    // step-gated success effect fire immediately when the user clicks
-    // Purchase a second time ("Buy More" after the R4-08 modal does not
-    // itself reset the mutation — it only resets `step` and quantity).
+    // Voucher deadline already encodes expiry (mirrors sale_reservations
+    // expires_at). The contract verifies block.timestamp <= voucher.deadline,
+    // so we don't need to add a separate deadline here.
     resetPurchase();
     setStep('purchasing');
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
-    // maxPricePerNode must be the BASE (undiscounted) price — the contract's
-    // slippage check runs BEFORE applying the discount on-chain. Integer
-    // BigInt scaling (see `maxPricePerNodeToken` above) avoids the float
-    // division the previous implementation used.
-    const maxPrice = maxPricePerNodeToken;
-    // Pin the submitted chain so `useWaitForTransactionReceipt` below can
-    // still find the tx if the user flips MetaMask to the other chain
-    // mid-flight.
     setSubmittedChainId(targetChainId);
     purchase({
       address: saleAddress as `0x${string}`,
       abi: SALE_ABI,
-      functionName: 'purchase',
-      args: [
-        BigInt(sale.currentTier - 1),
-        BigInt(quantity),
-        tokenAddress as `0x${string}`,
-        codeHash as `0x${string}`,
-        deadline,
-        maxPrice,
-      ],
+      functionName: 'purchaseWithVoucher',
+      args: [reservation.voucher, reservation.signature],
     });
   }
 
@@ -788,14 +958,17 @@ export default function SalePage() {
                   const next = e.target.value.toUpperCase();
                   setReferralCode(next);
                   // R5 review: invalidate the cached validation result on
-                  // every keystroke so the contract call path (R5-BUG-06)
-                  // doesn't pick up a stale `codeValid=true` from the
-                  // previous code while the user is typing a different
-                  // one. onBlur re-validates and restores codeValid. This
-                  // also zeros the displayed discount while the new code
-                  // is unvalidated — matches what the contract will do.
+                  // every keystroke so the voucher request path doesn't
+                  // pick up a stale `codeValid=true` from the previous
+                  // code while the user is typing a different one. onBlur
+                  // re-validates and restores codeValid. This also zeros
+                  // the displayed discount while the new code is
+                  // unvalidated — matches what the voucher will lock in.
                   setCodeValid(null);
                   setDiscountBps(0);
+                  // Code-change invalidates any active reservation since
+                  // the voucher locked the prior discount.
+                  setReservation(null);
                   // User typed — this is no longer a URL-applied code, so
                   // suppress the "code applied from URL" toast next round.
                   if (codeFromUrl) setCodeFromUrl(false);
@@ -819,10 +992,12 @@ export default function SalePage() {
           // not just local step. Without this, an Arb→BSC→Arb round-trip leaves
           // a stale `approveHash` set, which — combined with the R6-BUG-03
           // defensive disable clause — makes the Purchase button permanently
-          // disabled on the returned-to chain until page refresh.
+          // disabled on the returned-to chain until page refresh. Also drop
+          // any voucher reservation since the voucher is bound to chainId.
           setSelectedChain(chain);
           setStep('idle');
           setSubmittedChainId(undefined);
+          setReservation(null);
           resetApprove();
           resetPurchase();
         }} />
@@ -841,7 +1016,12 @@ export default function SalePage() {
               QuantitySelector was the lone gap. Ship-readiness finding B8. */}
           <QuantitySelector
             value={quantity}
-            onChange={(q) => { setQuantity(q); setStep('idle'); resetApprove(); }}
+            onChange={(q) => {
+              setQuantity(q);
+              setStep('idle');
+              setReservation(null); // voucher locks qty
+              resetApprove();
+            }}
             min={1}
             max={10}
           />
@@ -861,9 +1041,13 @@ export default function SalePage() {
                 // invalidates the existing approve. Reset mutation state so
                 // the R6-BUG-03 clause `(approveHash !== undefined && step
                 // !== 'approved')` doesn't leave Purchase stuck-disabled.
+                // Also drop the voucher reservation: voucher.token binds to
+                // the specific stablecoin contract; switching token would
+                // mean the contract pulls the wrong currency.
                 setPaymentToken(token);
                 setStep('idle');
                 setSubmittedChainId(undefined);
+                setReservation(null);
                 resetApprove();
                 resetPurchase();
               }}
@@ -934,8 +1118,30 @@ export default function SalePage() {
               </a>
             </p>
           </div>
+        ) : !reservation ? (
+          // No active reservation — show Reserve as the gate. Reserve calls
+          // /api/sale/reserve which atomically holds inventory and signs an
+          // EIP-712 voucher; the buyer then has 12 minutes to approve + buy
+          // at the locked price.
+          <Button
+            variant="primary" size="lg" className="w-full"
+            loading={step === 'reserving'}
+            onClick={handleReserve}
+            disabled={step === 'reserving'}
+          >
+            {step === 'reserving' ? t('sale.reserving') : t('sale.reserveAtPrice', { amount: formatUsdShort(totalCents) })}
+          </Button>
         ) : (
           <>
+            {/* Countdown — voucher.deadline mirrors expiresAt; once the
+                client clock crosses it the voucher is dead and the contract
+                will revert. We auto-reset above; this banner gives the buyer
+                visibility into how much runway they have. */}
+            <ReservationCountdown
+              expiresAt={reservation.expiresAt}
+              nowMs={nowMs}
+              t={t}
+            />
             {!hasAllowance && step !== 'approved' && (
               <Button variant="primary" size="lg" className="w-full" loading={step === 'approving' || approveLoading} onClick={handleApprove}>
                 {step === 'approving' || approveLoading ? t('sale.approving') : t('sale.approveToken', { token: paymentToken })}
