@@ -1,19 +1,58 @@
-// One-off probe: find out which post-review migrations are live.
+// Probe: find out which post-review migrations are live.
 // Each check looks for the artifact that migration creates or changes.
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+//
+// `pg` is not a project dependency on purpose (we deliberately don't
+// bundle a Postgres client into the Next app). The script bootstraps it
+// into a temp prefix on first run and reuses that prefix on subsequent
+// runs. Set PG_MODULE_PATH to override (e.g. CI cache directory).
+import { readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { execSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const envText = readFileSync(resolve(__dirname, '..', '.env.local'), 'utf8');
+const envPath = resolve(__dirname, '..', '.env.local');
+if (!existsSync(envPath)) {
+  console.error('verify-pending-migrations: .env.local missing at', envPath);
+  console.error('Run from operon-dashboard with .env.local populated (see docs/OPERATIONS.md §1).');
+  process.exit(2);
+}
+const envText = readFileSync(envPath, 'utf8');
 for (const line of envText.split('\n')) {
   const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
 }
+if (!process.env.SUPABASE_DB_URL) {
+  console.error('verify-pending-migrations: SUPABASE_DB_URL not set in .env.local');
+  process.exit(2);
+}
+
+function ensurePgModule() {
+  const explicit = process.env.PG_MODULE_PATH;
+  if (explicit) return explicit;
+  const cacheDir = join(tmpdir(), 'operon-pg-bootstrap');
+  const cachedPath = join(cacheDir, 'node_modules', 'pg');
+  if (existsSync(cachedPath)) return cachedPath;
+  console.log('Bootstrapping pg into', cacheDir, '(one-time, ~5s)…');
+  mkdirSync(cacheDir, { recursive: true });
+  try {
+    execSync('npm init -y', { cwd: cacheDir, stdio: 'pipe' });
+    execSync('npm install pg@8 --no-audit --no-fund --silent', { cwd: cacheDir, stdio: 'pipe' });
+  } catch (err) {
+    console.error('Failed to bootstrap pg. Install manually:');
+    console.error(`  mkdir -p ${cacheDir} && cd ${cacheDir} && npm init -y && npm install pg@8`);
+    console.error(`  PG_MODULE_PATH=${cachedPath} node scripts/verify-pending-migrations.mjs`);
+    console.error('Underlying error:', err.message);
+    process.exit(2);
+  }
+  return cachedPath;
+}
 
 const require = createRequire(import.meta.url);
-const pg = require(process.env.PG_MODULE_PATH || 'pg');
+const pgPath = ensurePgModule();
+const pg = require(pgPath);
 const client = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL });
 
 await client.connect();
