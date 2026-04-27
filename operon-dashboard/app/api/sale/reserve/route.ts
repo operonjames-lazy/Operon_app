@@ -1,0 +1,263 @@
+import { NextRequest } from 'next/server';
+import { createServerSupabase } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rate-limit';
+import { verifyTokenPayload } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+import {
+  signPurchaseVoucher,
+  uuidToBytes32,
+  codeToHash,
+  centsToTokenBaseUnits,
+  chainNameToChainId,
+  type SaleChain,
+  type PurchaseVoucher,
+} from '@/lib/voucher';
+import { validateReferralCode } from '@/lib/referrals/validate';
+import {
+  STABLECOIN_ADDRESSES,
+  SALE_CONTRACT_ADDRESSES,
+  isSaleContractDeployed,
+} from '@/lib/wagmi/contracts';
+
+/**
+ * POST /api/sale/reserve
+ *
+ * Atomic reservation + EIP-712 voucher mint for the new voucher-checkout
+ * flow. Holds tier inventory in `sale_reservations` for `RESERVATION_TTL_SECONDS`
+ * and returns a server-signed `PurchaseVoucher` the client passes straight
+ * to `purchaseWithVoucher` on the NodeSale contract.
+ *
+ * Body:
+ *   {
+ *     chain:    'arbitrum' | 'bsc',
+ *     quantity: number      (1..100),
+ *     token:    'USDC' | 'USDT',
+ *     code?:    string      (optional referral code; case-insensitive)
+ *   }
+ *
+ * 200 response:
+ *   {
+ *     reservationId: string,        // UUID
+ *     reservationIdBytes32: string, // bytes32 form used in voucher.reservationId
+ *     tier: number,                 // 1..40
+ *     unitPriceCents: number,       // tier list price (pre-discount), in USD cents
+ *     discountBps: number,          // 0 if no code or invalid
+ *     expiresAt: string,            // ISO timestamp; matches voucher.deadline
+ *     voucher: PurchaseVoucher,     // all fields stringified BigInts
+ *     signature: string             // 0x-prefixed hex; pass with voucher to contract
+ *   }
+ *
+ * Error envelope:
+ *   { error: string, ...details }
+ */
+
+const RESERVATION_TTL_SECONDS = 12 * 60; // 12 minutes — chosen to comfortably cover
+                                         // wallet review + chain confirmation time
+                                         // on both Arb (~1s) and BSC (~3s) without
+                                         // letting inventory sit too long for a
+                                         // buyer who'll never come back.
+
+interface ReserveBody {
+  chain?: string;
+  quantity?: number;
+  token?: string;
+  code?: string;
+}
+
+function jsonError(error: string, details?: Record<string, unknown>, status = 400) {
+  return Response.json({ error, ...details }, { status });
+}
+
+export async function POST(request: NextRequest) {
+  // 1. Rate limit per IP. 30/min/IP is generous (a single buyer rarely
+  //    needs more than a handful of reservations to land one purchase),
+  //    but tight enough that a script can't churn through reservations
+  //    to brute-force tier-boundary edges.
+  const rateLimited = await rateLimit(request, 'sale-reserve', 30);
+  if (rateLimited) return rateLimited;
+
+  // 2. Auth: caller must be signed in. We pull the buyer wallet from the
+  //    JWT, NOT the request body — a body-supplied wallet would let one
+  //    user front-run another's reservation slot.
+  const payload = await verifyTokenPayload(request);
+  if (!payload?.sub || !payload?.wallet) {
+    return jsonError('unauthorized', undefined, 401);
+  }
+  const buyerUserId = payload.sub;
+  const buyerWallet = payload.wallet.toLowerCase();
+
+  let body: ReserveBody;
+  try {
+    body = (await request.json()) as ReserveBody;
+  } catch {
+    return jsonError('invalid_json');
+  }
+
+  const chain = body.chain;
+  const quantity = body.quantity;
+  const token = body.token;
+  const rawCode = typeof body.code === 'string' ? body.code.trim() : '';
+
+  if (chain !== 'arbitrum' && chain !== 'bsc') {
+    return jsonError('unsupported_chain', { chain });
+  }
+  if (token !== 'USDC' && token !== 'USDT') {
+    return jsonError('unsupported_token', { token });
+  }
+  if (
+    typeof quantity !== 'number' ||
+    !Number.isInteger(quantity) ||
+    quantity < 1 ||
+    quantity > 100
+  ) {
+    return jsonError('invalid_quantity', { quantity });
+  }
+
+  // 3. Sale stage gate. Closed = no new reservations regardless of caller.
+  //    Whitelist + public both allow purchase; whitelist tier-cap is
+  //    enforced by the active tier already being capped.
+  const supabase = createServerSupabase();
+  const { data: cfg, error: cfgError } = await supabase
+    .from('sale_config')
+    .select('stage')
+    .single();
+  if (cfgError || !cfg) {
+    return jsonError('config_unavailable', undefined, 503);
+  }
+  if (cfg.stage === 'closed') {
+    return jsonError('sale_closed', undefined, 423);
+  }
+
+  // 4. Contract address required for this chain — without it the voucher
+  //    has no binding target and the contract on-chain doesn't exist yet.
+  if (!isSaleContractDeployed(chain)) {
+    return jsonError('contract_not_deployed', { chain }, 503);
+  }
+  const saleContract = SALE_CONTRACT_ADDRESSES[chain];
+
+  // 5. Resolve token address for this chain. Zero address = unconfigured
+  //    (testnet env vars unset), fail closed.
+  const tokenAddress = STABLECOIN_ADDRESSES[chain][token];
+  if (!tokenAddress || /^0x0+$/i.test(tokenAddress)) {
+    return jsonError('token_not_configured', { chain, token }, 503);
+  }
+
+  // 6. Validate the referral code if supplied. The same DB-only checks the
+  //    /validate-code endpoint runs, but here we tie it to the
+  //    authenticated caller so self-referral is always blocked (the
+  //    pre-auth quote endpoint can't be — no caller identity).
+  let discountBps = 0;
+  let codeUsed: string | null = null;
+  let codeHash = codeToHash(null);
+
+  if (rawCode) {
+    const result = await validateReferralCode(supabase, rawCode, buyerUserId);
+    if (!result.ok) {
+      return jsonError('invalid_code', { reason: result.reason });
+    }
+    discountBps = result.discountBps;
+    codeUsed = result.normalizedCode;
+    codeHash = codeToHash(result.normalizedCode);
+  }
+
+  // 7. Atomic reservation. The RPC re-validates inputs and locks the
+  //    active sale_tiers row FOR UPDATE so concurrent reservations can't
+  //    oversubscribe a tier across both chains.
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    'reserve_node_purchase',
+    {
+      p_buyer_wallet: buyerWallet,
+      p_chain:        chain,
+      p_quantity:     quantity,
+      p_token:        token,
+      p_discount_bps: discountBps,
+      p_code_used:    codeUsed,
+      p_code_hash:    codeHash === codeToHash(null) ? null : codeHash,
+      p_ttl_seconds:  RESERVATION_TTL_SECONDS,
+    },
+  );
+
+  if (rpcError) {
+    logger.error('reserve_node_purchase RPC failed', {
+      error: rpcError.message,
+      buyerWallet,
+      chain,
+      quantity,
+    });
+    return jsonError('reservation_failed', undefined, 500);
+  }
+
+  // RPC returns either the success envelope or an `{ error, ... }`
+  // envelope — relay errors directly to the client.
+  const data = rpcData as
+    | { reservation_id: string; tier: number; unit_price_cents: number; expires_at: string }
+    | { error: string; [k: string]: unknown };
+
+  if ('error' in data) {
+    // 4xx vs 5xx mapping: most RPC-level errors are buyer-input issues that
+    // should be 4xx; the RPC has already filtered out the truly bad ones.
+    const status = data.error === 'no_active_tier' ? 503 : 409;
+    return Response.json(data, { status });
+  }
+
+  // 8. Build the EIP-712 voucher. unitPrice is the FLOOR price (matches
+  //    sale_tiers.price_usd in cents → token base units); the contract
+  //    multiplies by (10000 - discountBps) / 10000 to compute the actual
+  //    transfer amount, capped by MAX_DISCOUNT_BPS on-chain.
+  const reservationIdBytes32 = uuidToBytes32(data.reservation_id);
+  const deadline = BigInt(Math.floor(new Date(data.expires_at).getTime() / 1000));
+
+  const voucher: PurchaseVoucher = {
+    buyer:         buyerWallet,
+    chainId:       BigInt(chainNameToChainId(chain as SaleChain)),
+    saleContract,
+    tierId:        BigInt(data.tier - 1), // contract tier index is 0..39, DB is 1..40
+    quantity:      BigInt(quantity),
+    token:         tokenAddress,
+    unitPrice:     centsToTokenBaseUnits(data.unit_price_cents, chain as SaleChain, token),
+    discountBps,
+    codeHash,
+    reservationId: reservationIdBytes32,
+    deadline,
+  };
+
+  let signed: { voucher: PurchaseVoucher; signature: string };
+  try {
+    signed = await signPurchaseVoucher(voucher);
+  } catch (err) {
+    logger.error('voucher signing failed', {
+      error: err instanceof Error ? err.message : String(err),
+      reservationId: data.reservation_id,
+    });
+    // The reservation row will expire on its own via the cleanup pass —
+    // we don't try to delete it here because a failed sign is recoverable
+    // (operator fixes env, retries, or the buyer just creates a new one).
+    return jsonError('voucher_signing_failed', undefined, 500);
+  }
+
+  return Response.json({
+    reservationId:        data.reservation_id,
+    reservationIdBytes32,
+    tier:                 data.tier,
+    unitPriceCents:       data.unit_price_cents,
+    discountBps,
+    expiresAt:            data.expires_at,
+    // BigInts can't be JSON-serialised — stringify them so the client
+    // can pass them straight back into ethers.Contract(...).purchaseWithVoucher
+    // which accepts string-encoded big numbers.
+    voucher: {
+      buyer:         signed.voucher.buyer,
+      chainId:       signed.voucher.chainId.toString(),
+      saleContract:  signed.voucher.saleContract,
+      tierId:        signed.voucher.tierId.toString(),
+      quantity:      signed.voucher.quantity.toString(),
+      token:         signed.voucher.token,
+      unitPrice:     signed.voucher.unitPrice.toString(),
+      discountBps:   signed.voucher.discountBps,
+      codeHash:      signed.voucher.codeHash,
+      reservationId: signed.voucher.reservationId,
+      deadline:      signed.voucher.deadline.toString(),
+    },
+    signature: signed.signature,
+  });
+}
