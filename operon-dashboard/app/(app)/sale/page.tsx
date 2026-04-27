@@ -1109,6 +1109,12 @@ export default function SalePage() {
         {/* Action Buttons */}
         {!isConnected ? (
           <p className="text-center text-t3 text-sm py-2">{t('sale.connectToBuy')}</p>
+        ) : sale?.stage === 'paused' ? (
+          // Paused — admin halted issuance. Don't let the buyer reserve a
+          // voucher the contract will revert on submit.
+          <Button variant="primary" size="lg" className="w-full" disabled>{t('sale.stage.paused') || 'Sale paused'}</Button>
+        ) : sale?.stage === 'closed' ? (
+          <Button variant="primary" size="lg" className="w-full" disabled>{t('sale.stage.closed') || 'Sale closed'}</Button>
         ) : !sale?.tierRemaining ? (
           <Button variant="primary" size="lg" className="w-full" disabled>{t('sale.tierSoldOut')}</Button>
         ) : !isCorrectChain ? (

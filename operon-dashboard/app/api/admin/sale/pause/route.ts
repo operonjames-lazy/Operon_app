@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAdmin, logAdminAction } from '@/lib/admin';
 import { assertNotKilled } from '@/lib/killswitches';
 import { getAdminSaleContract, type AdminChain } from '@/lib/admin-signer';
+import { createServerSupabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
 /**
@@ -9,7 +10,12 @@ import { logger } from '@/lib/logger';
  * Body: { chain: 'arbitrum' | 'bsc' | 'both' }
  *
  * Calls `pause()` on the sale contract for the specified chain(s) using
- * the admin signer (ADMIN_PRIVATE_KEY from env).
+ * the admin signer (ADMIN_PRIVATE_KEY from env). Also flips
+ * `sale_config.stage` to `'paused'` BEFORE attempting the contract calls so
+ * `/api/sale/reserve` stops issuing new vouchers immediately — without this
+ * step a paused contract would still hand out 12-minute signed reservations
+ * that revert on submit, or that execute if the operator unpauses inside
+ * the voucher's deadline window.
  *
  * Returns per-chain result: { chain, status: 'ok'|'error', txHash?, error? }
  */
@@ -45,6 +51,33 @@ export async function POST(request: NextRequest) {
     logger.error('Audit write failed', { error: String(err) });
     return Response.json({ error: 'audit_failed' }, { status: 500 });
   }
+
+  // Stop issuing new vouchers BEFORE the contract pause. The DB stage is
+  // global (not per-chain), so flipping `paused` halts issuance on every
+  // chain. Even a single-chain pause request takes the whole sale offline
+  // for safety — operator can re-enable via /api/admin/sale/unpause once
+  // they've confirmed every chain is clean.
+  const db = createServerSupabase();
+  const { error: stageErr } = await db
+    .from('sale_config')
+    .update({ stage: 'paused' })
+    .neq('stage', 'paused');
+  if (stageErr) {
+    logger.error('sale_config.stage flip to paused failed', { error: stageErr.message });
+    return Response.json({ error: 'stage_flip_failed', details: stageErr.message }, { status: 500 });
+  }
+  await logAdminAction({
+    adminWallet: admin.wallet,
+    action: 'sale_stage_set',
+    targetType: 'sale_config',
+    targetId: 'stage',
+    details: { stage: 'paused' },
+  }).catch((err) => {
+    // Stage already flipped; treat audit-write failure here as non-fatal so
+    // a transient supabase blip doesn't undo the pause. The stage_flip is
+    // self-evident in the audit log via the `sale_pause_requested` row above.
+    logger.warn('sale_stage_set audit write failed', { error: String(err) });
+  });
 
   const results: Array<{ chain: AdminChain; status: string; txHash?: string; error?: string }> = [];
 

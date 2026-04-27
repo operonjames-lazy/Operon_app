@@ -110,9 +110,13 @@ export async function POST(request: NextRequest) {
     return jsonError('invalid_quantity', { quantity });
   }
 
-  // 3. Sale stage gate. Closed = no new reservations regardless of caller.
-  //    Whitelist + public both allow purchase; whitelist tier-cap is
-  //    enforced by the active tier already being capped.
+  // 3. Sale stage gate. Per CLAUDE.md "Critical Rules" the only stages are
+  //    'active' | 'paused' | 'closed'. Anything other than 'active' rejects
+  //    new reservations. `'paused'` is set by /api/admin/sale/pause and
+  //    halts voucher issuance even while the contract is still unpausing —
+  //    without this, a paused contract would still hand out 12-min signed
+  //    vouchers that revert on submit (or execute if unpaused inside the
+  //    deadline window).
   const supabase = createServerSupabase();
   const { data: cfg, error: cfgError } = await supabase
     .from('sale_config')
@@ -121,8 +125,12 @@ export async function POST(request: NextRequest) {
   if (cfgError || !cfg) {
     return jsonError('config_unavailable', undefined, 503);
   }
-  if (cfg.stage === 'closed') {
-    return jsonError('sale_closed', undefined, 423);
+  if (cfg.stage === 'paused') {
+    return jsonError('sale_paused', undefined, 423);
+  }
+  if (cfg.stage !== 'active') {
+    // 'closed' or anything unexpected.
+    return jsonError('sale_closed', { stage: cfg.stage }, 423);
   }
 
   // 4. Contract address required for this chain ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â without it the voucher

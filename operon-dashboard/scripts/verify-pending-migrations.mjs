@@ -192,6 +192,14 @@ const checks = [
            WHERE conrelid = 'sale_reservations'::regclass
              AND conname = 'sale_reservations_discount_bps_check'`,
   },
+  {
+    label: '034 - reserve_node_purchase reads sale_config.stage as defense-in-depth',
+    sql: `SELECT
+            pg_get_functiondef('reserve_node_purchase(text,text,integer,text,integer,text,text,integer)'::regprocedure) LIKE '%FROM sale_config%'
+              AS reads_sale_config,
+            pg_get_functiondef('reserve_node_purchase(text,text,integer,text,integer,text,text,integer)'::regprocedure) LIKE '%sale_not_active%'
+              AS rejects_paused`,
+  },
 ];
 
 for (const c of checks) {
