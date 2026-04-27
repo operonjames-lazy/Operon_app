@@ -89,8 +89,108 @@ const checks = [
             has_column_privilege('anon', 'public.sale_tiers', 'created_at', 'SELECT') AS anon_can_read_created_at`,
   },
   {
-    label: '030 - voucher ingest uses contract-compatible discount rounding',
-    sql: `SELECT pg_get_functiondef('process_purchase_with_reservation(uuid,text,text,text,integer,integer,text,bigint,text,bigint)'::regprocedure) LIKE '%v_gross := v_res.unit_price_cents * v_res.quantity%' AS has_two_step_rounding`,
+    label: '030 - anon CAN read public sale_tiers granted columns',
+    sql: `SELECT
+            has_column_privilege('anon', 'public.sale_tiers', 'tier', 'SELECT')          AS sale_tiers_tier,
+            has_column_privilege('anon', 'public.sale_tiers', 'price_usd', 'SELECT')     AS sale_tiers_price,
+            has_column_privilege('anon', 'public.sale_tiers', 'total_supply', 'SELECT')  AS sale_tiers_supply,
+            has_column_privilege('anon', 'public.sale_tiers', 'total_sold', 'SELECT')    AS sale_tiers_sold,
+            has_column_privilege('anon', 'public.sale_tiers', 'is_active', 'SELECT')     AS sale_tiers_active`,
+  },
+  {
+    label: '030 - anon CANNOT read non-granted sale_tiers columns',
+    sql: `SELECT
+            has_column_privilege('anon', 'public.sale_tiers', 'created_at', 'SELECT') AS sale_tiers_created_at,
+            has_column_privilege('anon', 'public.sale_tiers', 'updated_at', 'SELECT') AS sale_tiers_updated_at`,
+  },
+  {
+    label: '030 - anon CAN read public sale_config granted columns',
+    sql: `SELECT
+            has_column_privilege('anon', 'public.sale_config', 'stage', 'SELECT')              AS sale_config_stage,
+            has_column_privilege('anon', 'public.sale_config', 'realtime_enabled', 'SELECT')   AS sale_config_realtime`,
+  },
+  {
+    label: '030 - voucher ingest function exists',
+    sql: `SELECT 1 FROM pg_proc WHERE proname = 'process_purchase_with_reservation'`,
+  },
+  {
+    label: '031 - sale_config RLS disabled (Realtime can deliver postgres_changes)',
+    sql: `SELECT relname, relrowsecurity, relforcerowsecurity
+            FROM pg_class
+           WHERE relname = 'sale_config'`,
+  },
+  {
+    label: '031 - sale_reservations.expected_amount_cents column exists, NOT NULL',
+    sql: `SELECT column_name, is_nullable, data_type
+            FROM information_schema.columns
+           WHERE table_name='sale_reservations' AND column_name='expected_amount_cents'`,
+  },
+  {
+    label: '031 - voucher ingest asserts equality vs precomputed (no recompute)',
+    sql: `SELECT
+            pg_get_functiondef('process_purchase_with_reservation(uuid,text,text,text,integer,integer,text,bigint,text,bigint)'::regprocedure) LIKE '%v_res.expected_amount_cents%'
+              AS asserts_against_stored_amount,
+            pg_get_functiondef('process_purchase_with_reservation(uuid,text,text,text,integer,integer,text,bigint,text,bigint)'::regprocedure) LIKE '%v_gross := v_res.unit_price_cents * v_res.quantity%'
+              AS still_recomputes_gross`,
+  },
+  {
+    label: '031 - reserve_node_purchase computes expected_amount_cents at insert',
+    // Postgres pretty-prints function bodies, so the assignment can break
+    // across lines. Match the var name + (10000 - p_discount_bps) factor;
+    // that combo cannot occur outside the form-A computation we want.
+    sql: `SELECT
+            pg_get_functiondef('reserve_node_purchase(text,text,integer,text,integer,text,text,integer)'::regprocedure) ~ 'v_expected_amount_cents\\s*:='
+              AS assigns_expected_amount,
+            pg_get_functiondef('reserve_node_purchase(text,text,integer,text,integer,text,text,integer)'::regprocedure) LIKE '%(10000 - p_discount_bps)%'
+              AS uses_form_a`,
+  },
+  {
+    label: '031 - sale_reservations expected_amount sanity check exists',
+    sql: `SELECT conname, pg_get_constraintdef(oid) AS def
+            FROM pg_constraint
+           WHERE conrelid = 'sale_reservations'::regclass
+             AND conname = 'sale_reservations_expected_amount_check'`,
+  },
+  {
+    label: '031 - admin_money_invariants function exists and runs',
+    sql: `SELECT (admin_money_invariants() ->> 'ok')::BOOLEAN AS invariants_ok,
+                 admin_money_invariants() ->> 'measured_at'   AS measured_at`,
+  },
+  {
+    label: '032 - cron_alert_sentinel table exists',
+    sql: `SELECT to_regclass('public.cron_alert_sentinel') AS exists`,
+  },
+  {
+    label: '032 - cron_alert_sentinel anon CANNOT select',
+    sql: `SELECT has_table_privilege('anon', 'public.cron_alert_sentinel', 'SELECT')           AS anon_can_select,
+                 has_table_privilege('anon', 'public.cron_alert_sentinel', 'INSERT')           AS anon_can_insert,
+                 has_table_privilege('service_role', 'public.cron_alert_sentinel', 'SELECT')   AS service_can_select`,
+  },
+  {
+    label: '032 - cron_alert_should_fire function exists, service-role only',
+    sql: `SELECT
+            (SELECT 1 FROM pg_proc WHERE proname = 'cron_alert_should_fire') AS function_exists,
+            has_function_privilege('anon', 'public.cron_alert_should_fire(text,text,integer)', 'EXECUTE') AS anon_can_execute,
+            has_function_privilege('service_role', 'public.cron_alert_should_fire(text,text,integer)', 'EXECUTE') AS service_can_execute`,
+  },
+  {
+    label: '033 - admin_money_invariants returns stuck_failed_events (not abandoned_failed_events)',
+    sql: `SELECT
+            admin_money_invariants() ? 'stuck_failed_events'        AS has_stuck_key,
+            admin_money_invariants() ? 'abandoned_failed_events'    AS has_old_abandoned_key`,
+  },
+  {
+    label: '033 - admin_money_invariants jsonb_agg has ORDER BY (deterministic signature)',
+    sql: `SELECT pg_get_functiondef('admin_money_invariants()'::regprocedure) LIKE '%ORDER BY tier%'
+            AND pg_get_functiondef('admin_money_invariants()'::regprocedure) LIKE '%ORDER BY orphans.completed_at%'
+              AS jsonb_agg_ordered`,
+  },
+  {
+    label: '033 - sale_reservations.discount_bps CHECK tightened to <= 1500',
+    sql: `SELECT conname, pg_get_constraintdef(oid) AS def
+            FROM pg_constraint
+           WHERE conrelid = 'sale_reservations'::regclass
+             AND conname = 'sale_reservations_discount_bps_check'`,
   },
 ];
 
