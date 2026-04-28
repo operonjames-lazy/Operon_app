@@ -362,17 +362,20 @@ Notes (most relevant cycle 3 ones, in apply order):
 - `033` fixes the I3 invariant predicate + `jsonb_agg` ordering for stable drift signatures.
 - `034` is the **pause-coverage RPC gate**: `reserve_node_purchase` reads `sale_config.stage` and rejects when not `'active'`. Required for Test 9.
 
-### 3.7.1 Apply the testnet-only small-supply override
+### 3.7.1 Apply the testnet-only override (supply + commission audit view)
 
 After all 31 migrations land, apply one more file from a different folder:
 
 `supabase/testnet-only/035_small_supply_override.sql`
 
-This is not a real migration — it lives outside `supabase/migrations/` on purpose so the production runner never picks it up. It just shrinks tier 1+2+3 to `total_supply=10` so Test 8 (tier promotion at boundary) is doable in 5 minutes of clicks instead of 1250 buys per tier.
+This is not a real migration — it lives outside `supabase/migrations/` on purpose so the production runner never picks it up. Two things land:
+
+1. **Tier 1 supply = 7**, tiers 2+3 = 100 each. The slot budget across cycle 3 is calibrated so Tests 3 + 5 + 7 consume exactly 6 of tier 1's 7 slots, leaving the last slot for Test 8. That makes Test 8 a single reserve+approve+buy at the tier boundary — the moment the last slot fills, tier 2 auto-activates.
+2. **A `commission_audit` view** that joins purchases + referral_purchases + users and converts cents → dollars. Lets you spot-check commission accuracy with a single `SELECT * FROM commission_audit;` after any buy. See §6.0 below for how to read the output.
 
 Open the file in a text editor → select all → paste into the Supabase SQL Editor → Run.
 
-Expected output (the SELECT at the bottom prints automatically): tiers 1-3 show `total_supply: 10`. Tier 1 should be the only `is_active: true` row. If tier 4 or 5 is active, mig 014 didn't apply cleanly — re-run it.
+Expected output: the bottom of the result shows tiers 1-3 with the new supplies; tier 1 the only `is_active: true` row; the `commission_audit` view status reads `created`. If anything else, stop and message the operator.
 
 ### 3.8 Run the site
 
@@ -458,11 +461,51 @@ If you see any of these, stop, screenshot, and message the operator. These are t
 
 ## Part 6 — Tests
 
-Six tests. Run them in order — earlier tests set up state for later ones. Each test has a **Goal**, **Steps**, and **Pass/Fail checks** marked with ☐.
+**Nine tests in cycle 3** (six from cycle 2 + three new). Run them in order — earlier tests set up state for later ones. Each test has a **Goal**, **Steps**, and **Pass/Fail checks** marked with ☐.
 
 The tests only cover things a human with a browser and a wallet can verify. Contract logic, backend math, rate limiting, authorization, and signature verification are already covered by automated tests — do not bother manually testing those.
 
 **Useful tip — the Sale page has a Chain Selector.** To switch between Arbitrum and BSC while testing, use the **in-app Chain Selector** on the Sale page, not MetaMask's network dropdown. If your wallet is on the wrong network, the site will show a "Switch to X" button — click it and approve in MetaMask. This is the smoother flow.
+
+---
+
+### §6.0 How to verify commissions are accurate (use this throughout)
+
+The §3.7.1 testnet override created a `commission_audit` view in your Supabase. After any buy, run:
+
+```sql
+SELECT * FROM commission_audit LIMIT 20;
+```
+
+You'll see one row per `referral_purchases` entry, joined with the underlying `purchases` row. Columns:
+
+| Column | What it means |
+|---|---|
+| `tx_hash` / `chain` | The on-chain transaction |
+| `purchase_tier` | Which tier the node was bought from |
+| `quantity` / `discount_bps` | How many nodes, what discount applied |
+| `amount_dollars` | Total paid post-discount, in USD (cents → dollars) |
+| `buyer_wallet` | Who bought |
+| `level` | 1 = direct referrer, 2 = grandparent, etc. |
+| `referrer_tier` | `community` for a regular user, or an EPP tier (`affiliate` / `partner` / `senior` / `regional` / `market` / `founding`) |
+| `rate_bps` | Stored commission rate in basis points (1000 = 10%, 300 = 3%) |
+| `upline_wallet` | Who got paid |
+| `commission_dollars` | The actual commission, in USD |
+| `derived_bps` | Sanity column: `commission_usd / amount_usd × 10000`. Should match `rate_bps` within ±1 bp of rounding. If it doesn't, that's a money-math bug — report it. |
+
+**Expected community rates (from `lib/commission.ts COMMUNITY_COMMISSION_RATES`):**
+
+| Level | Rate | What ~$450 net buy pays at this level |
+|---:|---:|---:|
+| L1 | 1000 bps (10%) | ~$45.00 |
+| L2 |  300 bps (3%)  | ~$13.50 |
+| L3 |  200 bps (2%)  | ~$9.00 |
+| L4 |  100 bps (1%)  | ~$4.50 |
+| L5 |  100 bps (1%)  | ~$4.50 |
+
+**EPP rates differ** — the simplest sanity check is `rate_bps = 1200` for L1 from any partner-tier upline (12% vs the community 10%). Test 5 exercises this directly.
+
+When a test asks you to "verify commissions are correct," run `SELECT * FROM commission_audit;` and check the matching row. If `rate_bps` and `derived_bps` differ by more than 1 bp, the on-chain amount and the recorded commission are out of sync — flag it.
 
 ---
 
@@ -560,6 +603,7 @@ Confirm the referrer and 10% discount are still shown.
 - ☐ Disconnect, sign in with **Wallet A**. Go to **Referrals**.
 - ☐ Wallet B's purchase appears in your activity feed.
 - ☐ A commission amount is shown on Wallet A. **Expected: approximately $45** (L1 community rate is 10%, applied to the post-discount price of ~$450). A few cents of rounding is fine. Anything between **$40 and $50** is acceptable; outside that range, note the actual number and report.
+- ☐ **Now verify with `commission_audit`:** in Supabase SQL Editor, run `SELECT * FROM commission_audit LIMIT 5;`. The top row should show this purchase with `level=1`, `referrer_tier='community'`, `rate_bps=1000`, `derived_bps=1000.0`, `commission_dollars≈45.00`, `upline_wallet=<Wallet A address>`. If `rate_bps` and `derived_bps` differ by >1 bp, the on-chain amount and recorded commission are out of sync — flag it.
 - ☐ **Fail if:** no NFT, no referral entry on Wallet A, commission is zero (the chain walk is broken), negative, or many times larger than the purchase price.
 
 > **Adversarial check, optional:** click Reserve, then idle 13 minutes without clicking Approve. The countdown hits 00:00, banner clears. Click Reserve again — you should get a fresh voucher (possibly at the same price, possibly tier-promoted depending on timing). The expired reservation row transitions to `status='expired'` on the next cron tick (~5 min). **Fail if:** the contract accepts the expired voucher (it should revert "voucher expired") or the second Reserve call fails with `tier_quantity_exceeded` (the cron should have released the inventory).
@@ -692,7 +736,8 @@ Now buy one node:
 - ☐ Disconnect, sign in as the new EPP partner (Wallet D or whichever wallet you onboarded). Go to Referrals.
 - ☐ The purchase appears under the partner's activity, with a commission credited.
 - ☐ The commission amount should be visibly **different** from the commission Wallet A received for Wallet B's purchase in Test 3 Pass 1 — partners earn at a different rate than community referrers. If they are identical, the partner tier logic is not kicking in.
-- ☐ **Fail if:** no commission, or the commission is exactly the same as the community referrer rate.
+- ☐ **Verify with `commission_audit`:** `SELECT * FROM commission_audit LIMIT 5;`. The top row should show `referrer_tier='affiliate'` (or whichever tier the partner is at — almost always `affiliate` immediately after onboarding) and `rate_bps=1200` (12%, vs the community 10%). `derived_bps` should match `rate_bps` within 1 bp.
+- ☐ **Fail if:** no commission, or `rate_bps` is `1000` (that's the community rate — the partner-tier surface didn't fire).
 
 ---
 
@@ -764,7 +809,24 @@ Now buy one node:
    - L1 = 10% (1000 bps) → ~$45
    - L2 = 3%  (300 bps)  → ~$13.50
    - L3 = 2%  (200 bps)  → would apply if there's a wallet above A; in this 3-level chain A is L2 max.
-4. **Fail if:** Wallet B's commission is missing (chain walk broke at L1), Wallet A's commission is missing (chain walk broke at L2), or either commission is identical to the L1 rate (the rate ladder isn't tiering down).
+4. **Verify with `commission_audit`** — this is the load-bearing chain-walk check, run it now:
+
+   ```sql
+   SELECT level, referrer_tier, rate_bps, upline_wallet, commission_dollars, derived_bps
+     FROM commission_audit
+    WHERE tx_hash = '<paste Wallet C's purchase tx_hash>'
+    ORDER BY level;
+   ```
+
+   Expect exactly 2 rows:
+
+   | level | referrer_tier | rate_bps | upline_wallet | commission_dollars | derived_bps |
+   |---|---|---|---|---|---|
+   | 1 | community | 1000 | <Wallet B> | ~45.00 | 1000.0 |
+   | 2 | community |  300 | <Wallet A> | ~13.50 |  300.0 |
+
+   - ☐ **Fail if:** only 1 row appears (chain walk stopped at L1), `rate_bps` doesn't tier down (1000 → 300), or `derived_bps` differs from `rate_bps` by more than 1 bp on either row.
+5. **Fail if:** Wallet B's commission is missing (chain walk broke at L1), Wallet A's commission is missing (chain walk broke at L2), or either commission is identical to the L1 rate (the rate ladder isn't tiering down).
 
 **Adversarial: cross-wallet self-ref.** Sign in as Wallet B, attempt to reserve while pasting Wallet B's OWN `OPR-XXX` code as a referral.
 
@@ -777,57 +839,50 @@ Now buy one node:
 
 ### Test 8 — Tier promotion at the boundary (NEW in cycle 3)
 
-**Goal:** Watch tier 1 sell out (with the §3.7.1 supply override at 10), confirm tier 2 auto-activates, and verify a reservation made *before* the promotion still completes at the locked tier-1 price (because `expected_amount_cents` was stored on the reservation row at Reserve time, not recomputed at Buy time).
+**Goal:** Witness tier 1 fill on its last buy, watch tier 2 auto-activate, and verify a reservation taken *before* the promotion still completes at the locked tier-1 price (because `expected_amount_cents` was stored on the reservation row at Reserve time, not recomputed at Buy time).
 
-**Pre-flight:** Run this in Supabase SQL Editor and write down both numbers — you'll cross-check after:
+**Pre-flight: confirm tier 1 has exactly 1 slot left.** The §3.7.1 override set tier 1 supply = 7. Tests 3 (qty 1+3) + 5 (qty 1) + 7 (qty 1) consumed 6. Run this in Supabase SQL Editor:
 
 ```sql
 SELECT tier, total_supply, total_sold, is_active, price_usd
   FROM sale_tiers WHERE tier IN (1, 2) ORDER BY tier;
 ```
 
-You should see tier 1 with `total_supply=10`, `is_active=true`, and `total_sold=N` reflecting how many you've already bought across Tests 3, 5, 7. Tier 2 should be `is_active=false`. Tier 1 `price_usd=50000` (cents). Tier 2 `price_usd=52500` (5% higher).
+Expected:
+- Tier 1: `total_supply=7`, `total_sold=6`, `is_active=true`, `price_usd=50000` (=$500).
+- Tier 2: `is_active=false`, `price_usd=52500` (=$525, 5% step).
 
-**Step A: Hold a tier-1 reservation open WITHOUT submitting.**
+**If `total_sold` ≠ 6**, Tests 3/5/7 went off-script — adjust your Step B quantity below to make `total_sold + Step B qty = 7`. (Or skip ahead to Step D and look at whatever the current state is — the price-lock invariant still holds.)
+
+**Step A: Hold the tier-1 reservation OPEN.**
 
 1. Sign in as **Wallet B**. Sale page → Arbitrum → quantity 1.
-2. **Click Reserve.** Countdown banner appears showing the tier-1 locked price (~$450).
+2. **Click Reserve.** Countdown banner appears showing tier 1 locked price (~$450 = $500 − 10% community discount). The reservation is now `status='reserved'` in the DB and the slot is held; `total_sold` did NOT yet increment because the buy hasn't completed.
 3. **Do NOT click Approve yet.** Keep this tab open.
 
-**Step B: From a different wallet, fill the rest of tier 1.**
+**Adversarial check during the hold.** From a NEW Incognito window signed in as Wallet C, go to the Sale page and try to **Reserve qty=2 on Arbitrum**.
 
-1. New Incognito window. Sign in as **Wallet C** (or Deployer — anyone with USDC).
-2. Sale page → Arbitrum. Compute `remaining = 10 - total_sold - 1` (subtract the 1 from Step A which is in-flight). E.g. if `total_sold=5` you need to buy 4 to fill tier 1.
-3. **Reserve qty = `remaining`** → Approve → Buy → wait for Purchase Complete.
-4. Refresh the SQL query above:
-   - ☐ Tier 1: `total_sold=9` (10 minus the still-pending reservation in Step A), `is_active=true` (still — the pending reservation hasn't completed yet, so the tier hasn't fully filled).
-   - ☐ Tier 2: still `is_active=false`.
+- ☐ Expect: `tier_quantity_exceeded` — only 1 slot is available because Wallet B is holding it. Wallet C's reservation request rejects without signing a voucher. Per `lib/voucher.ts assertSignerConsistency`, no `voucher_signing_failed` either — the rejection happens earlier in the RPC.
+- ☐ **Fail if:** Wallet C gets a voucher for 2 nodes anyway. That would mean the held-reservation isn't reserving inventory, which breaks the entire global-cap promise.
 
-**Step C: Complete the held tier-1 reservation.**
+**Step B: Complete Wallet B's held reservation — this fills tier 1.**
 
-1. Switch back to the Wallet B tab from Step A. Countdown should still be running (well within 12 min).
+1. Switch back to the Wallet B tab from Step A. Countdown should still be running.
 2. **Click Approve → Buy.** Wait for Purchase Complete.
-3. Refresh the SQL query:
-   - ☐ Tier 1: `total_sold=10`, `is_active=false`.
+3. Re-run the pre-flight SQL:
+   - ☐ Tier 1: `total_sold=7`, `is_active=false`.
    - ☐ Tier 2: `is_active=true`. **The auto-promotion fired.**
-4. Sign in as Wallet B → /referrals → confirm the purchase shows **at the tier 1 price (~$450)** even though tier 2 is now active. The voucher locked the price at Reserve time.
-5. **Fail if:** Wallet B's purchase landed at tier 2 price (~$472.50), or tier 2 didn't auto-activate, or the SQL still shows tier 1 as active.
+4. Run `SELECT * FROM commission_audit LIMIT 5;`. The most recent row is Wallet B's purchase. **Verify `purchase_tier=1` and `amount_dollars ≈ 450` even though tier 2 is now active.** The voucher locked the price at Reserve time.
+5. **Fail if:** Wallet B's purchase landed at tier 2 price (~$472.50), or tier 2 didn't auto-activate, or `commission_audit` shows `purchase_tier=2`.
 
-**Step D: Verify new reservations land in tier 2.**
+**Step C: Verify new reservations land in tier 2 at the new price.**
 
 1. Wallet B Sale page → Arbitrum → quantity 1.
-2. **Click Reserve** — the locked price should be **~$472.50** (5% above tier 1, post-discount).
+2. **Click Reserve.** The locked price should be **~$472.50** (5% above tier 1, post-discount: $525 × 0.9).
 3. ☐ Sale page header / current-tier indicator shows **tier 2**.
-4. ☐ **Fail if:** the new reservation comes back at tier 1 price.
+4. ☐ **Fail if:** the new reservation comes back at tier 1 price (~$450).
 
-(You don't need to actually buy this one — the test is about pricing.)
-
-**Adversarial: race a Reserve at exactly the tier boundary.** Optional, only if you have time:
-1. Reset tier 1 in SQL: `UPDATE sale_tiers SET total_sold = 9, is_active = TRUE WHERE tier = 1; UPDATE sale_tiers SET is_active = FALSE WHERE tier = 2;` — leaves 1 slot.
-2. Open two browser tabs side-by-side, both signed in as different wallets, both with quantity = 2 selected.
-3. Click Reserve in both tabs as close together as you can.
-4. ☐ Expect: one tab succeeds with `quantity=2`. The other returns `tier_quantity_exceeded` because the global cap doesn't allow oversubscription. The DB's `FOR UPDATE` lock on `sale_tiers` serializes the two requests.
-5. **Fail if:** both tabs succeed (the lock isn't holding) or both fail (the second tab should have been able to take 1 of the 2 if the first took 1 — but with qty=2 on both, only one fits in the remaining 1-slot window, so one fail is correct).
+(You don't need to actually buy this one — the test is about pricing. Cancel by letting it expire, or just close the tab.)
 
 ---
 
