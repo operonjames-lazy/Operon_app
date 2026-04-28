@@ -67,17 +67,19 @@ You will edit one config file. Any editor works. If you need one, grab **VS Code
 
 ## Part 2 — Set up your wallets
 
-You need **three wallets** in MetaMask:
+You need **five wallets** in MetaMask:
 
 - **Deployer** — deploys the smart contracts. Also your admin wallet.
 - **Wallet A** — top of the referral chain.
 - **Wallet B** — referred by Wallet A.
+- **Wallet C** — referred by Wallet B (Test 7's 3-level chain) and the competing wallet in Test 8's adversarial.
+- **Wallet D** — fresh wallet that gets onboarded as an EPP partner in Test 5.
 
 ### 2.1 Create five MetaMask accounts
 
 MetaMask icon → account circle (top-right) → **Add a new account** → name it **Deployer**. Repeat for **Wallet A**, **Wallet B**, **Wallet C**, **Wallet D**.
 
-(Cycle 2 only needed three — A and B for the basic referral pair, plus the Deployer. Cycle 3 needs C and D so Test 7 can build a 3-level referral chain: A → B → C, with D as the EPP partner buyer.)
+(Cycle 2 only needed three. Cycle 3 adds C for the 3-level referral chain (A → B → C in Test 7) plus the competing wallet in Test 8's adversarial, and D for the EPP partner onboarding (Test 5).)
 
 > ⚠️ **Important behaviour note (new in cycle 2):** The app expects you to sign out before switching wallets. **When you want to switch from Wallet A to Wallet B, click the Disconnect button in the app (or in the wallet icon at the top right of the page) first, THEN switch accounts in MetaMask.** If you just switch the active account in MetaMask while the app is still showing a signed-in state for the previous wallet, the app now detects the account change and forces a re-sign — which is the correct safe behaviour but may feel like a jolt. Disconnecting first is the smoother flow.
 
@@ -99,15 +101,17 @@ Network dropdown → **Add a custom network**:
 - **Currency:** tBNB
 - **Explorer:** `https://testnet.bscscan.com`
 
-### 2.4 Fund all three wallets on both chains
+### 2.4 Fund all five wallets on both chains
 
 Each wallet needs a small amount of the native coin on each chain to pay network fees.
 
-**Arbitrum Sepolia faucet:** `https://www.alchemy.com/faucets/arbitrum-sepolia` (or ask the operator for a backup). Switch MetaMask to Arbitrum Sepolia, copy each wallet address in turn, request funds from the faucet for all three.
+**Arbitrum Sepolia faucet:** `https://www.alchemy.com/faucets/arbitrum-sepolia` (or ask the operator for a backup). Switch MetaMask to Arbitrum Sepolia, copy each wallet address in turn, request funds from the faucet for all five.
 
-**BSC Testnet faucet:** `https://testnet.bnbchain.org/faucet-smart`. Switch MetaMask to BSC Testnet. Request funds for all three wallets.
+**BSC Testnet faucet:** `https://testnet.bnbchain.org/faucet-smart`. Switch MetaMask to BSC Testnet. Request funds for all five wallets.
 
-After this, all three accounts should show small ETH balances on Arbitrum and small tBNB balances on BSC.
+After this, all five accounts should show small ETH balances on Arbitrum and small tBNB balances on BSC.
+
+> **Faucets rate-limit per IP per day** — if you can't fund all five in one go, do three now and two tomorrow, or split across two networks if your home and mobile data have different IPs.
 
 ### 2.5 Export the Deployer's private key
 
@@ -217,12 +221,14 @@ Still in `contracts`, open the Hardhat console for Arbitrum:
 ```
 npx hardhat console --network arbitrumSepolia
 ```
-Paste these, replacing the addresses. One command per line:
+Paste these, replacing the addresses. One command per line — repeat the `mint` line for each of the five wallets (Deployer, A, B, C, D):
 ```
 const usdc = await ethers.getContractAt("MockERC20", "<USDC_ARB>")
 await usdc.mint("<Deployer address>", "10000000000")
 await usdc.mint("<Wallet A address>", "10000000000")
 await usdc.mint("<Wallet B address>", "10000000000")
+await usdc.mint("<Wallet C address>", "10000000000")
+await usdc.mint("<Wallet D address>", "10000000000")
 ```
 That gives each wallet 10,000 practice USDC (6 decimals). Type `.exit`.
 
@@ -233,6 +239,8 @@ const usdt = await ethers.getContractAt("MockERC20", "<USDT_BSC>")
 await usdt.mint("<Deployer address>", "10000000000000000000000")
 await usdt.mint("<Wallet A address>", "10000000000000000000000")
 await usdt.mint("<Wallet B address>", "10000000000000000000000")
+await usdt.mint("<Wallet C address>", "10000000000000000000000")
+await usdt.mint("<Wallet D address>", "10000000000000000000000")
 ```
 Type `.exit`, then:
 ```
@@ -642,15 +650,16 @@ Write down Wallet B's current **USDT** balance as `balance_before`.
 
 ---
 
-**One adversarial check — self-referral on purchase:**
+**One adversarial check — self-referral on the buy box:**
 
 1. Sign in as Wallet A. Go to the Sale page.
 2. In the referral code input at the top of the buy box, type Wallet A's own `OPR-XXXXXX` code.
-3. See what the field does — the discount should not apply and a toast should say "You cannot use your own referral code."
-4. Try to go through with a purchase anyway.
+3. ☐ The discount should NOT apply and a toast should say "You cannot use your own referral code."
+4. Click **Reserve** with the code still typed in. The locked total in the countdown banner should be the FULL price (no discount baked in) — the code was rejected, so Reserve proceeds without it.
+5. **Don't click Approve.** Let the reservation expire (close the tab) so we don't burn one of tier 1's slots — the Test 8 budget needs them.
 
-- ☐ Expect: Wallet A's own code does **not** apply a discount. If the purchase goes through, Wallet A has **no commission credit on its own purchase** visible on the Referrals page.
-- ☐ **Fail (Red Flag #4) if:** Wallet A ends up with commission on its own purchase.
+- ☐ Expect: the reservation comes back at the full tier price, no discount applied. The reserve route returns success because the code rejection only zeroes the discount; it doesn't block the buy.
+- ☐ **Fail (Red Flag #4) if:** the discount is applied with Wallet A's own code (the field accepted self-ref), or the locked total shows a 10% community discount.
 
 ---
 
@@ -699,7 +708,7 @@ To get the `operon_session` cookie: sign in with your **Deployer** wallet on the
 2. Go to `http://localhost:3001/epp/onboard?inv=<your EPP code>`.
 3. **Step 1 — Welcome letter.** Read and click Next.
 4. **Step 2 — Terms.** Scroll to the bottom (9 sections). Tick **I agree**. Click Next.
-5. **Step 3 — Wallet and form.** Fill the form. Click Connect Wallet → pick a **fresh wallet that has never been used as a partner** (create a new "Wallet D" if needed). Sign the message.
+5. **Step 3 — Wallet and form.** Fill the form. Click Connect Wallet → pick **Wallet D** (the fresh wallet you set up in §2.1 specifically for this test). Sign the message.
 6. **Step 4 — Confirmation.** A success screen with a new partner code starting with `OPRN-`.
 
 **Checks:**
@@ -718,7 +727,7 @@ Now we verify the partner's code gives a **15%** discount (not 10%) and produces
 
 1. Disconnect the new partner. Open a new Incognito window.
 2. Go to `http://localhost:3001/?ref=<the OPRN-XXXX code you just got>`.
-3. Sign in with a wallet that has never been used before — you can use the Deployer wallet (it has USDC and USDT on both chains from Part 3.5), or create a Wallet E in MetaMask and top it up.
+3. Sign in with a wallet that has not been used in any prior test — the Deployer wallet works (it has USDC and USDT on both chains from Part 3.5).
 4. Go to the Sale page on Arbitrum.
 
 **Checks:**
@@ -832,8 +841,6 @@ Now buy one node:
 
 - ☐ Expect: the field rejects with "you cannot use your own referral code" toast and the Reserve call returns `{error: 'invalid_code', reason: 'self_referral'}` if you bypass the field check.
 - ☐ **Fail if:** the system accepts the code and credits Wallet B's own purchase.
-
-> **Lowercase URL adversarial:** Open Incognito, paste `http://localhost:3001/?ref=<the-code-in-lowercase>`. Sign in with a **fresh Wallet E**. Confirm the /referrals page shows the original code-owner as the referrer (cycle 3 normalizes lowercase → uppercase at signup; cycle 2 silently dropped the attribution).
 
 ---
 
