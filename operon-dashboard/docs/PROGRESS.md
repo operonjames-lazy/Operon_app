@@ -35,11 +35,17 @@ Single-day session prepping for the next testnet pass. Built on top of the 2026-
 
 ### Operator-owed before handing off
 
-- [ ] Apply migrations 001-034 to a fresh Supabase project (skip 007 + 024)
-- [ ] Run `verify-pending-migrations.mjs` against that project — should return all probes clean + `admin_money_invariants ok=true`
-- [ ] Run §3.7.1 small-supply override SQL
-- [ ] Hand off `operon-tester-2026-04-28.zip` + `docs/TESTING_GUIDE.md` (already inside the zip)
-- [ ] Confirm tester knows: 5 wallets needed (was 3 in cycle 2), they generate their own voucher-signer keypair
+Just one step: send the tester `operon-tester-2026-04-28.zip` (at the
+repo parent). The zip self-contains TESTING_GUIDE.md, the contracts,
+all 31 migrations, and the testnet-only `035_small_supply_override.sql`
+under `supabase/testnet-only/`. Tester sets up their own Supabase per
+guide §3.2 and runs through §3.7 + §3.7.1 themselves.
+
+The operator-owned live DB (the one this dashboard talks to) is already
+in the right state from earlier in the session: all migrations 001-034
+applied, `scripts/reset-tier-counters.mjs` committed, `admin_money_
+invariants` returning `ok: true`. The tester's setup is independent of
+that — they get a fresh Supabase project.
 
 ### What's not covered by this cycle
 

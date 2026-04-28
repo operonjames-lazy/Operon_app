@@ -362,24 +362,17 @@ Notes (most relevant cycle 3 ones, in apply order):
 - `033` fixes the I3 invariant predicate + `jsonb_agg` ordering for stable drift signatures.
 - `034` is the **pause-coverage RPC gate**: `reserve_node_purchase` reads `sale_config.stage` and rejects when not `'active'`. Required for Test 9.
 
-### 3.7.1 Lower tier supply for tier-promotion testing (NEW in cycle 3, OPERATOR-ONLY)
+### 3.7.1 Apply the testnet-only small-supply override
 
-> **The operator runs this once before handing the package to the tester.** Tester does **not** need to do it.
+After all 31 migrations land, apply one more file from a different folder:
 
-Test 8 (tier promotion at boundary) requires you to actually fill tier 1 and watch tier 2 activate. Default `total_supply=1250` is impractical at testnet pace. Run this in the Supabase SQL Editor **after** all migrations apply, **before** §3.8:
+`supabase/testnet-only/035_small_supply_override.sql`
 
-```sql
--- Cycle-3 testnet override: shrink tier 1+2+3 to 10 nodes each. Tests
--- 1-7 use ~6 of tier 1's slots; Test 8 explicitly fills the remaining
--- 4 to flip the active tier to tier 2. Production mainnet uses the
--- contract-default 1250 — this override is testnet-only.
-UPDATE sale_tiers
-   SET total_supply = 10
- WHERE tier IN (1, 2, 3);
-SELECT tier, total_supply, total_sold, is_active FROM sale_tiers WHERE tier <= 5;
-```
+This is not a real migration — it lives outside `supabase/migrations/` on purpose so the production runner never picks it up. It just shrinks tier 1+2+3 to `total_supply=10` so Test 8 (tier promotion at boundary) is doable in 5 minutes of clicks instead of 1250 buys per tier.
 
-Expected output: tiers 1-3 should show `total_supply: 10`. Tier 1 should be the only `is_active: true` row. If tier 4 or 5 is active, mig 014 didn't apply cleanly — re-run it.
+Open the file in a text editor → select all → paste into the Supabase SQL Editor → Run.
+
+Expected output (the SELECT at the bottom prints automatically): tiers 1-3 show `total_supply: 10`. Tier 1 should be the only `is_active: true` row. If tier 4 or 5 is active, mig 014 didn't apply cleanly — re-run it.
 
 ### 3.8 Run the site
 
@@ -435,7 +428,7 @@ MetaMask does not show the practice USDC / USDT balances until you tell it which
 - [ ] All five wallets show ~10,000 USDC on Arbitrum and ~10,000 USDT on BSC
 - [ ] You have the six contract addresses written down somewhere
 - [ ] **All migrations were run through 034 (the latest)** — if you stopped early you will hit bugs. The list is in §3.7; 31 files total.
-- [ ] **Operator ran §3.7.1 small-supply SQL override** (tier 1+2+3 → `total_supply=10`); without this, Test 8 takes hours, not minutes.
+- [ ] **Applied the testnet-only `supabase/testnet-only/035_small_supply_override.sql`** per §3.7.1. Test 8 (tier promotion) takes hours instead of minutes without it.
 - [ ] `.env.local` has all of: `DEV_ENDPOINTS_ENABLED=1`, `DEV_INDEXER_SECRET=<hex>`, `VOUCHER_SIGNER_ADDRESS`, `VOUCHER_SIGNER_PRIVATE_KEY`, `LOCAL_TIER_CAP`, `ADMIN_CAP_PER_TIER`
 - [ ] `VOUCHER_SIGNER_ADDRESS` matches what the contract was deployed with — if they diverge, every Reserve fails with `voucher signer mismatch`.
 
