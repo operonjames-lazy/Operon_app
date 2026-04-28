@@ -431,6 +431,34 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 
 ---
 
+## D33 — Voucher amount: store at reserve time, equality-check at ingest (single-quote invariant)
+
+**Context:** Mig 030 rewrote `process_purchase_with_reservation` to compute the post-discount amount at ingest time using the form `gross - floor(gross * bps / 10000)` in cents. That algebraically-identical-looking variant differs from mig 028's `floor(gross * (10000 - bps) / 10000)` by +1 cent on 38/40 tiers under any non-zero discount, because the contract operates in token base units (6/18 dec) and `tokenAmountToCents` floor-projects back to cents — only mig 028's form survives that round-trip. Result: every discounted T3+ purchase silently abandoned in the DB despite the buyer paying + minting on-chain.
+
+**Decision (mig 031):** Stop having two oracles compute the same number. Add `sale_reservations.expected_amount_cents BIGINT NOT NULL` populated by `reserve_node_purchase` at insert time using mig-028's form, and constrained by a CHECK that pins the bound (≥ 85% gross, ≤ gross). The webhook ingest RPC then asserts `p_amount_usd === v_res.expected_amount_cents` — equality only, no recomputation. The voucher signed by `lib/voucher.ts` and the row's `expected_amount_cents` both derive from the same `(unit_price_cents, quantity, discount_bps)` triple at the same RPC call, so they cannot disagree.
+
+This collapses the entire "two pricing engines drift apart" failure class. The convergence test at `contracts/test/AmountMathConvergence.test.ts` enumerates 1,680 cases (40 tiers × 3 bps × 7 quantities × 2 decimal scales) and asserts contract-emit-after-floor matches the stored expected, so a future regression that flips back to mig-030's form fails CI deterministically.
+
+**Tracking:** mig 031, mig 033 (truthiness fixes on the I3/jsonb_agg/CHECK shape), `contracts/test/AmountMathConvergence.test.ts`, REVIEW_ADDENDUM D-P1.
+
+## D34 — Safe-novation guard: detect non-owner signer, fail clear, never broadcast
+
+**Context:** NodeSale `pause`, `unpause`, `withdrawFunds` are `onlyOwner`. Pre-novation the owner is the deployer hot key, mirrored into Vercel as `ADMIN_PRIVATE_KEY` — the app routes call those onlyOwner methods through that hot signer. Post-novation (Safe `transferOwnership` + `acceptOwnership` per D26) the contract owner is the Safe; the hot key is no longer privileged, and the app's pause/unpause/withdraw calls revert on-chain with `Ownable: caller is not the owner`. A doomed tx, gas burned, the operator stares at a generic revert.
+
+**Decision:** Each onlyOwner route calls `assertAdminIsOwner(contract, signerAddress)` before broadcasting. The helper reads `contract.owner()` and compares against the address `ADMIN_PRIVATE_KEY` derives. On mismatch, the route returns a structured envelope `{error: 'admin_not_owner', detail: '...'}` with the actual on-chain owner address and a pointer to the Safe UI. Routes return 207 (per-chain pause/unpause) or 503 (single-chain withdraw) instead of attempting the contract call. The mainnet operator path post-novation is the Safe UI directly; the app routes are intentionally dead and *say so* clearly in seconds, instead of after a revert.
+
+**Tracking:** `lib/admin-signer.ts` (`assertAdminIsOwner`, `getAdminSignerAddress`), pause/unpause/withdraw routes, `LIVENET_TEST_RUNBOOK.md §7` documents the verification sequence (post-novation, hit pause once → expect 207 with `admin_not_owner` envelope).
+
+## D35 — Cron drift signature: hash deltas, not raw counters
+
+**Context:** Mig 032's `cron_alert_should_fire(kind, signature)` deduplicates per-tick Telegram alerts: alert when signature changes or when sticky drift has been silent for ≥ 1 hour. Initial implementation hashed `admin_money_invariants` output verbatim, including raw `purchases_sum` / `tier_increments_sum` / `total_sold` per drifted tier. On a drifted tier with active selling, every successful purchase increments all three counters by the same amount → drift *delta* is constant but absolute numbers churn → signature changes → re-fire. The dedup defeated itself during exactly the moments it was most valuable.
+
+**Decision:** Hash deltas, not raw counters. The cron route serializes `tier_drift` as `{tier, total_sold_minus_purchases, total_sold_minus_increments}` per drift row — the *magnitude of inconsistency*, not the absolute numbers. Identical drift shape across ticks now produces identical signatures, even while purchases continue to land. The 1-hour reminder cadence still fires for sticky drifts; ad-hoc Telegram spam stops.
+
+**Tracking:** `app/api/cron/reconcile/route.ts:415-449` (the delta-shape signature build), mig 033's `jsonb_agg ORDER BY` (without ordered output the signature was non-deterministic regardless of delta-shape).
+
+---
+
 # Phase 2 Reserved (D21–D40)
 
 Placeholder entries for Phase 2 decisions. Fill in as they come up.

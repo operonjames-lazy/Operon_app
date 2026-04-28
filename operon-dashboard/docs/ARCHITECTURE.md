@@ -151,10 +151,16 @@ tier_increments             -- idempotency log for increment_tier_sold()
 ├── PK (tx_hash, chain)
 ├── tier, quantity
 
-sale_reservations           -- v2 voucher checkout (migration 026)
+sale_reservations           -- v2 voucher checkout (migration 026/028/031)
 ├── id UUID PK              -- → bytes32 reservationId via lib/voucher.ts
 ├── buyer_wallet, chain, tier, quantity, token
 ├── unit_price_cents, discount_bps, code_used, code_hash
+├── expected_amount_cents BIGINT NOT NULL  -- mig 031: load-bearing single-quote
+│                                            invariant. Set once at reserve time
+│                                            via (unit_price * qty * (10000-bps))
+│                                            / 10000. Ingest asserts equality
+│                                            against this — no recompute. CHECK
+│                                            ≥ 0.85 × gross, ≤ gross. See D33.
 ├── status: 'reserved' | 'submitted' | 'completed' | 'expired' | 'failed' | 'cancelled'
 ├── expires_at, tx_hash, submitted_at, completed_at
 └── partial indexes on (expires_at) + (buyer_wallet) + (tier) for status IN ('reserved','submitted')
@@ -260,14 +266,36 @@ reconciliation_log          -- one row per reconcile cron run
 ├── events_found, gaps_filled
 ├── run_at, duration_ms
 
+cron_alert_sentinel         -- mig 032 — Telegram dedup for the cron's
+├── kind PRIMARY KEY            invariant alert. cron_alert_should_fire(kind,
+├── last_signature              signature, ttl) returns true on signature
+└── last_alerted_at             change OR sticky drift past TTL.
+
 -- (referral_code_chain_state was dropped in migration 027 — Phase 5 cleanup)
 
 payout_periods, payout_transfers  -- legacy biweekly rollup, superseded by paid_at on referral_purchases
 ```
 
+**Service-role-only RPCs added in cycle 3** (revoked from PUBLIC/anon/authenticated, granted to `service_role` only):
+
+| Function | Mig | Purpose |
+|---|---|---|
+| `reserve_node_purchase` | 026/028/031/034 | Atomic reservation: locks `sale_tiers` row `FOR UPDATE`, computes `expected_amount_cents` once at insert, reads `sale_config.stage` and rejects when not `'active'` (mig 034 defense-in-depth). |
+| `process_purchase_with_reservation` | 028/031 | Webhook ingest. Asserts equality `p_amount_usd === reservation.expected_amount_cents` — no recomputation. Auto-promotes the next tier when `total_sold` reaches `total_supply`. |
+| `mark_reservation_submitted/failed`, `complete_reservation`, `expire_old_reservations` | 026 | Reservation state machine helpers. |
+| `admin_money_invariants()` | 031/033 | Cross-table drift detector. Returns `{ok, tier_drift, stuck_failed_events, completed_no_purchase}`. The cron route runs this every tick and Telegrams via `cron_alert_should_fire` on `ok=false` (with delta-shape signature per D35). |
+| `cron_alert_should_fire(kind, signature, ttl)` | 032 | Atomic dedup gate for cron Telegram alerts. Row-locks the sentinel for `kind`. |
+
 ### RLS
 
-**Row-Level Security is intentionally disabled** (migration `004_fixes.sql`). Reason: the custom SIWE + JWT auth never populates `auth.uid()`, so policy predicates were non-functional. Authorisation is enforced at the API route layer via `verifyToken()` in `lib/auth.ts`. All API routes use the service-role Supabase client which bypasses RLS entirely. **Do not re-enable RLS without also migrating auth to Supabase Auth** — it would break everything.
+**Row-Level Security is intentionally disabled** on most tables (migration `004_fixes.sql`). Reason: the custom SIWE + JWT auth never populates `auth.uid()`, so policy predicates were non-functional. Authorisation is enforced at the API route layer via `verifyToken()` in `lib/auth.ts`. All API routes use the service-role Supabase client which bypasses RLS entirely.
+
+**Two exceptions** apply RLS deliberately:
+
+- `sale_reservations` is `ENABLE + FORCE ROW LEVEL SECURITY` (mig 028) — service-role only, no public policy. Everything goes through the RPCs above.
+- `sale_config` had RLS active without a public policy until mig 031 disabled it. Reason: Realtime postgres_changes apply RLS when delivering UPDATE events, so `stage` flips never propagated to live browsers. Mig 030's narrow column GRANT was a no-op while RLS was on with no policy. Mig 031 disables RLS so anon subscribers receive the events; the column GRANT remains the surface gate.
+
+**Do not re-enable RLS on the bulk tables without also migrating auth to Supabase Auth** — it would break everything.
 
 ---
 

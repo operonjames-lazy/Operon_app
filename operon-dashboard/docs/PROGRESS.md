@@ -4,6 +4,62 @@ Append-only session log. One dated entry per coding session. Do not edit previou
 
 ---
 
+## 2026-04-28 (EOD) — Internal verification + tester-package handoff trim
+
+Final pass on the cycle 3 testnet prep. Earlier entry today (below) captured the doc rewrite + new tests; this entry captures the work that came after — internal verifications against the live RPCs, the tester-burden trim that followed, and the docs that closed it out.
+
+### Internal verifications run against the live testnet DB
+
+All in BEGIN/ROLLBACK transactions, live state untouched:
+
+- **3-level community chain walk.** A → B → C synthesized in `users` + `referrals`, `process_purchase_and_commissions` called against $450 net buy → got `level=1, rate=1000bps, $45` and `level=2, rate=300bps, $13.50`, `derived_bps` matched `rate_bps` to one decimal on both rows.
+- **EPP affiliate L1.** Synthesized invite + `epp_partners(tier='affiliate', status='active')` + buyer with that partner as upline → `level=1, referrer_tier='affiliate', rate=1200bps, $51 on a $425 net buy`.
+- **EPP partner-tier mid-chain.** Mixed chain (community L1 + EPP partner L2) → L1 = community/1000bps, L2 = partner/700bps. The chain walk picks the upline's tier ladder, not the buyer's.
+- **Suspended partner skip (mig 021).** EPP partner with `status='suspended'` mid-chain → that partner gets nothing, chain walks to next active upline at their level rate. uTop credited at L2/700bps.
+- **Tier auto-promotion at boundary.** Pre-set tier 1 to 6/7 sold, ran reserve+complete via the v2 RPCs → tier 1 → 7/7 inactive, tier 2 active, reservation completed at locked tier-1 price (mig 031 invariant).
+- **Held-reservation reserves inventory.** While Wallet B held the last tier-1 slot, Wallet C qty=2 → `tier_quantity_exceeded`, qty=1 → also `tier_quantity_exceeded`.
+- **Pause gate (mig 034).** With `sale_config.stage='paused'` → `reserve_node_purchase` returns `{error:'sale_not_active', stage:'paused'}` from the RPC's defense-in-depth check.
+- **EPP wizard break attempts (Test 5 b/c/d).** Replicated `maybeCreateEppPartner`'s gates as plain SQL: invalid invite shape → `invite_invalid`, expired invite → `invite_expired`, used invite → `invite_used` (both reload-by-same-wallet and different-wallet paths), invalid email/chain → respective errors, happy path → new `epp_partners` row + `is_epp=true` + invite marked used + commission walks at `rate_bps=1200`.
+
+The `commission_audit` view (added by `supabase/testnet-only/035_small_supply_override.sql` — NOT a real migration, lives outside `supabase/migrations/` on purpose) is the single SQL surface the tester runs after each buy: `SELECT * FROM commission_audit;` shows level + rate_bps + derived_bps per upline. `derived_bps` is `commission_usd / amount_usd × 10000` so the tester can spot money-math drift directly.
+
+### Tester package trim (cycle 3 wallet count: 6 → 5)
+
+Three internal verifications above made certain test surfaces no longer human-required. Tester package shrunk:
+
+- Dropped Wallet E. The lowercase-URL adversarial in Test 7 was the only thing that needed it. The post-mig-31 `.trim().toUpperCase()` normalize at signup is verified by code-review (route does the call) + DB-invariant proof (PostgreSQL VARCHAR equality is case-sensitive by default, so a raw lowercase lookup against an uppercase-stored code returns no rows). No tester click-through needed.
+- Dropped the lowercase-URL adversarial subsection from Test 7.
+- Test 5 (EPP wizard) compresses to a 60-second UX walk: 4 screens render + nav buttons advance + SIWE prompt fires + success screen shows. The break attempts (a/b/c/d) and the resulting commission rate are pre-proven internally.
+- Cycle 3 final wallet count: 5 (Deployer, A, B, C, D).
+
+### Final tester package
+
+`operon-tester-2026-04-28.zip` regenerated, 235 files, 736 KB at the repo parent. Contents that ride along:
+
+- `docs/TESTING_GUIDE.md` (cycle 3, ~63 KB)
+- `supabase/migrations/` (001 through 034; 31 files)
+- `supabase/testnet-only/035_small_supply_override.sql` (testnet-only override + `commission_audit` view)
+- Full app + contracts; no node_modules, no `.env*`, no internal review artifacts (`review-log.md`, `REVIEW_ADDENDUM.md`, `CLAUDE.md`, `.claude/`, `.indexer-cursor.json`)
+
+Operator handoff is one step: send the zip. The tester sets up their own Supabase per §3.2; everything they need is inside the zip.
+
+### Doc updates landed
+
+- `OPERATIONS.md` — migration history table extended with mig 034 row; live-DB-state paragraph updated to reflect 030-034 + reset script + testnet-only override applied.
+- `DECISIONS.md` — added D33 (precomputed `expected_amount_cents` as single-quote invariant; collapses the "two pricing engines drift apart" failure class), D34 (Safe-novation guard: detect non-owner signer + fail clear, never broadcast), D35 (cron drift signature hashes deltas, not raw counters — defeats sale-activity-induced churn).
+- `ARCHITECTURE.md` — added `cron_alert_sentinel` to the Operations schema diagram, a service-role-only RPC table covering the cycle-3 additions (`reserve_node_purchase`, `process_purchase_with_reservation`, `admin_money_invariants`, `cron_alert_should_fire`), `expected_amount_cents` field on `sale_reservations` with the load-bearing comment, and an updated RLS section noting the two deliberate exceptions (`sale_reservations` FORCE on, `sale_config` was on with no policy until mig 031 disabled).
+
+### Live-DB state snapshot at session close
+
+- All migrations 001-034 applied + verified
+- `admin_money_invariants` returns `ok: true`
+- Tier 1 supply = 7, sold = 0, active (testnet override applied)
+- Tier 2 supply = 100, sold = 3 (testnet seed purchases — both EPP affiliate, $1339 commission paid total)
+- `cron_alert_sentinel` empty (no drift seen since mig 032 landed)
+- `commission_audit` view live and queryable
+
+---
+
 ## 2026-04-28 — Cycle 3 testnet prep (post-mig-34 hotfix bundle)
 
 Single-day session prepping for the next testnet pass. Built on top of the 2026-04-27 hotfix bundle (mig 030-034 + Safe-novation guard + verifier self-bootstrap + deploy fail-closed + admin pause coverage). User asks for this cycle: **multi-level referral chains** and **tier promotion** had no explicit coverage in cycle 2, fix that.
