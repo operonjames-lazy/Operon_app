@@ -1,18 +1,21 @@
-# TESTING_GUIDE.md — Operon Phase 1 (cycle 2)
+# TESTING_GUIDE.md — Operon Phase 1 (cycle 3)
 
 **Who this is for:** Anyone helping us test the Operon app before real money goes live. You need a computer, a browser, and about half a day total (roughly 2 hours of setup, then 1–2 hours of clicking through tests).
 
-**What you're doing:** Installing the Operon app on your own laptop, setting up crypto wallets on two practice blockchains (Arbitrum Sepolia and BSC Testnet), then testing the crucial money paths: buying a node, using a referral link, seeing the discount, and checking that commissions land on the correct wallet. Everything else is already covered by automated tests. You are only testing things that need a human with eyes and a wallet.
+**What you're doing:** Installing the Operon app on your own laptop, setting up crypto wallets on two practice blockchains (Arbitrum Sepolia and BSC Testnet), then testing the crucial money paths: reserving a slot, buying a node, using a referral link, seeing the discount, and checking that commissions land on the correct wallets — including across multi-level referral chains and across an automatic tier price step. Everything else is already covered by automated tests. You are only testing things that need a human with eyes and a wallet.
 
-**Why this matters:** When this goes live, people will be paying real money on two different blockchains. A silent failure on launch day — wrong commission, premature "Successful" message, missing discount — is close to impossible to fix after the fact. Your job is to break this stuff now.
+**Why this matters:** When this goes live, people will be paying real money on two different blockchains. A silent failure on launch day — wrong commission, premature "Successful" message, missing discount, or a tier-boundary purchase that gets locked in at the wrong price — is close to impossible to fix after the fact. Your job is to break this stuff now.
 
-**What's different from cycle 1:** This is the second pass of user testing. The first pass (2026-04-14) surfaced 14 bugs; all of them have been fixed, the code has been re-reviewed end-to-end, and this package reflects the fixed state. Two items in Part 3 setup are new — **read Part 3 carefully even if you tested cycle 1**. A known-caveats list is in Part 10 at the bottom of this guide — those are items that have been intentionally deferred for later, not bugs we want you to report. Part 7 is new and covers the common "looks like a bug but isn't" situations you'll hit — **read Part 7 before you file a report.**
+**What's different from cycle 2 (this is a major shape change — read this section even if you tested cycle 2):**
 
-**If you already tested the 2026-04-18 package:** thanks for coming back. The setup delta is tiny — one extra migration file (`018_revoked_referral_status.sql`) to apply after `017`. No new env vars, no new dependencies, no contract redeploy needed. Three new things are worth poking at while you're here:
+* **Direct `purchase()` is gone.** The old "Approve → Buy" flow has been replaced by a two-step **voucher checkout**. You now click **Reserve** first, which holds inventory + signs a 12-minute server-issued voucher; you then approve the token + call **Buy** within the countdown window. If the countdown hits 00:00 before you finish, the reservation auto-expires and you start over. **No funds at risk** — the contract rejects expired vouchers.
+* **The "activating your code on-chain" delay is GONE.** Migration 027 dropped the on-chain referral-code mirror; codes are now applied off-chain via the voucher signature. The red toast / 5-30s wait you saw in cycle 2 no longer happens. If you see it on cycle 3 the build is stale.
+* **Two new asks for cycle 3** that did not have explicit coverage before: **multi-level referral chains** (Test 7, 3-level commission walk) and **tier promotion at the boundary** (Test 8, watching tier 1 fill and tier 2 activate mid-session). Test 8 needs a one-line SQL setup the operator runs before handing the package over — see §3.7.1.
+* **Admin pause now actually halts new reservations.** Cycle 2's pause only paused the contract; the backend kept handing out vouchers. Cycle 3 flips `sale_config.stage='paused'` first, so the Reserve button disables on every connected client within seconds. Test 9 covers this.
+* **New env vars in §3.6** — `VOUCHER_SIGNER_ADDRESS`, `VOUCHER_SIGNER_PRIVATE_KEY`, `LOCAL_TIER_CAP`, `ADMIN_CAP_PER_TIER`. Two of these are *generated on your machine* (the signer keypair). Don't reuse anyone else's.
+* **New migrations to apply** (§3.7) — `019` through `034`, in order. Cycle 2 stopped at `018`. The list is long but the apply step is the same as before; budget ~3 minutes.
 
-1. **Admin revokes a referral code.** After buying with a valid code, have the operator revoke it via the admin endpoint. Try to buy with the same code again — you should fall through to "no discount," and the code should stay revoked (it should not silently reappear on-chain within 5 minutes).
-2. **Pending-tx recovery across wallets.** Start a purchase, close the tab mid-tx, switch to a different wallet in MetaMask, reload the sale page. The yellow "pending transaction" banner should **not** appear under the second wallet. If it does, flag it.
-3. **Realtime reconnect.** While on the sale page, simulate a dropped connection (browser devtools → Network → Offline for 10s, then back Online). The tier / status should reconcile, not stay stuck at whatever it showed when the socket dropped.
+A known-caveats list is in Part 10 at the bottom of this guide — those are items that have been intentionally deferred for later, not bugs we want you to report. Part 7 covers the common "looks like a bug but isn't" situations you'll hit — **read Part 7 before you file a report.**
 
 **You will not need to understand code.** You will copy and paste commands. If something fails, message the operator — do not improvise.
 
@@ -70,9 +73,11 @@ You need **three wallets** in MetaMask:
 - **Wallet A** — top of the referral chain.
 - **Wallet B** — referred by Wallet A.
 
-### 2.1 Create three MetaMask accounts
+### 2.1 Create five MetaMask accounts
 
-MetaMask icon → account circle (top-right) → **Add a new account** → name it **Deployer**. Repeat twice more for **Wallet A** and **Wallet B**.
+MetaMask icon → account circle (top-right) → **Add a new account** → name it **Deployer**. Repeat for **Wallet A**, **Wallet B**, **Wallet C**, **Wallet D**.
+
+(Cycle 2 only needed three — A and B for the basic referral pair, plus the Deployer. Cycle 3 needs C and D so Test 7 can build a 3-level referral chain: A → B → C, with D as the EPP partner buyer.)
 
 > ⚠️ **Important behaviour note (new in cycle 2):** The app expects you to sign out before switching wallets. **When you want to switch from Wallet A to Wallet B, click the Disconnect button in the app (or in the wallet icon at the top right of the page) first, THEN switch accounts in MetaMask.** If you just switch the active account in MetaMask while the app is still showing a signed-in state for the previous wallet, the app now detects the account change and forces a re-sign — which is the correct safe behaviour but may feel like a jolt. Disconnecting first is the smoother flow.
 
@@ -142,6 +147,14 @@ Supabase is the database the app uses.
 
 ### 3.3 Deploy the smart contracts on Arbitrum Sepolia
 
+**Cycle 3 prelude — generate a voucher-signer keypair first.** NodeSale v2 verifies an EIP-712 voucher on every purchase. The voucher is signed by a keypair that lives off-chain on the API server, not in any user's wallet. Generate one fresh on your machine before deploying:
+
+```
+node -e "const {Wallet} = require('ethers'); const w = Wallet.createRandom(); console.log('VOUCHER_SIGNER_ADDRESS=' + w.address); console.log('VOUCHER_SIGNER_PRIVATE_KEY=' + w.privateKey)"
+```
+
+Save both printed values — `VOUCHER_SIGNER_ADDRESS` is used by the deploy script below; `VOUCHER_SIGNER_PRIVATE_KEY` goes into `.env.local` (§3.6). **Do not reuse a key from anyone else** (including the operator's testnet key); the keypair binds every voucher this dashboard signs.
+
 From the `contracts` folder:
 
 ```
@@ -149,6 +162,10 @@ cd contracts
 export DEPLOYER_PRIVATE_KEY=<paste the 0x... key from Part 2.5>
 export ARBITRUM_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
 export BSC_TESTNET_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545
+export VOUCHER_SIGNER_ADDRESS=<paste from the keypair you just generated>
+export TREASURY_ADDRESS=<the Deployer wallet address>
+export LOCAL_TIER_CAP=1250
+export ADMIN_CAP_PER_TIER=1250
 ```
 
 **Deploy a mock USDC token:**
@@ -157,14 +174,19 @@ npx hardhat run scripts/deploy-mock-usdc.ts --network arbitrumSepolia
 ```
 Save the printed address as `USDC_ARB`.
 
-**Deploy the main contracts:**
+**Deploy the main contracts (NodeSale v2):**
 ```
 export USDC_ADDRESS=<USDC_ARB>
 export TOKEN_DECIMALS=6
-export TREASURY_ADDRESS=<the Deployer wallet address>
 npx hardhat run scripts/deploy.ts --network arbitrumSepolia
 ```
-Save the two printed addresses as `SALE_ARB` and `NODE_ARB`.
+The deploy script will print:
+- `OperonNode deployed to: 0x…` → save as `NODE_ARB`
+- `NodeSale (v2) deployed to: 0x…` → save as `SALE_ARB`
+
+The script also seeds all 40 tier prices + caps in the same run. Confirm the tail of the output ends with `Tier 39: minPrice=$3352.38…` — if it stops earlier than tier 39, the seed loop reverted and you must re-run the deploy.
+
+> **Note on testnet vs mainnet:** the deploy script falls back to sensible defaults on Arbitrum Sepolia / BSC Testnet (treasury → deployer, tier caps → 1250). On mainnet (`--network arbitrum` / `bsc`) the same script fails closed if any required env var is missing — see §7 of `LIVENET_TEST_RUNBOOK.md`. You don't need to do anything for the testnet pass.
 
 ### 3.4 Deploy the smart contracts on BSC Testnet
 
@@ -252,6 +274,23 @@ SALE_CONTRACT_BSC=<SALE_BSC>
 ADMIN_WALLETS=<Deployer address, all lowercase>
 ADMIN_PRIVATE_KEY=<Deployer private key from 2.5>
 
+# ── NEW in cycle 3 — voucher signer ────────────────────────────
+# These two values are the keypair you generated at the top of §3.3.
+# VOUCHER_SIGNER_ADDRESS must equal what the contract was deployed
+# with; if they diverge the contract will reject every voucher
+# (lib/voucher.ts asserts this on every signing call).
+# VOUCHER_SIGNER_PRIVATE_KEY is server-only — never NEXT_PUBLIC_*.
+VOUCHER_SIGNER_ADDRESS=<from the keypair printout>
+VOUCHER_SIGNER_PRIVATE_KEY=<from the keypair printout>
+
+# ── NEW in cycle 3 — per-tier caps ────────────────────────────
+# Mirror what you exported during the contract deploy. Both default
+# to 1250 (matching deploy.ts defaults). Test 8 (tier promotion)
+# does NOT use these — it uses the small-supply override the
+# operator runs in §3.7.1.
+LOCAL_TIER_CAP=1250
+ADMIN_CAP_PER_TIER=1250
+
 # ── NEW in cycle 2 — gate for local dev endpoints ──────────────
 # The dev event indexer posts signed messages to /api/dev/indexer-ingest
 # and /api/dev/drain-referrals. Both routes now require these two flags
@@ -299,15 +338,48 @@ Easiest way is Supabase's SQL editor, not the terminal.
 3. In your file manager, open the folder `operon-dashboard/supabase/migrations`. You will see files named `001_initial_schema.sql`, `002_seed_data.sql`, etc.
 4. Open `001_initial_schema.sql` in a text editor. Select all. Copy. Paste into the Supabase SQL Editor. Click **Run**.
 5. Wait for **Success**.
-6. Clear the editor. Repeat for each remaining file **in numerical order**: 002, 003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018. **There is no 007 — skip it.**
+6. Clear the editor. Repeat for each remaining file **in numerical order**:
+   `002, 003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019, 020, 021, 022, 023, 025, 026, 027, 028, 029, 030, 031, 032, 033, 034`. **Skip 007 (does not exist) and 024 (deleted before apply, see DECISIONS D32).**
+
+That is **31 migrations total** for a fresh setup. Cycle 2 stopped at 018, so testers returning from cycle 2 only need to apply 019 onward — but it is safer to nuke the Supabase DB and re-run the full list against a clean schema.
 
 If any file errors, stop and message the operator.
 
-Notes:
-- `002_seed_data.sql` pre-seeds a handful of EPP invite codes into the database. You can use those in Test 5 without generating new ones. It also inserts demo rows (a fake "David Kim" EPP partner, two fake historical purchases) purely for dashboard screenshots — ignore them, they don't affect Tests 1–6.
-- `013_referral_chain_state.sql` creates the queue that tracks whether a referral code has been mirrored onto the sale contract. `014_seed_full_tier_curve.sql` fills in tiers 6–40 and resets tier state so the DB lines up with a fresh contract deploy.
-- `017_guard_tier_reset.sql` is the compensating control for `014` — it makes `014`'s tier-state reset skip if any real purchases already exist, so re-running the migration list mid-session does not corrupt counters. Must be applied after `016`. **Never re-run `014` by itself** — its tier-counter reset is unconditional. If you need to reset state, re-apply the full `014 → 015 → 016 → 017` sequence so the guard in `017` protects any real purchase rows.
-- `018_revoked_referral_status.sql` widens the `referral_code_chain_state` status column to accept `'revoked'` as a terminal state, so an admin-initiated referral-code removal is no longer silently reversed by the drain loop within 5 minutes. Apply it after `017`.
+Notes (most relevant cycle 3 ones, in apply order):
+- `002_seed_data.sql` pre-seeds a handful of EPP invite codes into the database. You can use those in Test 5 without generating new ones. It also inserts demo rows (a fake "David Kim" EPP partner, two fake historical purchases) purely for dashboard screenshots — ignore them, they don't affect any test.
+- `013_referral_chain_state.sql` was needed in cycle 2 for the on-chain code mirror. **Cycle 3 drops the table again in mig 027** — apply it then drop it. The "activating your code on-chain" delay is gone.
+- `014` + `017` together seed the 40-tier price curve safely (the guard in `017` skips the destructive reset if `purchases` rows already exist).
+- `019` adds the `admin_killswitches` table the admin panel uses.
+- `020` + `022` + `023` move admin aggregates from JS reduces into Postgres RPCs (no observable behaviour change for the tester).
+- `021` filters suspended EPP partners out of new commission walks (Test 7 exercises this).
+- `025` replaces the cron lock with a row-based TTL lease (no observable change).
+- `026` + `028` are the **NodeSale v2 voucher checkout DB layer** — `sale_reservations` table + `reserve_node_purchase` / `process_purchase_with_reservation` / `expire_old_reservations` RPCs. This is what makes the new Reserve flow work.
+- `027` drops `referral_code_chain_state` (and therefore the cycle-2 "activating your code on-chain" delay). If you see that toast on cycle 3, you forgot to apply 027.
+- `029` Postgres aggregation for `/api/admin/health` failed-events stats.
+- `030` REVOKEs broad anon access to the `public` schema and re-grants narrow column SELECT on `sale_tiers` + `sale_config` only. **Mandatory** — without this, the anon key can read customer / partner / commission rows directly.
+- `031` is the post-mig-30 hotfix: introduces `sale_reservations.expected_amount_cents` (the canonical post-discount amount), reverts a +1c rounding regression, disables RLS on `sale_config` so Realtime delivers updates to anon, adds `admin_money_invariants()` for cross-table drift detection.
+- `032` adds `cron_alert_sentinel` so the cron's per-tick Telegram alerts don't spam.
+- `033` fixes the I3 invariant predicate + `jsonb_agg` ordering for stable drift signatures.
+- `034` is the **pause-coverage RPC gate**: `reserve_node_purchase` reads `sale_config.stage` and rejects when not `'active'`. Required for Test 9.
+
+### 3.7.1 Lower tier supply for tier-promotion testing (NEW in cycle 3, OPERATOR-ONLY)
+
+> **The operator runs this once before handing the package to the tester.** Tester does **not** need to do it.
+
+Test 8 (tier promotion at boundary) requires you to actually fill tier 1 and watch tier 2 activate. Default `total_supply=1250` is impractical at testnet pace. Run this in the Supabase SQL Editor **after** all migrations apply, **before** §3.8:
+
+```sql
+-- Cycle-3 testnet override: shrink tier 1+2+3 to 10 nodes each. Tests
+-- 1-7 use ~6 of tier 1's slots; Test 8 explicitly fills the remaining
+-- 4 to flip the active tier to tier 2. Production mainnet uses the
+-- contract-default 1250 — this override is testnet-only.
+UPDATE sale_tiers
+   SET total_supply = 10
+ WHERE tier IN (1, 2, 3);
+SELECT tier, total_supply, total_sold, is_active FROM sale_tiers WHERE tier <= 5;
+```
+
+Expected output: tiers 1-3 should show `total_supply: 10`. Tier 1 should be the only `is_active: true` row. If tier 4 or 5 is active, mig 014 didn't apply cleanly — re-run it.
 
 ### 3.8 Run the site
 
@@ -357,13 +429,15 @@ MetaMask does not show the practice USDC / USDT balances until you tell it which
 
 - [ ] Site running at `http://localhost:3001`
 - [ ] Second terminal running `pnpm dev:indexer` with no "DEV_INDEXER_SECRET not set" error
-- [ ] MetaMask has three accounts: Deployer, Wallet A, Wallet B
+- [ ] MetaMask has **five** accounts: Deployer, Wallet A, Wallet B, Wallet C, Wallet D
 - [ ] MetaMask has Arbitrum Sepolia and BSC Testnet networks added
-- [ ] All three wallets have some ETH on Arbitrum and some tBNB on BSC
-- [ ] All three wallets show ~10,000 USDC on Arbitrum and ~10,000 USDT on BSC
+- [ ] All five wallets have some ETH on Arbitrum and some tBNB on BSC
+- [ ] All five wallets show ~10,000 USDC on Arbitrum and ~10,000 USDT on BSC
 - [ ] You have the six contract addresses written down somewhere
-- [ ] All migrations were run including 016 (the latest) — if you stopped early you will hit bugs
-- [ ] `.env.local` has both `DEV_ENDPOINTS_ENABLED=1` and `DEV_INDEXER_SECRET=<hex>`
+- [ ] **All migrations were run through 034 (the latest)** — if you stopped early you will hit bugs. The list is in §3.7; 31 files total.
+- [ ] **Operator ran §3.7.1 small-supply SQL override** (tier 1+2+3 → `total_supply=10`); without this, Test 8 takes hours, not minutes.
+- [ ] `.env.local` has all of: `DEV_ENDPOINTS_ENABLED=1`, `DEV_INDEXER_SECRET=<hex>`, `VOUCHER_SIGNER_ADDRESS`, `VOUCHER_SIGNER_PRIVATE_KEY`, `LOCAL_TIER_CAP`, `ADMIN_CAP_PER_TIER`
+- [ ] `VOUCHER_SIGNER_ADDRESS` matches what the contract was deployed with — if they diverge, every Reserve fails with `voucher signer mismatch`.
 
 ---
 
@@ -438,7 +512,7 @@ The tests only cover things a human with a browser and a wallet can verify. Cont
 - ☐ Wallet A's code appears in the referral code badge at the top of the buy box (e.g. `OPR-ABC123 ✓`).
 - ☐ **Fail if:** no discount, wrong percentage, no referrer shown, or a different code shown.
 
-**Wait time note — new in cycle 2.** The first purchase with a brand new code may hit a "pending sync" state for 5–15 seconds while the `dev:indexer` pushes the code onto the contract. If you see a red "activating your code on-chain" toast, just wait and it'll flip green automatically. Do not re-click or refresh aggressively.
+**Cycle 3 note — the cycle 2 "activating your code on-chain" delay is GONE.** Migration 027 dropped the on-chain code mirror; codes are now applied off-chain via the voucher signature. If you see the red "activating on-chain" toast on cycle 3, your DB is missing migration 027 — stop and message the operator.
 
 **Now try one thing to break it — self-referral:**
 
@@ -452,9 +526,11 @@ The tests only cover things a human with a browser and a wallet can verify. Cont
 
 ---
 
-### Test 3 — Buy a node, receive referral credit (run twice)
+### Test 3 — Reserve, buy a node, receive referral credit (run twice)
 
-**Goal:** The core money path — approve, purchase, get the NFT, referrer gets their commission. Run once on Arbitrum with USDC (quantity 1), then once on BSC with USDT (quantity 3). These are the two places real money will move at launch. The decimals difference between the chains and the quantity multiplication are the two most common sources of silent bugs.
+**Goal:** The core money path — **reserve**, approve, purchase, get the NFT, referrer gets their commission. Run once on Arbitrum with USDC (quantity 1), then once on BSC with USDT (quantity 3). These are the two places real money will move at launch. The decimals difference between the chains and the quantity multiplication are the two most common sources of silent bugs.
+
+**New flow shape vs cycle 2.** The Sale page now has a **Reserve** button instead of going straight to Approve+Buy. Click Reserve, the backend signs a 12-minute voucher and shows a countdown. Approve the token, then click Buy. The contract verifies the voucher signature on-chain. **All three numbers — price, discount, total — are locked at Reserve time and shown on the countdown banner.** If the countdown hits 00:00 the voucher dies and the contract refuses to accept it; click Reserve again and you get a fresh one (possibly at a new tier price if a tier promotion happened in between).
 
 ---
 
@@ -470,25 +546,30 @@ Confirm the referrer and 10% discount are still shown.
 
 1. Pick **quantity: 1**.
 2. Pick **USDC** as the token.
-3. **Write down the total price shown on the Sale page.** Example: `$95.00`.
-4. Click **Approve**.
-5. **Look carefully at the MetaMask approval popup.** Near the top, MetaMask shows a human-readable amount like `95 USDC`. It should roughly match the price from step 3.
+3. **Write down the total price shown on the Sale page.** Example: `$450.00` for tier 1 with 10% off.
+4. **Click Reserve.** A countdown banner appears showing `12:00` (or close to it) and the locked total price. The reservation row is now in the database; the voucher is signed and ready.
+   - ☐ **Fail if:** no countdown appears, or the locked price differs from what you wrote down in step 3.
+5. **Click Approve.** MetaMask shows the approval popup.
+6. **Look carefully at the MetaMask approval popup.** Near the top, MetaMask shows a human-readable amount like `450 USDC`. It should roughly match the price from step 3.
    - ☐ **STOP AND REPORT** (Red Flag #2) if: it says **Unlimited**, warns about "unlimited access," or shows an amount clearly larger than the price.
-6. Click **Confirm** in MetaMask. Wait for the approve transaction to confirm.
-7. Click **Purchase** on the website.
-8. MetaMask pops up again. Click **Confirm**.
-9. **Watch the website while MetaMask is still processing.** The site should show a spinner or "Confirming" state. Only **after** MetaMask shows the transaction as confirmed should it flip to the Purchase Complete modal.
-   - ☐ **STOP AND REPORT** (Red Flag #1) if: the website says "Successful" before MetaMask confirms.
+7. Click **Confirm** in MetaMask. Wait for the approve transaction to confirm.
+8. **Click Buy on the website.** MetaMask pops up calling `purchaseWithVoucher(...)`.
+9. Confirm in MetaMask.
+10. **Watch the website while MetaMask is still processing.** The site should show a spinner or "Confirming" state. Only **after** MetaMask shows the transaction as confirmed should it flip to the Purchase Complete modal.
+    - ☐ **STOP AND REPORT** (Red Flag #1) if: the website says "Successful" before MetaMask confirms.
 
 **Pass or fail checks:**
 
 - ☐ Go to **My Nodes**. One NFT is listed, owned by Wallet B, on Arbitrum.
 - ☐ Go back to the Sale page and check the USDC balance shown on the payment-token button — call this `balance_after`. **`balance_before - balance_after` should roughly equal the price** you wrote down in step 3. A few cents of rounding is fine. **RED FLAG #6** if the balance barely dropped, or dropped by many times the price.
+- ☐ The countdown banner is gone (the reservation is now `completed`).
 - ☐ Go to **Referrals** (still as Wallet B). The purchase appears in your activity.
 - ☐ Disconnect, sign in with **Wallet A**. Go to **Referrals**.
 - ☐ Wallet B's purchase appears in your activity feed.
-- ☐ A commission amount is shown on Wallet A. **Expected: approximately $8.55** (L1 community rate is 10%, applied to the post-discount price of ~$85.50). A few cents of rounding is fine. Anything between **$8 and $10** is acceptable; outside that range, note the actual number and report.
+- ☐ A commission amount is shown on Wallet A. **Expected: approximately $45** (L1 community rate is 10%, applied to the post-discount price of ~$450). A few cents of rounding is fine. Anything between **$40 and $50** is acceptable; outside that range, note the actual number and report.
 - ☐ **Fail if:** no NFT, no referral entry on Wallet A, commission is zero (the chain walk is broken), negative, or many times larger than the purchase price.
+
+> **Adversarial check, optional:** click Reserve, then idle 13 minutes without clicking Approve. The countdown hits 00:00, banner clears. Click Reserve again — you should get a fresh voucher (possibly at the same price, possibly tier-promoted depending on timing). The expired reservation row transitions to `status='expired'` on the next cron tick (~5 min). **Fail if:** the contract accepts the expired voucher (it should revert "voucher expired") or the second Reserve call fails with `tier_quantity_exceeded` (the cron should have released the inventory).
 
 ---
 
@@ -500,25 +581,25 @@ Confirm the referrer and 10% discount are still shown after the chain change —
 
 Write down Wallet B's current **USDT** balance as `balance_before`.
 
-**Steps:**
+**Steps (same Reserve → Approve → Buy shape as Pass 1):**
 
 1. Pick **quantity: 3** (this test deliberately buys multiple to verify multiplication).
 2. Pick **USDT** as the token.
-3. **Write down the total price shown.** It should be roughly 3× the per-node price minus the 10% discount. Example: `$256.50` for 3 nodes at $95 each with 10% off. The Sale page also shows the per-node price underneath the quantity selector — sanity-check it.
-4. Click **Approve**.
-5. MetaMask approval popup:
-   - ☐ The **formatted** amount near the top should read roughly `256.50 USDT` or similar — matching the total price.
-   - ☐ **Reminder:** because USDT on BSC uses 18 decimals, the raw number in the transaction data is long (e.g. `256500000000000000000`). That is normal. Trust the formatted amount.
+3. **Write down the total price shown.** It should be roughly 3× the per-node price minus the 10% discount — at tier 1 ($500/node nominal, $450 after 10% off) that's ~`$1,350.00`. The Sale page also shows the per-node price underneath the quantity selector — sanity-check it.
+4. **Click Reserve.** Countdown banner appears with the locked total.
+5. **Click Approve.** MetaMask approval popup:
+   - ☐ The **formatted** amount near the top should read roughly `1350 USDT` or similar — matching the locked total.
+   - ☐ **Reminder:** because USDT on BSC uses 18 decimals, the raw number in the transaction data is long (e.g. `1350000000000000000000`). That is normal. Trust the formatted amount.
    - ☐ **STOP AND REPORT** (Red Flag #2) if it says **Unlimited** or the formatted amount is wildly wrong.
-6. Confirm approve. Wait. Click **Purchase**. Confirm. Watch for premature success.
+6. Confirm approve. Wait. **Click Buy.** Confirm. Watch for premature success.
 
 **Pass or fail checks:**
 
 - ☐ **My Nodes** now shows **four NFTs** — one from Pass 1 (Arbitrum) and **three** from Pass 2 (BSC).
 - ☐ Each NFT is clearly labelled with its chain.
-- ☐ **Balance check:** USDT `balance_before - balance_after` ≈ total price from step 3 (e.g. ~$256.50). **RED FLAG #6** if not.
+- ☐ **Balance check:** USDT `balance_before - balance_after` ≈ total price from step 3 (e.g. ~$1,350). **RED FLAG #6** if not.
 - ☐ Disconnect, sign in as Wallet A → **Referrals**. You see **both** Wallet B events — one Arbitrum single node, one BSC triple. Two separate commission entries.
-- ☐ The commission for the BSC triple should be roughly 3× the commission for the Arbitrum single. **Expected: approximately $25.65** (10% of ~$256.50 post-discount). Anything between **$24 and $28** is acceptable.
+- ☐ The commission for the BSC triple should be roughly 3× the commission for the Arbitrum single. **Expected: approximately $135** (10% of ~$1,350 post-discount). Anything between **$120 and $150** is acceptable.
 - ☐ **If the BSC commission is off by 10^12 or is in a completely different order of magnitude, that is a decimals bug.** Red Flag #9.
 - ☐ **Fail if:** 3 nodes did not appear on My Nodes, the BSC purchase shows as Arbitrum, chains are mislabelled, or the BSC commission is wildly off from 3× the Arbitrum one.
 
@@ -662,17 +743,184 @@ Now buy one node:
 
 ---
 
+### Test 7 — Multi-level referral chain (NEW in cycle 3)
+
+**Goal:** Verify a 3-level commission walk. Wallet A refers Wallet B; Wallet B refers Wallet C. Wallet C buys a node — *all three uplines* should receive commission entries at descending rates (L1 highest, L3 lowest). The chain walk happens atomically inside a single Postgres RPC; we're verifying the application surfaces every level correctly and that the math doesn't lose precision deep in the chain.
+
+**Setup:** Tests 1-2 should already have built A → B (Wallet B's referrer is Wallet A). We now add B → C.
+
+**Step A: Wallet C signs up under Wallet B's code.**
+
+1. New Incognito window.
+2. Go to `http://localhost:3001/?ref=<Wallet B's OPR code from Test 1 sequel>`. (To get Wallet B's code: sign in as Wallet B, /referrals page; write it down.)
+3. Sign in with **Wallet C**. Sign the SIWE message.
+4. Go to /referrals — confirm Wallet C now has its own `OPR-XXX` code AND shows "Referred by Wallet B" (or the wallet B address).
+5. **Fail if:** no "referred by" attribution, or attribution shows the wrong wallet.
+
+**Step B: Wallet C buys 1 node on Arbitrum.**
+
+1. Wallet C still signed in. Sale page → Arbitrum → quantity 1, USDC.
+2. **Reserve → Approve → Buy** (full voucher flow).
+3. Wait for Purchase Complete modal.
+
+**Step C: Verify all three levels paid.**
+
+1. /referrals as Wallet C → activity feed shows the purchase, no commission to self.
+2. Disconnect, sign in as **Wallet B** → /referrals → activity feed shows Wallet C's purchase. **Commission should be ~$45** (L1 rate is 10% of post-discount ~$450).
+3. Disconnect, sign in as **Wallet A** → /referrals → activity feed shows Wallet C's purchase (one upline level deeper). **Commission should be ~$13.50** (L2 rate is 3% of post-discount ~$450; see `lib/commission.ts COMMUNITY_COMMISSION_RATES = [1000, 300, 200, 100, 100]`).
+   - L1 = 10% (1000 bps) → ~$45
+   - L2 = 3%  (300 bps)  → ~$13.50
+   - L3 = 2%  (200 bps)  → would apply if there's a wallet above A; in this 3-level chain A is L2 max.
+4. **Fail if:** Wallet B's commission is missing (chain walk broke at L1), Wallet A's commission is missing (chain walk broke at L2), or either commission is identical to the L1 rate (the rate ladder isn't tiering down).
+
+**Adversarial: cross-wallet self-ref.** Sign in as Wallet B, attempt to reserve while pasting Wallet B's OWN `OPR-XXX` code as a referral.
+
+- ☐ Expect: the field rejects with "you cannot use your own referral code" toast and the Reserve call returns `{error: 'invalid_code', reason: 'self_referral'}` if you bypass the field check.
+- ☐ **Fail if:** the system accepts the code and credits Wallet B's own purchase.
+
+> **Lowercase URL adversarial:** Open Incognito, paste `http://localhost:3001/?ref=<the-code-in-lowercase>`. Sign in with a **fresh Wallet E**. Confirm the /referrals page shows the original code-owner as the referrer (cycle 3 normalizes lowercase → uppercase at signup; cycle 2 silently dropped the attribution).
+
+---
+
+### Test 8 — Tier promotion at the boundary (NEW in cycle 3)
+
+**Goal:** Watch tier 1 sell out (with the §3.7.1 supply override at 10), confirm tier 2 auto-activates, and verify a reservation made *before* the promotion still completes at the locked tier-1 price (because `expected_amount_cents` was stored on the reservation row at Reserve time, not recomputed at Buy time).
+
+**Pre-flight:** Run this in Supabase SQL Editor and write down both numbers — you'll cross-check after:
+
+```sql
+SELECT tier, total_supply, total_sold, is_active, price_usd
+  FROM sale_tiers WHERE tier IN (1, 2) ORDER BY tier;
+```
+
+You should see tier 1 with `total_supply=10`, `is_active=true`, and `total_sold=N` reflecting how many you've already bought across Tests 3, 5, 7. Tier 2 should be `is_active=false`. Tier 1 `price_usd=50000` (cents). Tier 2 `price_usd=52500` (5% higher).
+
+**Step A: Hold a tier-1 reservation open WITHOUT submitting.**
+
+1. Sign in as **Wallet B**. Sale page → Arbitrum → quantity 1.
+2. **Click Reserve.** Countdown banner appears showing the tier-1 locked price (~$450).
+3. **Do NOT click Approve yet.** Keep this tab open.
+
+**Step B: From a different wallet, fill the rest of tier 1.**
+
+1. New Incognito window. Sign in as **Wallet C** (or Deployer — anyone with USDC).
+2. Sale page → Arbitrum. Compute `remaining = 10 - total_sold - 1` (subtract the 1 from Step A which is in-flight). E.g. if `total_sold=5` you need to buy 4 to fill tier 1.
+3. **Reserve qty = `remaining`** → Approve → Buy → wait for Purchase Complete.
+4. Refresh the SQL query above:
+   - ☐ Tier 1: `total_sold=9` (10 minus the still-pending reservation in Step A), `is_active=true` (still — the pending reservation hasn't completed yet, so the tier hasn't fully filled).
+   - ☐ Tier 2: still `is_active=false`.
+
+**Step C: Complete the held tier-1 reservation.**
+
+1. Switch back to the Wallet B tab from Step A. Countdown should still be running (well within 12 min).
+2. **Click Approve → Buy.** Wait for Purchase Complete.
+3. Refresh the SQL query:
+   - ☐ Tier 1: `total_sold=10`, `is_active=false`.
+   - ☐ Tier 2: `is_active=true`. **The auto-promotion fired.**
+4. Sign in as Wallet B → /referrals → confirm the purchase shows **at the tier 1 price (~$450)** even though tier 2 is now active. The voucher locked the price at Reserve time.
+5. **Fail if:** Wallet B's purchase landed at tier 2 price (~$472.50), or tier 2 didn't auto-activate, or the SQL still shows tier 1 as active.
+
+**Step D: Verify new reservations land in tier 2.**
+
+1. Wallet B Sale page → Arbitrum → quantity 1.
+2. **Click Reserve** — the locked price should be **~$472.50** (5% above tier 1, post-discount).
+3. ☐ Sale page header / current-tier indicator shows **tier 2**.
+4. ☐ **Fail if:** the new reservation comes back at tier 1 price.
+
+(You don't need to actually buy this one — the test is about pricing.)
+
+**Adversarial: race a Reserve at exactly the tier boundary.** Optional, only if you have time:
+1. Reset tier 1 in SQL: `UPDATE sale_tiers SET total_sold = 9, is_active = TRUE WHERE tier = 1; UPDATE sale_tiers SET is_active = FALSE WHERE tier = 2;` — leaves 1 slot.
+2. Open two browser tabs side-by-side, both signed in as different wallets, both with quantity = 2 selected.
+3. Click Reserve in both tabs as close together as you can.
+4. ☐ Expect: one tab succeeds with `quantity=2`. The other returns `tier_quantity_exceeded` because the global cap doesn't allow oversubscription. The DB's `FOR UPDATE` lock on `sale_tiers` serializes the two requests.
+5. **Fail if:** both tabs succeed (the lock isn't holding) or both fail (the second tab should have been able to take 1 of the 2 if the first took 1 — but with qty=2 on both, only one fits in the remaining 1-slot window, so one fail is correct).
+
+---
+
+### Test 9 — Admin pause halts new reservations (NEW in cycle 3)
+
+**Goal:** When the operator pauses the sale, the buyer's Reserve button should disable within seconds across every connected client, and any in-flight reservation attempt should reject cleanly (not hand out a doomed voucher). When the operator unpauses with `chain='both'`, the Reserve button comes back.
+
+**Setup:** Need a fresh signed-in user (Wallet B is fine) on the Sale page. Also need a second terminal where the operator (you) can curl the admin endpoints. Get the admin session cookie the same way as Test 5: sign in with the **Deployer** wallet, F12 → Application → Cookies → copy `operon_session`.
+
+**Step A: Pause via curl.**
+
+```
+curl -X POST http://localhost:3001/api/admin/sale/pause \
+  -H "Content-Type: application/json" \
+  -H "Cookie: operon_session=<paste>" \
+  -d '{"chain":"both"}'
+```
+
+Response should be 200 with `ok: true` and per-chain `txHash` values. (On testnet the contract pause tx confirms in a few seconds.)
+
+**Step B: Verify the buyer-side Reserve button disables.**
+
+1. Switch to the Wallet B browser tab. Refresh the Sale page (or wait ~10s for Realtime to push the update).
+2. ☐ The Reserve button is **disabled** with text like "Sale paused".
+3. Try to click it — nothing should happen.
+4. **Adversarial via curl:** try to bypass the UI and call the API directly:
+   ```
+   curl -X POST http://localhost:3001/api/sale/reserve \
+     -H "Content-Type: application/json" \
+     -H "Cookie: <Wallet B's operon_session>" \
+     -d '{"chain":"arbitrum","quantity":1,"token":"USDC"}'
+   ```
+   ☐ Expect: 423 with `{"error":"sale_paused"}` (the API gate).
+
+**Step C: Unpause and verify the button comes back.**
+
+```
+curl -X POST http://localhost:3001/api/admin/sale/unpause \
+  -H "Content-Type: application/json" \
+  -H "Cookie: operon_session=<paste>" \
+  -d '{"chain":"both"}'
+```
+
+Response should include `stage_restored: true` (cycle 3 only restores the DB stage when chain='both' AND every contract unpause succeeded).
+
+1. Refresh the Wallet B Sale page.
+2. ☐ Reserve button is **enabled** again at the current tier price.
+
+**Adversarial: single-chain unpause does NOT auto-resume.**
+
+```
+curl -X POST http://localhost:3001/api/admin/sale/pause \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <admin>" \
+  -d '{"chain":"both"}'
+
+curl -X POST http://localhost:3001/api/admin/sale/unpause \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <admin>" \
+  -d '{"chain":"arbitrum"}'
+```
+
+Response should include `stage_restored: false`. Reserve button should STAY disabled. Operator must explicitly call unpause with `chain='both'` to fully resume.
+
+- ☐ **Fail if:** Reserve becomes enabled after a single-chain unpause, or sale_config.stage flips to 'active' before both chains are confirmed clean.
+
+---
+
 ## Part 7 — If something doesn't work
 
 A few known rough edges that look like bugs but aren't. Check here before filing a report — it'll save you and the operator both some time.
 
-### 7.1 A referral code is stuck on "activating your code on-chain" for more than a minute
+### 7.1 The Reserve button doesn't appear / countdown never starts
 
-**What you're seeing.** You entered a code and got the red toast *"Activating your code on-chain — please try again in a few seconds."* That's normal for the first 5–30 seconds after a brand new code is generated. If it stays red longer than about a minute, something is throttling the background sync.
+**Most common cause:** `VOUCHER_SIGNER_PRIVATE_KEY` is missing from `.env.local`, or the address it derives doesn't match what the contract was deployed with. The Reserve API call returns `voucher_signing_failed` and the UI shows a generic "reservation failed" toast.
 
-**Why it happens.** When a user signs up, their referral code is written into the Supabase database instantly, but it *also* has to be registered on the sale contract on-chain — because when someone later buys with that code, the contract itself checks `validCodes[code] == true` before applying the 10% discount. Registering the code means a real on-chain transaction, which the app fires through an RPC endpoint in the background.
+**How to fix.**
+1. Confirm both `VOUCHER_SIGNER_ADDRESS` and `VOUCHER_SIGNER_PRIVATE_KEY` are set in `.env.local` (§3.6).
+2. Confirm they're the *same keypair* you used at deploy time (§3.3 prelude). If the env address derives a different value than the contract was deployed with, every voucher signing call rejects.
+3. Re-run `pnpm dev` after editing `.env.local` so Next picks up the change.
 
-If you left `ARBITRUM_RPC_URL` and `BSC_RPC_URL` blank in `.env.local` (§3.6), the app falls back to the free public RPC endpoints (`https://sepolia-rollup.arbitrum.io/rpc` and a public BSC testnet RPC). Those endpoints rate-limit aggressively — a 2-hour test session easily hits their per-IP ceiling, at which point every background call starts returning "429 Too Many Requests" and the sync can't make progress.
+If a tester didn't generate their own keypair, this is the #1 thing that goes wrong.
+
+### 7.2 Stale-rpc obsolete RPC rate-limit notes
+
+**Cycle 2 had a long section here** about the on-chain code-mirror sync hitting rate limits during a long test session. **Cycle 3 removed that path** (mig 027 dropped `referral_code_chain_state`); referral codes now apply off-chain via the voucher signature. Public RPC endpoints can still rate-limit the dev-indexer's `eth_getLogs` poll loop — if you see 429s in the indexer terminal, set `ARBITRUM_RPC_URL` / `BSC_RPC_URL` to a private endpoint (Alchemy / QuickNode) and restart.
 
 **How to confirm it's the RPC.** Look at your `pnpm dev:indexer` terminal. If you see repeated lines like:
 
@@ -757,15 +1005,19 @@ These are items we're aware of that are not fixed in this package. You will see 
 - The **Resources** page has placeholder links. That is fine.
 - The **Thai terms** have not had final legal review. The text is there for functional testing only.
 - The **Referrals page tier table** shows a fixed reference table, not a personalised row. That is deliberate.
-- The app has **no admin UI** — admin actions happen through API endpoints only. That is also deliberate for Phase 1.
+- The app has a **partial admin UI** — `/admin` panels exist for sale state, partners, killswitches, audits. A handful of admin actions still require curl (Test 9 pause/unpause, Test 5 invite generation). That is deliberate for Phase 1.
+- **`pnpm test:e2e:chain` is currently a stub** — the full-chain Playwright fixture isn't wired (~3-4 hr separately scoped). The manual checklist in this guide is the substitute. You don't need to run it.
+- **Single-chain admin unpause leaves stage='paused'** by design (Test 9 step 3 covers this). Operator must call unpause with `chain='both'` to fully resume.
 
 ---
 
 ## Part 10 — Deferred for mainnet, not testnet bugs
 
-**New in cycle 2.** These items came out of a ship-readiness review and will be addressed before mainnet, but do not affect the cycle 2 testnet walkthrough. If you notice any of them, please do not file a report.
+**Carried forward from cycle 2 + 3.** These items came out of ship-readiness reviews and will be addressed before mainnet, but do not affect the testnet walkthrough. If you notice any of them, please do not file a report.
 
-1. **`OperonNode.setTransferLockExpiry` is not called at deploy time.** On this testnet deploy, NFTs are freely transferable from minute zero. The product rule (12-month transfer lock) will be enforced via a runbook step against the mainnet contracts before the real sale opens. The tester is not asked to transfer nodes, so this does not affect Tests 1–6.
+1. **`OperonNode.setTransferLockExpiry` is not called at deploy time.** On this testnet deploy, NFTs are freely transferable from minute zero. The product rule (12-month transfer lock) will be enforced via a runbook step against the mainnet contracts before the real sale opens. The tester is not asked to transfer nodes, so this does not affect any test.
 2. **The `/api/sale/validate-code` endpoint leaks code existence** (code enumeration surface). Not a money-loss path, commercial-info concern only. Being addressed before mainnet.
+3. **Admin pause/unpause/withdraw routes will return `admin_not_owner` post-Safe-novation** on mainnet — this is by design (NodeSale ownership rotates to a Gnosis Safe). The mainnet operator path for those actions is the Safe UI directly. Testnet keeps the hot-key flow per Test 9.
+4. **Some admin endpoints have small placeholder UIs.** `/admin/health` shows live failed-events stats + money invariants, but a few of the older admin views (e.g. `/admin/announcements`) still behave like dev scaffolding. Functional testing of admin actions in Tests 5 + 9 is enough — don't file UI-polish tickets on the admin panel.
 
 If you see a bug not on the Known or Deferred list, **please report it.** Everything else on the site is in scope.

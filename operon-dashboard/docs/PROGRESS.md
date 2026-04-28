@@ -4,6 +4,52 @@ Append-only session log. One dated entry per coding session. Do not edit previou
 
 ---
 
+## 2026-04-28 — Cycle 3 testnet prep (post-mig-34 hotfix bundle)
+
+Single-day session prepping for the next testnet pass. Built on top of the 2026-04-27 hotfix bundle (mig 030-034 + Safe-novation guard + verifier self-bootstrap + deploy fail-closed + admin pause coverage). User asks for this cycle: **multi-level referral chains** and **tier promotion** had no explicit coverage in cycle 2, fix that.
+
+### TESTING_GUIDE.md updates (cycle 2 → cycle 3)
+
+* Header rewrite — voucher checkout is now the dominant flow shape; cycle 2's direct `purchase()` references replaced with Reserve → countdown → Approve → Buy. The cycle 2 "activating your code on-chain" delay is gone (mig 027 dropped the on-chain code mirror).
+* §3.3 prelude — generate a fresh `VOUCHER_SIGNER_*` keypair on the tester's machine. Don't reuse anyone else's.
+* §3.6 env vars — added `VOUCHER_SIGNER_ADDRESS`, `VOUCHER_SIGNER_PRIVATE_KEY`, `LOCAL_TIER_CAP`, `ADMIN_CAP_PER_TIER`. Documented the keypair-must-match-deploy invariant.
+* §3.7 migration list — extended through mig 034. Now 31 migrations total (007 + 024 still skip). Per-migration notes call out the cycle-3 deltas.
+* §3.7.1 — operator-only SQL override `UPDATE sale_tiers SET total_supply = 10 WHERE tier IN (1,2,3)` so Test 8's tier-promotion is doable in <5 minutes instead of needing 1250 buys.
+* Test 3 rewritten end-to-end for the Reserve flow. New adversarial: 13-min idle voucher expiry should release inventory.
+* **Test 7 (NEW) — multi-level referral chain.** A → B → C, Wallet C buys, verify all three uplines paid at descending rates (L1 = 10% / 1000bps, L2 = 3% / 300bps per `lib/commission.ts COMMUNITY_COMMISSION_RATES`). Includes lowercase-URL adversarial (post-mig-31 signup-time normalize).
+* **Test 8 (NEW) — tier promotion at boundary.** Hold a tier-1 reservation, fill the rest of tier 1 from another wallet, complete the held reservation, verify (a) tier 2 auto-activates, (b) the held reservation lands at LOCKED tier-1 price (not the new tier-2 price), (c) new reservations land in tier 2. Plus optional FOR-UPDATE-lock race adversarial.
+* **Test 9 (NEW) — admin pause halts new reservations.** curl `/api/admin/sale/pause`, verify (a) Reserve button disables on connected client within ~10s, (b) direct API bypass returns 423 `sale_paused`, (c) single-chain unpause does NOT auto-resume (cycle 3's conservative design).
+* §4 checklist — bumped from 3 to 5 wallets, added voucher-signer matching check, added §3.7.1 operator-step check.
+* Part 7.1 — old "activating on-chain" troubleshooting section removed; replaced with "Reserve button doesn't appear / countdown never starts" pointing at voucher-signer env mis-paste as the #1 cause.
+* Part 9/10 — known/deferred refresh: admin UI is now partial (not absent), e2e:chain stub flagged, Safe-novation `admin_not_owner` documented as expected mainnet behaviour.
+
+### Verification surface
+
+* `npx tsc --noEmit` clean
+* `cd contracts && npx hardhat test` — 60 passing (carried forward from earlier today)
+* `verify-pending-migrations.mjs` against live DB — all probes 017-034 green; `admin_money_invariants` returns `ok: true`; mig 034 stage gate verified by simulating `paused` inside a transaction (`{error:'sale_not_active', stage:'paused'}` returned, rolled back to active)
+
+### Tester package
+
+`scripts/prepare-tester-package.sh` will produce `operon-tester-2026-04-28.zip` once doc commits land. Excludes `.env*`, `node_modules/`, `.git/`, `.next/`, contract caches, `review-log.md`, `REVIEW_ADDENDUM.md`, `CLAUDE.md`, `.claude/`, `.indexer-cursor.json`, prior tester zips. Post-stage safety sweep verifies zero forbidden paths survive.
+
+### Operator-owed before handing off
+
+- [ ] Apply migrations 001-034 to a fresh Supabase project (skip 007 + 024)
+- [ ] Run `verify-pending-migrations.mjs` against that project — should return all probes clean + `admin_money_invariants ok=true`
+- [ ] Run §3.7.1 small-supply override SQL
+- [ ] Hand off `operon-tester-2026-04-28.zip` + `docs/TESTING_GUIDE.md` (already inside the zip)
+- [ ] Confirm tester knows: 5 wallets needed (was 3 in cycle 2), they generate their own voucher-signer keypair
+
+### What's not covered by this cycle
+
+- Sustained-rate load test of the `FOR UPDATE` lock at tier boundaries (Test 8 adversarial covers a single race; doesn't capture 100s of concurrent reservations)
+- wagmi v3 + RainbowKit 2.2 manual smoke against a Vercel preview (LIVENET_TEST_RUNBOOK §5 — still operator-owed pre-mainnet)
+- Gnosis Safe novation rehearsal (mainnet-only, runbook §7)
+- Telegram alert delivery in front of a real human (paths exercised in cron logs only)
+
+---
+
 ## 2026-04-26 (session 4) — Runtime verification + push to origin
 
 Continuation of the 2026-04-26 livenet drift remediation. The earlier entry documented the migrations applied + the 28 fixes landed in working tree. This appendix captures the runtime verification step that was deferred during the doc-only commit, and the resulting push to GitHub.
