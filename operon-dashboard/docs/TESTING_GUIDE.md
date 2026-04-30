@@ -347,9 +347,9 @@ Easiest way is Supabase's SQL editor, not the terminal.
 4. Open `001_initial_schema.sql` in a text editor. Select all. Copy. Paste into the Supabase SQL Editor. Click **Run**.
 5. Wait for **Success**.
 6. Clear the editor. Repeat for each remaining file **in numerical order**:
-   `003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019, 020, 021, 022, 023, 025, 026, 027, 028, 029, 030, 031, 032, 033, 034, 035, 036`. **Skip 002 (testnet-only, applied in 3.7.1), 007 (does not exist), and 024 (deleted before apply, see DECISIONS D32).**
+   `003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019, 020, 021, 022, 023, 025, 026, 027, 028, 029, 030, 031, 032, 033, 034, 035, 036, 037`. **Skip 002 (testnet-only, applied in 3.7.1), 007 (does not exist), and 024 (deleted before apply, see DECISIONS D32).**
 
-That is **32 mainnet migrations** for a fresh setup. 035 + 036 are the R8 ship-readiness fixes (referrals summary RPC + orphan-purge of `complete_reservation`). Cycle 2 stopped at 018, so testers returning from cycle 2 only need to apply 019 onward — but it is safer to nuke the Supabase DB and re-run the full list against a clean schema.
+That is **33 mainnet migrations** for a fresh setup. 035 + 036 + 037 are the R8 ship-readiness fixes (referrals summary RPC + orphan-purge of `complete_reservation` + new RPC indexes + `increment_tier_sold` orphan drop). Cycle 2 stopped at 018, so testers returning from cycle 2 only need to apply 019 onward — but it is safer to nuke the Supabase DB and re-run the full list against a clean schema.
 
 If any file errors, stop and message the operator.
 
@@ -441,7 +441,7 @@ MetaMask does not show the practice USDC / USDT balances until you tell it which
 - [ ] All five wallets have some ETH on Arbitrum and some tBNB on BSC
 - [ ] All five wallets show ~10,000 USDC on Arbitrum and ~10,000 USDT on BSC
 - [ ] You have the six contract addresses written down somewhere
-- [ ] **All mainnet migrations were run through 034** (30 files, listed in §3.7 — 002 skipped because it's testnet-only).
+- [ ] **All mainnet migrations were run through 037** (33 files, listed in §3.7 — 002 skipped because it's testnet-only).
 - [ ] **Applied BOTH testnet-only files** per §3.7.1: `supabase/testnet-only/002_seed_data.sql` (demo EPP partner + pre-seeded invites) AND `supabase/testnet-only/035_small_supply_override.sql` (small tier-1 supply + `commission_audit` view). Skipping 035 makes Test 8 take hours instead of minutes.
 - [ ] `.env.local` has all of: `DEV_ENDPOINTS_ENABLED=1`, `DEV_INDEXER_SECRET=<hex>`, `VOUCHER_SIGNER_ADDRESS`, `VOUCHER_SIGNER_PRIVATE_KEY`, `LOCAL_TIER_CAP`, `ADMIN_CAP_PER_TIER`
 - [ ] `VOUCHER_SIGNER_ADDRESS` matches what the contract was deployed with — if they diverge, every Reserve fails with `voucher signer mismatch`.

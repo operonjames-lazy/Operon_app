@@ -69,6 +69,12 @@ migrations in order:
   text, text)` orphan; v2 voucher pipeline uses `process_purchase_with_reservation`
   exclusively, and the orphan was a service-role-callable parallel path
   that bypassed reservation invariant assertions.
+- `037_referrals_summary_indexes_and_orphan_drop.sql` - covering indexes
+  for the new `referrals_user_summary` RPC (`payout_transfers(partner_id,
+  status)` + `referral_purchases(referrer_id, level)`) so the /referrals
+  page mount stays cheap as the partner's downline grows. Also drops two
+  legacy `increment_tier_sold` overloads (mig 003 + 006) that were
+  service-role orphans missed by mig 036.
 
 Then run:
 
@@ -76,14 +82,17 @@ Then run:
 node scripts/verify-pending-migrations.mjs
 ```
 
-Expected: 025, 026, 027, 028, 029, 030, 031, 032, 033, **034, 035, 036**
+Expected: 025, 026, 027, 028, 029, 030, 031, 032, 033, **034, 035, 036, 037**
 probes are present/clean, including `admin_money_invariants` returning
-`ok: true`, `referrals_user_summary` callable, and `complete_reservation`
-absent (replaced by `process_purchase_with_reservation`). Do not promote
-the Vercel build if 030 / 031 / 032 / 033 / 034 is missing — those land
-together as the cycle-3 hardening bundle (anon lockdown + voucher math fix
-+ realtime fix + Telegram dedup + invariant truthiness + RPC stage gate).
-035 + 036 are R8 ship-readiness fixes (D-P9 RPC + orphan-purge).
+`ok: true`, `referrals_user_summary` callable AND its end-to-end body
+probe returning `shape_ok: true`, `complete_reservation` and
+`increment_tier_sold` overloads all absent (replaced by
+`process_purchase_with_reservation`), and the two new indexes from
+mig 037 present. Do not promote the Vercel build if 030 / 031 / 032 /
+033 / 034 is missing — those land together as the cycle-3 hardening
+bundle (anon lockdown + voucher math fix + realtime fix + Telegram dedup
++ invariant truthiness + RPC stage gate). 035 / 036 / 037 are R8
+ship-readiness fixes (D-P9 RPC + orphan-purge + new RPC indexes).
 
 ### 1.0 Vercel plan prerequisite
 
@@ -336,7 +345,7 @@ If you get a 200 instead, the Safe novation didn't actually land — re-check `n
 - [ ] Confirm Sentry is receiving events (force a 500 from a non-prod endpoint, watch the dashboard)
 - [ ] Confirm Telegram alerts fire (force a `failed_events.attempts >= 5` row, watch the channel)
 - [ ] Confirm `/api/health` returns 200 with `status: "healthy"` and `contracts.status === "ok"` on mainnet (the route now fails-closed on missing addresses when `NEXT_PUBLIC_NETWORK_MODE=mainnet`)
-- [ ] **`/api/health` webhook key check** — `curl https://<preview-or-prod>/api/health | jq .webhooks.status`. Must equal `"ok"`. A `"warn"` or `"fail"` means `ALCHEMY_WEBHOOK_SIGNING_KEY` or `QUICKNODE_WEBHOOK_SECRET` is unset in this environment, and every vendor POST to `/api/webhooks/*` will silently 401 until fixed (vendor logs become the only failure signal).
+- [ ] **`/api/health` webhook key check** — `curl https://<preview-or-prod>/api/health | jq .checks.webhooks.status`. Must equal `"ok"`. A `"warn"` (non-prod) or `"fail"` (prod) means `ALCHEMY_WEBHOOK_SIGNING_KEY` or `QUICKNODE_WEBHOOK_SECRET` is unset in this environment, and every vendor POST to `/api/webhooks/*` will silently 401 until fixed (vendor logs become the only failure signal). The full payload is wrapped under `.checks.<name>`; if you need to spot which key is missing run `curl .../api/health | jq .checks.webhooks` for the `detail` string.
 - [ ] Run `verify-pending-migrations.mjs` against live DB one more time. Should report 025 + 026 + 027 + 028 + 029 + 030 + 031 + 032 + **033 + 034 + 035 + 036** present/clean, including `process_purchase_with_reservation` (asserts equality vs precomputed, no recompute), `admin_failed_events_health`, `admin_money_invariants` returning `ok: true`, `cron_alert_should_fire`, `referrals_user_summary` callable, and `complete_reservation` absent.
 
 ---
