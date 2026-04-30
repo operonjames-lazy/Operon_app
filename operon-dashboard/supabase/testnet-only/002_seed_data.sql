@@ -32,9 +32,14 @@ INSERT INTO referral_purchases (purchase_id, purchase_tx, referrer_id, level, re
   ((SELECT id FROM purchases WHERE tx_hash='0xaaa1000000000000000000000000000000000000000000000000000000000001'), '0xaaa1000000000000000000000000000000000000000000000000000000000001', 'a1b2c3d4-0000-0000-0000-000000000001', 1, 'affiliate', 1200, 10000, 89250, 10710, 89250),
   ((SELECT id FROM purchases WHERE tx_hash='0xaaa2000000000000000000000000000000000000000000000000000000000002'), '0xaaa2000000000000000000000000000000000000000000000000000000000002', 'a1b2c3d4-0000-0000-0000-000000000001', 1, 'affiliate', 1200, 10000, 44625, 5355, 44625);
 
--- Update sale_tiers to match dashboard state
-UPDATE sale_tiers SET total_sold = 1250, is_active = FALSE WHERE tier = 1;
-UPDATE sale_tiers SET total_sold = 403, is_active = TRUE WHERE tier = 2;
+-- (R8 2026-04-30) The original seed file ran two `UPDATE sale_tiers`
+-- statements here to mock a "tier 1 sold out, tier 2 partially sold"
+-- state for dashboard screenshots. Those are now removed so the file
+-- is safe to apply on a fresh Supabase project AFTER 014's tier reset:
+-- tier 1 stays `is_active=true, total_sold=0`, which is what the cycle-3
+-- testing flow expects (Test 3 starts at a fresh tier 1 with 7 slots open).
+-- The demo `purchases` rows above remain — they are visible in the
+-- recent-activity feed but no longer tilt sale_tiers counters.
 
 -- Test unused invite codes
 INSERT INTO epp_invites (invite_code, assigned_by, status, expires_at) VALUES

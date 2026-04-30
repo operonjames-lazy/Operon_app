@@ -105,6 +105,28 @@ export async function POST(request: NextRequest) {
         continue;
       }
     }
+    // R8 (2026-04-30) — Bug #10 symmetric idempotency: treat
+    // "already paused" as success rather than letting OZ Pausable's
+    // `EnforcedPause` custom error revert the call. See unpause/route.ts
+    // for the full reasoning; same shape applied here for consistency.
+    try {
+      const isPaused = await (contract as unknown as { paused: () => Promise<boolean> }).paused();
+      if (isPaused) {
+        results.push({ chain, status: 'already_paused' });
+        await logAdminAction({
+          adminWallet: admin.wallet,
+          action: 'sale_pause_noop',
+          targetType: 'chain',
+          targetId: chain,
+          details: { reason: 'already_paused' },
+        }).catch((err) => {
+          logger.warn('sale_pause_noop audit write failed', { error: String(err) });
+        });
+        continue;
+      }
+    } catch (err) {
+      logger.warn('paused() read failed pre-pause', { chain, error: String(err) });
+    }
     try {
       const tx = await (contract as unknown as { pause: () => Promise<{ hash: string; wait: () => Promise<unknown> }> }).pause();
       await tx.wait();
@@ -122,9 +144,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // R8 (Bug #10): treat both 'ok' and 'already_paused' as success states.
   // 207 when results are mixed; 200 only when every chain succeeded.
-  const anyFailure = results.some((r) => r.status !== 'ok');
-  const allFailed = results.every((r) => r.status !== 'ok');
+  const isSuccessState = (s: string) => s === 'ok' || s === 'already_paused';
+  const anyFailure = results.some((r) => !isSuccessState(r.status));
+  const allFailed = results.every((r) => !isSuccessState(r.status));
   const status = allFailed ? 500 : anyFailure ? 207 : 200;
   return Response.json({ ok: !anyFailure, results }, { status });
 }

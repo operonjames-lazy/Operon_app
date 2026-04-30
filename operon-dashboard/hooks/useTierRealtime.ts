@@ -23,10 +23,14 @@ export function useTierRealtime() {
   const [lastEvent, setLastEvent] = useState<TierChangeEvent | null>(null);
   const [connected, setConnected] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
-  // R14 (2026-04-22): track previous subscribe state so we can tell the
-  // difference between the first SUBSCRIBED (initial connect — data already
-  // loaded by TanStack Query) and a re-SUBSCRIBED after a drop (any UPDATE
-  // fired during the gap was not delivered — reconcile by invalidating).
+  // R8 (2026-04-30): invalidate on EVERY SUBSCRIBED — including the first.
+  // Earlier R14 attempt skipped the first to avoid a "redundant" refetch on
+  // mount, but that opens a cold-start race: a UPDATE landing between mount
+  // and the first SUBSCRIBED is silently dropped (postgres_changes only
+  // fires while the channel is SUBSCRIBED). The cost of one extra REST
+  // round-trip per mount is negligible; the cost of a missed tier-flip
+  // UPDATE is a stale Sale page until the 10 s polling fallback ticks.
+  // priorStatusRef still suppresses duplicate SUBSCRIBED emissions.
   const priorStatusRef = useRef<string | null>(null);
 
   const dismissEvent = useCallback(() => setLastEvent(null), []);
@@ -96,13 +100,12 @@ export function useTierRealtime() {
       channel.subscribe((status: string) => {
         if (cancelled) return;
         setConnected(status === 'SUBSCRIBED');
-        // R14: on any transition BACK to SUBSCRIBED from a non-SUBSCRIBED
-        // state, assume we missed UPDATEs on sale_tiers / sale_config during
-        // the gap. TanStack Query invalidation re-fetches from the DB, which
-        // is authoritative. The very first subscribe (priorStatusRef=null)
-        // is the initial connect — data already loaded on mount, no action.
+        // Reconcile on every transition INTO SUBSCRIBED, including the
+        // first one. A UPDATE that fires before the channel is SUBSCRIBED
+        // (cold-start race) won't be delivered as postgres_changes; only
+        // a fresh REST fetch will see it.
         const prior = priorStatusRef.current;
-        if (status === 'SUBSCRIBED' && prior !== null && prior !== 'SUBSCRIBED') {
+        if (status === 'SUBSCRIBED' && prior !== 'SUBSCRIBED') {
           queryClient.invalidateQueries({ queryKey: ['sale'] });
           queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         }

@@ -22,7 +22,11 @@ export async function POST(request: NextRequest) {
     const rateLimited = await rateLimit(request, 'validate-code', 10);
     if (rateLimited) return rateLimited;
 
-    const { code } = await request.json() as { code?: string };
+    const body = await request.json() as { code?: string; referralCode?: string };
+    // R8 (Bug #11): accept `referralCode` as an alias for `code` for
+    // consistency with /api/sale/reserve and the testing-guide spec.
+    const code = typeof body.code === 'string' ? body.code :
+                 typeof body.referralCode === 'string' ? body.referralCode : undefined;
 
     if (!code || typeof code !== 'string') {
       return Response.json(

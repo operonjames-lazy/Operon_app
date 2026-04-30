@@ -94,6 +94,35 @@ export default function ReferralsPage() {
       {summary?.code && (
         <Card title={t('referrals.yourCode')}>
           <CodeBar code={summary.code} label={isEpp ? t('referrals.eppShareLabel') : t('referrals.shareLabel')} />
+          {/* R8 (Side note 3): surface the upstream referrer alongside the
+              user's own code, so the relationship the testing guide
+              expects ("Referred by …") is visible in the dapp UI. */}
+          {summary.referredBy && (
+            <div className="mt-3 pt-3 border-t border-[rgba(147,197,253,0.10)] text-xs text-t3">
+              <span className="font-mono uppercase tracking-[0.18em] text-[10px] text-t4">
+                {t('referrals.referredBy')}
+              </span>
+              <div className="mt-1 text-t2">
+                {summary.referredBy.partnerName ? (
+                  <>
+                    {summary.referredBy.partnerName}
+                    {summary.referredBy.code && (
+                      <span className="ml-2 font-mono text-t3">{summary.referredBy.code}</span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {summary.referredBy.walletShort && (
+                      <span className="font-mono text-t2">{summary.referredBy.walletShort}</span>
+                    )}
+                    {summary.referredBy.code && (
+                      <span className="ml-2 font-mono text-t3">{summary.referredBy.code}</span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </Card>
       )}
 

@@ -343,18 +343,18 @@ Easiest way is Supabase's SQL editor, not the terminal.
 
 1. Open your Supabase project in the browser.
 2. Left sidebar → **SQL Editor** → **New query**.
-3. In your file manager, open the folder `operon-dashboard/supabase/migrations`. You will see files named `001_initial_schema.sql`, `002_seed_data.sql`, etc.
+3. In your file manager, open the folder `operon-dashboard/supabase/migrations`. You will see files named `001_initial_schema.sql`, `003_functions.sql`, etc. Note: `002_seed_data.sql` is **no longer in this folder** — it lives in `supabase/testnet-only/` and is applied separately in step 3.7.1 (see below).
 4. Open `001_initial_schema.sql` in a text editor. Select all. Copy. Paste into the Supabase SQL Editor. Click **Run**.
 5. Wait for **Success**.
 6. Clear the editor. Repeat for each remaining file **in numerical order**:
-   `002, 003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019, 020, 021, 022, 023, 025, 026, 027, 028, 029, 030, 031, 032, 033, 034`. **Skip 007 (does not exist) and 024 (deleted before apply, see DECISIONS D32).**
+   `003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019, 020, 021, 022, 023, 025, 026, 027, 028, 029, 030, 031, 032, 033, 034`. **Skip 002 (testnet-only, applied in 3.7.1), 007 (does not exist), and 024 (deleted before apply, see DECISIONS D32).**
 
-That is **31 migrations total** for a fresh setup. Cycle 2 stopped at 018, so testers returning from cycle 2 only need to apply 019 onward — but it is safer to nuke the Supabase DB and re-run the full list against a clean schema.
+That is **30 mainnet migrations** for a fresh setup. Cycle 2 stopped at 018, so testers returning from cycle 2 only need to apply 019 onward — but it is safer to nuke the Supabase DB and re-run the full list against a clean schema.
 
 If any file errors, stop and message the operator.
 
 Notes (most relevant cycle 3 ones, in apply order):
-- `002_seed_data.sql` pre-seeds a handful of EPP invite codes into the database. You can use those in Test 5 without generating new ones. It also inserts demo rows (a fake "David Kim" EPP partner, two fake historical purchases) purely for dashboard screenshots — ignore them, they don't affect any test.
+- `002_seed_data.sql` (in `supabase/testnet-only/`, applied in 3.7.1) pre-seeds a handful of EPP invite codes. It also inserts demo rows (a fake "David Kim" EPP partner, two historical purchases) purely for dashboard screenshots — they are testnet-only because they leave `sale_tiers` showing tier 1 sold-out / tier 2 partially sold, which is wrong for a fresh mainnet sale. Do NOT apply this on mainnet.
 - `013_referral_chain_state.sql` was needed in cycle 2 for the on-chain code mirror. **Cycle 3 drops the table again in mig 027** — apply it then drop it. The "activating your code on-chain" delay is gone.
 - `014` + `017` together seed the 40-tier price curve safely (the guard in `017` skips the destructive reset if `purchases` rows already exist).
 - `019` adds the `admin_killswitches` table the admin panel uses.
@@ -370,20 +370,23 @@ Notes (most relevant cycle 3 ones, in apply order):
 - `033` fixes the I3 invariant predicate + `jsonb_agg` ordering for stable drift signatures.
 - `034` is the **pause-coverage RPC gate**: `reserve_node_purchase` reads `sale_config.stage` and rejects when not `'active'`. Required for Test 9.
 
-### 3.7.1 Apply the testnet-only override (supply + commission audit view)
+### 3.7.1 Apply the testnet-only files (seed data + supply override + commission audit view)
 
-After all 31 migrations land, apply one more file from a different folder:
+After the 30 mainnet migrations land, apply two files from a different folder **in this order**:
 
-`supabase/testnet-only/035_small_supply_override.sql`
+1. `supabase/testnet-only/002_seed_data.sql` — demo dashboard rows + pre-seeded EPP invite codes. Apply this AFTER 014 has run on the empty `purchases` table; 014's reset ran with no purchases, so tier state is clean. 002 then layers the demo rows on top for dashboard screenshots and gives Test 5 some pre-seeded EPP invites to grab.
+2. `supabase/testnet-only/035_small_supply_override.sql` — small tier-1 supply (7) and the `commission_audit` view.
 
-This is not a real migration — it lives outside `supabase/migrations/` on purpose so the production runner never picks it up. Two things land:
+These live outside `supabase/migrations/` on purpose so the production runner never picks them up. **Do not apply 002 on mainnet** — its tier-state UPDATEs would set tier 1 to "1250 sold, inactive" and tier 2 to "403 sold, active", which would render as `-303 / 100 remaining` to day-0 customers. The `_small_supply_override.sql` file is also testnet-only.
+
+What 035 does:
 
 1. **Tier 1 supply = 7**, tiers 2+3 = 100 each. The slot budget across cycle 3 is calibrated so Tests 3 + 5 + 7 consume exactly 6 of tier 1's 7 slots, leaving the last slot for Test 8. That makes Test 8 a single reserve+approve+buy at the tier boundary — the moment the last slot fills, tier 2 auto-activates.
 2. **A `commission_audit` view** that joins purchases + referral_purchases + users and converts cents → dollars. Lets you spot-check commission accuracy with a single `SELECT * FROM commission_audit;` after any buy. See §6.0 below for how to read the output.
 
-Open the file in a text editor → select all → paste into the Supabase SQL Editor → Run.
+Open each file in a text editor → select all → paste into the Supabase SQL Editor → Run.
 
-Expected output: the bottom of the result shows tiers 1-3 with the new supplies; tier 1 the only `is_active: true` row; the `commission_audit` view status reads `created`. If anything else, stop and message the operator.
+Expected after both: `sale_tiers` shows tier 1 with `total_supply=7, total_sold=0, is_active=true`; tiers 2+3 with `total_supply=100, total_sold=0, is_active=false`. The `epp_partners` table has the demo "David Kim" row, and `epp_invites` has a couple of `status='pending'` invites you can grab for Test 5. Two demo `purchases` rows are present (David Kim's referrals) — they show up in the recent-activity feed but do **not** tilt the tier counters, so Test 8's tier-boundary slot budget is intact. If `total_sold > 0` on tier 1, message the operator — something else is off.
 
 ### 3.8 Run the site
 
@@ -689,7 +692,7 @@ Write down Wallet B's current **USDT** balance as `balance_before`.
 
 **Setup — you need an EPP invite code.** Two ways:
 
-**Option A — use a pre-seeded invite (easiest).** Migration `002_seed_data.sql` inserted several `EPP-XXXX` invite codes into the database when you ran it in Part 3.7. Open your Supabase project → **Table Editor** → `epp_invites` table → find a row where `status = 'pending'` and copy its `invite_code` value. That is your fresh invite.
+**Option A — use a pre-seeded invite (easiest).** `supabase/testnet-only/002_seed_data.sql` (applied in Part 3.7.1) inserted several `EPP-XXXX` invite codes into the database. Open your Supabase project → **Table Editor** → `epp_invites` table → find a row where `status = 'pending'` and copy its `invite_code` value. That is your fresh invite.
 
 **Option B — generate new invites via the admin API.** Open a **new terminal window** (leave `pnpm dev` running in the other) and run:
 ```

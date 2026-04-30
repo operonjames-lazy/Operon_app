@@ -163,7 +163,7 @@ Lists expected columns, indexes, and function signatures across migrations 009 a
 | File | Purpose |
 |---|---|
 | `001_initial_schema.sql` | Users, sale_tiers, purchases, referrals, referral_purchases, epp_invites, epp_partners, payout_periods, payout_transfers, admin_audit_log, reconciliation_log, announcements |
-| `002_seed_data.sql` | Seed tiers + initial announcement |
+| `002_seed_data.sql` | **Moved 2026-04-30 to `supabase/testnet-only/`.** Demo dashboard rows + pre-seeded EPP invite codes for testers. Mainnet must NOT apply this — it sets `sale_tiers` tier 1 to "1250 sold, inactive" + tier 2 to "403 sold, active", which day-0 customers would see as `-303 / 100 remaining`. Tier-reset guard in 014 also misfires against the demo purchase rows on a fresh dev DB; testers should apply 002 *after* 014, or accept the documented dev-only stale state and patch with the SQL in `TESTING_GUIDE.md`. |
 | `003_functions.sql` | Original `increment_tier_sold` (replaced in 006) |
 | `004_fixes.sql` | Disable RLS (auth enforced at API layer); add index |
 | `005_sale_config.sql` | `sale_config` singleton + Realtime publication |

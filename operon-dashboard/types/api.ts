@@ -50,7 +50,9 @@ export interface SaleStatus {
   currentPrice: number; // USD cents
   discountBps: number | null;
   discountPrice: number | null; // USD cents
-  tierRemaining: number;
+  tierRemaining: number;     // R8 (Bug #5): now matches Reserve validation —
+                             // total_supply - total_sold - active_reservations.
+  tierReserved?: number;     // Active reservations on the current tier.
   tierSupply: number;
   totalSold: number;
   totalSupply: number;
@@ -64,7 +66,8 @@ export interface SaleTier {
   price: number; // USD cents
   supply: number;
   sold: number;
-  remaining: number;
+  remaining: number;       // R8 (Bug #5): reservation-aware.
+  reserved?: number;       // Active reservations holding this tier's supply.
   active: boolean;
 }
 
@@ -113,6 +116,17 @@ export interface ReferralSummary {
   partner: PartnerProfile | null;
   code: string | null;
   codeType: 'epp' | 'community' | null;
+  /**
+   * R8 (Side note 3): the user's upstream referrer at L1, surfaced on the
+   * Referrals page so the relationship the testing guide expects to see
+   * ("Referred by Wallet B") is actually visible. `null` when this user
+   * is the top of their chain (signed up without a referral code).
+   */
+  referredBy: {
+    code: string | null;
+    partnerName: string | null;
+    walletShort: string | null;
+  } | null;
   creditedAmount: number; // USD cents
   totalCommission: number; // USD cents
   unpaidCommission: number; // USD cents

@@ -36,6 +36,45 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // R8 (2026-04-30) — Side note 3: surface the user's upstream referrer
+    // ("Referred by …") on the Referrals page. The relationship is recorded
+    // at signup in the `referrals` table — this is the L1 row with
+    // referred_id = caller. Returning the referrer's display data lets the
+    // page render the "Referred by Wallet B" indicator the testing guide
+    // expects without changing any other shape.
+    let referredBy: {
+      code: string | null;
+      partnerName: string | null;
+      walletShort: string | null;
+    } | null = null;
+    {
+      const { data: uplineRow } = await supabase
+        .from('referrals')
+        .select('referrer_id, code_used')
+        .eq('referred_id', userId)
+        .eq('level', 1)
+        .maybeSingle();
+
+      if (uplineRow?.referrer_id) {
+        const { data: uplineUser } = await supabase
+          .from('users')
+          .select('primary_wallet')
+          .eq('id', uplineRow.referrer_id)
+          .maybeSingle();
+        const { data: uplinePartner } = await supabase
+          .from('epp_partners')
+          .select('display_name')
+          .eq('user_id', uplineRow.referrer_id)
+          .maybeSingle();
+        const wallet = uplineUser?.primary_wallet ?? '';
+        referredBy = {
+          code: uplineRow.code_used ?? null,
+          partnerName: uplinePartner?.display_name ?? null,
+          walletShort: wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : null,
+        };
+      }
+    }
+
     // Get total commission earned
     const { data: commissions } = await supabase
       .from('referral_purchases')
@@ -126,6 +165,7 @@ export async function GET(request: NextRequest) {
         : null,
       code,
       codeType,
+      referredBy,
       creditedAmount,
       totalCommission,
       unpaidCommission,

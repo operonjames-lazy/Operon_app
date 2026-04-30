@@ -58,6 +58,30 @@ const SALE_ABI = [
 type PurchaseStep = 'idle' | 'reserving' | 'approving' | 'approved' | 'purchasing' | 'success' | 'error';
 
 /**
+ * R8 (2026-04-30) — Pre-launch UX concern: MetaMask's gas estimator on
+ * Arbitrum Sepolia (and at times mainnet) defaults the `maxFeePerGas` /
+ * `maxPriorityFeePerGas` to values too low to be mined, surfacing only as
+ * "Total gas fee: 0 ETH" or a generic on-chain failure. The tester saw
+ * this across rounds 1–7. Suggesting a sensible priority floor at the
+ * dapp side gives MetaMask a defaulted-not-too-low value while still
+ * letting the user override if conditions warrant.
+ *
+ * - 0.05 gwei priority fee is a safe Arbitrum floor; mainnet typically
+ *   runs ~0.01 gwei, so 0.05 is generous without being wasteful.
+ * - We do NOT set `maxFeePerGas`; viem fills it from the current base
+ *   fee + priority, which keeps congestion behaviour correct.
+ * - Pass-through is no-op on BSC (chain id 56 / 97) where MetaMask's
+ *   default works fine and the network uses legacy gas-pricing semantics.
+ */
+const ARBITRUM_PRIORITY_FEE_FLOOR_WEI = BigInt(50_000_000);
+function arbitrumGasFloor(chainId?: number): { maxPriorityFeePerGas?: bigint } {
+  if (chainId === 421614 || chainId === 42161) {
+    return { maxPriorityFeePerGas: ARBITRUM_PRIORITY_FEE_FLOOR_WEI };
+  }
+  return {};
+}
+
+/**
  * Voucher reservation countdown banner. Renders mm:ss remaining + a status
  * tint (blue while there's runway, amber under 60s) so the buyer can pace
  * their wallet interaction. Pure display — auto-expiry is handled by the
@@ -212,6 +236,16 @@ export default function SalePage() {
   // the queryKey de-dupes. State makes the chain id part of the render,
   // so both receipt hooks subscribe to the right query from render 0.
   const [submittedChainId, setSubmittedChainId] = useState<number | undefined>(undefined);
+
+  // R8 (2026-04-30) — Bug #9: capture the tier the buyer actually purchased
+  // at success time. Without this, the Purchase Complete modal reads
+  // `sale.currentTier` — but if the buy filled the previous tier (auto-
+  // promotion), `sale.currentTier` has already advanced to the next tier
+  // and the modal labels the just-purchased node with the WRONG tier.
+  // The reservation row carries the locked tier and is the only source
+  // that survives auto-promotion correctly.
+  const [purchasedTier, setPurchasedTier] = useState<number | null>(null);
+  const [purchasedQuantity, setPurchasedQuantity] = useState<number | null>(null);
 
   // Auto-scroll the active tier into view in the horizontal tier strip on
   // mount and whenever the current tier advances. Without this, the user
@@ -382,6 +416,22 @@ export default function SalePage() {
   const hasAllowance = typeof allowance === 'bigint' && allowance >= requiredTokenAmount;
   const hasSufficientBalance = typeof balance === 'bigint' && balance >= requiredTokenAmount;
 
+  // R8 (2026-04-30): Arbitrum-specific confirmation bump. The R8 tester
+  // observed Bug #2 (premature Purchase Complete) and Bug #6 (Buy clickable
+  // during Approve pending) reproducing on Arbitrum but not BSC, despite
+  // D25's React-state defenses already being in place. The most plausible
+  // remaining explanation is RPC-level: Arbitrum's sequencer emits a usable
+  // receipt as soon as the tx is sequenced, *before* the next L2 block
+  // mines on top of it. wagmi's `confirmations: 1` reads the receipt and
+  // checks `latestBlock - receipt.blockNumber + 1 >= confirmations`, which
+  // can pass on the same block the tx sequenced into. Bumping to 2 forces
+  // wagmi to wait until at least one *additional* block has built on top
+  // — adds ~250ms on Arbitrum, eliminates the "receipt resolves before
+  // confirmation" race. BSC behaves correctly with confirmations: 1 since
+  // BSC RPCs only return receipts on full inclusion.
+  const isArbitrumChainId = submittedChainId === 421614 || submittedChainId === 42161;
+  const txConfirmations = isArbitrumChainId ? 2 : 1;
+
   // Approve transaction
   const { writeContract: approve, data: approveHash, error: approveWriteError, reset: resetApprove } = useWriteContract();
   const { isLoading: approveLoading, isSuccess: approveSuccess, isError: approveReceiptError } = useWaitForTransactionReceipt({
@@ -391,7 +441,8 @@ export default function SalePage() {
     // documents the Critical Rule #1 ("never show successful until ≥1
     // confirmation") at the call site so a future minor-version bump
     // that changes the default cannot silently weaken the guarantee.
-    confirmations: 1,
+    // R8 bump to 2 on Arbitrum (see comment above on `txConfirmations`).
+    confirmations: txConfirmations,
   });
 
   // Purchase transaction
@@ -399,7 +450,7 @@ export default function SalePage() {
   const { isLoading: purchaseLoading, isSuccess: purchaseSuccess, isError: purchaseReceiptError } = useWaitForTransactionReceipt({
     hash: purchaseHash,
     chainId: submittedChainId,
-    confirmations: 1,
+    confirmations: txConfirmations,
   });
 
   // Handle write errors (wallet rejection, contract revert)
@@ -443,17 +494,28 @@ export default function SalePage() {
     }
   }, [purchaseReceiptError, t]);
 
-  // R5-BUG-01: step-gated transitions. Require the local state machine to
-  // actually be in the sending state and the hash to be populated before
-  // promoting to approved/success. Prevents any stale observer result or
-  // re-subscription glitch from jumping the flow ahead of the wallet.
+  // R5-BUG-01 / R8: step-gated transitions. Require the local state machine
+  // to actually be in the sending state, the hash to be populated, AND the
+  // receipt waiter to have settled (`!Loading`) before promoting. The
+  // `!Loading` clause is the R8 defensive belt — if any wagmi observer ever
+  // flickers `isSuccess: true` while `isLoading` is still true (e.g. a
+  // hash-cache-hit race after `reset()`), this clause keeps the flow gated
+  // on the receipt actually being non-null in the hook's resolved state.
   useEffect(() => {
-    if (approveSuccess && approveHash && step === 'approving') setStep('approved');
-  }, [approveSuccess, approveHash, step]);
+    if (approveSuccess && !approveLoading && approveHash && step === 'approving') setStep('approved');
+  }, [approveSuccess, approveLoading, approveHash, step]);
 
   useEffect(() => {
-    if (purchaseSuccess && purchaseHash && step === 'purchasing' && address) {
+    if (purchaseSuccess && !purchaseLoading && purchaseHash && step === 'purchasing' && address) {
       setStep('success');
+      // R8 (Bug #9): capture the LOCKED tier + quantity from the
+      // reservation BEFORE we null it. Modal then reads `purchasedTier`
+      // rather than `sale.currentTier`, which would already point at the
+      // next tier when this purchase triggered an auto-promotion.
+      const lockedTier = reservation?.tier ?? sale?.currentTier ?? null;
+      const lockedQty = reservation ? Number(reservation.voucher.quantity) : quantity;
+      setPurchasedTier(lockedTier);
+      setPurchasedQuantity(lockedQty);
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
       // Voucher is single-use on-chain (`usedReservations[reservationId] = true`
       // in NodeSale.sol) — once the purchase confirms, the reservation row is
@@ -472,8 +534,8 @@ export default function SalePage() {
           txHash: purchaseHash,
           chain: selectedChain,
           wallet: address.toLowerCase(),
-          tier: sale?.currentTier ?? null,
-          quantity,
+          tier: lockedTier,
+          quantity: lockedQty,
           createdAt: Date.now(),
         };
         localStorage.setItem('operon_pending_attribution', JSON.stringify(pending));
@@ -483,7 +545,7 @@ export default function SalePage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['sale'] });
     }
-  }, [purchaseSuccess, purchaseHash, step, queryClient, address, selectedChain, sale?.currentTier, quantity]);
+  }, [purchaseSuccess, purchaseLoading, purchaseHash, step, queryClient, address, selectedChain, sale?.currentTier, quantity, reservation]);
 
   // Persist pending transaction in localStorage (scoped to wallet)
   //
@@ -588,6 +650,23 @@ export default function SalePage() {
       setReservation(null);
       resetApprove();
       resetPurchase();
+      // R8 (2026-04-30) — Bug #3 + Bug #8: also reset referral / discount
+      // / toast state on identity change. Without this, the previous
+      // wallet's typed referral code, validation banner, and applied
+      // discount carry over into the new wallet's view — Bug #8 was the
+      // worst variant (Wallet A inheriting Wallet B's OPR-KXV5H2 + 10%
+      // discount, with Wallet A's *own* code as the referrer = self-ref
+      // would slip through if the user clicked Reserve before F5). The
+      // `useSaleStatus` effect repopulates `referralCode` from the new
+      // wallet's bound upline (`sale.usedReferralCode`) once the API
+      // responds, so resetting here is non-destructive.
+      setReferralCode('');
+      setCodeValid(null);
+      setDiscountBps(0);
+      setCodeFromUrl(false);
+      setCodeToast('');
+      setPurchasedTier(null);
+      setPurchasedQuantity(null);
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
     }
     if (current) lastSeenAddressRef.current = current;
@@ -612,6 +691,10 @@ export default function SalePage() {
       // tx confirms; defensive null here as belt-and-braces in case effect
       // ordering ever changes.
       setReservation(null);
+      // R8 (Bug #9): also drop the captured purchased-tier label so the
+      // next reservation's modal doesn't render the previous buy's tier.
+      setPurchasedTier(null);
+      setPurchasedQuantity(null);
       resetApprove();
       resetPurchase();
     }
@@ -760,6 +843,12 @@ export default function SalePage() {
     // `data: undefined`, which flips `approveSuccess` false via the
     // disabled-query path before the new mutate() dispatches.
     resetApprove();
+    // R8 (2026-04-30) — Bug #3 related observation: clear stale failure
+    // text from a previous Approve attempt. Without this, the old
+    // "授權失敗，請重試" red message stays rendered alongside the new
+    // "交易時間超過預期" 60-second-wait banner during a retry — two
+    // contradictory messages on screen at once.
+    setErrorMsg('');
     setStep('approving');
     setSubmittedChainId(targetChainId);
     approve({
@@ -767,6 +856,7 @@ export default function SalePage() {
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [saleAddress as `0x${string}`, reservation.totalTokenAmount],
+      ...arbitrumGasFloor(targetChainId),
     });
   }
 
@@ -782,6 +872,8 @@ export default function SalePage() {
     // expires_at). The contract verifies block.timestamp <= voucher.deadline,
     // so we don't need to add a separate deadline here.
     resetPurchase();
+    // Same stale-toast clear as handleApprove — defensive consistency.
+    setErrorMsg('');
     setStep('purchasing');
     setSubmittedChainId(targetChainId);
     purchase({
@@ -789,6 +881,7 @@ export default function SalePage() {
       abi: SALE_ABI,
       functionName: 'purchaseWithVoucher',
       args: [reservation.voucher, reservation.signature],
+      ...arbitrumGasFloor(targetChainId),
     });
   }
 
@@ -850,10 +943,13 @@ export default function SalePage() {
           </div>
           <div className="text-4xl relative">&#127881;</div>
           <h2 className="text-xl font-bold text-t1 relative">{t('sale.purchaseComplete')}</h2>
-          <p className="text-t2 relative">{t('sale.youNowOwn', { count: quantity, tier: sale?.currentTier || 1 })}</p>
+          {/* R8 (Bug #9): label uses the LOCKED purchased tier, not the
+              live `sale.currentTier`, which has already advanced if this
+              buy triggered an auto-promotion. */}
+          <p className="text-t2 relative">{t('sale.youNowOwn', { count: purchasedQuantity ?? quantity, tier: purchasedTier ?? sale?.currentTier ?? 1 })}</p>
           <div className="flex gap-3 justify-center mt-4 relative">
             <Button variant="primary" onClick={() => window.location.href = '/nodes'}>{t('sale.viewNodes')}</Button>
-            <Button variant="secondary" onClick={() => { resetApprove(); resetPurchase(); setReservation(null); setStep('idle'); setQuantity(1); }}>{t('sale.buyMore')}</Button>
+            <Button variant="secondary" onClick={() => { resetApprove(); resetPurchase(); setReservation(null); setStep('idle'); setQuantity(1); setPurchasedTier(null); setPurchasedQuantity(null); }}>{t('sale.buyMore')}</Button>
           </div>
         </div>
       )}
@@ -882,6 +978,19 @@ export default function SalePage() {
             remaining: formatNum(sale?.tierRemaining || 0),
             supply: formatNum(sale?.tierSupply || 0),
           })}
+          {/* R8 (Bug #5): when other buyers hold in-flight reservations,
+              the displayed `tierRemaining` will already reflect them
+              (post-fix). Surfacing the count keeps the user oriented when
+              the number drops between page loads — they can see WHY the
+              available count went down without a sale completing on-chain. */}
+          {(sale?.tierReserved ?? 0) > 0 && (
+            <span
+              className="ml-2 text-[10px] text-t4"
+              title={t('sale.tierReservedTooltip', { count: sale!.tierReserved! })}
+            >
+              {t('sale.tierReservedShort', { count: sale!.tierReserved! })}
+            </span>
+          )}
         </div>
       </div>
 
@@ -1013,6 +1122,14 @@ export default function SalePage() {
           // disabled on the returned-to chain until page refresh. Also drop
           // any voucher reservation since the voucher is bound to chainId.
           setSelectedChain(chain);
+          // R8 (2026-04-30) — Bug #4: switch payment token to the chain's
+          // canonical default (USDT on BSC, USDC on Arbitrum). Without this,
+          // a buyer who funded a BSC wallet with USDT, hits the Sale page,
+          // clicks BNB Chain, and sees "USDC 餘額不足" + a misleading
+          // "需要 USDC? 從以太坊跨鏈 →" CTA — when the right answer is
+          // "click the USDT button two pixels to the right." On testnet the
+          // chosen token is the only one whose mock is deployed at all.
+          setPaymentToken(chain === 'bsc' ? 'USDT' : 'USDC');
           setStep('idle');
           setSubmittedChainId(undefined);
           setReservation(null);
@@ -1194,9 +1311,24 @@ export default function SalePage() {
                 purchaseLoading ||
                 (approveHash !== undefined && step !== 'approved')
               }
-              loading={step === 'purchasing' || purchaseLoading} onClick={handlePurchase}
+              // R8 (2026-04-30): treat "Approve in flight" the same as
+              // "Buy in flight" for VISUAL purposes. Bug #6 reported the Buy
+              // button "looks clickable, solid colour, not greyed" on
+              // Arbitrum during the Approve pending window. The HTML
+              // `disabled` attribute was already true (Approve and the disabled
+              // expression above all latch correctly), but `disabled:opacity-50`
+              // on a primary-gradient button leaves a colourful surface — a
+              // tester can't visually tell it's blocked. Folding approveLoading
+              // / step==='approving' into `loading` swaps in the explicit
+              // ice-tinted in-flight surface (Button component's
+              // `loadingOverride`), making the blocked state unmistakable.
+              loading={step === 'purchasing' || purchaseLoading || step === 'approving' || approveLoading} onClick={handlePurchase}
             >
-              {step === 'purchasing' || purchaseLoading ? t('sale.confirming') : t('sale.purchaseNodes', { qty: quantity })}
+              {step === 'purchasing' || purchaseLoading
+                ? t('sale.confirming')
+                : step === 'approving' || approveLoading
+                  ? t('sale.approving')
+                  : t('sale.purchaseNodes', { qty: quantity })}
             </Button>
           </>
         )}

@@ -59,6 +59,13 @@ interface ReserveBody {
   quantity?: number;
   token?: string;
   code?: string;
+  // R8 (2026-04-30) — Bug #11: accept `referralCode` as an alias for
+  // `code`. The R8 self-referral adversarial test sent `referralCode` per
+  // the testing-guide spec, the route silently fell through to "no code"
+  // because it only read `code`, and the response looked like a successful
+  // 200 OK voucher at full price. Accepting both names closes the
+  // contract-vs-spec drift so the self-ref check actually fires.
+  referralCode?: string;
 }
 
 function jsonError(error: string, details?: Record<string, unknown>, status = 400) {
@@ -93,7 +100,12 @@ export async function POST(request: NextRequest) {
   const chain = body.chain;
   const quantity = body.quantity;
   const token = body.token;
-  const rawCode = typeof body.code === 'string' ? body.code.trim() : '';
+  // Accept either `code` (the production frontend's field name) or
+  // `referralCode` (the testing-guide spec) — see Bug #11.
+  const rawCodeInput =
+    typeof body.code === 'string' ? body.code :
+    typeof body.referralCode === 'string' ? body.referralCode : '';
+  const rawCode = rawCodeInput.trim();
 
   if (chain !== 'arbitrum' && chain !== 'bsc') {
     return jsonError('unsupported_chain', { chain });
@@ -158,6 +170,23 @@ export async function POST(request: NextRequest) {
   if (rawCode) {
     const result = await validateReferralCode(supabase, rawCode, buyerUserId);
     if (!result.ok) {
+      // R8 (2026-04-30) — Bug #11: log explicit warnings for self-ref +
+      // unknown-code attempts so ops monitoring / fraud alerting has a
+      // signal even when the response is a clean 4xx. The guide-spec
+      // adversarial path (bypass the UI, POST a self-ref code via curl)
+      // now lands here and returns the documented envelope:
+      //     { error: 'invalid_code', reason: 'self_referral' }
+      // with status 409 (Conflict) — distinguishable from a regular 400
+      // (malformed body) so log filters can pick out attribution-side
+      // attempts cleanly.
+      if (result.reason === 'self_referral') {
+        logger.warn('Self-referral attempt rejected', {
+          buyerUserId,
+          buyerWallet,
+          codePrefix: rawCode.slice(0, 8),
+        });
+        return jsonError('invalid_code', { reason: 'self_referral' }, 409);
+      }
       return jsonError('invalid_code', { reason: result.reason });
     }
     discountBps = result.discountBps;

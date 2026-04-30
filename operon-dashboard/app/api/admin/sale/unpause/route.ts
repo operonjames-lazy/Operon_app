@@ -70,6 +70,36 @@ export async function POST(request: NextRequest) {
         continue;
       }
     }
+    // R8 (2026-04-30) — Bug #10: idempotent unpause. If the contract is
+    // already unpaused (e.g. because the operator did a single-chain
+    // unpause earlier and is now running `unpause both` to restore the
+    // sale_config.stage), calling `unpause()` would revert with
+    // OZ Pausable's `ExpectedPause` custom error and the previous code
+    // recorded the chain as `error`. That kept `stage_restored=false`
+    // forever, with no obvious recovery path for the operator. Reading
+    // `paused()` first lets us treat the no-op as success, and the
+    // `stage_restored` block below now flips to active when every chain
+    // is either freshly unpaused OR was already unpaused.
+    try {
+      const isPaused = await (contract as unknown as { paused: () => Promise<boolean> }).paused();
+      if (!isPaused) {
+        results.push({ chain, status: 'already_unpaused' });
+        await logAdminAction({
+          adminWallet: admin.wallet,
+          action: 'sale_unpause_noop',
+          targetType: 'chain',
+          targetId: chain,
+          details: { reason: 'already_unpaused' },
+        }).catch((err) => {
+          logger.warn('sale_unpause_noop audit write failed', { error: String(err) });
+        });
+        continue;
+      }
+    } catch (err) {
+      // Treat a paused() read failure as an unknown state and fall through
+      // to the unpause attempt — no worse than the prior behaviour.
+      logger.warn('paused() read failed pre-unpause', { chain, error: String(err) });
+    }
     try {
       const tx = await (contract as unknown as { unpause: () => Promise<{ hash: string; wait: () => Promise<unknown> }> }).unpause();
       await tx.wait();
@@ -87,8 +117,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const anyFailure = results.some((r) => r.status !== 'ok');
-  const allFailed = results.every((r) => r.status !== 'ok');
+  // R8 (Bug #10): treat both 'ok' and 'already_unpaused' as success states.
+  const isSuccessState = (s: string) => s === 'ok' || s === 'already_unpaused';
+  const anyFailure = results.some((r) => !isSuccessState(r.status));
+  const allFailed = results.every((r) => !isSuccessState(r.status));
 
   // Conservative resume: flip sale_config.stage back to 'active' only when
   // the operator targeted 'both' chains AND every chain unpaused cleanly.
