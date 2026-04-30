@@ -66,20 +66,19 @@ BEGIN
   ) t;
 
   -- Network size by level (count of `referrals` rows where this user
-  -- is the referrer at level N).
+  -- is the referrer at level N). Mirrors the working shape of the
+  -- `commission_by_level` block above — a single GROUP BY subquery
+  -- aliased as `t`, with `row_to_jsonb(t)` and `ORDER BY level` both
+  -- resolving against `t`'s columns.
   SELECT COALESCE(jsonb_agg(row_to_jsonb(t) ORDER BY level), '[]'::jsonb),
-         COALESCE(SUM((t->>'count')::INTEGER), 0)::INTEGER
+         COALESCE(SUM(count), 0)::INTEGER
     INTO v_network_by_level, v_network_size
   FROM (
-    SELECT to_jsonb(s) AS t
-      FROM (
-        SELECT level, COUNT(*)::INTEGER AS count
-          FROM referrals
-         WHERE referrer_id = p_user_id
-         GROUP BY level
-         ORDER BY level
-      ) s
-  ) sub;
+    SELECT level, COUNT(*)::INTEGER AS count
+      FROM referrals
+     WHERE referrer_id = p_user_id
+     GROUP BY level
+  ) t;
 
   -- EPP credited_amount (the denominator for tier promotion thresholds);
   -- 0 for community referrers who don't have an `epp_partners` row.

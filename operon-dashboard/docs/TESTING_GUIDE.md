@@ -347,9 +347,9 @@ Easiest way is Supabase's SQL editor, not the terminal.
 4. Open `001_initial_schema.sql` in a text editor. Select all. Copy. Paste into the Supabase SQL Editor. Click **Run**.
 5. Wait for **Success**.
 6. Clear the editor. Repeat for each remaining file **in numerical order**:
-   `003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019, 020, 021, 022, 023, 025, 026, 027, 028, 029, 030, 031, 032, 033, 034`. **Skip 002 (testnet-only, applied in 3.7.1), 007 (does not exist), and 024 (deleted before apply, see DECISIONS D32).**
+   `003, 004, 005, 006, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019, 020, 021, 022, 023, 025, 026, 027, 028, 029, 030, 031, 032, 033, 034, 035, 036`. **Skip 002 (testnet-only, applied in 3.7.1), 007 (does not exist), and 024 (deleted before apply, see DECISIONS D32).**
 
-That is **30 mainnet migrations** for a fresh setup. Cycle 2 stopped at 018, so testers returning from cycle 2 only need to apply 019 onward — but it is safer to nuke the Supabase DB and re-run the full list against a clean schema.
+That is **32 mainnet migrations** for a fresh setup. 035 + 036 are the R8 ship-readiness fixes (referrals summary RPC + orphan-purge of `complete_reservation`). Cycle 2 stopped at 018, so testers returning from cycle 2 only need to apply 019 onward — but it is safer to nuke the Supabase DB and re-run the full list against a clean schema.
 
 If any file errors, stop and message the operator.
 

@@ -664,6 +664,30 @@ describe("NodeSale (v2 voucher checkout)", function () {
         .to.be.revertedWith("NodeSale: node contract is zero address");
     });
 
+    // R8 ship-readiness re-review: OperonNode owner-only setters were
+    // exercised in deployFixture but never asserted to actually reject
+    // non-owner callers. Pass 5 deletion-test would not have caught a
+    // dropped onlyOwner modifier without these.
+    it("only owner can OperonNode.setMinter", async function () {
+      const { other, nodeContract, sale } = await loadFixture(deployFixture);
+      await expect(nodeContract.connect(other).setMinter(await sale.getAddress()))
+        .to.be.revertedWithCustomError(nodeContract, "OwnableUnauthorizedAccount");
+    });
+
+    it("only owner can OperonNode.setTransferLockExpiry", async function () {
+      const { other, nodeContract } = await loadFixture(deployFixture);
+      await expect(nodeContract.connect(other).setTransferLockExpiry(0))
+        .to.be.revertedWithCustomError(nodeContract, "OwnableUnauthorizedAccount");
+    });
+
+    it("only owner can OperonNode.pause / unpause", async function () {
+      const { other, nodeContract } = await loadFixture(deployFixture);
+      await expect(nodeContract.connect(other).pause())
+        .to.be.revertedWithCustomError(nodeContract, "OwnableUnauthorizedAccount");
+      await expect(nodeContract.connect(other).unpause())
+        .to.be.revertedWithCustomError(nodeContract, "OwnableUnauthorizedAccount");
+    });
+
     it("setTreasury rejects zero address", async function () {
       const { sale } = await loadFixture(deployFixture);
       await expect(sale.setTreasury(ethers.ZeroAddress))

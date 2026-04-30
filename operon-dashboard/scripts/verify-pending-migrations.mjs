@@ -78,13 +78,15 @@ const checks = [
   },
   // R8 ship-readiness: 026's `complete_reservation` was a service-role
   // orphan path that bypassed reservation-invariant assertions. Mig 036
-  // drops it. Probe inverted: pass = function NOT present.
+  // drops it. Probe returns one row with a named boolean so the operator
+  // doesn't have to remember "this is the inverted one" while reading
+  // verifier output (other probes use rows-=-success).
   {
     label: '036 - complete_reservation function dropped (orphan removed)',
-    sql: `SELECT 1 WHERE NOT EXISTS (
+    sql: `SELECT NOT EXISTS (
             SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
             WHERE n.nspname = 'public' AND p.proname = 'complete_reservation'
-          )`,
+          ) AS orphan_dropped`,
   },
   {
     label: '026 - sale_tiers.max_per_wallet column exists',
@@ -252,6 +254,46 @@ const checks = [
             has_function_privilege('anon', 'referrals_user_summary(uuid)', 'EXECUTE') AS anon_can_exec,
             has_function_privilege('authenticated', 'referrals_user_summary(uuid)', 'EXECUTE') AS auth_can_exec,
             has_function_privilege('service_role', 'referrals_user_summary(uuid)', 'EXECUTE') AS service_can_exec`,
+  },
+  {
+    // R8 ship-readiness re-review: actually invoke the function with a
+    // never-matching UUID. Existence in pg_proc proves the function was
+    // CREATE'd; this proves the body parses and runs without error. The
+    // first re-review caught a structural SQL bug that the existence
+    // probe alone would not have surfaced (lines 70-82's row_to_jsonb-on-
+    // a-jsonb-column would have thrown at first invocation).
+    label: '035 - referrals_user_summary body parses + runs end-to-end',
+    sql: `SELECT (referrals_user_summary('00000000-0000-0000-0000-000000000000'::uuid))::jsonb
+            ?& ARRAY[
+              'total_commission_cents',
+              'total_paid_cents',
+              'unpaid_commission_cents',
+              'credited_amount_cents',
+              'commission_by_level',
+              'network_by_level',
+              'network_size'
+            ] AS shape_ok`,
+  },
+  {
+    label: '037 - payout_transfers(partner_id, status) index exists',
+    sql: `SELECT 1 FROM pg_indexes
+           WHERE schemaname='public'
+             AND tablename='payout_transfers'
+             AND indexname='idx_payout_transfers_partner_status'`,
+  },
+  {
+    label: '037 - referral_purchases(referrer_id, level) index exists',
+    sql: `SELECT 1 FROM pg_indexes
+           WHERE schemaname='public'
+             AND tablename='referral_purchases'
+             AND indexname='idx_ref_purchases_referrer_level'`,
+  },
+  {
+    label: '037 - increment_tier_sold legacy overloads dropped',
+    sql: `SELECT NOT EXISTS (
+            SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public' AND p.proname = 'increment_tier_sold'
+          ) AS orphans_dropped`,
   },
 ];
 

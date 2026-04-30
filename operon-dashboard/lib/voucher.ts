@@ -59,10 +59,6 @@ export function chainNameToChainId(chain: SaleChain): number {
   return CHAIN_IDS[chain];
 }
 
-export function tokenDecimalsFor(chain: SaleChain, token: 'USDC' | 'USDT' = 'USDC'): number {
-  return WAGMI_TOKEN_DECIMALS[chain][token];
-}
-
 /**
  * cents (10^-2 USD) → token base units. Arbitrum stables are 6 decimals,
  * BSC stables are 18 — same dollar amount, different scale.
@@ -178,20 +174,9 @@ export async function signPurchaseVoucher(
   return { voucher, signature };
 }
 
-/**
- * Internal helper for tests / debugging: recover the signer address from a
- * voucher + signature. Production callers don't need this — the contract
- * does the recovery on-chain.
- */
-export function recoverVoucherSigner(
-  voucher: PurchaseVoucher,
-  signature: string
-): string {
-  const domain = {
-    name: 'OperonNodeSale',
-    version: '2',
-    chainId: voucher.chainId,
-    verifyingContract: voucher.saleContract,
-  };
-  return ethers.verifyTypedData(domain, VOUCHER_TYPES, voucher, signature);
-}
+// R8 ship-readiness re-review (2026-04-30): `recoverVoucherSigner` and
+// `tokenDecimalsFor` removed as part of the orphan-purge sweep. Both
+// were exported with zero callers across app/, lib/, scripts/, e2e/,
+// and contracts/test/. The contract does signer recovery on-chain;
+// `centsToTokenBaseUnits` covers everything `tokenDecimalsFor` did.
+// Bring them back if a future operator script needs them.

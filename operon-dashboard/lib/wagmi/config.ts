@@ -1,5 +1,12 @@
 import { http, fallback, createConfig, mock } from 'wagmi';
 import { arbitrum, bsc, arbitrumSepolia, bscTestnet } from 'wagmi/chains';
+import { connectorsForWallets } from '@rainbow-me/rainbowkit';
+import {
+  metaMaskWallet,
+  walletConnectWallet,
+  coinbaseWallet,
+  injectedWallet,
+} from '@rainbow-me/rainbowkit/wallets';
 
 const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_KEY ?? '';
 // Legacy single-endpoint env: treated as Arb-only for backwards compat.
@@ -12,6 +19,33 @@ const quicknodeUrl = process.env.NEXT_PUBLIC_QUICKNODE_URL ?? '';
 // public fallbacks below if unset.
 const bscQuicknodeUrl = process.env.NEXT_PUBLIC_BSC_QUICKNODE_URL ?? '';
 
+// R8 ship-readiness re-review (2026-04-30): WalletConnect needs a
+// projectId from cloud.walletconnect.com. When absent, the connector is
+// dropped entirely — keeping it with an empty projectId surfaces a
+// confusing "invalid projectId" error in the RainbowKit modal. Without
+// the projectId, the runbook §5 "WalletConnect (mobile): same sequence"
+// row cannot be tested; the runbook tells the operator to register one.
+const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? '';
+
+const wallets = [
+  {
+    groupName: 'Recommended',
+    wallets: [
+      metaMaskWallet,
+      ...(walletConnectProjectId ? [walletConnectWallet] : []),
+      coinbaseWallet,
+      injectedWallet,
+    ],
+  },
+];
+
+const connectors = connectorsForWallets(wallets, {
+  appName: 'Operon',
+  // Empty projectId is filtered out above so the WalletConnect connector
+  // never receives it; this default just keeps the type checker happy.
+  projectId: walletConnectProjectId,
+});
+
 /**
  * Network mode — toggle between testnet and mainnet.
  * Set NEXT_PUBLIC_NETWORK_MODE=testnet in .env.local for testnet.
@@ -21,6 +55,7 @@ const isTestnet = process.env.NEXT_PUBLIC_NETWORK_MODE === 'testnet';
 
 const mainnetConfig = createConfig({
   chains: [arbitrum, bsc],
+  connectors,
   transports: {
     [arbitrum.id]: fallback([
       http(`https://arb-mainnet.g.alchemy.com/v2/${alchemyKey}`),
@@ -29,6 +64,8 @@ const mainnetConfig = createConfig({
     ]),
     [bsc.id]: fallback([
       ...(bscQuicknodeUrl ? [http(bscQuicknodeUrl)] : []),
+      // Mainnet public dataseeds use the default :443 port — covered by
+      // CSP `connect-src https://*.binance.org` already.
       http('https://bsc-dataseed1.binance.org'),
       http('https://bsc-dataseed2.binance.org'),
       http(),
@@ -39,6 +76,7 @@ const mainnetConfig = createConfig({
 
 const testnetConfig = createConfig({
   chains: [arbitrumSepolia, bscTestnet],
+  connectors,
   transports: {
     [arbitrumSepolia.id]: fallback([
       http(`https://arb-sepolia.g.alchemy.com/v2/${alchemyKey}`),
@@ -47,6 +85,11 @@ const testnetConfig = createConfig({
     ]),
     [bscTestnet.id]: fallback([
       ...(bscQuicknodeUrl ? [http(bscQuicknodeUrl)] : []),
+      // Public BSC testnet dataseeds use port :8545 — CSP `connect-src`
+      // must include `https://*.binance.org:8545` for these to load.
+      // Without `bscQuicknodeUrl`, these are the only fallbacks; CSP is
+      // updated in the same R8 ship-readiness re-review pass that adds
+      // this comment.
       http('https://data-seed-prebsc-1-s1.binance.org:8545'),
       http('https://data-seed-prebsc-2-s1.binance.org:8545'),
       http(),

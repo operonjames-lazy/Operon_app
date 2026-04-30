@@ -1,10 +1,21 @@
 import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
+import { rateLimit } from '@/lib/rate-limit';
 import { TIER_THRESHOLDS, TIER_ORDER, MILESTONES } from '@/lib/commission';
 
 export async function GET(request: NextRequest) {
   try {
+    // R8 ship-readiness re-review: cap to 30 req/min/IP. The route fans
+    // out to one Postgres RPC that walks four tables; without a rate
+    // limit, a stuck-loop frontend bug or a script can hammer it
+    // unbounded (TanStack refetchOnWindowFocus = true means tab churn
+    // already produces visible refetch traffic). Same shape as
+    // /api/sale/status (60/min) — referrals is half because the page
+    // is less time-critical and the RPC is heavier.
+    const rateLimited = await rateLimit(request, 'referrals-summary', 30);
+    if (rateLimited) return rateLimited;
+
     const userId = await verifyToken(request);
     if (!userId) {
       return Response.json({ code: 'UNAUTHORIZED', message: 'Not authenticated' }, { status: 401 });
@@ -94,25 +105,43 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const summary = rpcData as {
-      total_commission_cents: number;
-      total_paid_cents: number;
-      unpaid_commission_cents: number;
-      credited_amount_cents: number;
-      commission_by_level: Array<{ level: number; rate: number; salesVolume: number; commission: number }>;
-      network_by_level: Array<{ level: number; count: number }>;
-      network_size: number;
-    };
+    // R8 ship-readiness re-review: validate RPC response shape before
+    // casting. A future mig that renames a key (e.g.
+    // `network_size` → `total_network_size`) would otherwise produce
+    // `undefined` downstream → `nextMilestone.threshold - undefined`
+    // = NaN, sent to the client as JSON null, which cascades into
+    // `Math.min(1, creditedAmount / threshold)` rendering the
+    // progress bar with division-by-NaN. Fail loud here instead.
+    const summary = rpcData as Record<string, unknown>;
+    const requiredKeys = [
+      'total_commission_cents',
+      'total_paid_cents',
+      'unpaid_commission_cents',
+      'credited_amount_cents',
+      'commission_by_level',
+      'network_by_level',
+      'network_size',
+    ] as const;
+    for (const key of requiredKeys) {
+      if (!(key in summary)) {
+        return Response.json(
+          { code: 'INTERNAL_ERROR', message: `referrals_user_summary returned malformed shape (missing ${key})` },
+          { status: 500 },
+        );
+      }
+    }
 
-    const totalCommission = summary.total_commission_cents;
-    const totalPaid = summary.total_paid_cents;
-    const unpaidCommission = summary.unpaid_commission_cents;
+    const totalCommission = Number(summary.total_commission_cents) || 0;
+    // `total_paid_cents` is included in the RPC response for future use
+    // but not currently surfaced on the page; `unpaid_commission_cents`
+    // is the only post-payment number the page needs.
+    const unpaidCommission = Number(summary.unpaid_commission_cents) || 0;
     // Use the partner row's credited_amount when present; otherwise
     // fall back to the RPC's value (which is 0 for non-EPP users).
-    const creditedAmount = partner?.credited_amount ?? summary.credited_amount_cents;
-    const commissionByLevel = summary.commission_by_level;
-    const network = summary.network_by_level;
-    const networkSize = summary.network_size;
+    const creditedAmount = partner?.credited_amount ?? (Number(summary.credited_amount_cents) || 0);
+    const commissionByLevel = (summary.commission_by_level ?? []) as Array<{ level: number; rate: number; salesVolume: number; commission: number }>;
+    const network = (summary.network_by_level ?? []) as Array<{ level: number; count: number }>;
+    const networkSize = Number(summary.network_size) || 0;
 
     // Next tier calculation
     const currentTierIndex = partner ? TIER_ORDER.indexOf(partner.tier) : 0;

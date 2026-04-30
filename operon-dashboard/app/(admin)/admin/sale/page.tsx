@@ -157,8 +157,8 @@ export default function AdminSalePage() {
       />
 
       {/* Tiers — read-only. Activation is backend-only under voucher checkout
-          (complete_reservation auto-advances tiers when total_supply hits;
-          NodeSale v2 has no setTierActive). */}
+          (process_purchase_with_reservation auto-advances tiers when
+          total_supply hits; NodeSale v2 has no setTierActive). */}
       <Card title="Tiers">
         {tiersQ.isLoading && <p className="text-xs text-t3">Loading…</p>}
         {tiersQ.data && (

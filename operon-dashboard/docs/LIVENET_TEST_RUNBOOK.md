@@ -130,7 +130,9 @@ Required (from `.env.example`):
 - **NEW:** `LOCAL_TIER_CAP` (consumed by `contracts/scripts/deploy.ts`, default 1250 — per-chain hard cap per tier, deliberately slack so backend can route all volume to one chain)
 - **NEW:** `ADMIN_CAP_PER_TIER` (consumed by `contracts/scripts/deploy.ts`, default 1250 — `adminMint` budget per tier, independent of `LOCAL_TIER_CAP`)
 - `NEXT_PUBLIC_NETWORK_MODE=mainnet` (when switching from testnet)
-- `NEXT_PUBLIC_ALCHEMY_KEY`, `NEXT_PUBLIC_BSC_QUICKNODE_URL`
+- `NEXT_PUBLIC_ALCHEMY_KEY`, `NEXT_PUBLIC_BSC_QUICKNODE_URL`, `NEXT_PUBLIC_QUICKNODE_URL` (optional Arbitrum fallback)
+- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (register a free project at cloud.walletconnect.com; **required for runbook §5 mobile-WalletConnect smoke** — without it, the RainbowKit modal only shows injected wallets + Coinbase Wallet, and the runbook's three-connector smoke test cannot be executed as written)
+- `DEPLOYER_PRIVATE_KEY` (used only during §2 contract deploy; not used by the Vercel runtime)
 - `ARBITRUM_RPC_URL`, `ARBITRUM_RPC_URL_FALLBACK`, `BSC_RPC_URL`, `BSC_RPC_URL_FALLBACK`
 - `NEXT_PUBLIC_SALE_CONTRACT_ARB`, `_BSC`, `NEXT_PUBLIC_NODE_CONTRACT_ARB`, `_BSC`
 - `SALE_CONTRACT_ARBITRUM`, `_BSC` (server-side mirrors)

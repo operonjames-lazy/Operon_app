@@ -35,6 +35,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# .env.example is the canonical env-var manifest the runbook references;
+# track it so the operator audit (LIVENET_TEST_RUNBOOK §1) can grep it.
+!.env.example
 
 # vercel
 .vercel

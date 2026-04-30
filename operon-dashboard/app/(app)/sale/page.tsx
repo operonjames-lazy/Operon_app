@@ -295,9 +295,14 @@ export default function SalePage() {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
     if (ref && /^[A-Z0-9-]{5,32}$/i.test(ref)) {
-      setReferralCode(ref);
+      // Match the canonical capture path in `app/providers.tsx`'s
+      // <ReferralCapture/> by uppercasing — the backend normalises
+      // case-insensitive anyway, but rendering mixed-case in the input
+      // until the bound-code sync overwrites is a cosmetic surprise.
+      const upper = ref.toUpperCase();
+      setReferralCode(upper);
       setCodeFromUrl(true);
-      validateCode(ref);
+      validateCode(upper);
     }
   }, []);
 
@@ -679,6 +684,9 @@ export default function SalePage() {
       setCodeToast('');
       setPurchasedTier(null);
       setPurchasedQuantity(null);
+      // Tidy: collapse the popover so the new wallet's first render
+      // doesn't auto-open it if `tierReserved > 0` immediately.
+      setTierReservedHintOpen(false);
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
     }
     if (current) lastSeenAddressRef.current = current;

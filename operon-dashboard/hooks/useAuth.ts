@@ -243,8 +243,7 @@ export function useAuth() {
   // the incognito 401 race (#10).
   useAccountEffect({
     onDisconnect() {
-      clearSession().catch(() => {});
-      queryClient.clear();
+      authedAddressRef.current = null;
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
       // R8 ship-readiness: parity with `operon_pending_tx` removal —
       // `operon_pending_attribution` was the same cross-wallet-bleed
@@ -254,9 +253,18 @@ export function useAuth() {
       // Notify hooks with module-local React state to reset (e.g.
       // useTierRealtime's `lastEvent`).
       try { window.dispatchEvent(new CustomEvent('operon:wallet-changed')); } catch {}
-      setIsAuthed(false);
-      setAuthError(null);
-      authedAddressRef.current = null;
+      // R8 ship-readiness re-review: same race-fix shape as the
+      // wallet-switch effect above — await `clearSession()` BEFORE
+      // flipping `isAuthed`/`authError` so a fast Connect-Different
+      // can't have its fresh `Set-Cookie` overwritten by an in-flight
+      // logout response. queryClient.clear() and localStorage cleanup
+      // can stay synchronous; only the auth-flag flips need to wait.
+      (async () => {
+        await clearSession();
+        queryClient.clear();
+        setIsAuthed(false);
+        setAuthError(null);
+      })().catch(() => {});
     },
   });
 
@@ -278,14 +286,20 @@ export function useAuth() {
     if (typeof window === 'undefined') return;
     function onExpired() {
       if (!isAuthed) return;
-      setIsAuthed(false);
-      setAuthError(null);
       authedAddressRef.current = null;
       try { document.cookie = 'operon_auth=; Max-Age=0; Path=/'; } catch {}
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
       try { localStorage.removeItem('operon_pending_attribution'); } catch {}
+      // R8 ship-readiness re-review: move `setIsAuthed(false)` /
+      // `setAuthError(null)` INSIDE the IIFE, AFTER `clearSession()`
+      // resolves. Otherwise the merged `authenticate()` effect re-fires
+      // (because isAuthed flipped to false) while logout is still in
+      // flight; under E2E or auto-sign harnesses the logout response
+      // arrives AFTER the new SIWE cookie is set and clears it.
       (async () => {
         await clearSession();
+        setIsAuthed(false);
+        setAuthError(null);
         await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         await queryClient.invalidateQueries({ queryKey: ['nodes'] });
         await queryClient.invalidateQueries({ queryKey: ['referrals'] });
