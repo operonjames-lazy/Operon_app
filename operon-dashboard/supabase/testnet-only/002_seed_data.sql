@@ -13,33 +13,23 @@ INSERT INTO users (id, primary_wallet) VALUES
 INSERT INTO epp_invites (invite_code, intended_name, assigned_by, status, expires_at) VALUES
   ('EPP-7K3M', 'David Kim', 'Admin', 'used', '2026-05-01');
 
--- EPP partner record
+-- EPP partner record (credited_amount = 0; no demo purchases back this row,
+-- so the partner's commission feed starts empty rather than drift away from
+-- the actual purchases / tier_increments tables).
 INSERT INTO epp_partners (user_id, referral_code, tier, credited_amount, payout_wallet, payout_chain) VALUES
-  ('a1b2c3d4-0000-0000-0000-000000000001', 'OPRN-K7VM', 'affiliate', 133800, '0x742d35cc6634c0532925a3b844bc9e7595f2bd38', 'bsc');
+  ('a1b2c3d4-0000-0000-0000-000000000001', 'OPRN-K7VM', 'affiliate', 0, '0x742d35cc6634c0532925a3b844bc9e7595f2bd38', 'bsc');
 
--- Purchases (from referrals using David's code)
-INSERT INTO purchases (user_id, tx_hash, chain, tier, quantity, token, amount_usd, discount_bps, code_used, block_number) VALUES
-  ('a1b2c3d4-0000-0000-0000-000000000002', '0xaaa1000000000000000000000000000000000000000000000000000000000001', 'arbitrum', 2, 2, 'USDC', 89250, 1500, 'OPRN-K7VM', 18234567),
-  ('a1b2c3d4-0000-0000-0000-000000000003', '0xaaa2000000000000000000000000000000000000000000000000000000000002', 'bsc', 2, 1, 'USDC', 44625, 1500, 'OPRN-K7VM', 42000100);
-
--- Referral records
-INSERT INTO referrals (referrer_id, referred_id, level, code_used) VALUES
-  ('a1b2c3d4-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000002', 1, 'OPRN-K7VM'),
-  ('a1b2c3d4-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000003', 1, 'OPRN-K7VM');
-
--- Commission records (L1 at 12%)
-INSERT INTO referral_purchases (purchase_id, purchase_tx, referrer_id, level, referrer_tier, commission_rate, credited_weight, net_amount_usd, commission_usd, credited_amount) VALUES
-  ((SELECT id FROM purchases WHERE tx_hash='0xaaa1000000000000000000000000000000000000000000000000000000000001'), '0xaaa1000000000000000000000000000000000000000000000000000000000001', 'a1b2c3d4-0000-0000-0000-000000000001', 1, 'affiliate', 1200, 10000, 89250, 10710, 89250),
-  ((SELECT id FROM purchases WHERE tx_hash='0xaaa2000000000000000000000000000000000000000000000000000000000002'), '0xaaa2000000000000000000000000000000000000000000000000000000000002', 'a1b2c3d4-0000-0000-0000-000000000001', 1, 'affiliate', 1200, 10000, 44625, 5355, 44625);
-
--- (R8 2026-04-30) The original seed file ran two `UPDATE sale_tiers`
--- statements here to mock a "tier 1 sold out, tier 2 partially sold"
--- state for dashboard screenshots. Those are now removed so the file
--- is safe to apply on a fresh Supabase project AFTER 014's tier reset:
--- tier 1 stays `is_active=true, total_sold=0`, which is what the cycle-3
--- testing flow expects (Test 3 starts at a fresh tier 1 with 7 slots open).
--- The demo `purchases` rows above remain — they are visible in the
--- recent-activity feed but no longer tilt sale_tiers counters.
+-- (R8 ship-readiness fix 2026-04-30) The original seed file inserted two
+-- demo `purchases` rows + matching `referrals` + `referral_purchases` for
+-- "David Kim's downline" so the dashboard screenshots had data. The
+-- earlier R8 sweep removed the `UPDATE sale_tiers` lines that tilted the
+-- counters, but that LEFT `purchases` rows for tier 2 with no matching
+-- `tier_increments` and no `sale_tiers.total_sold` bump — which means
+-- `admin_money_invariants()` (mig 031) would report tier_drift on every
+-- cron tick, paging on-call from the moment the testnet env booted.
+-- Removing the demo purchases / referrals / referral_purchases keeps the
+-- invariant clean from t=0. EPP partner row above stays so Test 5 has a
+-- pre-seeded "active partner" example to compare against.
 
 -- Test unused invite codes
 INSERT INTO epp_invites (invite_code, assigned_by, status, expires_at) VALUES

@@ -181,3 +181,4 @@ Recommendation: not ready. Block on the discount-math regression (D-P1/D-58); th
 **One thing the developer missed:** the required finding above. The auth-expiry recovery wiring works correctly for hooks (useAuth, useNodes, useReferrals etc.) because they all go through authFetch, but the sale page deliberately uses raw fetch for the three voucher endpoints. The merged effect at useAuth.ts:145 was specifically added in ship-readiness R5 to handle stale-cookie 401s -- and those fixes hold for everything except the sale page itself.
 
 ## 2026-04-27 | ship-readiness (post-mig-30) | 1 blocking, 6 required (deduped), 6 advisory | not ready
+## 2026-04-30 | ship-readiness | 7 blocking, 14 required, 10 advisory | not ready

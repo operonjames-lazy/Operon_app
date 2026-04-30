@@ -1240,7 +1240,15 @@ export default function SalePage() {
           <Button variant="primary" size="lg" className="w-full" disabled>{t('sale.stage.paused') || 'Sale paused'}</Button>
         ) : sale?.stage === 'closed' ? (
           <Button variant="primary" size="lg" className="w-full" disabled>{t('sale.stage.closed') || 'Sale closed'}</Button>
-        ) : !sale?.tierRemaining ? (
+        ) : !sale?.tierRemaining && !reservation ? (
+          // R8 ship-readiness regression fix: gate "tier sold out" on NOT
+          // having an active reservation. After the Bug #5 fix made
+          // tierRemaining subtract active reservations, the buyer who
+          // reserves the last slot would see their own reservation drop
+          // tierRemaining to 0 on the next /api/sale/status poll → without
+          // this `&& !reservation` clause they'd render "Tier sold out"
+          // and lose access to their own countdown / Approve / Buy
+          // controls. Test 8 (tier-boundary fill) is exactly this path.
           <Button variant="primary" size="lg" className="w-full" disabled>{t('sale.tierSoldOut')}</Button>
         ) : !isCorrectChain ? (
           <Button variant="primary" size="lg" className="w-full" onClick={() => switchChain({ chainId: targetChainId })}>

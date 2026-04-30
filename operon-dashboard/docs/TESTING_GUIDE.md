@@ -372,12 +372,12 @@ Notes (most relevant cycle 3 ones, in apply order):
 
 ### 3.7.1 Apply the testnet-only files (seed data + supply override + commission audit view)
 
-After the 30 mainnet migrations land, apply two files from a different folder **in this order**:
+After the 30 mainnet migrations land, apply two files from `supabase/testnet-only/` **in this order**:
 
-1. `supabase/testnet-only/002_seed_data.sql` — demo dashboard rows + pre-seeded EPP invite codes. Apply this AFTER 014 has run on the empty `purchases` table; 014's reset ran with no purchases, so tier state is clean. 002 then layers the demo rows on top for dashboard screenshots and gives Test 5 some pre-seeded EPP invites to grab.
+1. `supabase/testnet-only/002_seed_data.sql` — demo "David Kim" EPP partner row + pre-seeded EPP invite codes for Test 5. Apply this AFTER 014 has run on an empty `purchases` table.
 2. `supabase/testnet-only/035_small_supply_override.sql` — small tier-1 supply (7) and the `commission_audit` view.
 
-These live outside `supabase/migrations/` on purpose so the production runner never picks them up. **Do not apply 002 on mainnet** — its tier-state UPDATEs would set tier 1 to "1250 sold, inactive" and tier 2 to "403 sold, active", which would render as `-303 / 100 remaining` to day-0 customers. The `_small_supply_override.sql` file is also testnet-only.
+These files live outside `supabase/migrations/` on purpose so the production runner never picks them up. **Do not apply either of them on mainnet** — they exist purely to make Test 5 / Test 8 reachable on a small testnet supply budget.
 
 What 035 does:
 
@@ -386,7 +386,7 @@ What 035 does:
 
 Open each file in a text editor → select all → paste into the Supabase SQL Editor → Run.
 
-Expected after both: `sale_tiers` shows tier 1 with `total_supply=7, total_sold=0, is_active=true`; tiers 2+3 with `total_supply=100, total_sold=0, is_active=false`. The `epp_partners` table has the demo "David Kim" row, and `epp_invites` has a couple of `status='pending'` invites you can grab for Test 5. Two demo `purchases` rows are present (David Kim's referrals) — they show up in the recent-activity feed but do **not** tilt the tier counters, so Test 8's tier-boundary slot budget is intact. If `total_sold > 0` on tier 1, message the operator — something else is off.
+Expected after both: `sale_tiers` shows tier 1 with `total_supply=7, total_sold=0, is_active=true`; tiers 2+3 with `total_supply=100, total_sold=0, is_active=false`. The `epp_partners` table has the demo "David Kim" row (`credited_amount=0`, no demo purchases back it), and `epp_invites` has a couple of `status='pending'` invites you can grab for Test 5. `purchases` is empty, `referral_purchases` is empty, so `admin_money_invariants()` reports `ok: true` from t=0. If `total_sold > 0` on any tier, message the operator — something else is off.
 
 ### 3.8 Run the site
 
@@ -441,8 +441,8 @@ MetaMask does not show the practice USDC / USDT balances until you tell it which
 - [ ] All five wallets have some ETH on Arbitrum and some tBNB on BSC
 - [ ] All five wallets show ~10,000 USDC on Arbitrum and ~10,000 USDT on BSC
 - [ ] You have the six contract addresses written down somewhere
-- [ ] **All migrations were run through 034 (the latest)** — if you stopped early you will hit bugs. The list is in §3.7; 31 files total.
-- [ ] **Applied the testnet-only `supabase/testnet-only/035_small_supply_override.sql`** per §3.7.1. Test 8 (tier promotion) takes hours instead of minutes without it.
+- [ ] **All mainnet migrations were run through 034** (30 files, listed in §3.7 — 002 skipped because it's testnet-only).
+- [ ] **Applied BOTH testnet-only files** per §3.7.1: `supabase/testnet-only/002_seed_data.sql` (demo EPP partner + pre-seeded invites) AND `supabase/testnet-only/035_small_supply_override.sql` (small tier-1 supply + `commission_audit` view). Skipping 035 makes Test 8 take hours instead of minutes.
 - [ ] `.env.local` has all of: `DEV_ENDPOINTS_ENABLED=1`, `DEV_INDEXER_SECRET=<hex>`, `VOUCHER_SIGNER_ADDRESS`, `VOUCHER_SIGNER_PRIVATE_KEY`, `LOCAL_TIER_CAP`, `ADMIN_CAP_PER_TIER`
 - [ ] `VOUCHER_SIGNER_ADDRESS` matches what the contract was deployed with — if they diverge, every Reserve fails with `voucher signer mismatch`.
 
