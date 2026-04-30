@@ -101,8 +101,13 @@ export async function GET(request: NextRequest) {
         discountBps: user.is_epp && partner?.status === 'active'
           ? (saleConfig?.epp_discount_bps ?? 1500)
           : null,
+        // R8 ship-readiness: integer math matches the contract's order of
+        // operations (price - floor(price * bps / 10000)). Float division
+        // `(1 - bps/10000)` was producing penny-drift vs the Sale page
+        // (e.g. tier 3 at 15% off: float gave $478.54, contract gives
+        // $478.55), so the home tile and the sale page disagreed.
         discountPrice: user.is_epp && partner?.status === 'active' && activeTier
-          ? Math.floor(activeTier.price_usd * (1 - (saleConfig?.epp_discount_bps ?? 1500) / 10000))
+          ? activeTier.price_usd - Math.floor(activeTier.price_usd * (saleConfig?.epp_discount_bps ?? 1500) / 10000)
           : null,
         tierRemaining: activeTier ? activeTier.total_supply - activeTier.total_sold : 0,
         tierSupply: activeTier?.total_supply || 0,

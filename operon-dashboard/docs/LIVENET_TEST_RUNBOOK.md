@@ -57,6 +57,18 @@ migrations in order:
   signature hashes, `sale_reservations.discount_bps` table CHECK tightened
   to `≤ 1500` to match the RPC clamp + the implicit cap in mig 031's
   expected-amount CHECK.
+- `034_reserve_stage_gate.sql` - defense-in-depth stage check inside
+  `reserve_node_purchase` itself, not just at the API layer. A future
+  admin script or replay path that calls the RPC directly can no longer
+  create reservations against a paused sale.
+- `035_referrals_user_summary_rpc.sql` - D-P9 fix for /api/referrals/summary.
+  Returns aggregate commission / payout / network totals as JSONB in one
+  service-role-only RPC call. Replaces the JS `.reduce()` over unbounded
+  PostgREST SELECTs that silently truncated at the 1000-row cap.
+- `036_drop_orphan_legacy_paths.sql` - drops `complete_reservation(uuid,
+  text, text)` orphan; v2 voucher pipeline uses `process_purchase_with_reservation`
+  exclusively, and the orphan was a service-role-callable parallel path
+  that bypassed reservation invariant assertions.
 
 Then run:
 
@@ -64,11 +76,23 @@ Then run:
 node scripts/verify-pending-migrations.mjs
 ```
 
-Expected: 025, 026, 027, 028, 029, 030, **031, 032, and 033** probes are
-present/clean, including `admin_money_invariants` returning `ok: true`. Do
-not promote the Vercel build if 030 / 031 / 032 / 033 is missing — those
-four land together as the post-review hotfix bundle (anon lockdown +
-voucher math fix + realtime fix + Telegram dedup + invariant truthiness).
+Expected: 025, 026, 027, 028, 029, 030, 031, 032, 033, **034, 035, 036**
+probes are present/clean, including `admin_money_invariants` returning
+`ok: true`, `referrals_user_summary` callable, and `complete_reservation`
+absent (replaced by `process_purchase_with_reservation`). Do not promote
+the Vercel build if 030 / 031 / 032 / 033 / 034 is missing — those land
+together as the cycle-3 hardening bundle (anon lockdown + voucher math fix
++ realtime fix + Telegram dedup + invariant truthiness + RPC stage gate).
+035 + 036 are R8 ship-readiness fixes (D-P9 RPC + orphan-purge).
+
+### 1.0 Vercel plan prerequisite
+
+**The preview deploy used for §6 must be on a Vercel Pro or Enterprise project.**
+
+- The Hobby plan caps `vercel.json` cron schedules to once per day, so `*/5 * * * *` is silently downgraded — `expire_old_reservations`, the failed-events retry queue, and `admin_money_invariants` checks would never fire on schedule.
+- Cron jobs declared in `vercel.json` are scheduled **only on Production deployments**, regardless of plan. Preview deploys never run cron automatically. To exercise the cron-driven paths during the §6 smoke test, manually run `curl -H "Authorization: Bearer $CRON_SECRET" https://<preview>.vercel.app/api/cron/reconcile` after each milestone (reserve-and-idle, submitted-tx-revert, etc.).
+
+Confirm in the Vercel dashboard → Settings → Cron Jobs that the schedule shows "every 5 minutes" (production-only entry — preview will read the same `vercel.json` but won't actually invoke the schedule).
 
 ### 1. Vercel Production env audit
 
@@ -114,10 +138,22 @@ Required (from `.env.example`):
 - `ALCHEMY_WEBHOOK_SIGNING_KEY`, `QUICKNODE_WEBHOOK_SECRET` (fail-closed if missing in any env)
 - `UPSTASH_REDIS_REST_URL`, `_TOKEN` (fail-closed in production)
 - `NEXT_PUBLIC_SENTRY_DSN`
+- `NEXT_PUBLIC_APP_DOMAIN` (SIWE EIP-4361 binds the message domain to this. **MUST equal the host the user visits** — `app.operon.network` for production, the preview URL host for any §6 testing on a preview. Falls back to the request's `Host:` header if unset, but that fallback removes the only programmatic guarantee that the SIWE message was signed for THIS deploy. `lib/auth.ts` will refuse to boot in `NODE_ENV=production` if this is unset on the production environment.)
 - `TG_BOT_TOKEN`, `TG_ADMIN_CHAT_ID` (abandoned-event alerts)
 
 **Must NOT be set** in production: `DEV_ENDPOINTS_ENABLED`, `DEV_INDEXER_SECRET`.
 PostHog vars: not used (claim removed from docs in this session).
+
+#### 1.a Testnet preview override (only when running §6 on a preview deploy)
+
+If §6 is run on a Vercel preview against testnet contracts (which is how the runbook recommends pre-mainnet smoke tests), the preview env additionally needs:
+
+- `NEXT_PUBLIC_NETWORK_MODE=testnet` (flips `lib/wagmi/contracts.ts` to read the testnet token-address vars below; otherwise `STABLECOIN_ADDRESSES[chain][token]` resolves to the zero-address fallback and every Reserve attempt 503s with `token_not_configured`)
+- `NEXT_PUBLIC_TESTNET_USDC_ARB`, `NEXT_PUBLIC_TESTNET_USDT_ARB` (Arbitrum Sepolia mock token addresses)
+- `NEXT_PUBLIC_TESTNET_USDC_BSC`, `NEXT_PUBLIC_TESTNET_USDT_BSC` (BSC Testnet mock token addresses)
+- `NEXT_PUBLIC_SALE_CONTRACT_ARB` / `_BSC` and `NEXT_PUBLIC_NODE_CONTRACT_ARB` / `_BSC` set to the **testnet** deploys (NOT the mainnet addresses from §1)
+- `SALE_CONTRACT_ARBITRUM` / `_BSC` server-side mirrors set to the same testnet addresses
+- `ALCHEMY_WEBHOOK_SIGNING_KEY` / `QUICKNODE_WEBHOOK_SECRET` set to the **per-preview** signing keys (see §4 — preview must have its own Alchemy webhook + QuickNode stream subscribing to the testnet contract addresses and posting to the preview URL; the production webhook subscriptions are pinned to the production URL and won't reach a preview).
 
 ### 2. Mainnet contract deploy (NodeSale v2 — voucher checkout)
 
@@ -189,6 +225,11 @@ updated, Alchemy/QuickNode subscriptions pointed at the new sale addresses,
 and the v2 `NodePurchased` topic0 below saved in vendor dashboards. A partial
 cutover makes the purchase pipeline go silent.
 
+**Preview deploys need their own subscriptions.** Alchemy webhooks and QuickNode streams are pinned to one URL each. The production subscriptions point at `app.operon.network`; if the §6 smoke test runs on a preview URL, **none of the §6 preview's `/api/webhooks/*` routes will receive a single legitimate event** — Async #2 in the journey is dead. Two options:
+
+- **(a) Per-preview webhook subscription (recommended for thorough testing).** Create a SECOND Alchemy webhook + QuickNode stream that subscribes to the **testnet** sale contract addresses and POSTs to the preview URL. Use distinct `ALCHEMY_WEBHOOK_SIGNING_KEY` / `QUICKNODE_WEBHOOK_SECRET` values stored in the preview env. Tear down after the test.
+- **(b) Rely on the cron gap-filler.** `/api/cron/reconcile` reconstructs missed events from on-chain logs. Tester then sees commission ingestion lag by up to one cron tick, manually invoked with `curl …/api/cron/reconcile` (preview doesn't run cron — see §1.0). Fine for sanity-checking the happy path, NOT a substitute for end-to-end webhook validation before mainnet promotion.
+
 #### Alchemy (Arbitrum)
 
 1. Alchemy dashboard → Webhooks → Create Webhook → **Address Activity**
@@ -250,7 +291,7 @@ On a Vercel preview deploy with mainnet contracts replaced by testnet:
 - [ ] After tx broadcast: dapp fires POST `/api/sale/reservations/submit` → reservation row flips to `status='submitted'` with `tx_hash` populated
 - [ ] Within ~30s of confirmation: webhook fires → reservation flips to `status='completed'`, `purchases` row created, `referral_purchases` rows for each upline level, upline `credited_amount` increments. If threshold crossed, `tier` updates and `admin_audit_log` has `tier_auto_promote` row.
 - [ ] `/nodes` page: pending banner clears once `purchases` ingestion completes
-- [ ] **Voucher expiry test**: reserve, then idle for 12+ minutes without approving. Countdown hits 00:00, banner clears, reservation row transitions to `status='expired'` on next reconcile cron tick. New Reserve click should succeed against the same tier (inventory was released).
+- [ ] **Voucher expiry test**: reserve, then idle for 12+ minutes without approving. Countdown hits 00:00, banner clears. **On preview**, run `curl -H "Authorization: Bearer $CRON_SECRET" https://<preview>.vercel.app/api/cron/reconcile` manually (per §1.0 — preview cron is inert) — reservation row transitions to `status='expired'`. New Reserve click should succeed against the same tier (inventory was released).
 - [ ] **Self-referral test**: as a wallet that already has a personal `OPR-XXXXXX` code, attempt to use that exact code on Reserve. `/api/sale/reserve` returns `{error: 'invalid_code', reason: 'self_referral'}` and no voucher is signed. Confirm DB has no new reservation row.
 - [ ] **Suspended-partner test**: suspend an EPP partner via `/admin/users/<id>` → "Change status" → make a purchase that would have walked through that partner → confirm their `credited_amount` does NOT increment (mig 021 enforcement) and the chain falls through to next active upline
 - [ ] **Killswitch test**: `/admin/settings` → toggle `admin.epp.invites` to disabled → POST `/api/admin/epp/invites` → expect 503 with `{"error":"killed"}`. Toggle back to enabled → confirm next call succeeds.
@@ -293,7 +334,8 @@ If you get a 200 instead, the Safe novation didn't actually land — re-check `n
 - [ ] Confirm Sentry is receiving events (force a 500 from a non-prod endpoint, watch the dashboard)
 - [ ] Confirm Telegram alerts fire (force a `failed_events.attempts >= 5` row, watch the channel)
 - [ ] Confirm `/api/health` returns 200 with `status: "healthy"` and `contracts.status === "ok"` on mainnet (the route now fails-closed on missing addresses when `NEXT_PUBLIC_NETWORK_MODE=mainnet`)
-- [ ] Run `verify-pending-migrations.mjs` against live DB one more time. Should report 025 + 026 + 027 + 028 + 029 + **030 + 031 + 032** present/clean, including `process_purchase_with_reservation` (asserts equality vs precomputed, no recompute), `admin_failed_events_health`, `admin_money_invariants` returning `ok: true`, and `cron_alert_should_fire`.
+- [ ] **`/api/health` webhook key check** — `curl https://<preview-or-prod>/api/health | jq .webhooks.status`. Must equal `"ok"`. A `"warn"` or `"fail"` means `ALCHEMY_WEBHOOK_SIGNING_KEY` or `QUICKNODE_WEBHOOK_SECRET` is unset in this environment, and every vendor POST to `/api/webhooks/*` will silently 401 until fixed (vendor logs become the only failure signal).
+- [ ] Run `verify-pending-migrations.mjs` against live DB one more time. Should report 025 + 026 + 027 + 028 + 029 + 030 + 031 + 032 + **033 + 034 + 035 + 036** present/clean, including `process_purchase_with_reservation` (asserts equality vs precomputed, no recompute), `admin_failed_events_health`, `admin_money_invariants` returning `ok: true`, `cron_alert_should_fire`, `referrals_user_summary` callable, and `complete_reservation` absent.
 
 ---
 

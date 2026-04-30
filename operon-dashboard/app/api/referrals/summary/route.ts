@@ -75,57 +75,44 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get total commission earned
-    const { data: commissions } = await supabase
-      .from('referral_purchases')
-      .select('level, commission_usd, credited_amount, net_amount_usd')
-      .eq('referrer_id', userId);
+    // R8 (2026-04-30) — D-P9 fix: aggregate everything in one Postgres
+    // RPC. The previous shape SELECT'd unbounded `referral_purchases`,
+    // `payout_transfers`, and `referrals` then JS-`.reduce()`'d the totals,
+    // which silently truncated at the PostgREST 1000-row cap once a
+    // partner's downline crossed the threshold. Migration 035 introduces
+    // `referrals_user_summary(p_user_id)` returning all aggregates as
+    // JSONB; the route is now one round-trip and one .reduce-free path.
+    const { data: rpcData, error: rpcError } = await supabase.rpc(
+      'referrals_user_summary',
+      { p_user_id: userId },
+    );
 
-    const totalCommission = commissions?.reduce((sum, c) => sum + c.commission_usd, 0) || 0;
-    const creditedAmount = partner?.credited_amount || 0;
+    if (rpcError || !rpcData) {
+      return Response.json(
+        { code: 'INTERNAL_ERROR', message: 'Failed to fetch referral summary' },
+        { status: 500 },
+      );
+    }
 
-    // Get paid commission total
-    const { data: payouts } = await supabase
-      .from('payout_transfers')
-      .select('amount')
-      .eq('partner_id', userId)
-      .eq('status', 'confirmed');
+    const summary = rpcData as {
+      total_commission_cents: number;
+      total_paid_cents: number;
+      unpaid_commission_cents: number;
+      credited_amount_cents: number;
+      commission_by_level: Array<{ level: number; rate: number; salesVolume: number; commission: number }>;
+      network_by_level: Array<{ level: number; count: number }>;
+      network_size: number;
+    };
 
-    const totalPaid = payouts?.reduce((sum, p) => sum + p.amount, 0) || 0;
-    const unpaidCommission = totalCommission - totalPaid;
-
-    // Commission by level
-    const levelMap: Record<number, { volume: number; commission: number }> = {};
-    commissions?.forEach(c => {
-      if (!levelMap[c.level]) levelMap[c.level] = { volume: 0, commission: 0 };
-      levelMap[c.level].volume += c.net_amount_usd;
-      levelMap[c.level].commission += c.commission_usd;
-    });
-
-    const commissionByLevel = Object.entries(levelMap).map(([level, data]) => ({
-      level: parseInt(level),
-      rate: 0, // Will be filled based on tier
-      salesVolume: data.volume,
-      commission: data.commission,
-    }));
-
-    // Network size by level
-    const { data: referrals } = await supabase
-      .from('referrals')
-      .select('level')
-      .eq('referrer_id', userId);
-
-    const networkMap: Record<number, number> = {};
-    referrals?.forEach(r => {
-      networkMap[r.level] = (networkMap[r.level] || 0) + 1;
-    });
-
-    const network = Object.entries(networkMap).map(([level, count]) => ({
-      level: parseInt(level),
-      count,
-    }));
-
-    const networkSize = referrals?.length || 0;
+    const totalCommission = summary.total_commission_cents;
+    const totalPaid = summary.total_paid_cents;
+    const unpaidCommission = summary.unpaid_commission_cents;
+    // Use the partner row's credited_amount when present; otherwise
+    // fall back to the RPC's value (which is 0 for non-EPP users).
+    const creditedAmount = partner?.credited_amount ?? summary.credited_amount_cents;
+    const commissionByLevel = summary.commission_by_level;
+    const network = summary.network_by_level;
+    const networkSize = summary.network_size;
 
     // Next tier calculation
     const currentTierIndex = partner ? TIER_ORDER.indexOf(partner.tier) : 0;

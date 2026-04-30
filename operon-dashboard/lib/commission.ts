@@ -13,11 +13,9 @@
  * path.
  */
 
-import { ethers } from 'ethers';
 import { createServerSupabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
-const ZERO_CODE_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
 const STRUCTURAL_MISMATCH_ERRORS = new Set([
   'amount_mismatch',
   'code_hash_mismatch',
@@ -127,36 +125,12 @@ async function alertVoucherMismatch(context: Record<string, unknown>) {
  * not happen, but we surface `null` rather than throw so the purchase
  * still lands), or on any database error.
  */
-export async function resolveCodeFromHash(codeHash: string): Promise<string | null> {
-  if (!codeHash || codeHash.toLowerCase() === ZERO_CODE_HASH) {
-    return null;
-  }
-  const normalizedHash = codeHash.toLowerCase();
-  const supabase = createServerSupabase();
-
-  const [{ data: users }, { data: partners }] = await Promise.all([
-    supabase.from('users').select('referral_code').not('referral_code', 'is', null),
-    supabase.from('epp_partners').select('referral_code').not('referral_code', 'is', null),
-  ]);
-
-  const candidates = new Set<string>();
-  for (const row of users ?? []) {
-    if (row.referral_code) candidates.add(row.referral_code);
-  }
-  for (const row of partners ?? []) {
-    if (row.referral_code) candidates.add(row.referral_code);
-  }
-
-  for (const code of candidates) {
-    const hash = ethers.keccak256(ethers.toUtf8Bytes(code.toUpperCase())).toLowerCase();
-    if (hash === normalizedHash) {
-      return code.toUpperCase();
-    }
-  }
-
-  logger.warn('Purchase codeHash did not match any known referral code', { codeHash });
-  return null;
-}
+// R8 ship-readiness (2026-04-30): `resolveCodeFromHash` removed alongside
+// `processReferralAttribution`. Both belonged to the v1 purchase pipeline
+// that bypassed the reservation invariant; v2 voucher checkout uses
+// `process_purchase_with_reservation` which carries the original
+// `code_used` string in the reservation row, so on-chain hash → string
+// resolution is no longer needed.
 
 // Commission rates by EPP partner tier and level (in basis points, 1200 = 12%).
 // Kept here purely for reference / UI display. The authoritative copy lives
@@ -224,69 +198,14 @@ export interface ProcessResult {
   error?: string;
 }
 
-/**
- * Process a verified purchase event. Delegates the whole flow to the
- * atomic RPC in the database. Safe to call concurrently; safe to re-call
- * with the same tx (idempotent via UNIQUE constraints inside the RPC).
- */
-export async function processReferralAttribution(
-  purchase: PurchaseEvent
-): Promise<ProcessResult> {
-  // Basic shape check before spending a round trip.
-  if (!/^0x[a-fA-F0-9]{40}$/i.test(purchase.buyerWallet)) {
-    logger.error('Invalid buyer wallet format', { wallet: purchase.buyerWallet });
-    return { status: 'error', error: 'invalid_buyer_wallet' };
-  }
-  if (!Number.isInteger(purchase.totalPaidUsd) || purchase.totalPaidUsd < 0) {
-    logger.error('Invalid totalPaidUsd', { totalPaidUsd: purchase.totalPaidUsd });
-    return { status: 'error', error: 'invalid_amount' };
-  }
-
-  // Resolve the event's codeHash back to the human-readable code string
-  // so purchases.code_used has a real value for audit. Returns null when
-  // no code was used (zero hash), when the hash doesn't match anything in
-  // our DB, or on a lookup error — all three are non-fatal. The RPC
-  // itself computes purchases.discount_bps from tier base price vs
-  // totalPaid, so a null code doesn't suppress the discount field.
-  let codeUsed: string | null = null;
-  try {
-    codeUsed = await resolveCodeFromHash(purchase.codeHash);
-  } catch (err) {
-    logger.warn('resolveCodeFromHash failed; continuing with null', {
-      txHash: purchase.txHash,
-      error: String(err),
-    });
-  }
-
-  const supabase = createServerSupabase();
-
-  const { data, error } = await supabase.rpc('process_purchase_and_commissions', {
-    p_tx_hash:      purchase.txHash,
-    p_chain:        purchase.chain,
-    p_buyer_wallet: purchase.buyerWallet.toLowerCase(),
-    p_tier:         purchase.tier,
-    p_quantity:     purchase.quantity,
-    p_token:        purchase.token ?? 'USDC',
-    p_amount_usd:   purchase.totalPaidUsd,
-    p_code_used:    codeUsed,
-    p_block_number: purchase.blockNumber,
-  });
-
-  if (error) {
-    logger.error('process_purchase_and_commissions RPC failed', {
-      txHash: purchase.txHash,
-      error: error.message,
-    });
-    throw new Error(error.message);
-  }
-
-  const result = data as { status: string; purchase_id?: string; commissions_created?: number };
-  return {
-    status: result.status as 'ok' | 'duplicate',
-    purchaseId: result.purchase_id,
-    commissionsCreated: result.commissions_created ?? 0,
-  };
-}
+// R8 ship-readiness (2026-04-30): `processReferralAttribution` removed.
+// It was the v1 ingest path and bypassed the reservation invariant
+// check (chain match, code-hash match, amount equality) that
+// `process_purchase_with_reservation` enforces. The v2 voucher pipeline
+// (webhooks → re-verify → `processPurchaseWithReservation`) is the only
+// supported path; keeping a parallel entry point alive was inviting
+// future-`process_purchase_and_commissions` callers to skip the reservation
+// invariant. R-87 orphan-inverse flagged this in the ship review.
 
 /**
  * Voucher-sale ingest path. The database function validates the on-chain

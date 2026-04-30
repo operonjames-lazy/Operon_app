@@ -193,21 +193,29 @@ export function useAuth() {
     const current = address.toLowerCase();
     const prev = authedAddressRef.current;
     if (prev && prev !== current) {
-      // R4-06 fix: await `clearSession` and use targeted refetchQueries
-      // instead of `queryClient.clear()`. The prior fire-and-forget shape
-      // raced: /api/auth/logout had not yet cleared the server cookie when
-      // the cache-wipe fired, so the next query round carried the old
-      // cookie and returned 401, which threw into the error boundary and
-      // rendered `/referrals` and `/nodes` as blank white pages (no
-      // loading spinner, no error UI). Awaiting the logout, then
-      // refetching wallet-scoped queries, lets each page's existing
-      // `isLoading` skeleton render during the refetch.
-      setIsAuthed(false);
-      setAuthError(null);
+      // R8 ship-readiness: notify hooks with module-local state (e.g.
+      // useTierRealtime's `lastEvent`) that wallet identity changed.
+      // queryClient.clear() / invalidate handle TanStack cache; this
+      // event covers state that lives outside the cache.
+      try {
+        window.dispatchEvent(new CustomEvent('operon:wallet-changed'));
+      } catch {}
+      // R4-06 + R8 ship-readiness: await `clearSession` BEFORE flipping
+      // `isAuthed` to false, otherwise the merged effect above re-fires
+      // `authenticate()` while this IIFE still has the old session POST
+      // in flight — auto-sign / mock-connector harnesses turn that race
+      // into a deterministic logout-after-login (new cookie issued,
+      // then logout deletes it, then every authed query 401s). Setting
+      // `isAuthed=false` inside the IIFE after `clearSession()` resolves
+      // keeps the merged effect quiescent until we're actually logged
+      // out on the server.
       authedAddressRef.current = null;
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
+      try { localStorage.removeItem('operon_pending_attribution'); } catch {}
       (async () => {
         await clearSession();
+        setIsAuthed(false);
+        setAuthError(null);
         // Invalidate rather than clear — keeps cache entries mounted so
         // skeletons show, but marks them stale to trigger a refetch for
         // the new wallet. Narrowed to wallet-scoped keys (A6) — public
@@ -238,6 +246,14 @@ export function useAuth() {
       clearSession().catch(() => {});
       queryClient.clear();
       try { localStorage.removeItem('operon_pending_tx'); } catch {}
+      // R8 ship-readiness: parity with `operon_pending_tx` removal —
+      // `operon_pending_attribution` was the same cross-wallet-bleed
+      // class the C-P7 fix targeted, but only one of the two markers
+      // was wired into the disconnect path.
+      try { localStorage.removeItem('operon_pending_attribution'); } catch {}
+      // Notify hooks with module-local React state to reset (e.g.
+      // useTierRealtime's `lastEvent`).
+      try { window.dispatchEvent(new CustomEvent('operon:wallet-changed')); } catch {}
       setIsAuthed(false);
       setAuthError(null);
       authedAddressRef.current = null;
@@ -266,6 +282,8 @@ export function useAuth() {
       setAuthError(null);
       authedAddressRef.current = null;
       try { document.cookie = 'operon_auth=; Max-Age=0; Path=/'; } catch {}
+      try { localStorage.removeItem('operon_pending_tx'); } catch {}
+      try { localStorage.removeItem('operon_pending_attribution'); } catch {}
       (async () => {
         await clearSession();
         await queryClient.invalidateQueries({ queryKey: ['dashboard'] });

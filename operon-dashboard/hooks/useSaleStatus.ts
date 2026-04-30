@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAccount } from 'wagmi';
 import { API_ROUTES } from '@/lib/api/routes';
+import { authFetch } from '@/lib/api/fetch';
 import {
   type SaleStatus,
   type SaleTier,
@@ -13,8 +14,14 @@ import {
 
 // ─── Sale Status (polls every 10s) ───────────────────────────────────────
 
+// R8 ship-readiness: use `authFetch`, not bare `fetch`. /api/sale/status
+// is currently 200-with-`usedReferralCode=null` for unauthed callers, but
+// if it ever moves to a hard 401 (or a JWT_SECRET rotation invalidates
+// every active session), bare fetch would not fire `operon:auth-expired`
+// and the user would silently land on /sale with a generic editable
+// referral input + no path to recovery.
 async function fetchSaleStatus(): Promise<SaleStatus> {
-  const res = await fetch(API_ROUTES.SALE_STATUS);
+  const res = await authFetch(API_ROUTES.SALE_STATUS);
   if (!res.ok) {
     const error: ApiError = await res.json();
     throw error;
@@ -40,6 +47,8 @@ export function useSaleStatus() {
 // ─── Sale Tiers ───────────────────────────────────────────────────────────
 
 async function fetchSaleTiers(): Promise<SaleTier[]> {
+  // /api/sale/tiers is genuinely public (no auth required), so plain
+  // `fetch` is correct here — no auth-expired signalling needed.
   const res = await fetch(API_ROUTES.SALE_TIERS);
   if (!res.ok) {
     const error: ApiError = await res.json();
@@ -63,7 +72,11 @@ async function validateCode(
   code: string,
 ): Promise<ValidateCodeResponse> {
   const body: ValidateCodeRequest = { code };
-  const res = await fetch(API_ROUTES.SALE_VALIDATE_CODE, {
+  // authFetch — validate-code reads the JWT to detect self-referral
+  // (the unauthed path can't see "this code is yours"), so a stale
+  // session would silently approve a self-ref attempt that the
+  // /api/sale/reserve path then catches as a 409 surprise.
+  const res = await authFetch(API_ROUTES.SALE_VALIDATE_CODE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

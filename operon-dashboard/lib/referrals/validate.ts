@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger';
 
 /**
  * Referral-code validation, factored out of /api/sale/validate-code so the
@@ -66,12 +67,21 @@ export async function validateReferralCode(
     .select('community_discount_bps, epp_discount_bps')
     .single();
 
-  // EPP partner codes
-  const { data: partner } = await supabase
+  // EPP partner codes. R8 ship-readiness: use `.maybeSingle()` so a
+  // genuine DB error is distinguishable from "no row" (the previous
+  // `.single()` returned the same `data: null` for both, hiding any
+  // partner-table corruption from the logger).
+  const { data: partner, error: partnerErr } = await supabase
     .from('epp_partners')
     .select('referral_code, status, user_id')
     .eq('referral_code', normalizedCode)
-    .single();
+    .maybeSingle();
+  if (partnerErr) {
+    logger.warn('epp_partners lookup failed in validateReferralCode', {
+      codePrefix: normalizedCode.slice(0, 8),
+      error: partnerErr.message,
+    });
+  }
 
   if (partner) {
     if (partner.status !== 'active') {
@@ -89,12 +99,18 @@ export async function validateReferralCode(
     };
   }
 
-  // Community user codes
-  const { data: communityUser } = await supabase
+  // Community user codes (same maybeSingle reasoning as above).
+  const { data: communityUser, error: userErr } = await supabase
     .from('users')
     .select('id, referral_code')
     .eq('referral_code', normalizedCode)
-    .single();
+    .maybeSingle();
+  if (userErr) {
+    logger.warn('users lookup failed in validateReferralCode', {
+      codePrefix: normalizedCode.slice(0, 8),
+      error: userErr.message,
+    });
+  }
 
   if (communityUser) {
     if (callerUserId && communityUser.id === callerUserId) {

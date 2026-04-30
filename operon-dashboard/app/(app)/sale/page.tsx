@@ -246,6 +246,12 @@ export default function SalePage() {
   // that survives auto-promotion correctly.
   const [purchasedTier, setPurchasedTier] = useState<number | null>(null);
   const [purchasedQuantity, setPurchasedQuantity] = useState<number | null>(null);
+  // R8 ship-readiness fix (2026-04-30): the original Bug #5 fix used a
+  // bare `title=` attribute for the "(N reserved)" explanation, which is
+  // unreachable on touch devices (iOS Safari / Android Chrome / tablets
+  // never render `title` on tap). Replaced with a tap-to-reveal popover
+  // gated by this state.
+  const [tierReservedHintOpen, setTierReservedHintOpen] = useState(false);
 
   // Auto-scroll the active tier into view in the horizontal tier strip on
   // mount and whenever the current tier advances. Without this, the user
@@ -278,11 +284,17 @@ export default function SalePage() {
     } catch {}
   }, [address]);
 
-  // Read referral code from URL (takes precedence over stored referrer)
+  // Read referral code from URL (takes precedence over stored referrer).
+  // R8 ship-readiness: gate the local capture behind the same regex the
+  // provider-level <ReferralCapture/> uses so a `?ref=<arbitrary garbage>`
+  // can't land directly into the input — the prior shape accepted any
+  // non-empty string, then `/api/sale/validate-code` 200'd with
+  // `valid: false`. No purchase impact, but it was a source-of-truth
+  // split with the canonical capture path (REVIEW_ADDENDUM C-P1).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
-    if (ref) {
+    if (ref && /^[A-Z0-9-]{5,32}$/i.test(ref)) {
       setReferralCode(ref);
       setCodeFromUrl(true);
       validateCode(ref);
@@ -984,14 +996,30 @@ export default function SalePage() {
               the number drops between page loads — they can see WHY the
               available count went down without a sale completing on-chain. */}
           {(sale?.tierReserved ?? 0) > 0 && (
-            <span
-              className="ml-2 text-[10px] text-t4"
-              title={t('sale.tierReservedTooltip', { count: sale!.tierReserved! })}
-            >
+            <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-t4">
               {t('sale.tierReservedShort', { count: sale!.tierReserved! })}
+              <button
+                type="button"
+                aria-label={t('sale.tierReservedTooltip', { count: sale!.tierReserved! })}
+                aria-expanded={tierReservedHintOpen}
+                onClick={() => setTierReservedHintOpen(v => !v)}
+                onBlur={() => setTierReservedHintOpen(false)}
+                className="inline-flex h-4 w-4 min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-t4 hover:text-ice cursor-pointer focus-visible:outline focus-visible:outline-1 focus-visible:outline-ice"
+              >
+                <span className="h-4 w-4 rounded-full border border-current text-[9px] leading-[14px] font-semibold">?</span>
+              </button>
             </span>
           )}
         </div>
+        {/* R8 ship-readiness: tap-revealed full-text explanation. Inline
+            below the tier-progress line so it's reachable on touch
+            devices (which render no `title=` tooltip). Auto-collapses on
+            blur or next pointer event outside the disclosure button. */}
+        {(sale?.tierReserved ?? 0) > 0 && tierReservedHintOpen && (
+          <p className="mt-1 text-[10px] leading-snug text-t3">
+            {t('sale.tierReservedTooltip', { count: sale!.tierReserved! })}
+          </p>
+        )}
       </div>
 
       {/* ═══ TIER STRIP — horizontal scroll, all 40 tiers visible at a

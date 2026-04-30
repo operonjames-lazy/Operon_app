@@ -33,6 +33,27 @@ function getJwtSecret(): Uint8Array {
         'NEXT_PUBLIC_NETWORK_MODE=testnet for non-mainnet deploys.',
     );
   }
+  // R8 ship-readiness: refuse to boot on mainnet+production without an
+  // explicit `NEXT_PUBLIC_APP_DOMAIN`. SIWE EIP-4361 binds the message
+  // domain to this; without it, /api/auth/wallet falls back to the
+  // request `Host:` header, which removes the only programmatic check
+  // that the SIWE message was signed for THIS deploy. On Vercel
+  // production the cert pins TLS routing so it isn't trivially
+  // exploitable, but the fallback has been a community foot-gun for
+  // years (siwe issue #92) and is exactly the kind of thing the boot
+  // guard exists to catch.
+  if (
+    process.env.NODE_ENV === 'production' &&
+    !isTestnet &&
+    !process.env.NEXT_PUBLIC_APP_DOMAIN
+  ) {
+    throw new Error(
+      'NEXT_PUBLIC_APP_DOMAIN is required on mainnet+production for SIWE ' +
+        'domain binding. Refusing to boot. Set it to the user-visible host ' +
+        '(e.g. app.operon.network) in Vercel env, or set ' +
+        'NEXT_PUBLIC_NETWORK_MODE=testnet for non-mainnet deploys.',
+    );
+  }
   return new TextEncoder().encode(secret);
 }
 

@@ -18,11 +18,20 @@ export async function GET() {
     // R8 (2026-04-30) — Bug #5: subtract active reservations so the tier
     // strip's "remaining" matches `reserve_node_purchase`'s arithmetic.
     // Same logic + reasoning as `app/api/sale/status/route.ts`.
-    const { data: activeReservations } = await supabase
-      .from('sale_reservations')
-      .select('tier, quantity')
-      .in('status', ['reserved', 'submitted'])
-      .gt('expires_at', new Date().toISOString());
+    //
+    // R8 ship-readiness fix: only the active tier carries reservations
+    // (the RPC rejects any reserve attempt against `is_active = FALSE`),
+    // so we restrict the lookup to one tier instead of scanning across
+    // all 40. Inactive tiers always render `reserved: 0` correctly.
+    const activeTier = (tiers || []).find(t => t.is_active);
+    const { data: activeReservations } = activeTier
+      ? await supabase
+          .from('sale_reservations')
+          .select('tier, quantity')
+          .eq('tier', activeTier.tier)
+          .in('status', ['reserved', 'submitted'])
+          .gt('expires_at', new Date().toISOString())
+      : { data: [] as Array<{ tier: number; quantity: number }> };
 
     const reservedByTier = new Map<number, number>();
     for (const row of activeReservations ?? []) {

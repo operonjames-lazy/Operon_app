@@ -58,15 +58,12 @@ const client = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL });
 await client.connect();
 
 const checks = [
-  {
-    label: '017 - reset_sale_tiers function exists',
-    sql: `SELECT 1 FROM pg_proc WHERE proname = 'reset_sale_tiers'`,
-  },
-  {
-    label: '024 - referral_code_chain_state.owner_wallet column (only matters if table still exists)',
-    sql: `SELECT column_name FROM information_schema.columns
-          WHERE table_name='referral_code_chain_state' AND column_name='owner_wallet'`,
-  },
+  // R8 ship-readiness: 017 + 024 probes were superseded — 017 was guarded
+  // into a no-op once mig 014 absorbed the same logic, and 024's
+  // `referral_code_chain_state.owner_wallet` was reverted by Phase 5
+  // cleanup (mig 027 dropped the table entirely). Both probes were
+  // returning "(no rows)" on healthy DBs, confusing operators reading
+  // the verifier output. Removed.
   {
     label: '025 - try_acquire_cron_lock function exists',
     sql: `SELECT 1 FROM pg_proc WHERE proname = 'try_acquire_cron_lock'`,
@@ -79,9 +76,15 @@ const checks = [
     label: '026 - reserve_node_purchase function exists',
     sql: `SELECT 1 FROM pg_proc WHERE proname = 'reserve_node_purchase'`,
   },
+  // R8 ship-readiness: 026's `complete_reservation` was a service-role
+  // orphan path that bypassed reservation-invariant assertions. Mig 036
+  // drops it. Probe inverted: pass = function NOT present.
   {
-    label: '026 - complete_reservation function exists',
-    sql: `SELECT 1 FROM pg_proc WHERE proname = 'complete_reservation'`,
+    label: '036 - complete_reservation function dropped (orphan removed)',
+    sql: `SELECT 1 WHERE NOT EXISTS (
+            SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public' AND p.proname = 'complete_reservation'
+          )`,
   },
   {
     label: '026 - sale_tiers.max_per_wallet column exists',
@@ -238,6 +241,17 @@ const checks = [
               AS reads_sale_config,
             pg_get_functiondef('reserve_node_purchase(text,text,integer,text,integer,text,text,integer)'::regprocedure) LIKE '%sale_not_active%'
               AS rejects_paused`,
+  },
+  {
+    label: '035 - referrals_user_summary RPC exists (D-P9 fix)',
+    sql: `SELECT 1 FROM pg_proc WHERE proname = 'referrals_user_summary'`,
+  },
+  {
+    label: '035 - referrals_user_summary EXECUTE only granted to service_role',
+    sql: `SELECT
+            has_function_privilege('anon', 'referrals_user_summary(uuid)', 'EXECUTE') AS anon_can_exec,
+            has_function_privilege('authenticated', 'referrals_user_summary(uuid)', 'EXECUTE') AS auth_can_exec,
+            has_function_privilege('service_role', 'referrals_user_summary(uuid)', 'EXECUTE') AS service_can_exec`,
   },
 ];
 

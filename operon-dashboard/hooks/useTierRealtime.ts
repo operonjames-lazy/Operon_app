@@ -23,17 +23,35 @@ export function useTierRealtime() {
   const [lastEvent, setLastEvent] = useState<TierChangeEvent | null>(null);
   const [connected, setConnected] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
-  // R8 (2026-04-30): invalidate on EVERY SUBSCRIBED — including the first.
-  // Earlier R14 attempt skipped the first to avoid a "redundant" refetch on
-  // mount, but that opens a cold-start race: a UPDATE landing between mount
-  // and the first SUBSCRIBED is silently dropped (postgres_changes only
-  // fires while the channel is SUBSCRIBED). The cost of one extra REST
-  // round-trip per mount is negligible; the cost of a missed tier-flip
-  // UPDATE is a stale Sale page until the 10 s polling fallback ticks.
-  // priorStatusRef still suppresses duplicate SUBSCRIBED emissions.
+  // R8 (2026-04-30): invalidate on every transition INTO SUBSCRIBED,
+  // suppressing duplicates. Earlier R14 attempt skipped the first to
+  // avoid a "redundant" refetch on mount, but that opened a cold-start
+  // race: a UPDATE landing between mount and the first SUBSCRIBED is
+  // silently dropped (postgres_changes only fires while the channel is
+  // SUBSCRIBED). The cost of one extra REST round-trip per mount is
+  // negligible; the cost of a missed tier-flip UPDATE is a stale Sale
+  // page until the 10 s polling fallback ticks.
   const priorStatusRef = useRef<string | null>(null);
 
   const dismissEvent = useCallback(() => setLastEvent(null), []);
+
+  // R8 ship-readiness: clear `lastEvent` when a wallet-switch or
+  // disconnect happens — module-local React state is NOT in TanStack's
+  // cache and `queryClient.clear()` doesn't touch it, so without this
+  // the new wallet would mount and immediately see the previous
+  // wallet's "Tier 4 sold out" toast they have no context for.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    function onIdentityChange() {
+      setLastEvent(null);
+    }
+    window.addEventListener('operon:auth-expired', onIdentityChange);
+    window.addEventListener('operon:wallet-changed', onIdentityChange);
+    return () => {
+      window.removeEventListener('operon:auth-expired', onIdentityChange);
+      window.removeEventListener('operon:wallet-changed', onIdentityChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

@@ -642,6 +642,28 @@ describe("NodeSale (v2 voucher checkout)", function () {
         .to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
     });
 
+    // R8 ship-readiness: access-control tests for setNodeContract +
+    // setAcceptedToken. Pass 5 deletion-test would not have caught a
+    // dropped `onlyOwner` modifier on these without these tests; the
+    // other owner-only functions all had explicit coverage already.
+    it("only owner can setNodeContract", async function () {
+      const { other, nodeContract, sale } = await loadFixture(deployFixture);
+      await expect(sale.connect(other).setNodeContract(await nodeContract.getAddress()))
+        .to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+
+    it("only owner can setAcceptedToken", async function () {
+      const { other, sale, usdc } = await loadFixture(deployFixture);
+      await expect(sale.connect(other).setAcceptedToken(await usdc.getAddress(), false))
+        .to.be.revertedWithCustomError(sale, "OwnableUnauthorizedAccount");
+    });
+
+    it("setNodeContract rejects zero address", async function () {
+      const { sale } = await loadFixture(deployFixture);
+      await expect(sale.setNodeContract(ethers.ZeroAddress))
+        .to.be.revertedWith("NodeSale: node contract is zero address");
+    });
+
     it("setTreasury rejects zero address", async function () {
       const { sale } = await loadFixture(deployFixture);
       await expect(sale.setTreasury(ethers.ZeroAddress))

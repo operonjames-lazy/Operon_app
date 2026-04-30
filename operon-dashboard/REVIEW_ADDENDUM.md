@@ -378,3 +378,34 @@ These five checks were filed against five real findings in the 2026-04-27 extern
 **Check:** After any refactor that replaces or supersedes a function, grep for ALL callers of the OLD function. Expected count post-refactor: zero, unless explicitly justified in the same PR. Run this grep alongside Pass 5's standard "new function uncalled" check — both directions, every refactor.
 **Severity:** Required.
 **Source:** 2026-04-27 external review of Phase 5 cleanup. Methodology gap caught by inverting Pass 5.
+
+---
+
+## Checks added from 2026-04-30 R8 ship-readiness review
+
+The R8 round surfaced 8 blocking findings, three of which were the same kind of missed-by-prior-rounds drift — D-P9 had only been swept on admin routes and missed user-facing referrals; the CSP `connect-src` had drifted out of sync with wagmi's transport list; SIWE domain binding fell back to the `Host:` header silently. New checks below pin those classes so future reviews catch them.
+
+### D-P9.bis. D-P9 sweep covers user-facing endpoints, not just admin
+**What:** The D-P9 grep ("`.from(...).select(...)` followed by `.reduce()`/`Set(`/JS-side SUM feeding a money-or-count display") must cover **every** API route that reads from `referral_purchases`, `payout_transfers`, `referrals`, or `purchases` — not just `/api/admin/*`. User-facing pages (`/referrals`, `/nodes`, `/sale`, `/`) consume the same row classes and hit the same PostgREST 1000-row cap.
+**Why:** R8 ship-readiness found `/api/referrals/summary` aggregating commission totals via `.reduce()` — the same shape D-P9 was filed against on admin routes during the 2026-04-22 sweep. The sweep stopped at `app/api/admin/*/route.ts` because the original incident lived there; user-facing routes consuming the same tables silently kept the bad pattern. Fix landed in mig 035 (`referrals_user_summary` RPC). Discipline: the D-P9 grep target is `app/api/`, not just `app/api/admin/`.
+**Check:** After every D-P9-class fix, re-run the grep across the WHOLE `app/api/` tree, not just the route the original incident lived in. Specifically:
+  ```
+  grep -rn "supabase\.from\(" app/api/ | grep -v "/admin/"
+  ```
+  ...then for each match, look ~10 lines below for `.reduce(`, `Array.from(new Set(`, or any JS-side aggregation. Any hit on a money/count display path is a violation.
+**Severity:** Blocking.
+**Source:** 2026-04-30 R8 ship-readiness review (D-P9 regression in `/api/referrals/summary`).
+
+### O-P9. CSP `connect-src` audit on every wagmi/viem/RainbowKit version bump
+**What:** When `package.json` moves a major or minor on `wagmi`, `viem`, `@rainbow-me/rainbowkit`, `@coinbase/wallet-sdk`, or any wallet-connector package, the `vercel.json` `Content-Security-Policy` `connect-src` list must be re-audited against the new transport / connector URL list. New default RPCs, new WalletConnect relays, and new connector backends all add hosts that the dapp must be allowed to connect to; CSP misses produce silent browser-level connection failures with no JS error path.
+**Why:** R8 ship-readiness found `connect-src` allowed `bsc-dataseed.binance.org` (no number suffix) but `lib/wagmi/config.ts` was already calling `bsc-dataseed1.binance.org` and `bsc-dataseed2.binance.org` — both blocked by the strict-host-source CSP. wagmi versions had moved twice since the CSP was set. On mainnet without `NEXT_PUBLIC_ALCHEMY_KEY`, every browser-side `useReadContract` (allowance, balance) silently failed.
+**Check:** For every PR that bumps `package.json` for a wallet/RPC-touching dep, the reviewer must (1) run `grep -rn "http(\|https://" lib/wagmi/ app/providers.tsx` to enumerate every concrete URL the new transport list calls, (2) cross-check each against the `connect-src` directive in `vercel.json`, (3) require any new host to be added to the allow-list (or the CSP broadened with a wildcard if multiple subdomains are involved).
+**Severity:** Required.
+**Source:** 2026-04-30 R8 ship-readiness review (CSP staleness vs wagmi 3.6 transport list).
+
+### S-P10. SIWE domain binding refuses to boot without an explicit `NEXT_PUBLIC_APP_DOMAIN`
+**What:** On `NODE_ENV=production` + non-testnet, `lib/auth.ts` must throw at boot if `NEXT_PUBLIC_APP_DOMAIN` is unset. The runtime fallback to the request `Host:` header in `app/api/auth/wallet/route.ts` removes the only programmatic guarantee that the SIWE message was signed for this deploy; a leaked SIWE signature from a staging domain would replay on production unless the binding is enforced.
+**Why:** R8 ship-readiness found `app/api/auth/wallet/route.ts:300` reads `NEXT_PUBLIC_APP_DOMAIN || request.headers.get('host')`. The `Host:`-fallback is a known siwe-foot-gun (siwe issue #92). On Vercel the cert pins TLS routing so it isn't trivially exploitable, but the boot-time refuse-to-start guard is the same shape as the existing `JWT_SECRET` placeholder check (S-P7) and costs nothing to add.
+**Check:** Boot-fail in `lib/auth.ts` matches the JWT_SECRET pattern. Reviewers verify the guard runs by greping `lib/auth.ts` for `NEXT_PUBLIC_APP_DOMAIN` and confirming it's checked before `getSecret()` returns. The runbook §1 must list `NEXT_PUBLIC_APP_DOMAIN` as required.
+**Severity:** Required.
+**Source:** 2026-04-30 R8 ship-readiness review (SIWE domain binding gap).

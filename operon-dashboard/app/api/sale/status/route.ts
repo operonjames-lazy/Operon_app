@@ -54,11 +54,24 @@ export async function GET(request: NextRequest) {
     // wait, refresh, or contact support. The mechanic itself is correct
     // (vouchers must hold inventory until 12-min TTL or settlement); only
     // the UI was lying. Cron `expire_old_reservations` reaps zombies.
-    const { data: activeReservations } = await supabase
-      .from('sale_reservations')
-      .select('tier, quantity')
-      .in('status', ['reserved', 'submitted'])
-      .gt('expires_at', new Date().toISOString());
+    //
+    // R8 ship-readiness fix: only the active tier accepts new reservations,
+    // so we only need the active tier's count for the headline `remaining`
+    // and `tierReserved`. The per-tier strip (returned in `tiers[]` below)
+    // also only matters for the active tier — inactive tiers always have
+    // zero active reservations because the RPC rejects reserve attempts
+    // against any tier where `is_active = FALSE`. Restricting the query
+    // to the active tier turns an unbounded scan over all 40 tiers × 2
+    // chains into a partial-index hit on the one tier that matters.
+    const activeTier = tiers.find(t => t.is_active);
+    const { data: activeReservations } = activeTier
+      ? await supabase
+          .from('sale_reservations')
+          .select('tier, quantity')
+          .eq('tier', activeTier.tier)
+          .in('status', ['reserved', 'submitted'])
+          .gt('expires_at', new Date().toISOString())
+      : { data: [] as Array<{ tier: number; quantity: number }> };
 
     const reservedByTier = new Map<number, number>();
     for (const row of activeReservations ?? []) {
@@ -71,7 +84,6 @@ export async function GET(request: NextRequest) {
     const tierAvailable = (t: { tier: number; total_supply: number; total_sold: number }): number =>
       Math.max(0, t.total_supply - t.total_sold - tierReserved(t.tier));
 
-    const activeTier = tiers.find(t => t.is_active);
     const totalSold = tiers.reduce((sum, t) => sum + t.total_sold, 0);
     const totalSupply = tiers.reduce((sum, t) => sum + t.total_supply, 0);
 

@@ -56,18 +56,12 @@ contract OperonNode is ERC721Enumerable, Ownable2Step, Pausable {
     }
 
     // --- Minting ---
-    function mint(address to, uint256 tier, uint256 price) external onlyMinter whenNotPaused returns (uint256) {
-        uint256 tokenId = nextTokenId++;
-        tokenTier[tokenId] = tier;
-        purchasePrice[tokenId] = price;
-        purchaseDate[tokenId] = block.timestamp;
-
-        _safeMint(to, tokenId);
-
-        emit NodeMinted(to, tokenId, tier, price);
-        return tokenId;
-    }
-
+    // R8 ship-readiness (2026-04-30) — single-mint `mint(...)` removed.
+    // It was orphaned in app/, contracts/test/, and contracts/scripts/
+    // (NodeSale always calls batchMint, including for quantity=1) and
+    // R-87 orphan-inverse flagged it as untested attack surface on a
+    // privileged path. `batchMint(..., quantity=1)` is byte-equivalent
+    // for any caller that needs single-NFT semantics.
     function batchMint(address to, uint256 tier, uint256 price, uint256 quantity) external onlyMinter whenNotPaused {
         require(quantity > 0, "OperonNode: quantity must be > 0");
         for (uint256 i = 0; i < quantity; i++) {
