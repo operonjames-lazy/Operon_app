@@ -4,6 +4,43 @@ Append-only session log. One dated entry per coding session. Do not edit previou
 
 ---
 
+## 2026-05-02 — R9 verification fix-pass: close blocking findings, livenet-ready
+
+R9 testing surfaced 13 entries against the cycle-3 build. Of those, 7 had real code/data fixes worth shipping; 3 were misobservations or by-design fallbacks; 1 (Bug #11 cancel-Buy intermittent re-Approve) is left as a known-minor follow-up because it did not deterministically reproduce. Build green, typecheck clean, 66/66 Hardhat tests pass, lint 0 errors.
+
+### Fixes landed
+
+- **Bug #5 (mig 035 referrals_user_summary `row_to_jsonb(record)` throw).** Both 035 (in-place, fresh-rebuild track) and the new 038 use explicit `jsonb_build_object(...)` for `commission_by_level` and `network_by_level`. `scripts/verify-pending-migrations.mjs` now asserts `pg_get_functiondef NOT LIKE '%row_to_jsonb%'` AND `LIKE '%jsonb_build_object%'` — actual function-body checks, not just `pg_proc` existence.
+- **Bug #12 (F5 creates orphan reservation, no per-wallet active cap).** `reserve_node_purchase` now reuses an exact active reservation on refresh/retry (same wallet+chain+tier+qty+token+discount+code → returns `reused: true` envelope) and rejects mismatched-params attempts with `existing_active_reservation` (409). The 12-min TTL DoS path is closed: dapp F5s no longer accumulate zombies. Same logic shipped both as a 034 in-place edit (fresh installs) and as 038 (live remediation).
+- **Bug #13 (cross-wallet NFT inventory bleed on /nodes).** Server-side fix: `/api/nodes/mine` and `/api/sale/status` now echo back the JWT-authenticated `users.primary_wallet`. Client-side: `useNodes` and `useSaleStatus` compare `data.wallet` against `useAccount().address`; mismatch → dispatch `operon:auth-expired` (which `useAuth` already wires to clear cookie + invalidate queries + force re-SIWE). `useValidateCode` is also now address-scoped.
+- **Bug #1, #2, #3 (wagmi/RainbowKit setup blockers).** `wagmi` downgraded `^3.6.0 → ^2.19.5` (matches RainbowKit 2.2.10 peer dep). Added `@coinbase/wallet-sdk@^4.3.7` and `@metamask/connect-evm@~0.9.1`. WC connector dropped from the wallet list when `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is unset; placeholder string keeps the type system happy without runtime error.
+- **Bug #4 (env-var name mismatch in §3.6 template).** `TESTING_GUIDE.md` + `TESTING_GUIDE_zh.md` now list `NEXT_PUBLIC_ALCHEMY_KEY`, `NEXT_PUBLIC_BSC_QUICKNODE_URL`, `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` alongside `ARBITRUM_RPC_URL` / `BSC_RPC_URL`; §7 troubleshooting tells testers to fill both.
+- **Bug #6 (self-ref red banner persists on same wallet after fixing the code).** Wallet-switch trace was already covered by the existing `[address]` reset effect (`sale/page.tsx` line 658, clears `codeToast` at line 686). The remaining same-wallet path was the `validateCode` success branch not clearing a prior error toast. Two-line addition: when validation transitions out of self-ref, clear `codeToast` if the prior variant was `error`.
+- **Bug #7 (placeholder format).** Sale-page referral input placeholder `OPRN-XXXX` → `OPR-XXXXXX` (community format).
+- **EPP invite seed mismatch.** `TESTING_GUIDE` updated `status='pending'` → `'unused'` (matches actual `002_seed_data.sql`).
+
+### Polish landed in the same pass
+
+- `existing_active_reservation` error now interpolates `{minutes}` from the response's `expiresAt`. Fall-back to 12 (TTL constant) on parse failure with `Number.isFinite` guard. Translation updated in all six languages.
+- `/api/sale/reserve` response now includes `reused: boolean` for telemetry; route logs `sale_reserve.reused` with reservation id + wallet + chain + tier + qty when the reuse path fires (helps correlate "double Approve in MetaMask history" tickets with refresh-driven reuse vs an actual second purchase).
+- Mig 034 header amended with an explicit "R9 NOTE — fresh installs only" block citing rule #13 and pointing live operators at 038. Future contributors are warned not to back-port further changes to 034.
+
+### What was not changed (and why)
+
+- **Bug #8 (Arb premature Purchase Complete).** The success transition at `app/(app)/sale/page.tsx` lines 525-535 already gates on `useWaitForTransactionReceipt + confirmations: txConfirmations` (Arb=2, BSC=1) plus the step state machine. R5-BUG-01's prescribed gate is in place and load-bearing. The "premature" the R9 tester saw is most likely MetaMask UI lag between RPC first-confirmation availability and MetaMask's own polling. No code-level regression to fix.
+- **Bug #9 (Buy clickable during Approve pending).** Disabled prop at line 1350-1357 already covers it; loading-tinted surface added in R8. The R9 tester's "looks clickable" is a visual observation; the HTML `disabled` attribute is true throughout the Approve-pending window.
+- **Bug #10 (in-page Chain Selector vs MetaMask network dropdown desync).** Minor, deviates from the documented happy path. Acceptable.
+- **Bug #11 (cancel-Buy intermittent re-Approve).** Did not reproduce on subsequent attempts in the R9 session. The R9 report's suggested fix (refetch `allowance()` after Buy cancel before transitioning step) is sound but adding it without a reliable repro means we can't verify it. Logged as known-minor follow-up; mainnet exposure is wasted gas (~$0.10) and a confusing extra MetaMask entry, no fund/NFT loss.
+
+### Operator-owed before livenet
+
+- Apply mig 038 to live Supabase: `node scripts/apply-migration.mjs supabase/migrations/038_r9_referrals_rpc_and_reservation_reuse.sql`. Then `node scripts/verify-pending-migrations.mjs` and confirm 038's `referrals_user_summary uses explicit jsonb_build_object` + `reserve_node_purchase reuses matching active reservations` both report clean.
+- Set `NEXT_PUBLIC_ALCHEMY_KEY`, `NEXT_PUBLIC_BSC_QUICKNODE_URL`, `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` in Vercel Production env (in addition to the server-side `ARBITRUM_RPC_URL` / `BSC_RPC_URL`).
+- Run `pnpm install --frozen-lockfile` in CI to confirm lockfile reflects the wagmi 2.19.5 + new peer deps. Local pnpm lockfile install verification was attempted but blocked by no-TTY constraint.
+- All other livenet-blocking items in `LIVENET_TEST_RUNBOOK.md` remain operator-side (Vercel env rotation, mainnet contract deploy, webhook rewire, live smoke test, Gnosis Safe novation).
+
+---
+
 ## 2026-04-28 (EOD) — Internal verification + tester-package handoff trim
 
 Final pass on the cycle 3 testnet prep. Earlier entry today (below) captured the doc rewrite + new tests; this entry captures the work that came after — internal verifications against the live RPCs, the tester-burden trim that followed, and the docs that closed it out.

@@ -45,6 +45,7 @@ export interface DashboardSummary {
 // ─── Sale (GET /api/sale/status) ─────────────────────────────────────────
 
 export interface SaleStatus {
+  wallet?: string | null;
   stage: SaleStage;
   currentTier: number;
   currentPrice: number; // USD cents
@@ -86,6 +87,7 @@ export interface ValidateCodeResponse {
 // ─── Nodes (GET /api/nodes/mine) ─────────────────────────────────────────
 
 export interface NodesSummary {
+  wallet: string | null;
   nodes: OwnedNode[];
   totalOwned: number;
   totalInvested: number; // USD cents

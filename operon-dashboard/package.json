@@ -17,6 +17,8 @@
     "test:e2e:chain": "playwright test e2e/full-chain"
   },
   "dependencies": {
+    "@coinbase/wallet-sdk": "^4.3.7",
+    "@metamask/connect-evm": "~0.9.1",
     "@rainbow-me/rainbowkit": "^2.2.10",
     "@sentry/nextjs": "^10.48.0",
     "@supabase/supabase-js": "^2.101.1",
@@ -31,7 +33,7 @@
     "server-only": "^0.0.1",
     "siwe": "^3.0.0",
     "viem": "~2.47.6",
-    "wagmi": "^3.6.0",
+    "wagmi": "^2.19.5",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

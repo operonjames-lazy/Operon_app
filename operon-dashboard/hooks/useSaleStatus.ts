@@ -20,13 +20,26 @@ import {
 // every active session), bare fetch would not fire `operon:auth-expired`
 // and the user would silently land on /sale with a generic editable
 // referral input + no path to recovery.
-async function fetchSaleStatus(): Promise<SaleStatus> {
+async function fetchSaleStatus(expectedWallet: string | undefined): Promise<SaleStatus> {
   const res = await authFetch(API_ROUTES.SALE_STATUS);
   if (!res.ok) {
     const error: ApiError = await res.json();
     throw error;
   }
-  return res.json();
+  const data = (await res.json()) as SaleStatus;
+  if (
+    expectedWallet &&
+    data.wallet &&
+    data.wallet.toLowerCase() !== expectedWallet.toLowerCase()
+  ) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('operon:auth-expired', {
+        detail: { url: API_ROUTES.SALE_STATUS, reason: 'wallet_mismatch' },
+      }));
+    }
+    throw { code: 'UNAUTHORIZED', message: 'Wallet session mismatch. Please sign in again.' } satisfies ApiError;
+  }
+  return data;
 }
 
 // Sale status carries the current user's upline (`usedReferralCode`) in
@@ -37,7 +50,7 @@ export function useSaleStatus() {
   const { address } = useAccount();
   return useQuery<SaleStatus, ApiError>({
     queryKey: ['sale', 'status', address?.toLowerCase() ?? null],
-    queryFn: fetchSaleStatus,
+    queryFn: () => fetchSaleStatus(address),
     staleTime: 5_000,
     refetchInterval: 10_000, // poll every 10 seconds
     refetchOnWindowFocus: true,
@@ -89,10 +102,11 @@ async function validateCode(
 }
 
 export function useValidateCode(code: string) {
+  const { address } = useAccount();
   return useQuery<ValidateCodeResponse, ApiError>({
-    queryKey: ['sale', 'validate-code', code],
+    queryKey: ['sale', 'validate-code', code, address?.toLowerCase() ?? null],
     queryFn: () => validateCode(code),
-    enabled: code.length >= 3,
+    enabled: code.length >= 3 && !!address,
     staleTime: 60_000,
     retry: false,
   });

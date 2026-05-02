@@ -321,6 +321,12 @@ DEV_INDEXER_SECRET=<see below>
 #
 ARBITRUM_RPC_URL=
 BSC_RPC_URL=
+
+# Client-side wallet/contract reads. The browser cannot read the server-only
+# URLs above, so set these too for stable Connect / Approve / Buy behavior.
+NEXT_PUBLIC_ALCHEMY_KEY=
+NEXT_PUBLIC_BSC_QUICKNODE_URL=
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 ```
 
 Generate `JWT_SECRET`:
@@ -692,7 +698,7 @@ Write down Wallet B's current **USDT** balance as `balance_before`.
 
 **Setup — you need an EPP invite code.** Two ways:
 
-**Option A — use a pre-seeded invite (easiest).** `supabase/testnet-only/002_seed_data.sql` (applied in Part 3.7.1) inserted several `EPP-XXXX` invite codes into the database. Open your Supabase project → **Table Editor** → `epp_invites` table → find a row where `status = 'pending'` and copy its `invite_code` value. That is your fresh invite.
+**Option A — use a pre-seeded invite (easiest).** `supabase/testnet-only/002_seed_data.sql` (applied in Part 3.7.1) inserted several `EPP-XXXX` invite codes into the database. Open your Supabase project → **Table Editor** → `epp_invites` table → find a row where `status = 'unused'` and copy its `invite_code` value. That is your fresh invite.
 
 **Option B — generate new invites via the admin API.** Open a **new terminal window** (leave `pnpm dev` running in the other) and run:
 ```
@@ -992,7 +998,7 @@ you're being rate-limited.
 **How to fix it.**
 1. Get a free Alchemy API key: **alchemy.com** → New App → Arbitrum Sepolia → copy the HTTPS URL.
 2. Get a free QuickNode (or Infura, or publicnode) endpoint for BSC Testnet.
-3. Paste the URLs into `ARBITRUM_RPC_URL=` and `BSC_RPC_URL=` in `.env.local`.
+3. Paste the server URLs into `ARBITRUM_RPC_URL=` and `BSC_RPC_URL=`, then fill the browser-side `NEXT_PUBLIC_ALCHEMY_KEY=` and `NEXT_PUBLIC_BSC_QUICKNODE_URL=` values in `.env.local`.
 4. Stop both terminal windows with Ctrl+C, then restart `pnpm dev` and (in the second window) `pnpm dev:indexer`.
 5. Wait ~10 seconds — the red toast should flip to the green badge automatically without you refreshing.
 

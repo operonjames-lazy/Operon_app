@@ -26,24 +26,23 @@ const bscQuicknodeUrl = process.env.NEXT_PUBLIC_BSC_QUICKNODE_URL ?? '';
 // the projectId, the runbook §5 "WalletConnect (mobile): same sequence"
 // row cannot be tested; the runbook tells the operator to register one.
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? '';
+const canUseWalletConnect = typeof window !== 'undefined' && !!walletConnectProjectId;
 
 const wallets = [
   {
     groupName: 'Recommended',
-    wallets: [
-      metaMaskWallet,
-      ...(walletConnectProjectId ? [walletConnectWallet] : []),
-      coinbaseWallet,
-      injectedWallet,
-    ],
+    wallets: canUseWalletConnect
+      ? [metaMaskWallet, walletConnectWallet, coinbaseWallet, injectedWallet]
+      : [coinbaseWallet, injectedWallet],
   },
 ];
 
 const connectors = connectorsForWallets(wallets, {
   appName: 'Operon',
-  // Empty projectId is filtered out above so the WalletConnect connector
-  // never receives it; this default just keeps the type checker happy.
-  projectId: walletConnectProjectId,
+  // RainbowKit 2.2 validates projectId inside WalletConnect-capable wallet
+  // factories. When no real project id is configured, the wallet list above
+  // excludes those factories and leaves Coinbase + generic injected wallets.
+  projectId: walletConnectProjectId || 'operon-walletconnect-disabled',
 });
 
 /**

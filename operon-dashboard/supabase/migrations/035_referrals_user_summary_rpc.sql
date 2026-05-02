@@ -53,7 +53,18 @@ BEGIN
   -- previous shape returned an object per level with
   -- {level, salesVolume, commission}; we mirror that exactly so the
   -- frontend doesn't need to change.
-  SELECT COALESCE(jsonb_agg(row_to_jsonb(t) ORDER BY level), '[]'::jsonb)
+  SELECT COALESCE(
+    jsonb_agg(
+      jsonb_build_object(
+        'level', level,
+        'rate', rate,
+        'salesVolume', "salesVolume",
+        'commission', commission
+      )
+      ORDER BY level
+    ),
+    '[]'::jsonb
+  )
     INTO v_commission_by_level
   FROM (
     SELECT level,
@@ -66,11 +77,15 @@ BEGIN
   ) t;
 
   -- Network size by level (count of `referrals` rows where this user
-  -- is the referrer at level N). Mirrors the working shape of the
-  -- `commission_by_level` block above — a single GROUP BY subquery
-  -- aliased as `t`, with `row_to_jsonb(t)` and `ORDER BY level` both
-  -- resolving against `t`'s columns.
-  SELECT COALESCE(jsonb_agg(row_to_jsonb(t) ORDER BY level), '[]'::jsonb),
+  -- is the referrer at level N). Build JSONB explicitly so the function
+  -- never depends on a non-existent `row_to_jsonb(record)` helper.
+  SELECT COALESCE(
+           jsonb_agg(
+             jsonb_build_object('level', level, 'count', count)
+             ORDER BY level
+           ),
+           '[]'::jsonb
+         ),
          COALESCE(SUM(count), 0)::INTEGER
     INTO v_network_by_level, v_network_size
   FROM (

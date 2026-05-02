@@ -238,6 +238,7 @@ export async function POST(request: NextRequest) {
         unit_price_cents: number;
         expected_amount_cents: number;
         expires_at: string;
+        reused?: boolean;
       }
     | { error: string; [k: string]: unknown };
 
@@ -283,6 +284,20 @@ export async function POST(request: NextRequest) {
     return jsonError('voucher_signing_failed', undefined, 500);
   }
 
+  if (data.reused === true) {
+    // Visibility for "why is this voucher being re-issued" debugging.
+    // Mig 038 makes the RPC idempotent for refresh/retry; logging the
+    // reuse path lets ops correlate "double Approve in MetaMask history"
+    // tickets with refresh-driven reuse vs an actual second purchase.
+    logger.info('sale_reserve.reused', {
+      reservationId: data.reservation_id,
+      buyerWallet,
+      chain,
+      tier: data.tier,
+      quantity,
+    });
+  }
+
   return Response.json({
     reservationId:         data.reservation_id,
     reservationIdBytes32,
@@ -291,6 +306,7 @@ export async function POST(request: NextRequest) {
     expectedAmountCents:   data.expected_amount_cents,
     discountBps,
     expiresAt:             data.expires_at,
+    reused:                data.reused === true,
     // BigInts can't be JSON-serialised ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â stringify them so the client
     // can pass them straight back into ethers.Contract(...).purchaseWithVoucher
     // which accepts string-encoded big numbers.

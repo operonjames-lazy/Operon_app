@@ -77,6 +77,13 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServerSupabase();
 
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('primary_wallet')
+      .eq('id', userId)
+      .maybeSingle();
+    const wallet = userRow?.primary_wallet ?? null;
+
     // Get user's purchases (which represent their nodes)
     const { data: purchases } = await supabase
       .from('purchases')
@@ -86,6 +93,7 @@ export async function GET(request: NextRequest) {
 
     if (!purchases || purchases.length === 0) {
       return Response.json({
+        wallet,
         nodes: [],
         totalOwned: 0,
         totalInvested: 0,
@@ -99,15 +107,6 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-
-    // Need the wallet to enumerate on-chain tokens. A user can only be
-    // logged in as one wallet at a time (SIWE), so pull it from the users row.
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('primary_wallet')
-      .eq('id', userId)
-      .maybeSingle();
-    const wallet = userRow?.primary_wallet;
 
     const chainsWithPurchases: Chain[] = Array.from(
       new Set(purchases.map((p) => p.chain as Chain)),
@@ -195,6 +194,7 @@ export async function GET(request: NextRequest) {
     const dailyTotal = dailyOwn + referralPoolDaily;
 
     return Response.json({
+      wallet,
       nodes,
       totalOwned,
       totalInvested,

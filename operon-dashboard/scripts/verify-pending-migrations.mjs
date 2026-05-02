@@ -275,6 +275,22 @@ const checks = [
             ] AS shape_ok`,
   },
   {
+    label: '038 - referrals_user_summary uses explicit jsonb_build_object',
+    sql: `SELECT
+            pg_get_functiondef('referrals_user_summary(uuid)'::regprocedure) NOT LIKE '%row_to_jsonb%'
+              AS no_row_to_jsonb,
+            pg_get_functiondef('referrals_user_summary(uuid)'::regprocedure) LIKE '%jsonb_build_object%'
+              AS explicit_jsonb`,
+  },
+  {
+    label: '038 - reserve_node_purchase reuses matching active reservations',
+    sql: `SELECT
+            pg_get_functiondef('reserve_node_purchase(text,text,integer,text,integer,text,text,integer)'::regprocedure) LIKE '%existing_active_reservation%'
+              AS blocks_conflicting_active_reservation,
+            pg_get_functiondef('reserve_node_purchase(text,text,integer,text,integer,text,text,integer)'::regprocedure) LIKE '%''reused''%'
+              AS returns_reused_flag`,
+  },
+  {
     label: '037 - payout_transfers(partner_id, status) index exists',
     sql: `SELECT 1 FROM pg_indexes
            WHERE schemaname='public'

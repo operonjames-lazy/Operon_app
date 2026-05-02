@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     // Optional authenticated caller — used to surface the user's referrer
     // code so the sale page can prefill the discount input.
     let usedReferralCode: string | null = null;
+    let callerWallet: string | null = null;
     const callerUserId = await verifyToken(request);
     if (callerUserId) {
       const { data: upline } = await supabase
@@ -20,6 +21,12 @@ export async function GET(request: NextRequest) {
         .eq('referred_id', callerUserId)
         .maybeSingle();
       usedReferralCode = upline?.code_used ?? null;
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('primary_wallet')
+        .eq('id', callerUserId)
+        .maybeSingle();
+      callerWallet = userRow?.primary_wallet ?? null;
     }
 
     // Read sale config
@@ -88,6 +95,7 @@ export async function GET(request: NextRequest) {
     const totalSupply = tiers.reduce((sum, t) => sum + t.total_supply, 0);
 
     return Response.json({
+      wallet: callerWallet,
       stage: config.stage,
       currentTier: activeTier?.tier || 1,
       currentPrice: activeTier?.price_usd || 50000,

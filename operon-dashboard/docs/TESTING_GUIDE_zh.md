@@ -268,6 +268,12 @@ DEV_INDEXER_SECRET=<见下文>
 #
 ARBITRUM_RPC_URL=
 BSC_RPC_URL=
+
+# 浏览器端钱包/合约读取。浏览器不能读取上面的 server-only URL，
+# 所以这里也要填写，避免 Connect / Approve / Buy 使用公共 RPC。
+NEXT_PUBLIC_ALCHEMY_KEY=
+NEXT_PUBLIC_BSC_QUICKNODE_URL=
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 ```
 
 生成 `JWT_SECRET`：
@@ -556,7 +562,7 @@ pnpm dev:indexer
 
 **准备 —— 你需要一个 EPP 邀请码。** 有两种方式：
 
-**方式 A —— 使用预置邀请码(最简单)。** 你在 Part 3.7 里跑的 `002_seed_data.sql` 已经预先插入了几个 `EPP-XXXX` 邀请码。进入 Supabase 项目 → **Table Editor** → `epp_invites` 表 → 找一行 `status = 'pending'` 的记录,复制它的 `invite_code` 值。这就是你的邀请码。
+**方式 A —— 使用预置邀请码(最简单)。** 你在 Part 3.7 里跑的 `002_seed_data.sql` 已经预先插入了几个 `EPP-XXXX` 邀请码。进入 Supabase 项目 → **Table Editor** → `epp_invites` 表 → 找一行 `status = 'unused'` 的记录,复制它的 `invite_code` 值。这就是你的邀请码。
 
 **方式 B —— 通过管理 API 生成新的邀请码。** 再开一个终端窗口(让 `pnpm dev` 继续在原来的终端里跑),执行：
 ```
@@ -680,7 +686,7 @@ curl -X POST http://localhost:3001/api/admin/epp/invites \
 **怎么修。**
 1. 申请一个免费的 Alchemy API key：**alchemy.com** → New App → Arbitrum Sepolia → 复制 HTTPS URL。
 2. 为 BSC Testnet 申请一个免费的 QuickNode(或 Infura、或 publicnode)端点。
-3. 把这两个 URL 粘到 `.env.local` 的 `ARBITRUM_RPC_URL=` 和 `BSC_RPC_URL=` 两行。
+3. 把 server 端 URL 粘到 `.env.local` 的 `ARBITRUM_RPC_URL=` 和 `BSC_RPC_URL=`，同时填写浏览器端的 `NEXT_PUBLIC_ALCHEMY_KEY=` 和 `NEXT_PUBLIC_BSC_QUICKNODE_URL=`。
 4. 两个终端都用 Ctrl+C 停掉,然后重新运行 `pnpm dev`(第一个窗口)和 `pnpm dev:indexer`(第二个窗口)。
 5. 等大约 10 秒——不用刷新,那条卡住的红色提示会自动变成绿色徽章。
 

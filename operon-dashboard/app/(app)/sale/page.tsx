@@ -135,6 +135,14 @@ function reserveErrorMessage(
       const used = typeof details?.walletUsed === 'number' ? details.walletUsed : 0;
       return t('sale.walletLimitExceeded', { max, used });
     }
+    case 'existing_active_reservation': {
+      const expiresAt = typeof details?.expiresAt === 'string' ? details.expiresAt : null;
+      const ms = expiresAt ? new Date(expiresAt).getTime() : NaN;
+      const minutes = Number.isFinite(ms)
+        ? Math.max(1, Math.ceil((ms - Date.now()) / 60_000))
+        : 12;
+      return t('sale.existingActiveReservation', { minutes });
+    }
     case 'invalid_code':
       return t('sale.codeInvalidBadge');
     case 'unauthorized':
@@ -765,6 +773,12 @@ export default function SalePage() {
       if (!data.valid && data.reason === 'self_referral') {
         setCodeToastVariant('error');
         setCodeToast(t('sale.selfReferralBlocked'));
+      } else if (codeToastVariant === 'error') {
+        // Same wallet edits a self-ref code into a valid one (or any
+        // non-self-ref outcome): clear the stale red banner so the new
+        // green discount badge isn't paired with the old error toast.
+        // Wallet-switch resets are handled by the [address] effect above.
+        setCodeToast('');
       }
     } catch {
       setCodeValid(false);
@@ -1137,7 +1151,7 @@ export default function SalePage() {
                   if (codeFromUrl) setCodeFromUrl(false);
                 }}
                 onBlur={() => referralCode && validateCode(referralCode)}
-                placeholder="OPRN-XXXX"
+                placeholder="OPR-XXXXXX"
                 className="w-28 bg-[rgba(0,0,0,0.30)] border border-[rgba(147,197,253,0.10)] rounded px-2 py-2 text-ice font-mono text-[11px] focus:outline-none focus:border-[rgba(147,197,253,0.45)] min-h-[44px] placeholder:text-t4"
               />
               {codeValid === false && <span className="text-red text-[10px]">{t('sale.codeInvalidBadge')}</span>}
