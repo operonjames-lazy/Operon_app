@@ -39,6 +39,29 @@ R9 testing surfaced 13 entries against the cycle-3 build. Of those, 7 had real c
 - Run `pnpm install --frozen-lockfile` in CI to confirm lockfile reflects the wagmi 2.19.5 + new peer deps. Local pnpm lockfile install verification was attempted but blocked by no-TTY constraint.
 - All other livenet-blocking items in `LIVENET_TEST_RUNBOOK.md` remain operator-side (Vercel env rotation, mainnet contract deploy, webhook rewire, live smoke test, Gnosis Safe novation).
 
+### Follow-up pass (same day) — Bug #11 fix + R10 misobservation guards
+
+After the initial R9 fix-pass, walked through Bug #11's "intermittent" cancel-Buy redundant-Approve symptom against the actual disabled-clause logic and found it's deterministic, not intermittent. Trace:
+- User Approves → `approveHash` set, step transitions `approving → approved`.
+- User clicks Buy → step transitions to `purchasing`.
+- User cancels in MetaMask → `purchaseWriteError` fires.
+- Existing handler set `step='idle'` on user-reject.
+- Disabled clause `(approveHash !== undefined && step !== 'approved')` then evaluates true → Buy disabled.
+
+Why R9 saw "intermittent": only fires when the user did a fresh Approve in the same session. If allowance was already on-chain (no approveHash this session), the clause never gates and Buy stays enabled. That matches the tester's "first attempt bug, subsequent attempts clean" observation exactly.
+
+**Fix**: one line in `app/(app)/sale/page.tsx` purchase user-reject handler — `setStep('idle')` → `setStep('approved')`. Allowance is still on-chain after a cancelled Buy; the user is semantically in the `approved` state, not back at the start. Closes R9 Bug #11.
+
+**Misobservation guards in TESTING_GUIDE.md + TESTING_GUIDE_zh.md** — added a "Things that look like red flags but aren't" subsection to Part 5, explicitly documenting:
+1. Purchase Complete celebration before MetaMask shows confirmed (MetaMask polling lag, not a regression of R5-BUG-01)
+2. Buy button "looks clickable" during Approve pending (loading-tinted state IS the disabled state; HTML `disabled` is true)
+3. Cancel Buy returning to enabled Buy (not Approve) is the correct post-fix behaviour
+4. /nodes brief loading state on wallet switch (~1s window before fresh data lands)
+
+The intent is to head off R9-style misobservation re-files of Bug #8/#9 in the next testnet round. R9 surfaced 7 real bugs and 3 misobservations; documenting the misobservation patterns explicitly lets the next tester know what's expected and saves a round of bug-report exchange.
+
+**Verification**: typecheck clean, `next build` succeeded, 66/66 Hardhat tests pass, lint 0 errors. The Bug #11 fix is one-line and conceptually proven against the disabled-clause logic, but a Playwright regression test simulating `UserRejectedRequestError` on `useWriteContract` would lock it in. That test depends on the wagmi mock connector being able to throw on writeContract calls — currently the mock only stubs `signMessage`. Listed as the next testing-infra follow-up.
+
 ---
 
 ## 2026-04-28 (EOD) — Internal verification + tester-package handoff trim

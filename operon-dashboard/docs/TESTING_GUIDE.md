@@ -474,6 +474,15 @@ If you see any of these, stop, screenshot, and message the operator. These are t
 10. **You paid and nothing happened** — no NFT, no error, no pending state, no success.
 11. **Switching MetaMask accounts while signed in leaves you still viewing the previous wallet's data.** If you change accounts in MetaMask and the /referrals or /nodes page still shows the previous wallet's nodes/commissions, that is the cross-wallet bleed bug and we need to know about it. (Cycle 2 added a defense against this — it forces a re-sign on account change. If the re-sign prompt does NOT appear, that's the red flag.)
 
+### Things that look like red flags but aren't (do not file as bugs)
+
+These are surface-level observations that may catch your eye during testing. They are documented behaviour, not regressions. Save them for the "side note" section if you want, but do not file as bugs unless the underlying invariant is also broken.
+
+- **Purchase Complete celebration appears slightly before MetaMask shows "Confirmed".** MetaMask polls its own RPC for confirmation status independently of the dapp. The dapp gates the success modal on `useWaitForTransactionReceipt` returning `status: 'success'` with the configured confirmation count (Arbitrum: 2, BSC: 1). If the celebration shows up while MetaMask still shows "Pending", the dapp has already seen confirmation through its own RPC; MetaMask just hasn't repolled yet. **How to confirm it's not a real bug:** open the block explorer link for the tx hash. If it shows the tx as confirmed and the NFT minted, the celebration is correct — only the MetaMask UI is lagging. Only file as Red Flag #1 if the explorer also shows the tx as pending or failed.
+- **Buy button looks "clickable" during the Approve pending window.** The button stays in a primary-styled surface during `step === 'approving'` but switches to an ice-tinted loading state with a spinner — the HTML `disabled` attribute is `true` throughout. Try clicking it: nothing happens. The visual is intentionally not the same as the standard greyed-out state because the button is in-flight, not unreachable. **Only file as a bug if clicking the button actually fires `purchaseWithVoucher` while Approve is still pending.**
+- **Cancel Buy in MetaMask returns you to "Buy" enabled, not "Approve".** If you cancel a Buy and your allowance is still on-chain (which it is, because cancel doesn't undo Approve), the dapp keeps you in the `approved` state and Buy stays clickable. You should NOT have to re-approve. If the dapp asks for Approve again after a cancelled Buy, **that** is a bug (R9 Bug #11, fixed cycle 4).
+- **/nodes page briefly shows nothing after switching wallets.** Re-fetching the new wallet's NFTs requires the SIWE session to re-establish. There's a ~1-second window where the page transitions from the old wallet's data to the new wallet's data via a brief loading state. Bug only if data from the previous wallet is still visible after that window.
+
 ---
 
 ## Part 6 — Tests

@@ -498,7 +498,14 @@ export default function SalePage() {
         setStep('error');
         setErrorMsg(t('sale.purchaseFailed') || 'Purchase failed. Please try again.');
       } else {
-        setStep('idle');
+        // R9 Bug #11: revert to 'approved', not 'idle'. Allowance is still
+        // on-chain — only the Buy attempt was rejected. Falling back to
+        // 'idle' leaves the leftover `approveHash` paired with a non-
+        // 'approved' step, which trips the disabled clause at line ~1356
+        // (`approveHash !== undefined && step !== 'approved'`) and forces
+        // the user into a redundant Approve before Buy can be retried.
+        // Cancel-Buy is by design retryable without re-approving.
+        setStep('approved');
       }
     }
   }, [purchaseWriteError, t]);

@@ -387,6 +387,15 @@ pnpm dev:indexer
 10. **付了钱却什么也没发生** —— 没有 NFT、没有报错、没有 pending 状态、也没有成功。
 11. **切换 MetaMask 账户之后,站点仍然显示上一个钱包的数据。** 如果你在 MetaMask 里换了账户,而 /referrals 或 /nodes 页面还在显示上一个钱包的节点和佣金,那就是跨钱包数据串扰的 bug,必须上报。(第 2 轮针对这种情况加了一层防御 —— 检测到账户变化时会强制重新签名。如果**没有**弹出重新签名提示,那就是红色警报。)
 
+### 看似红旗但其实不是(不要当 bug 上报)
+
+下面这些是测试中可能让你警觉的表面现象。它们是**已记录的预期行为**,不是回归。你可以放在「观察 / side note」段落里,但除非底层不变量也坏了,否则不要当 bug 上报。
+
+- **「购买完成」庆祝弹窗在 MetaMask 显示「已确认」之前就出现。** MetaMask 用自己的 RPC 独立轮询确认状态,跟 dapp 没共享。Dapp 用 `useWaitForTransactionReceipt` 在拿到配置好的确认数(Arbitrum 2 个、BSC 1 个)后才弹庆祝。如果庆祝先出现而 MetaMask 还显示「待处理」,那是 dapp 通过自己的 RPC 已经看到确认了,只是 MetaMask 还没重新轮询。**怎么验证不是真 bug:** 打开区块浏览器查交易哈希。只要交易已确认 + NFT 已 mint,庆祝就是对的 —— 只是 MetaMask UI 在拖。只有当浏览器也显示交易仍在 pending 或失败时,才按红色警报 #1 上报。
+- **Approve 待确认期间「购买」按钮看起来「可以点」。** 在 `step === 'approving'` 阶段,按钮维持主色调表面但会切到带转圈图标的冰蓝色 loading 状态 —— HTML 的 `disabled` 属性全程是 `true`。试着点一下:不会有任何动作。这种视觉故意不做成普通灰色,因为按钮是「进行中」而不是「不可达」。**只有当点击按钮真的触发 `purchaseWithVoucher`、而 Approve 还在 pending 时,才上报为 bug。**
+- **在 MetaMask 取消 Buy 后,「购买」按钮仍然可点,而不是回到「授权」。** 如果你取消了 Buy 而 allowance 还在链上(取消不会撤销 Approve),dapp 会保持在 `approved` 状态,Buy 仍然可点。**不应该**让你重新 Approve。如果 cancel 之后 dapp 反而要求重新 Approve,**那才是** bug(R9 Bug #11,周期 4 已修)。
+- **切换钱包后 /nodes 页面短暂显示空白。** 重新加载新钱包的 NFT 需要 SIWE 重新建立 session。在大约 1 秒的窗口里,页面会从旧钱包数据切到新钱包数据,中间走一个简短的 loading 状态。只有当那个窗口之后还能看到旧钱包的数据,才是 bug。
+
 ---
 
 ## Part 6 — 测试项
