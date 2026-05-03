@@ -80,13 +80,41 @@ export async function GET(request: NextRequest) {
           .gt('expires_at', new Date().toISOString())
       : { data: [] as Array<{ tier: number; quantity: number }> };
 
+    // R10 round 2 — Phase 2b: caller's recoverable reservation surface.
+    //
+    // Restricted to status='reserved' on purpose. A 'submitted' row means the
+    // buyer has already broadcast `purchaseWithVoucher` on-chain and the
+    // receipt is pending — surfacing it here would let the sale page treat
+    // it as a fresh recoverable Reserve, prompting Approve/Buy a SECOND
+    // time. The contract's `usedReservations[reservationId]=true` would
+    // revert the duplicate, but the user wastes gas and sees a confusing
+    // failure.
+    //
+    // Today's pending-tx surface for the 'submitted' case is `pendingRecovery`
+    // in `app/(app)/sale/page.tsx`, fed from `localStorage('operon_pending_tx')`
+    // set on the Buy-click path. That covers same-device recovery; cross-
+    // device or cleared-storage cases have no UI surface yet — owed work is
+    // a server-backed pending-tx recovery endpoint that pulls submitted rows
+    // for the caller and shows tx-in-flight UI instead of Reserve-again.
+    //
+    // Pre-existing edge case (NOT introduced by this filter): if the
+    // /api/sale/reservations/submit POST silently fails after the user
+    // broadcasts the tx, the row stays status='reserved' even though the
+    // tx is already in flight. The same gas-burn-on-duplicate hazard then
+    // applies via this surface. Bounded by the 12-min TTL; closing it
+    // requires the indexer to flip status='submitted' on observed mempool
+    // entry, which is out of scope for this round.
+    //
+    // The global `tierReserved` count above (lines 73-81) deliberately KEEPS
+    // 'submitted' in scope because those slots still hold inventory against
+    // total_supply — opposite intent on purpose.
     const { data: callerActiveReservation } = activeTier && callerWallet
       ? await supabase
           .from('sale_reservations')
           .select('chain, tier, quantity, token, unit_price_cents, discount_bps, code_used, expires_at')
           .eq('buyer_wallet', callerWallet.toLowerCase())
           .eq('tier', activeTier.tier)
-          .in('status', ['reserved', 'submitted'])
+          .eq('status', 'reserved')
           .gt('expires_at', new Date().toISOString())
           .order('created_at', { ascending: false })
           .limit(1)
