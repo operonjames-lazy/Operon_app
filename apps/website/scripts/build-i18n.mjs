@@ -1,12 +1,15 @@
-// Build per-language directories from EN prototype-O HTML files + i18n dicts.
+// Build per-language directories from EN HTML source files + i18n dicts.
 //
-// Source of truth: apps/website/hero-prototype-O*.html (EN content inline)
-// Translation dicts: apps/website/i18n/<lang>.json (key → translated string)
-// Output: apps/website/<lang>/hero-prototype-O*.html
+// Source of truth: apps/website/{index,agents,nodes,affiliates,faq}.html (EN inline)
+// Translation dicts: apps/website/i18n/<slug>.json (key → translated string)
+// Output: apps/website/<slug>/{index,agents,nodes,affiliates,faq}.html
+//
+// URL slug uses country codes (cn, tw, kr, jp, th, vn). HTML lang attribute and
+// hreflang values stay as ISO 639-1 lang codes (zh-CN, zh-TW, ko, ja, th, vi).
 //
 // Convention: data-i18n="key" only on leaf elements (h1, h2, p, a, span, button…).
 // Translation values may contain inline HTML (<span>, <em>, <br>, <strong>).
-// Cross-page links use relative filenames so each <lang>/ dir is self-contained.
+// Cross-page links use relative filenames so each <slug>/ dir is self-contained.
 //
 // FAQ has its own pre-existing inline translations (lang-content data-lang="X").
 // Build splits them into per-language files using extractFaqLanguage().
@@ -20,20 +23,32 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const I18N_DIR = join(ROOT, 'i18n');
 
-const LANGS = ['zh-cn', 'zh-tw', 'ko', 'ja', 'th', 'vi'];
-
-const HTML_LANG_MAP = {
-  'zh-cn': 'zh-CN',
-  'zh-tw': 'zh-TW',
-  ko: 'ko',
-  ja: 'ja',
+// URL slug → ISO HTML lang code.
+export const HTML_LANG_MAP = {
+  cn: 'zh-CN',
+  tw: 'zh-TW',
+  kr: 'ko',
+  jp: 'ja',
   th: 'th',
-  vi: 'vi',
+  vn: 'vi',
   en: 'en',
 };
 
-const DICT_FILES = ['hero-prototype-O.html', 'hero-prototype-O-agents.html', 'hero-prototype-O-nodes.html'];
-const FAQ_FILE = 'hero-prototype-O-faq.html';
+// FAQ uses ISO lang codes in its data-lang blocks; map slug → FAQ block id.
+export const FAQ_LANG_MAP = {
+  cn: 'zh-cn',
+  tw: 'zh-tw',
+  kr: 'ko',
+  jp: 'ja',
+  th: 'th',
+  vn: 'vi',
+  en: 'en',
+};
+
+export const LANGS = ['cn', 'tw', 'kr', 'jp', 'th', 'vn'];
+
+const DICT_FILES = ['index.html', 'agents.html', 'nodes.html', 'affiliates.html'];
+const FAQ_FILE = 'faq.html';
 const POST_BUILD_SCRIPTS = ['fix-seo-meta.mjs', 'fix-locale-anchors.mjs', 'fix-a11y-contrast.mjs'];
 
 // Walks HTML for tags carrying data-i18n="key", finds their balanced closing tag
@@ -81,7 +96,6 @@ function applyDict(html, dict) {
       }
     }
     if (innerEnd === -1) {
-      // Unbalanced — bail without replacing.
       out += html.slice(cursor, m.index + matchStr.length);
       cursor = m.index + matchStr.length;
       continue;
@@ -100,26 +114,23 @@ function applyDict(html, dict) {
   return out;
 }
 
-function setHtmlLang(html, lang) {
-  return html.replace(/<html\s+lang="[^"]*"/i, `<html lang="${HTML_LANG_MAP[lang]}"`);
+function setHtmlLang(html, slug) {
+  return html.replace(/<html\s+lang="[^"]*"/i, `<html lang="${HTML_LANG_MAP[slug]}"`);
 }
 
-function setLangSwitcherDefault(html, lang) {
-  // <select class="lang-switcher" id="langSwitcher" data-default="X">
+function setLangSwitcherDefault(html, slug) {
   return html.replace(
     /<select([^>]*\bclass="[^"]*\blang-switcher\b[^"]*"[^>]*)>/,
     (m, attrs) => {
       const cleaned = attrs.replace(/\s+data-default="[^"]*"/g, '');
-      return `<select${cleaned} data-default="${lang}">`;
+      return `<select${cleaned} data-default="${slug}">`;
     }
   );
 }
 
-// Extract a single lang's content out of the multi-lang FAQ file.
-// EN FAQ has 7 <div class="lang-content [active]" data-lang="X">...</div> blocks.
-// For lang=L, unwrap that block (keep its inner content) and remove the others.
-function extractFaqLanguage(html, targetLang) {
-  // Find every lang-content block with balanced div matching.
+// Extract a single lang's content out of the multi-lang FAQ file. The FAQ uses
+// ISO lang codes for data-lang, so callers must pass the ISO code (en, ko, …).
+function extractFaqLanguage(html, isoLang) {
   const openRe = /<div\s+class="lang-content[^"]*"\s+data-lang="([^"]+)">/g;
   const blocks = [];
   let m;
@@ -144,19 +155,17 @@ function extractFaqLanguage(html, targetLang) {
         i = nextClose + 6;
       }
     }
-    // Advance the global regex past this block so nested matches inside aren't re-scanned.
     openRe.lastIndex = blocks.length ? blocks[blocks.length - 1].closeEnd : openRe.lastIndex;
   }
 
-  if (!blocks.some((b) => b.lang === targetLang)) {
-    throw new Error(`FAQ: no lang-content block for "${targetLang}"`);
+  if (!blocks.some((b) => b.lang === isoLang)) {
+    throw new Error(`FAQ: no lang-content block for "${isoLang}"`);
   }
 
-  // Apply replacements right-to-left so earlier indices stay valid.
   let out = html;
   const sorted = blocks.slice().sort((a, b) => b.start - a.start);
   for (const block of sorted) {
-    if (block.lang === targetLang) {
+    if (block.lang === isoLang) {
       const inner = out.slice(block.innerStart, block.end);
       out = out.slice(0, block.start) + inner + out.slice(block.closeEnd);
     } else {
@@ -167,18 +176,9 @@ function extractFaqLanguage(html, targetLang) {
 }
 
 function build() {
-  // Also write EN root index.html as a copy of hero-prototype-O.html so / serves
-  // the prototype-O home (overrides the legacy React app's index.html).
-  const enHomePath = join(ROOT, 'hero-prototype-O.html');
-  if (existsSync(enHomePath)) {
-    writeFileSync(join(ROOT, 'index.html'), readFileSync(enHomePath, 'utf8'));
-    console.log('✓ en (root) → apps/website/index.html');
-  }
-
-  // Translatable pages — apply lang dict per language
-  for (const lang of LANGS) {
-    const dictPath = join(I18N_DIR, `${lang}.json`);
-    const outDir = join(ROOT, lang);
+  for (const slug of LANGS) {
+    const dictPath = join(I18N_DIR, `${slug}.json`);
+    const outDir = join(ROOT, slug);
     mkdirSync(outDir, { recursive: true });
 
     let dict = {};
@@ -186,13 +186,12 @@ function build() {
       try {
         dict = JSON.parse(readFileSync(dictPath, 'utf8'));
       } catch (e) {
-        console.warn(`[${lang}] bad JSON in ${dictPath}: ${e.message} — using empty dict`);
+        console.warn(`[${slug}] bad JSON in ${dictPath}: ${e.message} — using empty dict`);
       }
     } else {
-      console.warn(`[${lang}] no dict at ${dictPath} — emitting EN content`);
+      console.warn(`[${slug}] no dict at ${dictPath} — emitting EN content`);
     }
 
-    let homeHtml = null;
     for (const file of DICT_FILES) {
       const inPath = join(ROOT, file);
       if (!existsSync(inPath)) {
@@ -200,33 +199,26 @@ function build() {
         continue;
       }
       let html = readFileSync(inPath, 'utf8');
-      html = setHtmlLang(html, lang);
+      html = setHtmlLang(html, slug);
       html = applyDict(html, dict);
-      html = setLangSwitcherDefault(html, lang);
+      html = setLangSwitcherDefault(html, slug);
       writeFileSync(join(outDir, file), html);
-      if (file === 'hero-prototype-O.html') homeHtml = html;
     }
 
-    // /<lang>/index.html so /<lang>/ serves the home page directly.
-    if (homeHtml) {
-      writeFileSync(join(outDir, 'index.html'), homeHtml);
-    }
-
-    // FAQ — extract per-language inline content
     const faqPath = join(ROOT, FAQ_FILE);
     if (existsSync(faqPath)) {
       let faqHtml = readFileSync(faqPath, 'utf8');
       try {
-        let langHtml = extractFaqLanguage(faqHtml, lang);
-        langHtml = setHtmlLang(langHtml, lang);
-        langHtml = setLangSwitcherDefault(langHtml, lang);
+        let langHtml = extractFaqLanguage(faqHtml, FAQ_LANG_MAP[slug]);
+        langHtml = setHtmlLang(langHtml, slug);
+        langHtml = setLangSwitcherDefault(langHtml, slug);
         writeFileSync(join(outDir, FAQ_FILE), langHtml);
       } catch (e) {
-        console.warn(`[${lang}] FAQ extract failed: ${e.message}`);
+        console.warn(`[${slug}] FAQ extract failed: ${e.message}`);
       }
     }
 
-    console.log(`✓ ${lang} → apps/website/${lang}/`);
+    console.log(`✓ ${slug} → apps/website/${slug}/`);
   }
 
   for (const script of POST_BUILD_SCRIPTS) {

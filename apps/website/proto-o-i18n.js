@@ -1,12 +1,29 @@
 // Client-side language router for the prototype-O ecosystem.
-// - First-visit browser detect: redirects EN root → matched lang dir if user has no preference.
+// - First-visit browser detect: redirects EN root → matched slug dir if user has no preference.
 // - Lang switcher: changes URL to sibling page in target language.
 // - Persists user choice in localStorage('operon-lang').
 //
-// Path scheme: EN at root (/hero-prototype-O*.html), other langs at /<lang>/hero-prototype-O*.html.
+// URL slugs are country codes: cn, tw, kr, jp, th, vn (EN at root).
+// HTML <html lang> attribute uses ISO codes (zh-CN, zh-TW, ko, ja, th, vi).
 
 (function () {
-  var SUPPORTED = ['en', 'zh-cn', 'zh-tw', 'ko', 'ja', 'th', 'vi'];
+  var SUPPORTED = ['en', 'cn', 'tw', 'kr', 'jp', 'th', 'vn'];
+
+  // ISO browser-language → URL slug.
+  var ISO_TO_SLUG = {
+    'en': 'en',
+    'zh-cn': 'cn',
+    'zh-hans': 'cn',
+    'zh': 'cn',
+    'zh-tw': 'tw',
+    'zh-hant': 'tw',
+    'zh-hk': 'tw',
+    'ko': 'kr',
+    'ja': 'jp',
+    'th': 'th',
+    'vi': 'vn',
+  };
+
   var KEY = 'operon-lang';
 
   function disablePlaceholderLinks() {
@@ -19,59 +36,82 @@
     });
   }
 
-  function detectBrowserLang() {
+  // app.operon.network is not live yet. Convert any anchor pointing there into
+  // a click-to-"Coming soon" affordance — first click swaps inner text to the
+  // localised "Coming soon" string and disables further interaction.
+  function wireComingSoonCtas() {
+    var sourceEl = document.querySelector('#i18nStrings [data-i18n="common.coming_soon"]');
+    var label = (sourceEl && sourceEl.textContent.trim()) || 'Coming soon';
+    document.querySelectorAll('a[href^="https://app.operon.network"]').forEach(function (a) {
+      if (a.dataset.comingSoonWired) return;
+      a.dataset.comingSoonWired = '1';
+      a.addEventListener('click', function (event) {
+        event.preventDefault();
+        if (a.classList.contains('is-coming-soon')) return;
+        a.classList.add('is-coming-soon');
+        a.setAttribute('aria-disabled', 'true');
+        a.textContent = label;
+      });
+    });
+  }
+
+  function detectBrowserSlug() {
     var raw = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
-    // Exact match (zh-cn, zh-tw, …)
-    if (SUPPORTED.indexOf(raw) !== -1) return raw;
-    // Map zh-* without region → zh-cn (simplified is the more common default)
-    if (raw === 'zh' || raw.indexOf('zh-hans') === 0) return 'zh-cn';
-    if (raw.indexOf('zh-hant') === 0) return 'zh-tw';
-    // Stripped: en-us → en, ja-jp → ja
+    if (ISO_TO_SLUG[raw]) return ISO_TO_SLUG[raw];
+    // Try prefix match (e.g. zh-hans-cn → zh-hans, ja-jp → ja)
+    for (var i = raw.length; i > 0; i--) {
+      var trimmed = raw.slice(0, i);
+      if (ISO_TO_SLUG[trimmed]) return ISO_TO_SLUG[trimmed];
+    }
     var base = raw.split('-')[0];
-    if (SUPPORTED.indexOf(base) !== -1) return base;
+    if (ISO_TO_SLUG[base]) return ISO_TO_SLUG[base];
     return 'en';
   }
 
-  // Returns { lang, file } given location.pathname.
-  // /hero-prototype-O.html → { lang: 'en', file: 'hero-prototype-O.html' }
-  // /ja/hero-prototype-O.html → { lang: 'ja', file: 'hero-prototype-O.html' }
-  // /ja/ → { lang: 'ja', file: 'hero-prototype-O.html' } (default)
+  // Returns { slug, file } given location.pathname.
+  // file is the bare slug ('' for the directory index, 'agents' / 'faq#x' etc.)
+  // /             → { slug: 'en', file: '' }
+  // /agents       → { slug: 'en', file: 'agents' }
+  // /agents.html  → { slug: 'en', file: 'agents' }   (.html stripped on parse)
+  // /jp/          → { slug: 'jp', file: '' }
+  // /jp/faq      → { slug: 'jp', file: 'faq' }
   function parsePath() {
-    var path = location.pathname.replace(/\/+$/, '/'); // normalize trailing
+    var path = location.pathname.replace(/\/+$/, '/');
     var parts = path.split('/').filter(Boolean);
-    if (parts.length === 0) return { lang: 'en', file: 'hero-prototype-O.html' };
-    var maybeLang = parts[0];
-    if (SUPPORTED.indexOf(maybeLang) !== -1 && maybeLang !== 'en') {
-      var file = parts.slice(1).join('/') || 'hero-prototype-O.html';
-      return { lang: maybeLang, file: file };
+    var stripHtml = function (f) {
+      if (!f) return '';
+      // 'index.html' / 'index' → '' (directory root)
+      var bare = f.replace(/\.html$/, '');
+      return bare === 'index' ? '' : bare;
+    };
+    if (parts.length === 0) return { slug: 'en', file: '' };
+    var maybeSlug = parts[0];
+    if (SUPPORTED.indexOf(maybeSlug) !== -1 && maybeSlug !== 'en') {
+      return { slug: maybeSlug, file: stripHtml(parts.slice(1).join('/')) };
     }
-    return { lang: 'en', file: parts.join('/') };
+    return { slug: 'en', file: stripHtml(parts.join('/')) };
   }
 
-  function urlFor(lang, file) {
-    if (lang === 'en') return '/' + file;
-    return '/' + lang + '/' + file;
+  function urlFor(slug, file) {
+    var base = slug === 'en' ? '/' : '/' + slug + '/';
+    return base + (file || '');
   }
 
   var current = parsePath();
 
-  // First-visit auto-redirect: only on EN, only if user hasn't set a preference.
-  if (current.lang === 'en' && !localStorage.getItem(KEY)) {
-    var detected = detectBrowserLang();
+  if (current.slug === 'en' && !localStorage.getItem(KEY)) {
+    var detected = detectBrowserSlug();
     if (detected !== 'en' && SUPPORTED.indexOf(detected) !== -1) {
-      // Mark detection done so back-button doesn't loop.
       localStorage.setItem(KEY, detected);
       location.replace(urlFor(detected, current.file));
       return;
     }
   }
 
-  // Wire the lang switcher. The switcher's data-default attribute carries the
-  // build-time lang. Browser keeps the user-selected option synced via change.
   function wireSwitcher() {
     var sw = document.getElementById('langSwitcher');
     if (!sw) return;
-    var def = sw.getAttribute('data-default') || current.lang;
+    var def = sw.getAttribute('data-default') || current.slug;
     sw.value = def;
     sw.addEventListener('change', function () {
       var target = sw.value;
@@ -84,9 +124,11 @@
     document.addEventListener('DOMContentLoaded', function () {
       disablePlaceholderLinks();
       wireSwitcher();
+      wireComingSoonCtas();
     });
   } else {
     disablePlaceholderLinks();
     wireSwitcher();
+    wireComingSoonCtas();
   }
 })();

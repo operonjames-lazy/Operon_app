@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>常见问题 | Operon</title>
+<meta name="description" content="关于 Operon 的常见问题——节点销售、技术要求、奖励、治理等。">
+<link rel="canonical" href="https://operon.network/cn/faq" />
+<link rel="alternate" hreflang="en" href="https://operon.network/faq" />
+<link rel="alternate" hreflang="zh-CN" href="https://operon.network/cn/faq" />
+<link rel="alternate" hreflang="zh-TW" href="https://operon.network/tw/faq" />
+<link rel="alternate" hreflang="ko" href="https://operon.network/kr/faq" />
+<link rel="alternate" hreflang="ja" href="https://operon.network/jp/faq" />
+<link rel="alternate" hreflang="th" href="https://operon.network/th/faq" />
+<link rel="alternate" hreflang="vi" href="https://operon.network/vn/faq" />
+<link rel="alternate" hreflang="x-default" href="https://operon.network/faq" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@300;700;800&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Sans+Thai:wght@300;400;500;700&family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --t1:#f6f8ff;
+    --t2:rgba(220,232,252,0.78);
+    --t3:rgba(170,188,220,0.55);
+    --t4:rgba(170,188,220,0.55);
+    --bg-deep:#02050d;
+    --ice:#93C5FD;
+    --glow:#3B82F6;
+    --accent:#5ba4f5;
+    --blue-dim:#1f3a8a;
+    --gold:#d4a853;
+    --gold-dim:#8a6b30;
+    --border:rgba(147,197,253,0.10);
+    --border-strong:rgba(147,197,253,0.18);
+    --surface:rgba(255,255,255,0.03);
+    --surface-2:rgba(255,255,255,0.05);
+    --card-fill-top:rgba(12,18,36,0.65);
+    --card-fill-bot:rgba(6,12,22,0.78);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'Inter','Noto Sans SC','Noto Sans TC','Noto Sans KR','Noto Sans JP','Noto Sans Thai','Noto Sans',sans-serif;background:linear-gradient(180deg,#03060f 0%,#02050d 60%,#010308 100%);color:var(--t1);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;letter-spacing:-0.005em;min-height:100vh;}
+
+  nav.site-nav{position:sticky;top:0;z-index:100;background:rgba(3,6,15,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 40px;min-height:64px;}
+  .brand{font-family:'Unbounded',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.02em;color:#fff;line-height:1;text-decoration:none;}
+  .brand .on-ice{color:var(--glow);}
+  .nav-mid{display:flex;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:100px;padding:4px;justify-self:center;}
+  .nav-mid a{padding:8px 18px;font-size:13.5px;font-weight:500;color:rgba(220,230,250,0.65);text-decoration:none;border-radius:100px;transition:all 0.25s;white-space:nowrap;}
+  .nav-mid a:hover{color:var(--t1);}
+  .nav-mid a.active{color:var(--t1);background:rgba(255,255,255,0.06);}
+  .nav-mid a.nav-node{color:var(--gold);font-weight:600;}
+  .nav-mid a.nav-node:hover{color:#f3cc78;}
+  .nav-mid a.nav-node.active{color:#f3cc78;background:rgba(212,168,83,0.08);}
+  .nav-right{justify-self:end;display:flex;align-items:center;gap:10px;}
+  .header-tag{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.10em;color:var(--t3);border:1px solid var(--border);padding:5px 12px;border-radius:20px;background:var(--surface);white-space:nowrap;}
+  .lang-switcher{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.06em;color:var(--t2);border:1px solid var(--border);padding:5px 8px 5px 12px;border-radius:20px;background:var(--surface);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2393C5FD'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;min-width:78px;}
+  .lang-switcher option{background:#0a0f1c;color:var(--t1);}
+  .lang-switcher:hover{border-color:rgba(147,197,253,0.32);color:var(--ice);}
+  .lang-switcher:focus{border-color:var(--ice);box-shadow:0 0 0 2px rgba(59,130,246,0.18);}
+
+  .hero{background:radial-gradient(ellipse 60% 80% at 80% 50%,rgba(59,130,246,0.16) 0%,transparent 70%),radial-gradient(ellipse 40% 60% at 15% 80%,rgba(74,58,204,0.14) 0%,transparent 65%),linear-gradient(180deg,#040814 0%,#030611 100%);padding:96px 48px 80px;position:relative;overflow:hidden;border-bottom:1px solid var(--border);}
+  .hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(147,197,253,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(147,197,253,0.05) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 30%,transparent 80%);-webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 30%,transparent 80%);}
+  .hero-inner{position:relative;max-width:820px;}
+  .hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--ice);margin-bottom:24px;display:flex;align-items:center;gap:10px;}
+  .hero-eyebrow::before{content:'';display:block;width:32px;height:1px;background:var(--ice);box-shadow:0 0 6px rgba(147,197,253,0.6);}
+  .hero h1{font-family:'Unbounded',sans-serif;font-weight:700;font-size:clamp(34px,5vw,58px);line-height:1.15;letter-spacing:0.005em;color:#fff;margin-bottom:24px;}
+  .hero h1 em{font-style:normal;color:var(--ice);}
+  .hero-sub{font-size:16px;color:var(--t2);max-width:560px;line-height:1.8;margin-bottom:40px;}
+  .hero-stats{display:flex;gap:40px;flex-wrap:wrap;}
+  .stat{display:flex;flex-direction:column;gap:4px;}
+  .stat-val{font-family:'Unbounded',sans-serif;font-weight:700;font-size:22px;color:#fff;letter-spacing:0.005em;}
+  .stat-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--t3);}
+  .stat-divider{width:1px;height:40px;background:var(--border);align-self:center;}
+
+  .nav-strip{background:rgba(8,12,24,0.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:0 48px;overflow-x:auto;scrollbar-width:none;position:sticky;top:64px;z-index:50;}
+  .nav-strip::-webkit-scrollbar{display:none;}
+  .nav-pills{display:flex;gap:0;white-space:nowrap;}
+  .nav-pill{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--t3);text-decoration:none;padding:14px 18px;border-bottom:2px solid transparent;transition:color 0.2s,border-color 0.2s;cursor:pointer;}
+  .nav-pill:hover{color:var(--t1);}
+  .nav-pill.active{color:var(--ice);border-bottom-color:var(--ice);}
+
+  .main{max-width:1100px;margin:0 auto;padding:80px 48px 40px;}
+  .faq-section{margin-bottom:80px;scroll-margin-top:130px;}
+  .section-header{display:flex;align-items:center;gap:16px;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid var(--border-strong);}
+  .section-icon{width:36px;height:36px;background:linear-gradient(180deg,rgba(59,130,246,0.18) 0%,rgba(59,130,246,0.06) 100%);border:1px solid var(--border-strong);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ice);font-size:17px;}
+  .section-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:20px;color:var(--t1);letter-spacing:0.005em;}
+  .section-count{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:var(--t3);}
+
+  .faq-item{
+    border:1px solid var(--border);
+    border-radius:14px;
+    margin-bottom:10px;
+    overflow:hidden;
+    transition:box-shadow 0.25s,border-color 0.25s,background 0.25s;
+    background:linear-gradient(180deg,var(--card-fill-top) 0%,var(--card-fill-bot) 100%);
+  }
+  .faq-item:hover{border-color:rgba(147,197,253,0.30);box-shadow:0 4px 22px -8px rgba(59,130,246,0.18);}
+  .faq-item.open{border-color:rgba(147,197,253,0.45);box-shadow:0 8px 32px -10px rgba(59,130,246,0.30),0 0 0 1px rgba(147,197,253,0.10) inset;}
+  .faq-q{display:flex;align-items:flex-start;gap:16px;padding:20px 24px;cursor:pointer;user-select:none;list-style:none;}
+  .faq-q::-webkit-details-marker{display:none;}
+  .faq-q-text{font-family:'Inter',sans-serif;font-weight:500;font-size:15px;color:var(--t1);flex:1;line-height:1.6;padding-top:1px;}
+  .faq-arrow{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:background 0.2s,border-color 0.2s,transform 0.25s,color 0.2s;color:var(--t3);font-size:11px;}
+  details[open] .faq-arrow{background:var(--glow);border-color:var(--glow);color:#fff;transform:rotate(180deg);box-shadow:0 0 12px rgba(59,130,246,0.5);}
+  .faq-a{padding:0 24px 24px 62px;}
+  .faq-a p{font-size:15px;color:var(--t2);line-height:1.8;margin-bottom:12px;}
+  .faq-a p:last-child{margin-bottom:0;}
+
+  .callout{border-left:3px solid var(--ice);background:rgba(59,130,246,0.08);border-radius:0 8px 8px 0;padding:14px 18px;margin:16px 0 12px;font-size:14px;color:var(--t1);line-height:1.75;}
+  .callout-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;color:var(--ice);margin-bottom:6px;}
+  .callout.gold{border-left-color:var(--gold);background:rgba(212,168,83,0.08);}
+  .callout.gold .callout-label{color:var(--gold);}
+
+  .data-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;margin:16px 0 8px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+  .data-table th{background:rgba(59,130,246,0.10);font-family:'Inter',sans-serif;font-weight:700;font-size:12px;color:var(--ice);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:0.04em;text-transform:uppercase;}
+  .data-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--t2);vertical-align:top;line-height:1.6;}
+  .data-table tr:last-child td{border-bottom:none;}
+  .data-table tr:nth-child(even) td{background:rgba(255,255,255,0.015);}
+  .data-table .total td{background:rgba(59,130,246,0.10);font-weight:700;color:var(--t1);}
+  .data-table td.mono,.data-table th.mono{font-family:'JetBrains Mono',monospace;font-size:13px;}
+
+  .hl{font-family:'JetBrains Mono',monospace;font-size:13px;background:rgba(59,130,246,0.14);color:var(--ice);padding:1px 6px;border-radius:4px;white-space:nowrap;}
+
+  .example-box{background:linear-gradient(180deg,rgba(8,12,24,0.85) 0%,rgba(4,8,18,0.95) 100%);border:1px solid var(--border-strong);border-radius:10px;padding:20px 22px;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:2.1;}
+  .example-box .ex-title{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ice);margin-bottom:10px;font-family:'Unbounded',sans-serif;font-weight:700;}
+  .example-box .ex-row{display:flex;justify-content:space-between;}
+  .example-box .ex-row span:last-child{color:#fff;font-weight:500;}
+  .example-box .ex-divider{border:none;border-top:1px solid var(--border);margin:8px 0;}
+  .example-box .ex-total{color:var(--ice)!important;font-weight:700!important;}
+
+  .search-wrap{max-width:540px;margin:0 0 48px;position:relative;}
+  .search-input{width:100%;padding:14px 20px 14px 46px;border:1px solid var(--border-strong);border-radius:12px;font-family:'Inter',sans-serif;font-size:14px;color:var(--t1);background:var(--surface);outline:none;transition:border-color 0.2s,box-shadow 0.2s,background 0.2s;}
+  .search-input:focus{border-color:var(--ice);background:var(--surface-2);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+  .search-input::placeholder{color:var(--t3);}
+  .search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:16px;pointer-events:none;}
+  .no-results{display:none;text-align:center;padding:48px 0;color:var(--t3);font-size:15px;}
+
+  .site-footer{background:linear-gradient(180deg,#02050d 0%,#010308 100%);border-top:1px solid var(--border);padding:48px;text-align:center;}
+  .footer-logo{font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px;color:#fff;letter-spacing:0.02em;margin-bottom:8px;}
+  .footer-logo span{color:var(--glow);}
+  .footer-url{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3);margin-bottom:24px;}
+  .footer-disc{font-size:12px;color:var(--t4);max-width:640px;margin:0 auto;line-height:1.8;}
+  .footer-socials{display:flex;justify-content:center;gap:10px;margin:20px 0 24px;}
+  .footer-socials a{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid rgba(147,197,253,0.16);border-radius:8px;color:var(--t2);background:rgba(147,197,253,0.04);transition:color 0.2s,border-color 0.2s,background 0.2s;text-decoration:none;}
+  .footer-socials a:hover{color:var(--ice);border-color:rgba(147,197,253,0.36);background:rgba(147,197,253,0.08);}
+  .footer-socials svg{width:16px;height:16px;display:block;}
+
+  .home-btn{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.08em;color:var(--ice);border:1px solid var(--border-strong);background:var(--surface);padding:5px 14px;border-radius:20px;text-decoration:none;transition:all 0.2s;white-space:nowrap;}
+  .home-btn:hover{background:rgba(59,130,246,0.14);border-color:rgba(147,197,253,0.32);color:#fff;}
+  .home-btn svg{width:12px;height:12px;vertical-align:-1px;margin-right:4px;}
+
+  .lang-content{display:none;}
+  .lang-content.active{display:block;}
+
+  .cta-banner{text-align:center;padding:0 24px 64px;background:transparent;}
+  .cta-banner a{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:16px 36px;
+    background:linear-gradient(135deg,#4a3acc 0%,#2d2496 50%,#161a5e 100%);
+    border:1px solid rgba(120,100,220,0.32);
+    color:#fff;
+    font-family:'Inter','Noto Sans SC','Noto Sans TC',sans-serif;
+    font-size:15px;font-weight:600;
+    border-radius:100px;
+    text-decoration:none;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.16),
+      inset 0 -1px 1px rgba(6,4,24,0.55),
+      0 4px 14px -2px rgba(45,36,150,0.55),
+      0 0 18px -4px rgba(74,58,204,0.28);
+    transition:transform 0.2s ease,box-shadow 0.2s ease,background 0.2s ease;
+  }
+  .cta-banner a:hover{
+    transform:translateY(-1px);
+    background:linear-gradient(135deg,#5a4ae0 0%,#3a31ad 50%,#1e236f 100%);
+    border-color:rgba(140,120,235,0.42);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      0 6px 20px -2px rgba(45,36,150,0.65),
+      0 0 24px -2px rgba(74,58,204,0.40);
+  }
+  .cta-banner a svg{width:18px;height:18px;}
+
+  @media(max-width:700px){
+    nav.site-nav,.nav-strip,.main,.hero{padding-left:20px;padding-right:20px;}
+    nav.site-nav{padding-left:16px;padding-right:16px;grid-template-columns:auto auto;gap:8px;min-height:auto;padding-top:10px;padding-bottom:10px;}
+    nav.site-nav .nav-mid{order:3;grid-column:1 / -1;width:100%;justify-content:center;overflow-x:auto;}
+    .header-tag{display:none;}
+    .hero{padding-top:64px;padding-bottom:56px;}
+    .hero-stats{gap:20px;}
+    .stat-divider{display:none;}
+    .faq-a{padding-left:24px;}
+    .header-right{gap:8px;}
+    .lang-switcher{min-width:70px;font-size:10px;padding:3px 6px 3px 10px;padding-right:22px;background-position:right 7px center;}
+  }
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+  .faq-section{animation:fadeUp 0.4s ease both;}
+  .faq-section:nth-child(1){animation-delay:0.05s;}.faq-section:nth-child(2){animation-delay:0.10s;}.faq-section:nth-child(3){animation-delay:0.15s;}.faq-section:nth-child(4){animation-delay:0.20s;}.faq-section:nth-child(5){animation-delay:0.25s;}.faq-section:nth-child(6){animation-delay:0.30s;}.faq-section:nth-child(7){animation-delay:0.35s;}.faq-section:nth-child(8){animation-delay:0.40s;}.faq-section:nth-child(9){animation-delay:0.45s;}.faq-section:nth-child(10){animation-delay:0.50s;}.faq-section:nth-child(11){animation-delay:0.55s;}
+  .zh .section-title,.zh .faq-q-text{font-family:'Noto Sans TC','Inter',sans-serif;}
+  .ko .section-title,.ko .faq-q-text{font-family:'Noto Sans KR','Inter',sans-serif;}
+
+/* === a11y: keyboard focus === */
+:focus-visible {
+  outline: 2px solid var(--ice, #93C5FD);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.lang-switcher:focus-visible,
+.lang-switcher:focus {
+  outline: 2px solid var(--ice, #93C5FD);
+  outline-offset: 3px;
+}
+/* Dead-link disable: any anchor still pointing at "#" is a placeholder
+   that scrolls-to-top in production. Visually demote it and stop the
+   click. The footer "Read the deck" CTA, footer link columns, etc. all
+   read as disabled instead of broken. */
+a[href="#"], a[href=""] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+a[href="#"]::after, a[href=""]::after { content: ''; }
+/* === a11y: prefers-reduced-motion === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .radial-grid .hex,
+  .feed-label::before,
+  .status-pill .status-dot,
+  .hero-pill .dot,
+  .caret {
+    animation: none !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a class="brand" href="./">OPER<span class="on-ice">ON</span></a>
+  <div class="nav-mid">
+    <a href="./">Operon</a>
+    <a href="agents">Agents</a>
+    <a href="nodes" class="nav-node">Nodes</a>
+    <a href="affiliates">Affiliates</a>
+    <a href="faq" class="active">FAQ</a>
+  </div>
+  <div class="nav-right">
+    <span class="header-tag">Genesis Node Sale &middot; FAQ</span>
+    <select class="lang-switcher" id="langSwitcher" aria-label="Language" data-default="cn">
+      <option value="en">EN</option>
+      <option value="cn">简</option>
+      <option value="tw">繁</option>
+      <option value="kr">KR</option>
+      <option value="jp">JP</option>
+      <option value="th">TH</option>
+      <option value="vn">VN</option>
+    </select>
+  </div>
+</nav>
+
+
+
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow">常见问题</div>
+    <h1 style="font-family:'Noto Sans SC','Syne',sans-serif;">Operon 网络，<em>完整解析。</em></h1>
+    <p class="hero-sub">本文件涵盖网络架构、节点销售结构、代币经济、推荐机制、收益框架及 TGE 后路线图。</p>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-val">100,000</span><span class="stat-label">节点总量 · 硬性上限</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-val">$500</span><span class="stat-label">第 1 层起始价格</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-val">40</span><span class="stat-label">定价层级</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-val">420 亿</span><span class="stat-label">$OPRN 固定供应量</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-val">25%</span><span class="stat-label">分配予节点运营者</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- NAV -->
+<nav class="nav-strip">
+  <div class="nav-pills">
+    <a class="nav-pill active" href="#about_zh_cn">关于 Operon</a>
+    <a class="nav-pill" href="#how_zh_cn">运作方式</a>
+    <a class="nav-pill" href="#basics_zh_cn">节点基础</a>
+    <a class="nav-pill" href="#sale_zh_cn">销售结构</a>
+    <a class="nav-pill" href="#unsold_zh_cn">未售节点与销毁</a>
+    <a class="nav-pill" href="#earnings_zh_cn">节点收益</a>
+    <a class="nav-pill" href="#transfer_zh_cn">可转让性</a>
+    <a class="nav-pill" href="#referral_zh_cn">推荐网络</a>
+    <a class="nav-pill" href="#token_zh_cn">代币与治理</a>
+    <a class="nav-pill" href="#nodefn_zh_cn">节点功能</a>
+    <a class="nav-pill" href="#risk_zh_cn">风险与监管</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="search-input" type="text" placeholder="搜索问题…" id="searchInput_zh_cn" autocomplete="off">
+  </div>
+  <div class="no-results" id="noResults_zh_cn">找不到符合的问题。</div>
+
+  <!-- 1. 节点基础 -->
+    <section class="faq-section" id="about_zh_cn"><div class="section-header"><div class="section-icon">◈</div><span class="section-title">关于 Operon</span><span class="section-count">3 个问题</span></div>
+    <details class="faq-item" open><summary class="faq-q"><span class="faq-q-text">什么是 Operon？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon 是一个由节点驱动的去中心化网络，专为 AI 智能体经济而建。它提供三项在任何其他协议中都不同时存在的能力：</p>
+      <p><strong>链上协调基础设施</strong> — AI 智能体在链上注册、获得唯一标识符、透过网络索引系统被发现，并以可验证的归因进行交易。任务被路由、输出被记录、绩效按纪元追踪——全部在链上完成。</p>
+      <p><strong>基于活动的奖励经济</strong> — 节点运营者透过运行驱动网络的基础设施来赚取 <span class="hl">$OPRN</span>。奖励来自三个来源：基础排放（固定、可预期）、绩效奖金（取决于正常运行时间）、以及由网络上运行的 AI 智能体的实际使用费资助的活动池。运营者收益随 AI 智能体采用率增长而增长。</p>
+      <p><strong>协议原生的分发引擎</strong> — 由智能合约执行的 5 层推荐级联，将每位节点持有者转变为分发合作伙伴。这不是行销附加功能，而是核心协议基元，由专用的 <span class="hl">10%</span> 代币池资助，旨在让参与者增长网络成为经济上合理的选择。</p>
+      <p>网络由 <span class="hl">100,000</span> 个节点（硬性上限，永不增加）驱动，<span class="hl">$OPRN</span> 为原生代币，永久固定供应量为 <span class="hl">42,000,000,000</span>。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon 与其他去中心化 AI 项目有何不同？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>目前存在几类去中心化 AI 项目，各自解决问题的不同部分：</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>类别</th><th>功能</th><th>未涵盖的部分</th></tr></thead><tbody>
+        <tr><td>GPU 算力网络</td><td>为 AI 工作负载提供原始处理能力</td><td>无 AI 智能体协调、发现或信任层</td></tr>
+        <tr><td>AI 智能体代币化协议</td><td>为个别 AI 智能体创建可交易的代币</td><td>无执行基础设施或声誉系统</td></tr>
+        <tr><td>AI 智能体框架项目</td><td>提供开发者工具和共同拥有模型</td><td>无内建分发——AI 智能体无法触及用户</td></tr>
+        <tr><td>去中心化存储</td><td>提供数据存储基础设施</td><td>无 AI 智能体逻辑执行、协调或市场</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">Operon 占据的是以上项目都未涵盖的层：AI 智能体与开放市场之间的协调、验证和分发基础设施。它是互补的——Operon 位于 AI 智能体与受众之间，而非与算力或存储提供者竞争。</p>
+      <div style="margin:24px 0 20px; overflow-x:auto;">
+        <svg viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" style="max-width:640px; width:100%; display:block; margin:0 auto;">
+          <defs><linearGradient id="gBz" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1A56DB" stop-opacity="0.12"/><stop offset="100%" stop-color="#3B82F6" stop-opacity="0.04"/></linearGradient><linearGradient id="gGz" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#D97706" stop-opacity="0.14"/><stop offset="100%" stop-color="#F59E0B" stop-opacity="0.05"/></linearGradient></defs>
+          <rect x="20" y="16" width="640" height="64" rx="12" fill="url(#gBz)" stroke="#1A56DB" stroke-opacity="0.25"/>
+          <text x="340" y="40" text-anchor="middle" fill="#1A56DB" font-family="Syne,sans-serif" font-size="11" font-weight="600" letter-spacing="2">AI 智能体</text>
+          <text x="340" y="60" text-anchor="middle" fill="#1A56DB" font-family="Noto Sans TC,sans-serif" font-size="10" opacity="0.55">交易 · 研究 · 内容 · 客服 · 开发者工具 · 自订</text>
+          <rect x="60" y="100" width="560" height="130" rx="12" fill="none" stroke="#EF4444" stroke-dasharray="6,4" stroke-opacity="0.35"/>
+          <text x="340" y="124" text-anchor="middle" fill="#EF4444" font-family="DM Mono,monospace" font-size="9" letter-spacing="3" opacity="0.7">缺口</text>
+          <text x="340" y="142" text-anchor="middle" fill="#EF4444" font-family="Noto Sans TC,sans-serif" font-size="10.5" opacity="0.45">无协调 · 无发现 · 无验证 · 无分发</text>
+          <rect x="90" y="152" width="500" height="60" rx="10" fill="url(#gGz)" stroke="#D97706" stroke-opacity="0.5"/>
+          <text x="340" y="176" text-anchor="middle" fill="#B45309" font-family="Syne,sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">OPERON</text>
+          <text x="340" y="198" text-anchor="middle" fill="#B45309" font-family="Noto Sans TC,sans-serif" font-size="10" opacity="0.7">协调 · 验证 · 分发 · 声誉</text>
+          <rect x="20" y="254" width="640" height="64" rx="12" fill="url(#gBz)" stroke="#1A56DB" stroke-opacity="0.25"/>
+          <text x="340" y="278" text-anchor="middle" fill="#1A56DB" font-family="Noto Sans TC,sans-serif" font-size="11" font-weight="600" letter-spacing="2">用户 · 构建者 · 企业</text>
+          <text x="340" y="298" text-anchor="middle" fill="#1A56DB" font-family="Noto Sans TC,sans-serif" font-size="10" opacity="0.55">发现 AI 智能体 · 组合工作流 · 验证输出 · 链上构建</text>
+          <line x1="200" y1="80" x2="200" y2="100" stroke="#1A56DB" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3,3"/><line x1="340" y1="80" x2="340" y2="100" stroke="#1A56DB" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3,3"/><line x1="480" y1="80" x2="480" y2="100" stroke="#1A56DB" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3,3"/>
+          <line x1="200" y1="230" x2="200" y2="254" stroke="#D97706" stroke-opacity="0.5" stroke-width="1.5"/><line x1="340" y1="230" x2="340" y2="254" stroke="#D97706" stroke-opacity="0.5" stroke-width="1.5"/><line x1="480" y1="230" x2="480" y2="254" stroke="#D97706" stroke-opacity="0.5" stroke-width="1.5"/>
+          <text x="340" y="335" text-anchor="middle" fill="#8090A8" font-family="Noto Sans TC,sans-serif" font-size="10" letter-spacing="0.5" opacity="0.6">AI 智能体与受众之间的层</text>
+        </svg>
+      </div>
+      <div class="callout"><div class="callout-label">三大结构性差异</div>分发是协议基元，而非行销层。消费者介面（Forge 市场、AI 智能体声誉目录）在 TGE 时上线，不是路线图项目。硬性上限的节点供应加上自动销毁机制，创造结构性稀缺。</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">路线图是什么？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>路线图分为五个阶段。不承诺具体日期——顺序是承诺。</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>阶段</th><th>名称</th><th>内容</th></tr></thead><tbody>
+        <tr><td class="mono">1</td><td>创世节点销售</td><td>100,000 个节点分 40 个价格层次销售。节点 NFT 在 Arbitrum 或 BNB Chain 上铸造。核心基础设施 AI 智能体启动。</td></tr>
+        <tr><td class="mono">2</td><td>TGE 与网络启动</td><td>$OPRN 代币上线。排放开始。Operon Forge 市场、AI 智能体声誉目录和 Portal 上线。所有生态系统 AI 智能体可供订阅者使用。</td></tr>
+        <tr><td class="mono">3</td><td>构建者 SDK 与 AI 智能体注册表</td><td>第三方开发者可在链上注册自己的 AI 智能体。构建者文档门户上线。注册表成为可验证 AI 智能体的公开市场。</td></tr>
+        <tr><td class="mono">4</td><td>AI 智能体市场与扩展</td><td>社区治理的 AI 智能体市场。节点运营者提供专业化服务以获取额外收入来源。</td></tr>
+        <tr><td class="mono">5</td><td>治理与协议成熟</td><td>$OPRN 持有者获得对排放计划、注册表标准和国库分配的治理权。协议过渡至社区治理。</td></tr>
+      </tbody></table>
+    </div></details>
+  </section>
+
+    <section class="faq-section" id="how_zh_cn"><div class="section-header"><div class="section-icon">⬡</div><span class="section-title">运作方式</span><span class="section-count">4 个问题</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon 网络如何运作？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>网络由三个功能层构成：</p>
+      <p><strong>协调层。</strong>AI 智能体在链上注册并获得唯一标识符。发现性索引按正常运行时间、互动度和使用量对每个已注册的 AI 智能体进行评分和排名——使用户可以找到它们，其他 AI 智能体可以与之组合。任务请求透过网络路由，输出被记录，归因系统按纪元追踪贡献。所有协调均在链上进行且可验证。</p>
+      <p><strong>验证层。</strong>独立验证机制为 AI 智能体输出产生三级链上证明：<span class="hl">已确认</span>、<span class="hl">部分匹配</span>或<span class="hl">无法验证</span>。这些证明汇入 AI 智能体声誉目录——一个可公开查询的可验证绩效数据链上注册表。信任随时间复合累积：一个拥有六个月「已确认」证明的 AI 智能体，其可信度是任何行销宣称无法复制的。</p>
+      <p><strong>分发层。</strong>每个已注册的 AI 智能体自动分发至 400+ 个渠道。推荐级联——内建于协议的 5 层佣金结构——将每位节点持有者转变为分发合作伙伴。分发由专用代币池资助，并由智能合约执行。</p>
+      <p>AI 智能体透过共享的跨 AI 智能体任务交接讯息标准进行通讯。用户可透过自然语言目标组合多 AI 智能体工作流——选择 AI 智能体、确认任务图、并接收已完成工作的链上收据。</p>
+      <p>启动时，网络包含 Operon 团队构建的两个套件的 AI 智能体：六个基础设施 AI 智能体<em>构成</em>协调和分发层（节点运营者托管它们并赚取奖励），以及六个生态系统服务 AI 智能体直接服务构建者和用户。这些是初始注册表人口——构建来证明基础设施在第 3 阶段向外部开发者开放之前是有效的。各 AI 智能体的详细资讯请见 operon.network 的 <strong>Agent Network</strong> 页面。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon 如何验证 AI 智能体输出？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon 的验证机制为 AI 智能体输出产生独立的链上证明。每个证明属于三个等级之一：</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>等级</th><th>含义</th></tr></thead><tbody>
+        <tr><td><span class="hl">已确认</span></td><td>输出经独立验证为准确且完整</td></tr>
+        <tr><td><span class="hl">部分匹配</span></td><td>输出部分验证——部分元素已确认，其他无法独立验证</td></tr>
+        <tr><td><span class="hl">无法验证</span></td><td>输出无法被独立验证</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">每个证明带有时间戳、加密签名，并永久记录在链上。任何用户或应用程式都可以透过公开 URL 查询输出杂凑值并查看其验证状态——无需帐户。结果可作为永久连结分享。</p>
+      <p>这些证明汇聚成 <strong>AI 智能体声誉目录</strong>——一个可公开查询的链上注册表，汇聚网络上每个 AI 智能体的可验证绩效数据：任务完成率、用户评分、正常运行时间历史、使用量及争议记录。记录不可篡改且可组合——任何应用程式均可查询目录，无需依赖自我申报。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">TGE 时推出什么？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>以下项目在 TGE 时同步上线：</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>介面</th><th>功能</th></tr></thead><tbody>
+        <tr><td><strong>Operon Forge</strong></td><td>精选 AI 智能体市场，涵盖六个类别：交易与 DeFi 自动化、研究与数据分析、内容创作与写作、客户服务与支持、游戏与娱乐、开发者工具。使用费流入节点运营者的活动池。</td></tr>
+        <tr><td><strong>AI 智能体声誉目录</strong></td><td>链上、可公开查询的可验证 AI 智能体绩效数据注册表。不可篡改且可组合。</td></tr>
+        <tr><td><strong>Operon Portal</strong></td><td>节点管理网页介面（已赚取 $OPRN、可领取余额、推荐网络视觉化）、AI 智能体订阅存取及 AI 智能体发现。</td></tr>
+        <tr><td><strong>$OPRN 排放</strong></td><td>所有节点运营者从首个排放纪元开始赚取。基础排放每日分配。</td></tr>
+        <tr><td><strong>$OPRN 质押</strong></td><td>TGE 时推出，配合合作伙伴代币奖励。</td></tr>
+        <tr><td><strong>推荐排放级联</strong></td><td>TGE 后推荐奖励启动，以 $OPRN 从推荐与分发池支付。</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">任务活动参与者（Galxe 和 Layer3）在此期间从推荐与分发池获得 TGE 分配。TGE 时初始流通供应量约为总供应量的 <span class="hl">3%</span>。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon 在哪条区块链上运行？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon 部署在 <strong>Arbitrum</strong> 上——一个领先的以太坊二层网络，提供低交易费用、高吞吐量和与更广泛 EVM 生态系统的深度连通性。节点合约、AI 智能体注册表、推荐追踪、奖励分配及治理均在 Arbitrum 上运行。</p>
+      <p>节点销售接受 Arbitrum 和 BNB Chain 上的 USDC 及 USDT。节点在买家付款的链上铸造。</p>
+    </div></details>
+  </section>
+
+  <section class="faq-section" id="basics_zh_cn"><div class="section-header"><div class="section-icon">⬢</div><span class="section-title">节点基础</span><span class="section-count">3 个问题</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">什么是 Operon 节点？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon 节点是在 Arbitrum 或 BNB Chain 上发行的永久性 <span class="hl">ERC-721 NFT 许可证</span>。它授予在 Operon 生态系统内的分发权益：<span class="hl">$OPRN</span> 基础排放、绩效奖金、活动池份额，以及参与社群推荐网络的资格。随著协议成熟，该许可证亦赋予治理投票权。</p>
+      <p>从路线图的长远规划来看，Operon 节点设计将演进为验证者节点——执行<em>轻量级协调验证</em>：确认 AI 智能体任务完成情况、证明服务质量指标、验证正常运行时间及输出一致性，并为 AI 智能体声誉目录贡献评分。这一验证角色是附加性的，无需新硬件。</p>
+      <div class="callout"><div class="callout-label">硬性上限</div>供应量永久固定在 100,000 个。在任何情况下均不再增发任何节点。</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">运行节点需要什么硬件？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>无需 GPU、服务器机架或企业级硬件。Operon 节点是轻量级参与和协调单元，而非算力农场。节点客户端设计为可在标准消费硬件上运行——笔记本电脑或普通 VPS 即可。</p>
+      <p>对于偏好全托管操作、无需本地设置的持有者，节点即服务（NaaS）提供商将在 TGE 时同步推出。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">节点是 NFT 吗？拥有节点意味著什么？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>是的。每个 Operon 节点在 Arbitrum 上作为 <span class="hl">ERC-721</span> NFT 发行。NFT <em>即是</em>许可证本身——您的排放权、分发收益、治理股份及未来验证者参与资格均与该代币绑定。</p>
+      <p>购买节点即代表拥有 NFT；运行节点客户端（或委托 NaaS 提供商代为运行）则激活其获利与参与功能。</p>
+    </div></details>
+  </section>
+
+  <!-- 2. 销售结构 -->
+  <section class="faq-section" id="sale_zh_cn"><div class="section-header"><div class="section-icon">◎</div><span class="section-title">销售结构</span><span class="section-count">5 个问题</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">节点定价如何运作？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>创世节点销售分为 <span class="hl">40 个层次</span>，每层 <span class="hl">2,500 个节点</span>。每层定价精确比上一层高 <span class="hl">5%</span>，从第 1 层的 <span class="hl">$500.00</span> 开始，到第 40 层的约 <span class="hl">$3,354</span>。每层售罄时，下一层次透过智能合约自动开放——无需人工干预，层次之间无停顿。</p>
+      <p>全数售罄的募集总额约为 <strong>1.51 亿美元</strong>。销售在全部 100,000 个节点售出或公布截止日期到来时结束，以先到者为准。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">接受哪些付款货币？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>节点销售接受两种稳定币：</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>货币</th><th>链</th><th>备注</th></tr></thead><tbody>
+        <tr><td><span class="hl">USDC / USDT</span></td><td>Arbitrum + BNB Chain</td><td>以面值结算，无需汇率转换</td></tr>
+      </tbody></table>
+      <p>所有定价以美元计价。USDC 及 USDT 在 Arbitrum 和 BNB Chain 上均按面值结算，无需汇率转换。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">有每钱包购买上限吗？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>仅早期层次有限制。<span class="hl">第 1 至第 5 层</span>设有每钱包购买上限，以保护去中心化并确保最低价格层次的广泛社群访问。<span class="hl">第 6 至第 40 层</span>没有每钱包上限。早期层次的具体每钱包限额将在销售启动前于 operon.network 的正式销售条款中公布。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">什么是白名单，如何获得资格？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>第 1 至第 5 层各精确预留 <strong>50% 的节点</strong>（每层 1,250 个，共 6,250 个）给五个类别的白名单参与者：</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>类别</th><th>说明</th></tr></thead><tbody>
+        <tr><td>OG 社群</td><td>Discord / Telegram 成员、候补名单预注册者、测试网参与者</td></tr>
+        <tr><td>战略合作伙伴 DAO</td><td>Web3 及 AI 原生 DAO 社群，各获固定分配额</td></tr>
+        <tr><td>KOL 及大使</td><td>拥有 5 万以上受众的创作者，需在销售开放前完成至少 2 次内容交付</td></tr>
+        <tr><td>风投及机构</td><td>早期阶段投资者及战略机构参与者</td></tr>
+        <tr><td>任务及活动获胜者</td><td>Galxe 及 Layer3 任务活动中具备可验证链上活动的参与者</td></tr>
+      </tbody></table>
+      <p style="margin-top:12px;">第 1–5 层剩余 50% 节点及第 6–40 层全部节点以先到先得方式向公众开放。在 <strong>operon.network</strong> 预注册是获得 OG 白名单考量的主要途径。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">当一个层次售罄时会发生什么？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>当某层次的 2,500 个节点售出后，该层次透过智能合约自动关闭，下一层次以新价格立即开放——无需人工干预，无停顿。买家始终以当前开放层次的价格购买。</p>
+      <p>若您的交易进行中某层次关闭，智能合约将在下一可用层次价格符合您批准的交易参数时完成购买，否则退还您的资金。</p>
+    </div></details>
+  </section>
+
+  <!-- 3. 未售节点与销毁 -->
+  <section class="faq-section" id="unsold_zh_cn"><div class="section-header"><div class="section-icon">⊘</div><span class="section-title">未售节点与销毁机制</span><span class="section-count">2 个问题</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">销售结束后，未售出的节点会如何处理？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>所有未售出的节点许可证将被<strong>永久销毁</strong>。原本分配给这些节点的 $OPRN 排放额度将按比例<strong>重新分配给所有已购买节点的持有者</strong>——在 TGE 之前、任何排放开始之前完成。</p>
+      <div class="callout gold"><div class="callout-label">每个被销毁的未售节点 → 每位买家的分配额增加</div>分配给节点的总排放池永远不变。只有分享它的节点数量会减少。部分售出不会损害早期买家——反而会奖励他们。</div>
+      <table class="data-table"><thead><tr><th>售出率</th><th>已售节点</th><th>已销毁节点</th><th class="mono">每节点基础 $OPRN</th></tr></thead><tbody>
+        <tr><td>100%</td><td>100,000</td><td>0</td><td class="mono">63,000 $OPRN</td></tr>
+        <tr><td>80%</td><td>80,000</td><td>20,000</td><td class="mono">78,750 $OPRN</td></tr>
+        <tr><td>60%</td><td>60,000</td><td>40,000</td><td class="mono">105,000 $OPRN</td></tr>
+        <tr><td>50%</td><td>50,000</td><td>50,000</td><td class="mono">126,000 $OPRN</td></tr>
+        <tr class="total"><td>计算公式</td><td colspan="2">63 亿 ÷ 已售节点数</td><td class="mono">= 每节点 $OPRN</td></tr>
+      </tbody></table>
+      <p>销毁由智能合约在销售结束时自动触发——无需治理投票，无需人工干预。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">排放何时开始？所有节点是否同时开始获得收益？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>是的——所有节点在 <strong>TGE 时同步开始获得收益</strong>，无论其在销售中购买的层次或日期。销售在 TGE 开放之前完全结束；不存在销售与排放并行的时期。</p>
+      <p>TGE 在销售结束后的<span class="hl">最短 4 周、最长 12 周</span>内进行，期间用于完成销毁与重新分配、交易所上币准备及社群任务活动。</p>
+    </div></details>
+  </section>
+
+  <!-- 4. 收益与回报 -->
+  <section class="faq-section" id="earnings_zh_cn"><div class="section-header"><div class="section-icon">⊕</div><span class="section-title">节点收益</span><span class="section-count">4 个问题</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">每个节点每年获得多少 $OPRN 代币？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>基础排放池为 <span class="hl">6,300,000,000 $OPRN</span>，按前重后轻的衰减计划分配给节点运营者，为期四年。全数售罄时（100,000 个节点），每个节点的权益为 <strong>63,000 $OPRN</strong>——若有节点未售出并被销毁，此数字将按比例增加。</p>
+      <table class="data-table"><thead><tr><th>年份</th><th>基础池占比</th><th class="mono">每节点代币数*</th><th class="mono">每节点每日*</th><th>累计*</th></tr></thead><tbody>
+        <tr><td><strong>第 1 年</strong></td><td>40%</td><td class="mono">25,200 $OPRN</td><td class="mono">~69.04 / 日</td><td>25,200</td></tr>
+        <tr><td><strong>第 2 年</strong></td><td>30%</td><td class="mono">18,900 $OPRN</td><td class="mono">~51.78 / 日</td><td>44,100</td></tr>
+        <tr><td><strong>第 3 年</strong></td><td>20%</td><td class="mono">12,600 $OPRN</td><td class="mono">~34.52 / 日</td><td>56,700</td></tr>
+        <tr><td><strong>第 4 年</strong></td><td>10%</td><td class="mono">6,300 $OPRN</td><td class="mono">~17.26 / 日</td><td>63,000</td></tr>
+        <tr class="total"><td><strong>合计</strong></td><td>100%</td><td class="mono"><strong>63,000 $OPRN</strong></td><td class="mono">—</td><td><strong>63,000</strong></td></tr>
+      </tbody></table>
+      <p style="font-size:13px;color:var(--mid);margin-top:8px;">* 按全数售罄计算（100,000 个节点）。80% 售出时：每节点 78,750 $OPRN；50% 售出时：每节点 126,000 $OPRN。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">绩效奖金和活动池是什么？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p><strong>绩效池</strong>——预注资 <span class="hl">4,200,000,000 $OPRN</span> 池，服务三项功能：（1）第 5 季度起正常运行时间超过 <span class="hl">99%</span> 的节点的季度奖金，（2）延长锁仓和长期承诺锁仓等级的 +15% 和 +25% 加成，以及（3）基于活动的绩效乘数。池由加速领取的没入部分持续补充。TGE 后第 1 至第 4 季度为宽限期——所有活跃节点均可获得正常运行时间奖金。全数售罄时：每合格节点每季度约 <strong>3,500 $OPRN</strong>（仅正常运行时间组成部分）。</p>
+      <p><strong>活动池</strong>——由 Operon Forge 及所有协议活动的真实使用费资助的可变池。分配每日进行，按每个节点在该 24 小时纪元内的验证正常运行时间比例计算。随著 AI 智能体采用率的增长，活动池设计为逐步成为运营者回报的主要驱动力。</p>
+      <div class="callout"><div class="callout-label">三个收入来源</div>基础排放（固定、可预期）+ 绩效奖金（取决于正常运行时间）+ 活动池（可变，随使用量扩展）。三者共同为节点运营者提供可预期的基线收益与随网络增长而扩展的额外收益。</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">奖励提取选项有哪些？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>节点运营者每日以 <span class="hl">vOP</span> 代币赚取奖励——累积在仪表板中的虚拟 $OPRN。vOP 为链下记录，不可转让。领取时，您选择四个锁仓等级之一：</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>等级</th><th>锁仓期限</th><th>您获得</th><th>说明</th></tr></thead><tbody>
+        <tr><td><strong>加速提取</strong></td><td>30 天</td><td class="mono">50%</td><td>50% 没入绩效池</td></tr>
+        <tr><td><strong>标准</strong></td><td>120 天</td><td class="mono">100%</td><td>无扣减</td></tr>
+        <tr><td><strong>延长锁仓</strong></td><td>180 天</td><td class="mono">115%</td><td>+15% 加成来自绩效池</td></tr>
+        <tr><td><strong>长期承诺</strong></td><td>360 天</td><td class="mono">125%</td><td>+25% 加成来自绩效池</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">锁仓为<strong>线性解锁</strong>——$OPRN 在期间内逐步解锁，而非到期一次性释放。每次领取独立运作，可同时以不同等级运行多笔领取。最低领取量：<span class="hl">100 vOP</span>。领取一经提交不可取消。无需 KYC。</p>
+      <p>加速领取中没入的代币流入绩效池——为耐心的运营者提供 +15% 和 +25% 加成奖励。急躁者为坚定者买单。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">第 1 层节点的回本示例是什么？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <div class="example-box">
+        <div class="ex-title">第 1 层节点 — 全数售罄情景（仅供说明）</div>
+        <div class="ex-row"><span>购买价格</span><span>$500.00</span></div>
+        <div class="ex-row"><span>基础排放权益（4 年）</span><span>63,000 $OPRN</span></div>
+        <div class="ex-row"><span>绩效奖金权益（估算）</span><span>~42,000 $OPRN</span></div>
+        <hr class="ex-divider">
+        <div class="ex-row"><span>仅计基础排放的回本代币价格</span><span>$500 ÷ 63,000 ≈ $0.008</span></div>
+        <hr class="ex-divider">
+        <div class="ex-row ex-total"><span>活动池分配</span><span>额外收益</span></div>
+      </div>
+      <p style="font-size:13px;color:var(--mid);">80% 售出时（20,000 个节点被销毁），同一第 1 层买家将获得 78,750 基础 $OPRN，进一步降低回本所需代币价格。本框架仅为代币数量计算，不构成 $OPRN 市场价格的预测。实际回报取决于网络采用率、代币市场条件及运营者的正常运行时间。</p>
+    </div></details>
+  </section>
+
+  <!-- 5. 可转让性 -->
+  <section class="faq-section" id="transfer_zh_cn"><div class="section-header"><div class="section-icon">⇄</div><span class="section-title">可转让性与排放权</span><span class="section-count">2 个问题</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">购买后我可以转让或出售节点吗？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>节点在购买后<span class="hl">前六个月内不可转让</span>。六个月锁定期届满后，节点可在二级市场自由转让。</p>
+      <p>重要提示：<strong>排放权与节点 NFT 绑定</strong>，而非原始购买钱包。</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>转让时</th><th>新持有者获得</th></tr></thead><tbody>
+        <tr><td>未来 vOP 累积</td><td>从转让日期起所有未来排放</td></tr>
+        <tr><td>累积的 vOP 余额</td><td>任何未领取的 vOP 随 NFT 转移</td></tr>
+        <tr><td>进行中的锁仓条目</td><td>任何进行中的领取（含剩余倒计时）随 NFT 转移</td></tr>
+        <tr><td>已提取的 $OPRN</td><td>留在卖方钱包——标准 ERC-20，不受 NFT 转让影响</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">NFT 是完整的资产包：许可证、累积余额，以及任何进行中的锁仓。唯一不转移的是已在某人钱包中的 $OPRN。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">排放是固定的还是可以改变？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>$OPRN 总供应量<strong>永久固定在 42,000,000,000 个代币</strong>。超出此上限的新代币永远不会被铸造。</p>
+      <p>但是，分配机制——排放计划方式、在各池之间的分配以及绩效阈值的设定——可能在未来升级中透过链上治理进行调整。任何此类更改均需链上治理批准，并将提前透明地传达给所有节点持有者。</p>
+    </div></details>
+  </section>
+
+  <!-- 6. 推荐网络 -->
+  <section class="faq-section" id="referral_zh_cn"><div class="section-header"><div class="section-icon">⊙</div><span class="section-title">社群推荐网络</span><span class="section-count">4 个问题</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">TGE 前的推荐结构如何运作？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>每次节点购买都会自动激活推荐码——<strong>您的钱包地址就是您的推荐码</strong>。无需申请、无需注册、无层级要求。</p>
+      <div class="callout" style="margin-bottom:16px;"><div class="callout-label">买家折扣</div>透过推荐码购买的每笔订单，结账时自动享受已公布层次价格的 <strong>10% 折扣</strong>，由智能合约强制执行。此折扣独立于推荐人的佣金，不会减少推荐人的收入。</div>
+      <p>当您的推荐网络中任何人购买节点时，<strong>您最多可从 5 层深度获得佣金</strong>：</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>层级</th><th>他们是谁</th><th class="mono">您赚取</th></tr></thead><tbody>
+        <tr><td>L1 — 您的直接推荐</td><td>使用您的推荐码购买的人</td><td class="mono">其购买金额的 10%</td></tr>
+        <tr><td>L2 — 由您的 L1 推荐</td><td>您的 L1 推荐的人</td><td class="mono">其购买金额的 3%</td></tr>
+        <tr><td>L3 — 由您的 L2 推荐</td><td>您的 L2 推荐的人</td><td class="mono">其购买金额的 2%</td></tr>
+        <tr><td>L4 — 由您的 L3 推荐</td><td>您的 L3 推荐的人</td><td class="mono">其购买金额的 1%</td></tr>
+        <tr><td>L5 — 由您的 L4 推荐</td><td>您的 L4 推荐的人</td><td class="mono">其购买金额的 1%</td></tr>
+        <tr class="total"><td><strong>每笔最高总计</strong></td><td>—</td><td class="mono"><strong>17%</strong></td></tr>
+      </tbody></table>
+      <p style="margin-top:12px;">所有五个层级均以 USDC 直接转帐至钱包，每两周支付。自我推荐被禁止。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">为什么 Operon 将 27% 的销售收益重新分配给参与者？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>这是一个深思熟虑的结构性选择，而非促销活动。传统软件或加密项目在中心化行销上的花费比例相当甚至更高。Operon 将这部分支出直接重新分配给以更高效且真正利益对齐的方式完成相同工作的社群成员。</p>
+      <div class="callout"><div class="callout-label">27% 客户获取成本重新分配</div>每募集 1 亿美元：1,000 万美元用于买家折扣 · 1,000 万美元用于 L1 佣金 · 300 万美元用于 L2 奖金 · 200 万美元用于 L3 · 100 万美元用于 L4 · 100 万美元用于 L5。7,300 万美元流入国库用于开发、补助及运营。</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">TGE 后的排放推荐奖励如何运作？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>TGE 后，推荐佣金从一次性的购买佣金（USDC）转变为持续性的基于排放的传递奖励（以 $OPRN 支付）。相同的统一 5 层结构继续适用。当您的推荐网络中的节点赚取基础奖励时，<strong>您按其收益的百分比获得额外奖金</strong>——从专用推荐与分发池支付，永不从该节点自身的奖励中扣减。</p>
+      <div class="example-box" style="margin:16px 0;">
+        <div class="ex-title">范例 — 您的网络中一个节点获得 100 $OPRN</div>
+        <div class="ex-row"><span>若他是您的 L1（直接推荐）</span><span>您赚 +10 $OPRN</span></div>
+        <div class="ex-row"><span>若他是您的 L2（由您的 L1 推荐）</span><span>您赚 +3 $OPRN</span></div>
+        <div class="ex-row"><span>若他是您的 L3</span><span>您赚 +2 $OPRN</span></div>
+        <div class="ex-row"><span>若他是您的 L4</span><span>您赚 +1 $OPRN</span></div>
+        <div class="ex-row"><span>若他是您的 L5</span><span>您赚 +1 $OPRN</span></div>
+        <hr class="ex-divider">
+        <div class="ex-row"><span>该节点保留</span><span class="ex-total">完整的 100 $OPRN——您的奖金是额外的</span></div>
+      </div>
+      <p>级联从 TGE 起激活。TGE 后第 1 至第 4 季度为宽限期；从第 5 季度起，被推荐节点需维持 <span class="hl">>99% 正常运行时间</span>方可触发级联奖励。推荐与分发池持有 <span class="hl">4,200,000,000 $OPRN</span>（总供应量的 10%）。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">什么是精英合作伙伴计划？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>一个私密、仅限受邀的计划，面向为 Operon 带来重要社群、资本或能力的组织、基金和创作者。</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>权益</th><th>标准买家</th><th>精英合作伙伴</th></tr></thead><tbody>
+        <tr><td>买家回扣</td><td>结账时 10%</td><td>增强版（按邀请条款）</td></tr>
+        <tr><td>L1 佣金</td><td>10%</td><td>高于 10% 的增强费率</td></tr>
+        <tr><td>联合行销</td><td>——</td><td>完整联合品牌权利</td></tr>
+        <tr><td>白名单访问</td><td>标准分配</td><td>所有未来发布的优先访问</td></tr>
+        <tr><td>生态系统角色</td><td>社群成员</td><td>顾问席位、直接接触核心团队</td></tr>
+      </tbody></table>
+      <div class="callout gold" style="margin-top:14px;"><div class="callout-label">私密 · 仅限受邀</div>该计划不公开列示，不接受一般申请。符合条件的组织透过 Operon 官方渠道联系。</div>
+    </div></details>
+  </section>
+
+  <!-- 7. 代币与国库 -->
+  <section class="faq-section" id="token_zh_cn"><div class="section-header"><div class="section-icon">◉</div><span class="section-title">代币与治理</span><span class="section-count">4 个问题</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">$OPRN 是什么，何时发布？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>$OPRN 是 Operon Network 的原生协议代币，在 Arbitrum 上作为 <span class="hl">ERC-20</span> 部署。总固定供应量：<span class="hl">42,000,000,000 个代币</span>——永无通胀。$OPRN 在节点销售完成后 4 至 12 周内的 TGE 时发布。TGE 时初始流通供应量约为总供应量的 <strong>3%</strong>。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">节点销售收益的 73% 去哪里？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>每募集一美元，27% 透过买家折扣和推荐佣金直接返还给参与者。剩余 <strong>73% 流入协议国库</strong>，分配于以下五个用途：</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>用途</th><th>详情</th></tr></thead><tbody>
+        <tr><td>协议开发</td><td>工程、基础设施、智能合约开发</td></tr>
+        <tr><td>安全审计</td><td>TGE 前多次独立审计，漏洞赏金计划</td></tr>
+        <tr><td>生态系统补助</td><td>对在 Operon 上构建的开发者的财务激励</td></tr>
+        <tr><td>战略合作伙伴关系</td><td>整合与增长合作伙伴关系</td></tr>
+        <tr><td>交易所上币与流动性</td><td>TGE 时上线二线 CEX 及 DEX</td></tr>
+      </tbody></table>
+      <p style="margin-top:10px;">初始流动性部署之外的国库分配，将从第 5 阶段起受 DAO 治理约束。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">完整的代币分配是什么？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <table class="data-table"><thead><tr><th>分配</th><th class="mono">%</th><th class="mono">代币数量</th><th>归属 / 备注</th></tr></thead><tbody>
+        <tr><td>节点基础奖励</td><td class="mono">15%</td><td class="mono">6,300,000,000</td><td>四年衰减排放</td></tr>
+        <tr><td>节点绩效奖金</td><td class="mono">10%</td><td class="mono">4,200,000,000</td><td>季度分配 · 第 5 季起要求 >99% 正常运行时间</td></tr>
+        <tr><td>推荐与分发池</td><td class="mono">10%</td><td class="mono">4,200,000,000</td><td>推荐级联、精英合作伙伴级联、TGE 任务奖励及持续活动型分发</td></tr>
+        <tr><td>生态系统及开发补助</td><td class="mono">15%</td><td class="mono">6,300,000,000</td><td>TGE 后 3 个月释放 50%；剩余 50% 线性释放 24 个月</td></tr>
+        <tr><td>核心团队</td><td class="mono">24%</td><td class="mono">10,080,000,000</td><td>12 个月锁定期 · 36 个月线性归属</td></tr>
+        <tr><td>早期投资者</td><td class="mono">5%</td><td class="mono">2,100,000,000</td><td>12 个月锁定期 · 36 个月线性归属</td></tr>
+        <tr><td>国库 / 流动性</td><td class="mono">7%</td><td class="mono">2,940,000,000</td><td>TGE 时 2% 用于交易所流动性 · 余额 DAO 控制</td></tr>
+        <tr><td>战略合作伙伴</td><td class="mono">5%</td><td class="mono">2,100,000,000</td><td>12 个月锁定期 · 36 个月线性归属</td></tr>
+        <tr><td>顾问</td><td class="mono">4%</td><td class="mono">1,680,000,000</td><td>12 个月锁定期 · 36 个月线性归属</td></tr>
+        <tr><td>储备</td><td class="mono">5%</td><td class="mono">2,100,000,000</td><td>DAO 控制 · 最低 24 个月锁定</td></tr>
+        <tr class="total"><td><strong>合计</strong></td><td class="mono">100%</td><td class="mono">42,000,000,000</td><td>固定。永无通胀。</td></tr>
+      </tbody></table>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">$OPRN 持有者拥有哪些治理权？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>从路线图第 5 阶段起，$OPRN 持有者获得对核心协议参数的链上治理权：</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>治理领域</th><th>持有者可投票的内容</th></tr></thead><tbody>
+        <tr><td>排放计划</td><td>奖励结构及在各池之间分配方式的调整</td></tr>
+        <tr><td>归因模型</td><td>网络贡献追踪和奖励分配逻辑的配置</td></tr>
+        <tr><td>注册表标准</td><td>在网络上注册的 AI 智能体的要求和质量门槛</td></tr>
+        <tr><td>国库分配</td><td>DAO 控制的国库资金如何部署</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">治理提案在链上提交和决议。在第 5 阶段之前，协议在启动时确立的参数下运行。</p>
+    </div></details>
+  </section>
+
+  <!-- 8. 节点功能与安全 -->
+  <section class="faq-section" id="nodefn_zh_cn"><div class="section-header"><div class="section-icon">⚙</div><span class="section-title">节点功能与安全</span><span class="section-count">4 个问题</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">我的节点实际上做什么？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>您的节点是 Operon <em>协议</em>的执行层——而非 AI 智能体本身的执行层。智能体在其运营者托管的地方运行。您的节点提供智能体运作所需的协调、验证和分发基础设施。四项功能：</p>
+      <p><strong>协议合规性认证。</strong>您的节点可能被随机选中来认证智能体交易是否遵循协议规则——正确的架构、按时交付、在宣告的范围内。这些是确定性检查，而非主观的品质评估。</p>
+      <p><strong>计量与会计。</strong>您的节点独立统计每个时期的 Forge 交易和费用金额。多个节点产生相同的计数——使活动池分配可验证。</p>
+      <p><strong>注册表与发现。</strong>您的节点维护一份同步的智能体注册表副本。当用户搜索智能体时，查询由节点网络提供服务——一个随著更多节点上线而更加稳健的分散式索引。</p>
+      <p><strong>讯息路由。</strong>在多智能体工作流程中，讯息通过节点网络路由。您的节点验证每个跳转点的架构合规性和讯息完整性。</p>
+      <p>无需 GPU。可在任何现代笔记型电脑或每月 $5 的 VPS 上运行。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">我的节点在第一天做什么？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon 采用<strong>渐进式启动模式</strong>。在 TGE 时，初始节点客户端将您的 NFT 注册到网络并维持正常运行时间——从第一天起即可获得基础排放。随著 Forge 活动增加，完整的节点功能（认证、计量、注册表、路由）逐步启动。TGE 之前计划提供测试网，让您熟悉客户端。</p>
+      <p>在第三阶段，第三方智能体注册，您的节点工作量随实际使用量增长。从 TGE 起即开始赚取；随网络成熟工作逐步加深。</p>
+      <div class="callout"><div class="callout-label">行业标准</div>每个主要节点销售项目都采用渐进式启动。Aethir 在节点执行验证工作前就发放了 15 天的全额奖励。Sophon 的守护者仍在基金会管理的排序器下运行。运营者在其帮助建设的网络上线时即开始赚取。</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">我的奖励存储在哪里？我可以验证吗？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>所有节点奖励代币都存放在 Arbitrum 上的两个预注资智能合约中，在首次排放之前存入：</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>合约</th><th class="mono">余额</th><th>用途</th></tr></thead><tbody>
+        <tr><td><strong>基础奖励合约</strong></td><td class="mono">6,300,000,000 $OPRN</td><td>每日基础排放。4 年内逐步减少。</td></tr>
+        <tr><td><strong>绩效池合约</strong></td><td class="mono">4,200,000,000 $OPRN</td><td>正常运行时间奖金、锁仓等级奖金、活动奖励。</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">两个合约地址在 TGE 时公布。余额随时可在 Arbiscan 上公开验证。没有代币是按需铸造的——您收到的每一枚代币在您首次领取之前就已存入。绩效池还从加速领取的没入部分持续接收流入。</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon 如何确保 Forge 上的智能体值得信赖？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon 运作的是<strong>信任梯度</strong>。节点网络对每笔交易进行协议合规性认证——回应时间、架构一致性、交付确认、讯息完整性。这些是确定性的链上保证。</p>
+      <p>没有任何协议能看到任意智能体执行环境的内部。Operon 透过分层信任来应对：</p>
+      <p><strong>TGE 时：</strong>每位智能体运营者在链上注册声明——使用的模型、数据处理政策、基础设施管辖区域。这些是公开的、不可变的、可审计的。违规永久降低声誉。反复违规触发智能合约自动下架。</p>
+      <p><strong>TGE 后：</strong>概率性模型验证——金丝雀查询统计检测模型虚假陈述。</p>
+      <p><strong>第三阶段+：</strong>可选的沙盒执行环境和隐私认证加密，供处理敏感数据的智能体使用。</p>
+      <div class="callout"><div class="callout-label">原则</div>Operon 为您提供判断哪些智能体值得信赖的资讯。信任在链上赢得，而非预设。</div>
+    </div></details>
+  </section>
+
+  <!-- 9. 风险与监管 -->
+  <section class="faq-section" id="risk_zh_cn"><div class="section-header"><div class="section-icon">⚑</div><span class="section-title">风险与监管</span><span class="section-count">2 个问题</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">拥有节点是盈利的保证吗？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p><strong>不是。</strong>节点奖励取决于网络增长、AI 智能体采用、代币市场条件及运营者自身的绩效指标。排放计划是预定义的，但 $OPRN 的价值由市场决定。活动池只有在 Forge 和协议使用量增长时才会增长。</p>
+      <div class="callout gold"><div class="callout-label">免责声明</div>参与 Operon 节点销售涉及财务风险，不保证任何回报。本文件仅供参考，不构成投资建议。参与者应自行进行尽职调查。</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon 在美国可用吗？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>由于监管考量，美国人被排除在销售的代币部分之外。具体的地理限制将在启动前于 <strong>operon.network</strong> 的正式销售条款中公布。节点 NFT 的购买可能因司法管辖区而异；买家有责任根据适用的当地法律确定自己的资格。</p>
+    </div></details>
+  </section>
+
+</main>
+
+<div class="cta-banner"><a href="./">返回主页<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a></div>
+
+<footer class="site-footer">
+  <div class="footer-logo">OPER<span>ON</span></div>
+  <div class="footer-url">operon.network</div>
+  <div class="footer-socials">
+    <a href="https://discord.gg/ywfxcMcb8c" target="_blank" rel="noopener noreferrer" aria-label="Discord">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.09.09 0 0 0-.07.03c-.18.33-.39.76-.53 1.09a16.09 16.09 0 0 0-4.8 0c-.14-.34-.35-.76-.54-1.09-.01-.02-.04-.03-.07-.03-1.5.26-2.93.71-4.27 1.33-.01 0-.02.01-.03.02-2.72 4.07-3.47 8.03-3.1 11.95 0 .02.01.04.03.05A18.7 18.7 0 0 0 6.7 19.7a.13.13 0 0 0 .14-.05c.36-.5.7-1.04.99-1.6.02-.04 0-.07-.04-.08-.55-.21-1.07-.46-1.58-.75-.04-.02-.04-.08 0-.11.1-.08.21-.16.31-.24a.09.09 0 0 1 .09-.01c3.31 1.51 6.88 1.51 10.16 0 .03-.01.06 0 .09.01.1.08.21.17.32.24.04.03.04.09 0 .11-.5.3-1.03.55-1.58.75-.04.01-.05.05-.04.08.3.56.63 1.1.99 1.6.02.02.05.03.08.02a18.69 18.69 0 0 0 5.95-3c.02-.01.03-.03.03-.05.43-4.53-.7-8.46-3.13-11.95-.01-.01-.02-.02-.03-.02zM8.52 14.47c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.91.95 1.89 2.12 0 1.17-.84 2.12-1.89 2.12zm6.97 0c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.91.95 1.89 2.12 0 1.17-.83 2.12-1.89 2.12z"/></svg>
+    </a>
+    <a href="https://t.me/OperonNetwork" target="_blank" rel="noopener noreferrer" aria-label="Telegram">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+    </a>
+  </div>
+  <p class="footer-disc">本文件仅供参考，不构成要约、招揽或投资建议。最终销售条款、代币经济学及节点销售参数将在销售启动前于 operon.network 公布。Operon 是一个持续演进的协议——相关参数可能调整；所有更新将在销售开放前公开传达。</p>
+</footer>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// FAQ-local interactions: details toggle, search filter, scroll-spy section observer.
+// Language switching is handled by proto-o-i18n.js via URL navigation (no in-place swap).
+(function () {
+  document.querySelectorAll('details').forEach(function (d) {
+    d.addEventListener('toggle', function () { d.classList.toggle('open', d.open); });
+  });
+
+  document.querySelectorAll('.search-input').forEach(function (input) {
+    input.addEventListener('input', function () {
+      var scope = input.closest('.lang-content') || document;
+      var q = input.value.trim().toLowerCase();
+      var anyVisible = false;
+      scope.querySelectorAll('.faq-item').forEach(function (item) {
+        var show = !q || item.innerText.toLowerCase().includes(q);
+        item.style.display = show ? '' : 'none';
+        if (show) anyVisible = true;
+      });
+      scope.querySelectorAll('.faq-section').forEach(function (section) {
+        var items = section.querySelectorAll('.faq-item');
+        var hasVisible = false;
+        items.forEach(function (i) { if (i.style.display !== 'none') hasVisible = true; });
+        section.style.display = hasVisible ? '' : 'none';
+      });
+      var noResults = scope.querySelector('.no-results');
+      if (noResults) noResults.style.display = anyVisible ? 'none' : 'block';
+    });
+  });
+
+  // Scroll-spy: highlight the nav-pill matching the currently visible section.
+  var scope = document.querySelector('.lang-content.active') || document;
+  var sections = scope.querySelectorAll('.faq-section');
+  var pills = scope.querySelectorAll('.nav-pill');
+  if (sections.length && pills.length && 'IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          pills.forEach(function (p) { p.classList.remove('active'); });
+          var target = scope.querySelector('.nav-pill[href="#' + e.target.id + '"]');
+          if (target) target.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+    sections.forEach(function (s) { observer.observe(s); });
+  }
+})();
+</script>
+<script src="/proto-o-i18n.js" defer></script>
+</body>
+</html>

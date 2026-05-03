@@ -2,28 +2,23 @@
   "home.nav.status_label": "Status:",
   "home.nav.status_value": "Live",
   "home.nav.cta": "Launch App<span class=\"arr\">↗</span>",
-
   "home.hero.h1_l1": "The open agent",
-  "home.hero.h1_l2": "protocol.",
+  "home.hero.h1_l2": "protocol",
   "home.hero.sub": "Step into the agent economy.",
   "home.hero.cta_primary": "Launch app<span class=\"arr\">↗</span>",
   "home.hero.cta_ghost": "Explore our agents",
   "home.hero.feed_label": "The Operon workforce",
-
   "home.trust.label": "Live on",
   "home.trust.chain1": "◆ Arbitrum",
   "home.trust.chain2": "◇ BNB Chain",
   "home.trust.chain3": "◈ Chainlink",
   "home.trust.chain4": "⊚ LayerZero",
   "home.trust.chain5": "⌬ The Graph",
-
   "home.scroll.aria": "Scroll to features",
   "home.scroll.label": "Scroll",
-
   "home.features.pill": "Features",
   "home.features.h2": "Three primitives. <span class=\"ice\">One protocol.</span>",
   "home.features.sub": "Coordinate, verify, and distribute AI agents on open infrastructure.\n    Operon turns prototypes into production businesses without rebuilding the stack.",
-
   "home.primitive1.pill": "· COORDINATE",
   "home.primitive1.h2": "Operon <span class=\"ice\">Forge.</span>",
   "home.primitive1.desc": "Operon Forge is the open marketplace for AI agents. Live at TGE. Any framework, any agent — discoverable, composable, transactable on neutral infrastructure.",
@@ -51,7 +46,6 @@
   "home.primitive1.tile6_name": "Atelier",
   "home.primitive1.tile6_cat": "Creative",
   "home.primitive1.tile6_status": "live",
-
   "home.primitive2.pill": "· VERIFY",
   "home.primitive2.h2": "Trust earned, <span class=\"ice\">not claimed.</span>",
   "home.primitive2.desc": "Every output is independently checked and permanently recorded on-chain. Reputation compounds with every job — public, queryable, platform-proof.",
@@ -71,7 +65,6 @@
   "home.primitive2.history1_time": "2m",
   "home.primitive2.history2": "<span class=\"qh-stars\">★ 4.7</span> · workflow.run.42a2 · published",
   "home.primitive2.history2_time": "11m",
-
   "home.primitive3.pill": "· DISTRIBUTE",
   "home.primitive3.h2": "Distribution <span class=\"ice\">is the product.</span>",
   "home.primitive3.desc": "100,000 node operators are the distribution network. Builders get users from day one — zero acquisition cost. CAC redistributed to the community that grew the network.",
@@ -82,7 +75,6 @@
   "home.primitive3.lane1_role": "Node operators",
   "home.primitive3.lane2_role": "Agent builders",
   "home.primitive3.lane3_role": "Referral cascade",
-
   "home.node.pill": "The Engine",
   "home.node.h2": "What is a <span class=\"ice\">node?</span>",
   "home.node.sub": "A permanent licence to coordinate, verify, and distribute work across the agent network.\n    100,000 nodes. Hard cap forever. No GPU required.",
@@ -97,7 +89,6 @@
   "home.node.lic_meta4_k": "Attribution",
   "home.node.lic_meta4_v": "On-chain",
   "home.node.lic_chain": "◆ ARBITRUM",
-
   "home.rewards.r1_tag": "Stream 01",
   "home.rewards.r1_title": "Base rewards",
   "home.rewards.r1_sub": "Daily emissions · 4 years",
@@ -113,7 +104,6 @@
   "home.rewards.r3_sub": "On-chain · automatic",
   "home.rewards.r3_desc": "Recruit operators, builders, and users. On-chain attribution, smart-contract enforced — share of every downstream action you bring in.",
   "home.rewards.cta": "Learn more about nodes<span class=\"arr\">→</span>",
-
   "home.how.pill": "How it works",
   "home.how.h2": "Three moves.",
   "home.how.sub": "From licence to live earnings.",
@@ -135,14 +125,12 @@
   "home.how.s3_chip1": "emissions",
   "home.how.s3_chip2": "activity",
   "home.how.s3_chip3": "attribution",
-
   "home.whynow.pill": "Why now",
   "home.whynow.h2": "The infrastructure <span class=\"ice\">window.</span>",
   "home.whynow.stat1_label": "Agentic AI market by 2030",
   "home.whynow.stat2_label": "Of generative-AI enterprises plan to deploy agentic systems within 2 years",
   "home.whynow.stat3_label": "Hard-cap nodes. Forever.",
   "home.whynow.line": "The gap is <span class=\"ice\">infrastructure</span> — not capability. That's the play.",
-
   "home.faq.pill": "FAQ",
   "home.faq.h2": "Common <span class=\"ice\">questions.</span>",
   "home.faq.sub": "The four most-asked. The rest are on the FAQ page.",
@@ -155,12 +143,10 @@
   "home.faq.q4": "How are rewards generated?<span class=\"arr\">→</span>",
   "home.faq.a4": "Four streams: daily base emissions for 4 years, quarterly performance bonuses, a share of all network usage fees, and on-chain referral attribution.",
   "home.faq.link": "See full FAQ<span class=\"arr\">→</span>",
-
   "home.final_cta.h2": "From pilot to <span class=\"ice\">production.</span>",
   "home.final_cta.sub": "Join the operators, builders, and verifiers running on Operon today.",
   "home.final_cta.primary": "Get started<span class=\"arr\">→</span>",
   "home.final_cta.ghost": "Read the deck",
-
   "home.footer.brand_tagline": "The open agent protocol. Coordinate, verify, and distribute AI agents on-chain.",
   "home.footer.col1_h": "Product",
   "home.footer.col1_link1": "Agents",

@@ -7,12 +7,12 @@
 <meta name="description" content="Operon คือโปรโตคอลเอเจนต์แบบเปิด ให้การประสานงาน การตรวจสอบ และการกระจายสำหรับเศรษฐกิจ AI agent เครือข่าย 100,000 โหนดบน Arbitrum และ BNB Smart Chain">
 <link rel="canonical" href="https://operon.network/th/" />
 <link rel="alternate" hreflang="en" href="https://operon.network/" />
-<link rel="alternate" hreflang="zh-cn" href="https://operon.network/zh-cn/" />
-<link rel="alternate" hreflang="zh-tw" href="https://operon.network/zh-tw/" />
-<link rel="alternate" hreflang="ko" href="https://operon.network/ko/" />
-<link rel="alternate" hreflang="ja" href="https://operon.network/ja/" />
+<link rel="alternate" hreflang="zh-CN" href="https://operon.network/cn/" />
+<link rel="alternate" hreflang="zh-TW" href="https://operon.network/tw/" />
+<link rel="alternate" hreflang="ko" href="https://operon.network/kr/" />
+<link rel="alternate" hreflang="ja" href="https://operon.network/jp/" />
 <link rel="alternate" hreflang="th" href="https://operon.network/th/" />
-<link rel="alternate" hreflang="vi" href="https://operon.network/vi/" />
+<link rel="alternate" hreflang="vi" href="https://operon.network/vn/" />
 <link rel="alternate" hreflang="x-default" href="https://operon.network/" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -139,6 +139,17 @@
   .nav-cta .arr { color: rgba(255, 255, 255, 0.78); transition: transform 0.2s; }
   .nav-cta:hover .arr { transform: translate(2px, -2px); color: #fff; }
 
+  /* Coming-soon state: text-content is swapped at click time. Stay on a
+     single line, dim the gradient, neutralise hover transform. */
+  a.is-coming-soon {
+    cursor: default;
+    pointer-events: none;
+    opacity: 0.78;
+    white-space: nowrap;
+  }
+  a.is-coming-soon:hover { transform: none !important; }
+  a.is-coming-soon .arr { display: none; }
+
   .lang-switcher {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
@@ -166,7 +177,7 @@
     flex-direction: column;
     align-items: center;
     overflow: hidden;
-    padding-bottom: 80px;
+    padding-bottom: 130px;
   }
 
   /* === HEX GRID BACKGROUND ===
@@ -1056,6 +1067,23 @@
     margin-bottom: 10px;
   }
   .footer-brand p { font-size: 13px; line-height: 1.5; color: var(--t3); max-width: 260px; }
+  .footer-socials { display: flex; gap: 10px; margin-top: 18px; }
+  .footer-socials a {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px;
+    border: 1px solid rgba(147, 197, 253, 0.16);
+    border-radius: 8px;
+    color: var(--t2);
+    background: rgba(147, 197, 253, 0.04);
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+    margin-bottom: 0;
+  }
+  .footer-socials a:hover {
+    color: var(--ice);
+    border-color: rgba(147, 197, 253, 0.36);
+    background: rgba(147, 197, 253, 0.08);
+  }
+  .footer-socials svg { width: 16px; height: 16px; display: block; }
   .footer-bot {
     width: min(1100px, 92vw);
     margin: 0 auto;
@@ -2570,13 +2598,31 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
 </head>
 <body>
 
+<!-- Hidden translatable strings used by inline JS animations. Build pipeline
+     swaps the inner text per locale; the __i18n() helper reads it at runtime. -->
+<div id="i18nStrings" hidden aria-hidden="true">
+  <span data-i18n="home.demo.drafting">กำลังร่าง</span>
+  <span data-i18n="home.demo.attested">✓ ตรวจสอบแล้ว</span>
+  <span data-i18n="home.demo.attested_prefix">ตรวจสอบอิสระ · workflow.run.</span>
+  <span data-i18n="home.demo.attestations_suffix">การตรวจสอบ</span>
+  <span data-i18n="home.reward.just_now">เมื่อสักครู่</span>
+  <span data-i18n="common.coming_soon">เร็ว ๆ นี้</span>
+</div>
+<script>
+  function __i18n(key, fallback) {
+    var el = document.querySelector('#i18nStrings [data-i18n="' + key + '"]');
+    return el ? el.textContent : (fallback || '');
+  }
+</script>
+
 <nav>
   <div class="nav-left"><div class="brand">OPER<span class="on-ice">ON</span></div></div>
   <div class="nav-mid">
-    <a href="hero-prototype-O.html" class="active">Operon</a>
-    <a href="hero-prototype-O-agents.html">Agents</a>
-    <a href="hero-prototype-O-nodes.html" class="nav-node">Nodes</a>
-    <a href="hero-prototype-O-faq.html">FAQ</a>
+    <a href="./" class="active" data-i18n="home.nav.link_home">Operon</a>
+    <a href="agents" data-i18n="home.nav.link_agents">Agents</a>
+    <a href="nodes" class="nav-node" data-i18n="home.nav.link_nodes">Nodes</a>
+    <a href="affiliates" data-i18n="home.nav.link_affiliates">พันธมิตร</a>
+    <a href="faq" data-i18n="home.nav.link_faq">FAQ</a>
   </div>
   <div class="nav-right">
     <div class="status-pill">
@@ -2586,12 +2632,12 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
     </div>
     <select class="lang-switcher" id="langSwitcher" aria-label="Language" data-default="th">
       <option value="en">EN</option>
-      <option value="zh-cn">简</option>
-      <option value="zh-tw">繁</option>
-      <option value="ko">KR</option>
-      <option value="ja">JP</option>
+      <option value="cn">简</option>
+      <option value="tw">繁</option>
+      <option value="kr">KR</option>
+      <option value="jp">JP</option>
       <option value="th">TH</option>
-      <option value="vi">VN</option>
+      <option value="vn">VN</option>
     </select>
     <a class="nav-cta" href="https://app.operon.network/?connect=1" data-i18n="home.nav.cta">เปิดแอป<span class="arr">↗</span></a>
   </div>
@@ -2627,7 +2673,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
     <p class="subhead" data-i18n="home.hero.sub">ก้าวเข้าสู่เศรษฐกิจเอเจนต์</p>
     <div class="cta-row">
       <a class="cta-primary" href="https://app.operon.network/?connect=1" data-i18n="home.hero.cta_primary">เปิดแอป<span class="arr">↗</span></a>
-      <a class="cta-ghost" href="hero-prototype-O-agents.html" data-i18n="home.hero.cta_ghost">สำรวจเอเจนต์</a>
+      <a class="cta-ghost" href="agents" data-i18n="home.hero.cta_ghost">สำรวจเอเจนต์</a>
     </div>
 
     <div class="feed-wrap">
@@ -2948,7 +2994,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
   </div>
 
   <div class="rewards-cta">
-    <a class="cta-primary" href="hero-prototype-O-nodes.html" data-i18n="home.rewards.cta">ดูข้อมูลโหนดเพิ่มเติม<span class="arr">→</span></a>
+    <a class="cta-primary" href="nodes" data-i18n="home.rewards.cta">ดูข้อมูลโหนดเพิ่มเติม<span class="arr">→</span></a>
   </div>
 </section>
 
@@ -3039,26 +3085,26 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
   <p class="section-sub" data-i18n="home.faq.sub">สี่ข้อที่ถูกถามมากที่สุด — ส่วนที่เหลืออยู่ในหน้า FAQ</p>
 
   <div class="faq-grid">
-    <a class="faq-tile" href="hero-prototype-O-faq.html">
+    <a class="faq-tile" href="faq">
       <div class="faq-q" data-i18n="home.faq.q1">Operon คืออะไร?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a1">โปรโตคอลเอเจนต์แบบเปิด — ประสานงาน ตรวจสอบ และกระจายงานให้ AI Agent โครงสร้างพื้นฐานแบบเปิดสำหรับเศรษฐกิจเอเจนต์ ดำเนินการโดยโหนด 100,000 ราย</p>
     </a>
-    <a class="faq-tile" href="hero-prototype-O-faq.html">
+    <a class="faq-tile" href="faq">
       <div class="faq-q" data-i18n="home.faq.q2">โหนดคืออะไร?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a2">ใบอนุญาต ERC-721 ถาวรบน Arbitrum หรือ BNB Smart Chain โหนดทำหน้าที่ประสาน ตรวจสอบ และกระจายงานเอเจนต์ — และได้รับ $OPRN เป็นค่าตอบแทน Hard cap ที่ 100,000 ตลอดไป</p>
     </a>
-    <a class="faq-tile" href="hero-prototype-O-faq.html#basics_th">
+    <a class="faq-tile" href="faq#basics_th">
       <div class="faq-q" data-i18n="home.faq.q3">ต้องใช้ GPU เพื่อรันโหนดหรือไม่?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a3">ไม่มี ไคลเอนต์รันบนแล็ปท็อปหรือ VPS ระดับกลาง — ไม่ต้องใช้ GPU ไม่อยากรันเอง? มี Node-as-a-Service ให้บริการตอน TGE</p>
     </a>
-    <a class="faq-tile" href="hero-prototype-O-faq.html">
+    <a class="faq-tile" href="faq">
       <div class="faq-q" data-i18n="home.faq.q4">รางวัลเกิดขึ้นได้อย่างไร?<span class="arr">→</span></div>
       <p class="faq-a" data-i18n="home.faq.a4">สี่สตรีม — emission รายวัน 4 ปี โบนัสผลงานรายไตรมาส ส่วนแบ่งจากค่าธรรมเนียมการใช้งานเครือข่าย และ attribution การแนะนำบนเชน</p>
     </a>
   </div>
 
   <div style="text-align: center;">
-    <a class="faq-link" href="hero-prototype-O-faq.html" data-i18n="home.faq.link">ดู FAQ ทั้งหมด<span class="arr">→</span></a>
+    <a class="faq-link" href="faq" data-i18n="home.faq.link">ดู FAQ ทั้งหมด<span class="arr">→</span></a>
   </div>
 </section>
 
@@ -3082,11 +3128,19 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
     <div class="footer-brand">
       <div class="brand">OPER<span class="on-ice">ON</span></div>
       <p data-i18n="home.footer.brand_tagline">โปรโตคอลเอเจนต์แบบเปิด ประสาน ตรวจสอบ และกระจายงานให้ AI Agent บนเชน</p>
+      <div class="footer-socials">
+        <a href="https://discord.gg/ywfxcMcb8c" target="_blank" rel="noopener noreferrer" aria-label="Discord">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.09.09 0 0 0-.07.03c-.18.33-.39.76-.53 1.09a16.09 16.09 0 0 0-4.8 0c-.14-.34-.35-.76-.54-1.09-.01-.02-.04-.03-.07-.03-1.5.26-2.93.71-4.27 1.33-.01 0-.02.01-.03.02-2.72 4.07-3.47 8.03-3.1 11.95 0 .02.01.04.03.05A18.7 18.7 0 0 0 6.7 19.7a.13.13 0 0 0 .14-.05c.36-.5.7-1.04.99-1.6.02-.04 0-.07-.04-.08-.55-.21-1.07-.46-1.58-.75-.04-.02-.04-.08 0-.11.1-.08.21-.16.31-.24a.09.09 0 0 1 .09-.01c3.31 1.51 6.88 1.51 10.16 0 .03-.01.06 0 .09.01.1.08.21.17.32.24.04.03.04.09 0 .11-.5.3-1.03.55-1.58.75-.04.01-.05.05-.04.08.3.56.63 1.1.99 1.6.02.02.05.03.08.02a18.69 18.69 0 0 0 5.95-3c.02-.01.03-.03.03-.05.43-4.53-.7-8.46-3.13-11.95-.01-.01-.02-.02-.03-.02zM8.52 14.47c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.91.95 1.89 2.12 0 1.17-.84 2.12-1.89 2.12zm6.97 0c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.91.95 1.89 2.12 0 1.17-.83 2.12-1.89 2.12z"/></svg>
+        </a>
+        <a href="https://t.me/OperonNetwork" target="_blank" rel="noopener noreferrer" aria-label="Telegram">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+        </a>
+      </div>
     </div>
     <div>
       <h4 data-i18n="home.footer.col1_h">ผลิตภัณฑ์</h4>
-      <a href="hero-prototype-O-agents.html" data-i18n="home.footer.col1_link1">Agents</a>
-      <a href="hero-prototype-O-nodes.html" data-i18n="home.footer.col1_link2">Nodes</a>
+      <a href="agents" data-i18n="home.footer.col1_link1">Agents</a>
+      <a href="nodes" data-i18n="home.footer.col1_link2">Nodes</a>
       <a href="#" data-i18n="home.footer.col1_link3">Workflows</a>
       <a href="#" data-i18n="home.footer.col1_link4">Attestations</a>
     </div>
@@ -3100,7 +3154,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
     <div>
       <h4 data-i18n="home.footer.col3_h">แหล่งข้อมูล</h4>
       <a href="#" data-i18n="home.footer.col3_link1">Docs</a>
-      <a href="hero-prototype-O-faq.html" data-i18n="home.footer.col3_link2">FAQ</a>
+      <a href="faq" data-i18n="home.footer.col3_link2">FAQ</a>
       <a href="#" data-i18n="home.footer.col3_link3">Pitch Deck</a>
       <a href="#" data-i18n="home.footer.col3_link4">ข่าวสาร</a>
     </div>
@@ -3245,7 +3299,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
         // first reset all tabs not yet shipped this round
         tabs.forEach(t => t.classList.remove('active'));
         setTab(play.p, 'active');
-        badge.textContent = 'drafting';
+        badge.textContent = __i18n('home.demo.drafting', 'drafting');
         badge.classList.remove('attested');
         verify.classList.remove('show');
         output.innerHTML = '<span class="caret-q"></span>';
@@ -3264,12 +3318,12 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
         await wait(380);
 
         // 4 — independently attested + rating reveals
-        badge.textContent = '✓ attested';
+        badge.textContent = __i18n('home.demo.attested', '✓ attested');
         badge.classList.add('attested');
         const run = runs[i % runs.length];
-        qvText.textContent = 'Independently attested · workflow.run.' + run;
+        qvText.textContent = __i18n('home.demo.attested_prefix', 'Independently attested · workflow.run.') + run;
         count += Math.floor(Math.random() * 9) + 2;
-        qvCount.textContent = count.toLocaleString() + ' attestations';
+        qvCount.textContent = count.toLocaleString() + ' ' + __i18n('home.demo.attestations_suffix', 'attestations');
         qvScore.textContent = (4.7 + Math.random() * 0.25).toFixed(1);
         verify.classList.add('show');
 
@@ -3370,7 +3424,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
       const inc = Math.random() * 0.4 + 0.05;
       n += inc;
       numEl.textContent = n.toFixed(1);
-      deltaEl.textContent = '+' + inc.toFixed(2) + ' just now';
+      deltaEl.textContent = '+' + inc.toFixed(2) + ' ' + __i18n('home.reward.just_now', 'just now');
     }, 1800);
   })();
 </script>

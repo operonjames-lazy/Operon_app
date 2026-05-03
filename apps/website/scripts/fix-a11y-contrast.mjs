@@ -1,4 +1,4 @@
-// One-shot: improve a11y across every prototype-O HTML page.
+// One-shot: improve a11y across every site HTML page.
 //
 //   1. Bump --t4 alpha (0.45/0.30 → 0.62/0.55) so small labels meet
 //      WCAG AA on the near-black bg.
@@ -127,10 +127,10 @@ async function walk(dir) {
 async function main() {
   const files = await walk(root);
   let touched = 0;
+  const TARGET = new Set(['index.html', 'agents.html', 'nodes.html', 'affiliates.html', 'faq.html']);
   for (const file of files) {
-    // Only target prototype-O pages and the per-locale index.html
     const base = path.basename(file);
-    if (!base.startsWith('hero-prototype-O') && base !== 'index.html') continue;
+    if (!TARGET.has(base)) continue;
     const changed = await processFile(file);
     console.log(`${changed ? 'updated' : 'skip   '} ${path.relative(root, file)}`);
     if (changed) touched++;

@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Node | Operon</title>
+<meta name="description" content="Chạy node Operon — kiếm thu nhập từ phối hợp, xác minh và phục vụ nền kinh tế AI agent. 100.000 giấy phép ERC-721 trên Arbitrum và BNB.">
+<link rel="canonical" href="https://operon.network/vn/nodes" />
+<link rel="alternate" hreflang="en" href="https://operon.network/nodes" />
+<link rel="alternate" hreflang="zh-CN" href="https://operon.network/cn/nodes" />
+<link rel="alternate" hreflang="zh-TW" href="https://operon.network/tw/nodes" />
+<link rel="alternate" hreflang="ko" href="https://operon.network/kr/nodes" />
+<link rel="alternate" hreflang="ja" href="https://operon.network/jp/nodes" />
+<link rel="alternate" hreflang="th" href="https://operon.network/th/nodes" />
+<link rel="alternate" hreflang="vi" href="https://operon.network/vn/nodes" />
+<link rel="alternate" hreflang="x-default" href="https://operon.network/nodes" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@300;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --t1: #f6f8ff;
+    --t2: rgba(220, 232, 252, 0.78);
+    --t3: rgba(170, 188, 220, 0.55);
+    --t4: rgba(170, 188, 220, 0.62);
+    --bg-deep: #02050d;
+    --ice: #93C5FD;
+    --glow: #3B82F6;
+    --accent: #5ba4f5;
+    --green: #4ecb8d;
+    --gold: #d4a853;
+    --violet: #8b5cf6;
+    --magenta: #E879F9;
+    --border: rgba(147, 197, 253, 0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  html { scroll-behavior: smooth; overflow-x: hidden; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: linear-gradient(180deg, #03060f 0%, #02050d 60%, #010308 100%);
+    color: var(--t1);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    min-height: 100vh;
+    letter-spacing: -0.005em;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* === NAV (same as agents/home) === */
+  nav {
+    position: relative; z-index: 50;
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center; padding: 26px 40px;
+  }
+  .brand { font-family: 'Unbounded', sans-serif; font-weight: 700;
+    font-size: 22px; letter-spacing: 0.02em; color: #fff; line-height: 1; }
+  .brand .on-ice { color: var(--glow); }
+  .nav-mid { display: flex; align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 100px; padding: 4px; justify-self: center; }
+  .nav-mid a { padding: 8px 18px; font-size: 13.5px; font-weight: 500;
+    color: rgba(220, 230, 250, 0.65); text-decoration: none;
+    border-radius: 100px; transition: all 0.25s; }
+  .nav-mid a:hover { color: var(--t1); }
+  .nav-mid a.active { color: var(--t1); background: rgba(255, 255, 255, 0.06); }
+  /* Gold "Nodes" link — same pill geometry, gold-tinted text */
+  .nav-mid a.nav-node { color: var(--gold); font-weight: 600; }
+  .nav-mid a.nav-node:hover { color: #f3cc78; }
+  .nav-mid a.nav-node.active { color: #f3cc78; background: rgba(212, 168, 83, 0.08); }
+  .nav-right { justify-self: end; display: flex; align-items: center; gap: 12px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 100px;
+    padding: 7px 14px;
+    font-size: 12.5px;
+    color: var(--t2);
+  }
+  .status-pill .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    animation: blink-green 1.4s ease-in-out infinite;
+  }
+  @keyframes blink-green {
+    0%, 100% { opacity: 1;    box-shadow: 0 0 10px rgba(78, 203, 141, 0.75); background: var(--green); }
+    50%      { opacity: 0.30; box-shadow: 0 0 3px rgba(78, 203, 141, 0.20); background: rgba(78, 203, 141, 0.55); }
+  }
+  .status-pill .status-label { color: var(--t3); }
+  .status-pill .status-value { color: var(--green); font-weight: 600; }
+  .nav-cta {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.01em;
+    color: rgba(255, 255, 255, 0.96);
+    background: linear-gradient(135deg, #4a3acc 0%, #2d2496 50%, #161a5e 100%);
+    border: 1px solid rgba(120, 100, 220, 0.32);
+    padding: 9px 18px;
+    border-radius: 100px;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -1px 1px rgba(6, 4, 24, 0.55),
+      0 4px 14px -2px rgba(45, 36, 150, 0.55),
+      0 0 18px -4px rgba(74, 58, 204, 0.28);
+    transition: transform 0.2s ease;
+  }
+  .nav-cta:hover { transform: translateY(-1px); }
+  .nav-cta .arr { color: rgba(255, 255, 255, 0.78); transition: transform 0.2s; }
+  .nav-cta:hover .arr { transform: translate(2px, -2px); color: #fff; }
+
+  a.is-coming-soon {
+    cursor: default;
+    pointer-events: none;
+    opacity: 0.78;
+    white-space: nowrap;
+  }
+  a.is-coming-soon:hover { transform: none !important; }
+  a.is-coming-soon .arr { display: none; }
+
+  .lang-switcher {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+    color: var(--t2);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    padding: 5px 26px 5px 12px;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.03);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2393C5FD'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer; outline: none;
+    appearance: none; -webkit-appearance: none;
+    min-width: 78px;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .lang-switcher option { background: #0a0f1c; color: var(--t1); }
+  .lang-switcher:hover { border-color: rgba(147, 197, 253, 0.32); color: var(--ice); }
+  .lang-switcher:focus { border-color: var(--ice); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18); }
+
+  /* === PAGE HERO === */
+  .page-hero {
+    position: relative;
+    z-index: 1;
+    padding: 8vh 24px 4vh;
+    text-align: center;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  .page-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 60% at 50% 35%,
+        rgba(96, 165, 250, 0.12) 0%,
+        rgba(59, 130, 246, 0.05) 45%,
+        transparent 80%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  .page-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--t2);
+    margin-bottom: 22px;
+  }
+  .page-pill .dot { width: 5px; height: 5px; border-radius: 50%;
+    background: var(--ice); box-shadow: 0 0 8px var(--ice); }
+  .page-h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: clamp(36px, 5vw, 64px);
+    line-height: 1.06;
+    letter-spacing: 0.005em;
+    color: var(--t1);
+    margin-bottom: 18px;
+  }
+  .page-h1 .ice { color: var(--ice); }
+  .page-sub {
+    font-size: clamp(15px, 1.2vw, 18px);
+    line-height: 1.6;
+    color: var(--t2);
+    max-width: 580px;
+    margin: 0 auto;
+  }
+
+  /* === LICENSE CARD (with spotlights + edge glints) === */
+  .license-stage {
+    margin: 32px auto 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    perspective: 1400px;
+    height: 360px;
+    isolation: isolate;
+  }
+  .spot-corner {
+    position: absolute;
+    width: 520px; height: 520px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(36px);
+  }
+  .spot-tl {
+    top: -200px; left: 4%;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(186, 217, 255, 0.40) 0%,
+      rgba(96, 165, 250, 0.16) 25%,
+      rgba(96, 165, 250, 0.04) 55%,
+      transparent 78%);
+    animation: cornerPulse 5.2s ease-in-out infinite;
+  }
+  .spot-tr {
+    top: -200px; right: 4%;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(147, 197, 253, 0.34) 0%,
+      rgba(96, 165, 250, 0.13) 25%,
+      rgba(96, 165, 250, 0.03) 55%,
+      transparent 78%);
+    animation: cornerPulse 6.0s 1.4s ease-in-out infinite;
+  }
+  .spot-bl {
+    bottom: -220px; left: 8%;
+    width: 460px; height: 460px;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(96, 165, 250, 0.30) 0%,
+      rgba(96, 165, 250, 0.10) 30%,
+      transparent 70%);
+    animation: cornerPulse 6.6s 0.7s ease-in-out infinite;
+  }
+  .spot-br {
+    bottom: -220px; right: 8%;
+    width: 460px; height: 460px;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(147, 197, 253, 0.28) 0%,
+      rgba(96, 165, 250, 0.10) 30%,
+      transparent 70%);
+    animation: cornerPulse 5.8s 2.6s ease-in-out infinite;
+  }
+  @keyframes cornerPulse {
+    0%, 100% { opacity: 0.85; transform: scale(1); }
+    50%      { opacity: 1;    transform: scale(1.08); }
+  }
+  .spot-pool {
+    position: absolute;
+    bottom: 12px; left: 50%;
+    width: 540px; height: 100px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse 50% 100% at 50% 50%,
+      rgba(96, 165, 250, 0.45) 0%,
+      rgba(147, 197, 253, 0.18) 45%,
+      rgba(96, 165, 250, 0.04) 75%,
+      transparent 90%);
+    filter: blur(18px);
+    z-index: 0;
+    pointer-events: none;
+    animation: poolPulse 4s ease-in-out infinite;
+  }
+  @keyframes poolPulse {
+    0%, 100% { opacity: 0.9; transform: translateX(-50%) scale(1); }
+    50%      { opacity: 1;   transform: translateX(-50%) scale(1.06); }
+  }
+  .license-card {
+    position: relative;
+    z-index: 2;
+    width: 380px;
+    min-height: 220px;
+    border-radius: 16px;
+    padding: 22px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    text-align: left;
+    border: 1px solid transparent;
+    background:
+      radial-gradient(ellipse 90% 70% at 50% 0%, rgba(147, 197, 253, 0.45) 0%, transparent 70%) padding-box,
+      linear-gradient(135deg, rgba(8, 14, 30, 0.92), rgba(2, 6, 16, 0.96)) padding-box,
+      linear-gradient(135deg,
+        rgba(186, 217, 255, 0.95) 0%,
+        rgba(96, 165, 250, 0.55) 50%,
+        rgba(147, 197, 253, 0.85) 100%) border-box;
+    box-shadow:
+      0 30px 80px -8px rgba(37, 99, 235, 0.55),
+      0 0 90px -10px rgba(96, 165, 250, 0.50),
+      0 0 30px -6px rgba(147, 197, 253, 0.40);
+    animation: licenseHover 7s ease-in-out infinite, licenseGlow 3.6s ease-in-out infinite;
+  }
+  @keyframes licenseHover {
+    0%, 100% { transform: rotateY(-9deg) rotateX(4deg) translateY(0); }
+    25%      { transform: rotateY(-4deg) rotateX(2deg) translateY(-6px); }
+    50%      { transform: rotateY(0deg)  rotateX(0deg) translateY(-10px); }
+    75%      { transform: rotateY(4deg)  rotateX(2deg) translateY(-6px); }
+  }
+  @keyframes licenseGlow {
+    0%, 100% { box-shadow:
+      0 30px 80px -8px rgba(37, 99, 235, 0.55),
+      0 0 90px -10px rgba(96, 165, 250, 0.50),
+      0 0 30px -6px rgba(147, 197, 253, 0.40); }
+    50%      { box-shadow:
+      0 36px 100px -8px rgba(37, 99, 235, 0.70),
+      0 0 120px -10px rgba(96, 165, 250, 0.65),
+      0 0 40px -6px rgba(147, 197, 253, 0.55); }
+  }
+  .license-card::after {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 70%; height: 200%;
+    background: linear-gradient(115deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.06) 45%,
+      rgba(255, 255, 255, 0.10) 50%,
+      rgba(255, 255, 255, 0.06) 55%,
+      transparent 70%);
+    transform: rotate(20deg);
+    animation: licenseSheen 5s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 4;
+  }
+  @keyframes licenseSheen {
+    0%, 100% { transform: translateX(-100%) rotate(20deg); opacity: 0; }
+    20%      { opacity: 1; }
+    50%      { transform: translateX(180%) rotate(20deg); opacity: 1; }
+    70%      { opacity: 0; }
+  }
+  .lic-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+  .lic-brand {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700; font-size: 13px;
+    color: #fff; letter-spacing: 0.06em;
+  }
+  .lic-brand .on-ice { color: var(--ice); }
+  .lic-tier {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px; letter-spacing: 0.18em;
+    color: var(--ice);
+    border: 1px solid rgba(147, 197, 253, 0.30);
+    background: rgba(96, 165, 250, 0.08);
+    border-radius: 4px;
+    padding: 4px 9px;
+  }
+  .lic-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 38px; font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+    line-height: 1;
+    background: linear-gradient(180deg, #ffffff 0%, #dbeafe 60%, var(--ice) 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 24px rgba(147, 197, 253, 0.40);
+  }
+  .lic-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--t3);
+    margin-bottom: 22px;
+  }
+  .lic-meta {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--t3);
+    margin-bottom: 16px;
+  }
+  .lic-meta .k { color: var(--t4); display: block; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 2px; }
+  .lic-meta .v { color: var(--t1); }
+  .lic-bot {
+    margin-top: auto; padding-top: 14px;
+    border-top: 1px solid rgba(147, 197, 253, 0.12);
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--t3);
+  }
+  .lic-bot .lic-chain { color: var(--ice); }
+
+  .glint {
+    position: absolute;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
+    filter: blur(0.6px);
+  }
+  .glint.vert { background: linear-gradient(180deg, transparent, rgba(255,255,255,0.85), transparent); }
+  .glint-tl { top: -1px; left: 14px; width: 90px; height: 1.5px; animation: glintFlash 5s 0.8s ease-in-out infinite; }
+  .glint-tr { top: 14px; right: -1px; width: 1.5px; height: 70px; animation: glintFlash 5s 2.4s ease-in-out infinite; }
+  .glint-bl { bottom: 14px; left: -1px; width: 1.5px; height: 60px; animation: glintFlash 6s 1.4s ease-in-out infinite; }
+  .glint-br { bottom: -1px; right: 18px; width: 80px; height: 1.5px; animation: glintFlash 5.6s 3.6s ease-in-out infinite; }
+  @keyframes glintFlash {
+    0%, 84%, 100% { opacity: 0; }
+    88%           { opacity: 0.95; }
+    93%           { opacity: 0.55; }
+    97%           { opacity: 0.20; }
+  }
+
+  /* === SECTIONS === */
+  .section {
+    position: relative;
+    z-index: 25;
+    margin: 100px auto 0;
+    width: min(1180px, 92vw);
+  }
+  .section-head {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .section-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ice);
+    margin-bottom: 14px;
+  }
+  .section-eyebrow::before {
+    content: ''; width: 18px; height: 1px;
+    background: var(--ice);
+  }
+  .section-h2 {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: clamp(28px, 3.2vw, 42px);
+    line-height: 1.1;
+    color: var(--t1);
+    margin-bottom: 12px;
+  }
+  .section-h2 .ice { color: var(--ice); }
+  .section-sub {
+    font-size: clamp(14px, 1.1vw, 16px);
+    line-height: 1.55;
+    color: var(--t2);
+    max-width: 580px;
+    margin: 0 auto;
+  }
+
+  /* === NODE FUNCTIONS GRID (4-up) === */
+  .func-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .func-card {
+    position: relative;
+    border-radius: 18px;
+    padding: 28px;
+    overflow: hidden;
+    border: 1px solid transparent;
+    background:
+      linear-gradient(180deg, rgba(12, 18, 36, 0.65), rgba(6, 12, 22, 0.78)) padding-box,
+      linear-gradient(180deg,
+        rgba(59, 130, 246, 0.45) 0%,
+        rgba(96, 165, 250, 0.18) 24%,
+        rgba(30, 60, 130, 0.04) 60%,
+        rgba(147, 197, 253, 0.14) 100%) border-box;
+    box-shadow:
+      0 22px 50px -14px rgba(37, 99, 235, 0.22),
+      0 0 60px -18px rgba(96, 165, 250, 0.12),
+      0 1px 0 0 rgba(147, 197, 253, 0.10) inset;
+    display: flex; flex-direction: column;
+  }
+  .func-head {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 14px;
+  }
+  .func-num {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    line-height: 1;
+    background: linear-gradient(180deg, rgba(196, 181, 253, 0.45), rgba(196, 181, 253, 0.06));
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    letter-spacing: -0.02em;
+  }
+  .func-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ice);
+  }
+  .func-card h3 {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    color: var(--t1);
+    margin-bottom: 10px;
+  }
+  .func-card p {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--t2);
+  }
+  .func-detail {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(147, 197, 253, 0.08);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--t3);
+    line-height: 1.6;
+  }
+  .func-detail span {
+    color: var(--ice);
+  }
+
+  /* === REWARD STREAMS (3-up themed cards) === */
+  .rewards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    text-align: left;
+  }
+  .rcard {
+    position: relative;
+    border-radius: 18px;
+    padding: 24px 22px 22px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    min-height: 290px;
+    border: 1px solid transparent;
+    background:
+      linear-gradient(180deg, var(--rc-fill-top, rgba(12,18,36,0.65)), var(--rc-fill-bot, rgba(6,12,22,0.78))) padding-box,
+      linear-gradient(180deg,
+        var(--rc-top, rgba(59, 130, 246, 0.45)) 0%,
+        var(--rc-mid, rgba(96, 165, 250, 0.18)) 24%,
+        rgba(20, 40, 80, 0.04) 60%,
+        var(--rc-bot, rgba(147, 197, 253, 0.14)) 100%) border-box;
+    box-shadow:
+      0 22px 50px -14px var(--rc-shadow, rgba(37, 99, 235, 0.22)),
+      0 0 60px -18px var(--rc-glow, rgba(96, 165, 250, 0.12)),
+      0 1px 0 0 var(--rc-bot, rgba(147, 197, 253, 0.10)) inset;
+  }
+  .rc-amber { --rc-fill-top: rgba(28,18,8,0.70); --rc-fill-bot: rgba(14,8,2,0.82); --rc-top: rgba(251,191,36,0.42); --rc-mid: rgba(245,158,11,0.18); --rc-bot: rgba(252,211,77,0.16); --rc-shadow: rgba(146,78,12,0.30); --rc-glow: rgba(252,211,77,0.14); }
+  .rc-purple { --rc-fill-top: rgba(20,14,32,0.68); --rc-fill-bot: rgba(10,6,18,0.82); --rc-top: rgba(167,139,250,0.45); --rc-mid: rgba(196,181,253,0.18); --rc-bot: rgba(232,121,249,0.18); --rc-shadow: rgba(124,95,255,0.24); --rc-glow: rgba(232,121,249,0.12); }
+  .rc-green { --rc-fill-top: rgba(10,22,18,0.68); --rc-fill-bot: rgba(4,14,10,0.82); --rc-top: rgba(74,222,128,0.45); --rc-mid: rgba(110,231,183,0.18); --rc-bot: rgba(167,243,208,0.16); --rc-shadow: rgba(34,150,84,0.26); --rc-glow: rgba(110,231,183,0.14); }
+
+  .rcard-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .rcard-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    border: 1px solid rgba(196, 181, 253, 0.22);
+    background: rgba(8, 12, 24, 0.85);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ice);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+  }
+  .rcard-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--t3);
+    background: rgba(196, 181, 253, 0.05);
+    border: 1px solid rgba(196, 181, 253, 0.10);
+    border-radius: 100px;
+    padding: 4px 10px;
+  }
+  .rcard h3 {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 600; font-size: 16px;
+    color: #fff;
+    margin-bottom: 5px;
+  }
+  .rcard .rcard-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ice);
+    margin-bottom: 12px;
+  }
+  .rcard p {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--t3);
+    margin-top: auto;
+  }
+  .rcard-anim {
+    margin: 6px 0 14px;
+    height: 88px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.20);
+    border: 1px solid rgba(196, 181, 253, 0.06);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  .emissions { text-align: center; font-family: 'JetBrains Mono', monospace; }
+  .emissions .num {
+    font-size: 28px; font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.01em;
+    text-shadow: 0 0 22px rgba(124, 95, 255, 0.40);
+  }
+  .emissions .unit {
+    font-size: 13px; color: var(--ice);
+    margin-left: 4px; font-weight: 500;
+  }
+  .emissions .delta {
+    display: block; font-size: 10px;
+    color: var(--green);
+    margin-top: 4px; letter-spacing: 0.08em;
+  }
+
+  .activity-bars {
+    display: flex; align-items: flex-end; gap: 4px;
+    height: 64px; width: 86%;
+  }
+  .activity-bars .ab {
+    flex: 1;
+    background: linear-gradient(180deg, rgba(167, 139, 250, 0.7) 0%, rgba(91, 142, 255, 0.30) 100%);
+    border-radius: 2px;
+    min-height: 6px;
+    transform-origin: bottom;
+    animation: actPulse 2.6s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(124, 95, 255, 0.20);
+  }
+  @keyframes actPulse {
+    0%, 100% { transform: scaleY(0.35); opacity: 0.55; }
+    50%      { transform: scaleY(1);    opacity: 1;    }
+  }
+  .activity-bars .ab:nth-child(1) { animation-delay: 0.00s; }
+  .activity-bars .ab:nth-child(2) { animation-delay: 0.12s; }
+  .activity-bars .ab:nth-child(3) { animation-delay: 0.24s; }
+  .activity-bars .ab:nth-child(4) { animation-delay: 0.36s; }
+  .activity-bars .ab:nth-child(5) { animation-delay: 0.48s; }
+  .activity-bars .ab:nth-child(6) { animation-delay: 0.60s; }
+  .activity-bars .ab:nth-child(7) { animation-delay: 0.72s; }
+  .activity-bars .ab:nth-child(8) { animation-delay: 0.84s; }
+  .activity-bars .ab:nth-child(9) { animation-delay: 0.96s; }
+  .activity-bars .ab:nth-child(10) { animation-delay: 1.08s; }
+
+  .cascade { width: 100%; padding: 0 14px; display: flex; flex-direction: column; gap: 5px; }
+  .cas-row {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    color: var(--t3);
+    opacity: 0.4;
+    animation: casPulse 5s ease-in-out infinite;
+  }
+  .cas-row .lv {
+    width: 18px; height: 16px;
+    border-radius: 4px;
+    background: rgba(124, 95, 255, 0.18);
+    border: 1px solid rgba(167, 139, 250, 0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700;
+    color: var(--ice);
+  }
+  .cas-row .bar {
+    height: 2px; flex: 1; max-width: 80px;
+    background: linear-gradient(90deg, rgba(167, 139, 250, 0.50), rgba(96, 165, 250, 0.10));
+    border-radius: 1px;
+  }
+  .cas-row .pct { font-size: 9.5px; color: var(--t3); width: 28px; text-align: right; }
+  .cas-row:nth-child(1) { animation-delay: 0s; }
+  .cas-row:nth-child(2) { animation-delay: 0.4s; }
+  .cas-row:nth-child(3) { animation-delay: 0.8s; }
+  .cas-row:nth-child(4) { animation-delay: 1.2s; }
+  .cas-row:nth-child(5) { animation-delay: 1.6s; }
+  @keyframes casPulse {
+    0%, 100% { opacity: 0.40; }
+    10%      { opacity: 1; }
+    30%      { opacity: 0.65; }
+  }
+
+  /* === TIER PRICING (40 bars) === */
+  .tier-stage {
+    background: linear-gradient(180deg, rgba(12, 18, 36, 0.55), rgba(6, 12, 22, 0.70));
+    border: 1px solid rgba(147, 197, 253, 0.10);
+    border-radius: 18px;
+    padding: 32px 28px 24px;
+  }
+  .tier-bars {
+    display: flex; align-items: flex-end; gap: 3px;
+    height: 220px;
+    margin-bottom: 18px;
+  }
+  .tier-bar {
+    flex: 1;
+    background: linear-gradient(180deg, rgba(96, 165, 250, 0.85), rgba(37, 99, 235, 0.30));
+    border-radius: 3px 3px 0 0;
+    min-height: 16px;
+    position: relative;
+    transition: opacity 0.2s;
+  }
+  .tier-bar:hover { opacity: 1 !important; }
+  .tier-bar:hover::after {
+    content: attr(data-label);
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(147, 197, 253, 0.95);
+    color: #02050d;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .tier-axis {
+    display: flex; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--t3);
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    border-top: 1px solid rgba(147, 197, 253, 0.08);
+    padding-top: 12px;
+  }
+  .tier-axis .v { color: var(--t1); font-weight: 700; }
+  .tier-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-top: 28px;
+  }
+  .tier-stat {
+    text-align: center;
+    padding: 16px 12px;
+    background: rgba(8, 12, 24, 0.40);
+    border: 1px solid rgba(147, 197, 253, 0.06);
+    border-radius: 10px;
+  }
+  .tier-stat .v {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px; font-weight: 700;
+    color: var(--t1);
+    letter-spacing: -0.01em;
+  }
+  .tier-stat .l {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--t3);
+    margin-top: 4px;
+  }
+
+  /* === HOW IT WORKS STEP CARDS === */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .scard {
+    position: relative;
+    border-radius: 18px;
+    padding: 24px 22px;
+    overflow: hidden;
+    min-height: 220px;
+    display: flex; flex-direction: column;
+    border: 1px solid transparent;
+    background:
+      linear-gradient(180deg, rgba(12, 18, 36, 0.55), rgba(6, 12, 22, 0.70)) padding-box,
+      linear-gradient(180deg,
+        rgba(59, 130, 246, 0.45) 0%,
+        rgba(96, 165, 250, 0.18) 24%,
+        rgba(30, 60, 130, 0.04) 60%,
+        rgba(147, 197, 253, 0.14) 100%) border-box;
+    box-shadow:
+      0 22px 50px -14px rgba(37, 99, 235, 0.18),
+      0 0 60px -18px rgba(96, 165, 250, 0.10),
+      0 1px 0 0 rgba(147, 197, 253, 0.08) inset;
+  }
+  .scard-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .scard-step-num {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 38px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    background: linear-gradient(180deg, rgba(196, 181, 253, 0.42), rgba(196, 181, 253, 0.04));
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+  }
+  .scard-step {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--t3);
+    background: rgba(147, 197, 253, 0.06);
+    border: 1px solid rgba(147, 197, 253, 0.10);
+    border-radius: 100px;
+    padding: 4px 10px;
+  }
+  .scard h3 {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 600; font-size: 17px;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .scard p {
+    font-size: 13px; line-height: 1.55;
+    color: var(--t3);
+    margin-bottom: 14px;
+  }
+  .scard-chips {
+    margin-top: auto;
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .scard-chips .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--t2);
+    background: rgba(8, 12, 24, 0.7);
+    border: 1px solid rgba(147, 197, 253, 0.10);
+    border-radius: 100px;
+    padding: 4px 10px;
+  }
+
+  /* === FAQ TILES === */
+  .faq-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .faq-tile {
+    position: relative;
+    border-radius: 14px;
+    padding: 22px 24px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid transparent;
+    background:
+      linear-gradient(180deg, rgba(12,18,36,0.55) 0%, rgba(6,12,22,0.65) 100%) padding-box,
+      linear-gradient(180deg,
+        rgba(96, 165, 250, 0.20) 0%,
+        rgba(96, 165, 250, 0.04) 60%,
+        rgba(147, 197, 253, 0.10) 100%) border-box;
+    transition: all 0.25s ease;
+  }
+  .faq-tile:hover {
+    background:
+      linear-gradient(180deg, rgba(18,24,46,0.70) 0%, rgba(10,14,28,0.80) 100%) padding-box,
+      linear-gradient(180deg,
+        rgba(124, 95, 255, 0.50) 0%,
+        rgba(96, 165, 250, 0.10) 60%,
+        rgba(196, 181, 253, 0.20) 100%) border-box;
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px -10px rgba(45, 36, 150, 0.35);
+  }
+  .faq-q {
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 600; font-size: 14.5px;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  .faq-q .arr { color: var(--t3); transition: transform 0.25s, color 0.25s; flex-shrink: 0; }
+  .faq-tile:hover .faq-q .arr { transform: translateX(3px); color: var(--ice); }
+  .faq-a { font-size: 13px; line-height: 1.55; color: var(--t3); }
+
+  /* === FINAL CTA === */
+  .final-cta {
+    position: relative; z-index: 25;
+    margin: 120px auto 60px;
+    width: min(1180px, 92vw);
+    text-align: center;
+    padding: 56px 32px;
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid transparent;
+    background:
+      radial-gradient(ellipse 60% 100% at 50% 0%,
+        rgba(124, 95, 255, 0.14) 0%,
+        rgba(96, 165, 250, 0.05) 45%,
+        transparent 80%) padding-box,
+      linear-gradient(180deg, rgba(15,22,40,0.6) 0%, rgba(8,12,24,0.6) 100%) padding-box,
+      linear-gradient(180deg,
+        rgba(167, 139, 250, 0.45) 0%,
+        rgba(96, 165, 250, 0.10) 50%,
+        rgba(196, 181, 253, 0.16) 100%) border-box;
+    box-shadow:
+      0 22px 60px -16px rgba(45, 36, 150, 0.30),
+      0 0 60px -18px rgba(124, 95, 255, 0.16);
+  }
+  .final-cta h2 {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: clamp(24px, 3vw, 38px);
+    line-height: 1.1;
+    color: #fff;
+    margin-bottom: 12px;
+  }
+  .final-cta h2 .ice { color: var(--ice); }
+  .final-cta p {
+    color: var(--t2); font-size: 15px;
+    max-width: 480px; margin: 0 auto 24px;
+  }
+  .cta-row {
+    display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
+  }
+  .cta-blue {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 26px;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+    color: #fff;
+    background: linear-gradient(135deg, #4a3acc 0%, #2d2496 50%, #161a5e 100%);
+    border: 1px solid rgba(120, 100, 220, 0.35);
+    border-radius: 100px;
+    text-decoration: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 10px 26px -3px rgba(45, 36, 150, 0.55);
+    transition: transform 0.2s;
+  }
+  .cta-blue:hover { transform: translateY(-1px); }
+  .cta-blue .arr { color: rgba(255,255,255,0.78); transition: transform 0.2s; }
+  .cta-blue:hover .arr { transform: translateX(3px); color: #fff; }
+  .btn-ghost {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 24px;
+    font-size: 13px; font-weight: 600;
+    color: var(--t1);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 100px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .btn-ghost:hover { background: rgba(255, 255, 255, 0.08); }
+
+  /* === FOOTER === */
+  footer.site-footer {
+    position: relative;
+    z-index: 25;
+    border-top: 1px solid rgba(147, 197, 253, 0.08);
+    margin-top: 60px;
+    padding: 50px 40px 32px;
+    color: var(--t3);
+    font-size: 13px;
+  }
+  .footer-grid {
+    width: min(1180px, 92vw);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    gap: 32px;
+    padding-bottom: 32px;
+  }
+  .footer-grid h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--t3);
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+  .footer-grid a {
+    display: block;
+    color: var(--t2);
+    text-decoration: none;
+    margin-bottom: 8px;
+    transition: color 0.2s;
+    font-size: 13px;
+  }
+  .footer-grid a:hover { color: var(--t1); }
+  .footer-brand .brand {
+    font-family: 'Unbounded', sans-serif; font-weight: 700;
+    font-size: 22px; letter-spacing: 0.02em; color: #fff;
+    margin-bottom: 10px;
+  }
+  .footer-brand p { font-size: 13px; line-height: 1.5; color: var(--t3); max-width: 260px; }
+  .footer-socials { display: flex; gap: 10px; margin-top: 18px; }
+  .footer-socials a {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px;
+    border: 1px solid rgba(147, 197, 253, 0.16);
+    border-radius: 8px;
+    color: var(--t2);
+    background: rgba(147, 197, 253, 0.04);
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+    margin-bottom: 0;
+  }
+  .footer-socials a:hover {
+    color: var(--ice);
+    border-color: rgba(147, 197, 253, 0.36);
+    background: rgba(147, 197, 253, 0.08);
+  }
+  .footer-socials svg { width: 16px; height: 16px; display: block; }
+  .footer-bot {
+    width: min(1180px, 92vw);
+    margin: 0 auto;
+    padding-top: 20px;
+    border-top: 1px solid rgba(147, 197, 253, 0.06);
+    display: flex; justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--t3);
+    letter-spacing: 0.06em;
+  }
+
+  @media(max-width: 920px) {
+    .func-grid { grid-template-columns: 1fr; }
+    .rewards-grid { grid-template-columns: 1fr; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .faq-grid { grid-template-columns: 1fr; }
+    .tier-summary { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media(max-width: 880px) {
+    nav { padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .nav-mid { display: none; }
+    .nav-right { gap: 8px; min-width: 0; flex-shrink: 1; }
+    .status-pill { display: none; }
+    .nav-cta { padding: 7px 12px; font-size: 12.5px; white-space: nowrap; }
+  }
+  @media(max-width: 760px) {
+    nav { padding: 18px 16px; }
+  }
+  @media(max-width: 380px) {
+    nav { padding: 14px 14px; gap: 8px; }
+    .brand { font-size: 18px; }
+    .nav-right { gap: 6px; }
+    .lang-switcher { padding: 4px 22px 4px 10px; font-size: 10.5px; background-position: right 8px center; }
+    .nav-cta { padding: 7px 10px; font-size: 12px; gap: 4px; }
+    .nav-cta .arr { font-size: 11px; }
+  }
+  @media(max-width: 640px) {
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+    .license-stage { overflow: hidden; }
+    .license-card { width: 92vw; max-width: 380px; }
+  }
+
+/* === a11y: keyboard focus === */
+:focus-visible {
+  outline: 2px solid var(--ice, #93C5FD);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.lang-switcher:focus-visible,
+.lang-switcher:focus {
+  outline: 2px solid var(--ice, #93C5FD);
+  outline-offset: 3px;
+}
+/* Dead-link disable: any anchor still pointing at "#" is a placeholder
+   that scrolls-to-top in production. Visually demote it and stop the
+   click. The footer "Read the deck" CTA, footer link columns, etc. all
+   read as disabled instead of broken. */
+a[href="#"], a[href=""] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+a[href="#"]::after, a[href=""]::after { content: ''; }
+/* === a11y: prefers-reduced-motion === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .radial-grid .hex,
+  .feed-label::before,
+  .status-pill .status-dot,
+  .hero-pill .dot,
+  .caret {
+    animation: none !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Hidden translatable strings used by inline JS animations. -->
+<div id="i18nStrings" hidden aria-hidden="true">
+  <span data-i18n="nodes.reward.just_now">vừa xong</span>
+  <span data-i18n="common.coming_soon">Sắp ra mắt</span>
+</div>
+<script>
+  function __i18n(key, fallback) {
+    var el = document.querySelector('#i18nStrings [data-i18n="' + key + '"]');
+    return el ? el.textContent : (fallback || '');
+  }
+</script>
+
+<nav>
+  <div class="nav-left"><a href="./" style="text-decoration:none"><div class="brand">OPER<span class="on-ice">ON</span></div></a></div>
+  <div class="nav-mid">
+    <a href="./" data-i18n="nodes.nav.link_home">Operon</a>
+    <a href="agents" data-i18n="nodes.nav.link_agents">Agent</a>
+    <a href="nodes" class="nav-node active" data-i18n="nodes.nav.link_nodes">Node</a>
+    <a href="affiliates" data-i18n="nodes.nav.link_affiliates">Đối tác</a>
+    <a href="faq" data-i18n="nodes.nav.link_faq">FAQ</a>
+  </div>
+  <div class="nav-right">
+    <div class="status-pill">
+      <span class="status-dot"></span>
+      <span class="status-label" data-i18n="nodes.nav.status_label">Trạng thái:</span>
+      <span class="status-value" data-i18n="nodes.nav.status_value">Live</span>
+    </div>
+    <select class="lang-switcher" id="langSwitcher" aria-label="Language" data-default="vn">
+      <option value="en">EN</option>
+      <option value="cn">简</option>
+      <option value="tw">繁</option>
+      <option value="kr">KR</option>
+      <option value="jp">JP</option>
+      <option value="th">TH</option>
+      <option value="vn">VN</option>
+    </select>
+    <a class="nav-cta" href="https://app.operon.network/?connect=1" data-i18n="nodes.nav.cta">Mở ứng dụng<span class="arr">↗</span></a>
+  </div>
+</nav>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="page-pill" data-i18n="nodes.hero.pill"><span class="dot"></span> Cỗ máy</div>
+  <h1 class="page-h1" data-i18n="nodes.hero.h1">Node là <span class="ice">gì?</span></h1>
+  <p class="page-sub" data-i18n="nodes.hero.sub">Một giấy phép vĩnh viễn để điều phối, xác thực và phân phối công việc trên mạng lưới agent. 100,000 node. Hard cap mãi mãi. Không cần GPU.</p>
+</section>
+
+<!-- LICENSE CARD -->
+<section style="position: relative; z-index: 25; margin: 0 auto;">
+  <div class="license-stage">
+    <div class="spot-corner spot-tl"></div>
+    <div class="spot-corner spot-tr"></div>
+    <div class="spot-corner spot-bl"></div>
+    <div class="spot-corner spot-br"></div>
+    <div class="spot-pool"></div>
+    <div class="license-card">
+      <span class="glint glint-tl"></span>
+      <span class="glint vert glint-tr"></span>
+      <span class="glint vert glint-bl"></span>
+      <span class="glint glint-br"></span>
+      <div class="lic-top">
+        <div class="lic-brand" data-i18n="nodes.license.brand">OPER<span class="on-ice">ON</span> · NODE</div>
+        <div class="lic-tier" data-i18n="nodes.license.tier">TIER 01</div>
+      </div>
+      <div class="lic-id">#00042</div>
+      <div class="lic-tag" data-i18n="nodes.license.tag">ERC-721 · Giấy phép vĩnh viễn</div>
+      <div class="lic-meta">
+        <div><span class="k" data-i18n="nodes.license.issued_k">Phát hành</span><span class="v">2026-04-26</span></div>
+        <div><span class="k" data-i18n="nodes.license.expires_k">Hết hạn</span><span class="v" data-i18n="nodes.license.expires_v">Không bao giờ</span></div>
+        <div><span class="k" data-i18n="nodes.license.emissions_k">Emission</span><span class="v" data-i18n="nodes.license.emissions_v">4 năm</span></div>
+        <div><span class="k" data-i18n="nodes.license.attribution_k">Attribution</span><span class="v" data-i18n="nodes.license.attribution_v">On-chain</span></div>
+      </div>
+      <div class="lic-bot">
+        <span>0x4f8c…e9d2</span>
+        <span class="lic-chain">◆ ARBITRUM</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NODE FUNCTIONS -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow" data-i18n="nodes.func.eyebrow">Chức năng node</div>
+    <h2 class="section-h2" data-i18n="nodes.func.h2">Bốn chức năng. <span class="ice">Đều on-chain.</span></h2>
+    <p class="section-sub" data-i18n="nodes.func.sub">Node không chạy AI. Node chạy lớp giao thức cho phép mọi agent được khám phá, attest, đo lường và định tuyến — nhẹ, xác định và có thể kiểm chứng.</p>
+  </div>
+
+  <div class="func-grid">
+    <div class="func-card">
+      <div class="func-head">
+        <div class="func-num">01</div>
+        <div class="func-tag" data-i18n="nodes.func1.tag">Attestation</div>
+      </div>
+      <h3 data-i18n="nodes.func1.title">Attest tuân thủ giao thức</h3>
+      <p data-i18n="nodes.func1.desc">Khi một agent tạo đầu ra, một tập node được chọn ngẫu nhiên sẽ độc lập attest các thuộc tính cấp giao thức — độ trễ SLA, tuân thủ schema, giao nhận, giới hạn kích thước. Attestation đa node được ghi on-chain.</p>
+      <div class="func-detail" data-i18n="nodes.func1.detail">Lấy mẫu ngẫu nhiên · <span>attestation đã ký</span> · chống giả mạo</div>
+    </div>
+
+    <div class="func-card">
+      <div class="func-head">
+        <div class="func-num">02</div>
+        <div class="func-tag" data-i18n="nodes.func2.tag">Đo lường</div>
+      </div>
+      <h3 data-i18n="nodes.func2.title">Đo lường &amp; hạch toán hoạt động</h3>
+      <p data-i18n="nodes.func2.desc">Đo lường độc lập khối lượng giao dịch của Forge và giao thức theo từng epoch. Nhiều node tạo cùng một con số đếm — sai lệch có thể phát hiện on-chain. Activity Pool phân phối phí theo uptime đã được xác thực.</p>
+      <div class="func-detail" data-i18n="nodes.func2.detail">Số đếm theo epoch · <span>kiểm chứng on-chain</span> · đồng thuận giữa node</div>
+    </div>
+
+    <div class="func-card">
+      <div class="func-head">
+        <div class="func-num">03</div>
+        <div class="func-tag" data-i18n="nodes.func3.tag">Registry</div>
+      </div>
+      <h3 data-i18n="nodes.func3.title">Dịch vụ registry &amp; khám phá</h3>
+      <p data-i18n="nodes.func3.desc">Mỗi node duy trì một bản sao đồng bộ của registry agent — chỉ metadata, không phải model. Truy vấn từ Forge hoặc tích hợp bên ngoài được phục vụ bởi mạng lưới node như một chỉ mục phân tán.</p>
+      <div class="func-detail" data-i18n="nodes.func3.detail">Bản sao cục bộ · <span>truy vấn phân tán</span> · gated theo uptime</div>
+    </div>
+
+    <div class="func-card">
+      <div class="func-head">
+        <div class="func-num">04</div>
+        <div class="func-tag" data-i18n="nodes.func4.tag">Định tuyến</div>
+      </div>
+      <h3 data-i18n="nodes.func4.title">Định tuyến message OAMS</h3>
+      <p data-i18n="nodes.func4.desc">Trong workflow đa agent, message được định tuyến qua node bằng giao thức OAMS. Mỗi node xác thực schema, hash payload và attest tính toàn vẹn ở mỗi hop — chống giả mạo xuyên suốt chuỗi.</p>
+      <div class="func-detail" data-i18n="nodes.func4.detail">Schema OAMS · <span>attest theo từng hop</span> · toàn vẹn đầu cuối</div>
+    </div>
+  </div>
+</section>
+
+<!-- REWARD STREAMS -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow" data-i18n="nodes.rewards.eyebrow">Cách node sinh lời</div>
+    <h2 class="section-h2" data-i18n="nodes.rewards.h2">Ba dòng. <span class="ice">Đều tự động.</span></h2>
+    <p class="section-sub" data-i18n="nodes.rewards.sub">Người vận hành kiếm từ mọi lớp hoạt động mạng lưới — emission cơ bản trong giai đoạn bootstrap, sau đó là activity pool và attribution on-chain khi mạng lưới mở rộng.</p>
+  </div>
+
+  <div class="rewards-grid">
+    <div class="rcard rc-amber">
+      <div class="rcard-head">
+        <div class="rcard-icon">⌗</div>
+        <div class="rcard-tag" data-i18n="nodes.reward1.tag">Stream 01</div>
+      </div>
+      <h3 data-i18n="nodes.reward1.title">Phần thưởng cơ bản</h3>
+      <div class="rcard-sub" data-i18n="nodes.reward1.sub">Phát hành hằng ngày · 4 năm</div>
+      <div class="rcard-anim">
+        <div class="emissions">
+          <span class="num" id="rcEmit">142</span><span class="unit" data-i18n="nodes.reward1.unit">$OPRN/ngày</span>
+          <span class="delta" id="rcEmitDelta" data-i18n="nodes.reward.delta_initial">+0.3 hôm nay</span>
+        </div>
+      </div>
+      <p data-i18n="nodes.reward1.desc">Nhận $OPRN mỗi ngày trong 4 năm. Phân bổ tăng lên nếu node không bán hết — giấy phép bị đốt sẽ phân phối lại cho người sở hữu.</p>
+    </div>
+
+    <div class="rcard rc-purple">
+      <div class="rcard-head">
+        <div class="rcard-icon">⌬</div>
+        <div class="rcard-tag" data-i18n="nodes.reward2.tag">Stream 02</div>
+      </div>
+      <h3 data-i18n="nodes.reward2.title">Activity pool</h3>
+      <div class="rcard-sub" data-i18n="nodes.reward2.sub">Phần chia từ hoạt động</div>
+      <div class="rcard-anim">
+        <div class="activity-bars">
+          <span class="ab"></span><span class="ab"></span><span class="ab"></span><span class="ab"></span><span class="ab"></span>
+          <span class="ab"></span><span class="ab"></span><span class="ab"></span><span class="ab"></span><span class="ab"></span>
+        </div>
+      </div>
+      <p data-i18n="nodes.reward2.desc">Phần chia từ mỗi khoản phí mà agent và người dùng trả trên mạng lưới. Mạng lưới càng kiếm nhiều, mỗi node càng kiếm nhiều.</p>
+    </div>
+
+    <div class="rcard rc-green">
+      <div class="rcard-head">
+        <div class="rcard-icon">◆</div>
+        <div class="rcard-tag" data-i18n="nodes.reward3.tag">Stream 03</div>
+      </div>
+      <h3 data-i18n="nodes.reward3.title">Network attribution</h3>
+      <div class="rcard-sub" data-i18n="nodes.reward3.sub">On-chain · tự động</div>
+      <div class="rcard-anim">
+        <div class="cascade">
+          <div class="cas-row"><span class="lv">●</span><span class="bar"></span><span class="pct">10%</span></div>
+          <div class="cas-row"><span class="lv">●</span><span class="bar" style="max-width: 64px"></span><span class="pct">5%</span></div>
+          <div class="cas-row"><span class="lv">●</span><span class="bar" style="max-width: 50px"></span><span class="pct">3%</span></div>
+          <div class="cas-row"><span class="lv">●</span><span class="bar" style="max-width: 36px"></span><span class="pct">2%</span></div>
+          <div class="cas-row"><span class="lv">●</span><span class="bar" style="max-width: 24px"></span><span class="pct">1%</span></div>
+        </div>
+      </div>
+      <p data-i18n="nodes.reward3.desc">Mời người vận hành, builder và người dùng. Attribution on-chain, do smart contract đảm bảo — chia phần từ mọi hoạt động bạn mang về.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TIER PRICING -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow" data-i18n="nodes.tiers.eyebrow">Định giá</div>
+    <h2 class="section-h2" data-i18n="nodes.tiers.h2">40 tier. <span class="ice">Mỗi tier 2,500 node.</span></h2>
+    <p class="section-sub" data-i18n="nodes.tiers.sub">Tier 1 bắt đầu từ $500. Giá tăng dần theo tier. Hard cap 100,000 node — không bao giờ tăng. Đợt sale mở, không giới hạn thời gian; team tạm dừng trước TGE.</p>
+  </div>
+
+  <div class="tier-stage">
+    <div class="tier-bars" id="tierBars"></div>
+    <div class="tier-axis">
+      <span data-i18n="nodes.tiers.axis1">Tier 01 · <span class="v">$500</span></span>
+      <span data-i18n="nodes.tiers.axis2">Tier 20 · <span class="v">$1,720</span></span>
+      <span data-i18n="nodes.tiers.axis3">Tier 40 · <span class="v">$3,354</span></span>
+    </div>
+
+    <div class="tier-summary">
+      <div class="tier-stat"><div class="v">100,000</div><div class="l" data-i18n="nodes.tiers.stat1_l">Hard cap · mãi mãi</div></div>
+      <div class="tier-stat"><div class="v">40</div><div class="l" data-i18n="nodes.tiers.stat2_l">Tier giá</div></div>
+      <div class="tier-stat"><div class="v">$500</div><div class="l" data-i18n="nodes.tiers.stat3_l">Mức vào Tier 1</div></div>
+      <div class="tier-stat"><div class="v">USDC / USDT</div><div class="l" data-i18n="nodes.tiers.stat4_l">Trên Arbitrum hoặc BNB</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW TO BUY -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow" data-i18n="nodes.steps.eyebrow">Cách hoạt động</div>
+    <h2 class="section-h2" data-i18n="nodes.steps.h2">Ba bước.</h2>
+    <p class="section-sub" data-i18n="nodes.steps.sub">Từ giấy phép đến doanh thu thực tế.</p>
+  </div>
+
+  <div class="steps-grid">
+    <div class="scard">
+      <div class="scard-head">
+        <div class="scard-step-num">01</div>
+        <div class="scard-step" data-i18n="nodes.step1.tag">Mua</div>
+      </div>
+      <h3 data-i18n="nodes.step1.title">Mua một node</h3>
+      <p data-i18n="nodes.step1.desc">USDC hoặc USDT. Tier 1 bắt đầu từ $500. ERC-721 mint trên Arbitrum hoặc BNB Smart Chain — người mua chọn lúc thanh toán.</p>
+      <div class="scard-chips">
+        <span class="chip" data-i18n="nodes.step1.chip1">USDC</span>
+        <span class="chip" data-i18n="nodes.step1.chip2">USDT</span>
+        <span class="chip" data-i18n="nodes.step1.chip3">ERC-721</span>
+      </div>
+    </div>
+    <div class="scard">
+      <div class="scard-head">
+        <div class="scard-step-num">02</div>
+        <div class="scard-step" data-i18n="nodes.step2.tag">Vận hành</div>
+      </div>
+      <h3 data-i18n="nodes.step2.title">Tự vận hành hoặc ủy quyền</h3>
+      <p data-i18n="nodes.step2.desc">Tự chạy client nhẹ — laptop hoặc VPS phổ thông, không cần GPU. Không muốn tự chạy? Ủy quyền cho nhà cung cấp Node-as-a-Service tại TGE.</p>
+      <div class="scard-chips">
+        <span class="chip" data-i18n="nodes.step2.chip1">tự host</span>
+        <span class="chip" data-i18n="nodes.step2.chip2">NaaS</span>
+        <span class="chip" data-i18n="nodes.step2.chip3">không cần GPU</span>
+      </div>
+    </div>
+    <div class="scard">
+      <div class="scard-head">
+        <div class="scard-step-num">03</div>
+        <div class="scard-step" data-i18n="nodes.step3.tag">Kiếm</div>
+      </div>
+      <h3 data-i18n="nodes.step3.title">Kiếm từ hoạt động mạng lưới</h3>
+      <p data-i18n="nodes.step3.desc">Emission cơ bản, thưởng theo hiệu suất, activity pool và attribution giới thiệu on-chain — tất cả tự động.</p>
+      <div class="scard-chips">
+        <span class="chip" data-i18n="nodes.step3.chip1">emission</span>
+        <span class="chip" data-i18n="nodes.step3.chip2">hoạt động</span>
+        <span class="chip" data-i18n="nodes.step3.chip3">attribution</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq">
+  <div class="section-head">
+    <div class="section-eyebrow" data-i18n="nodes.faq.eyebrow">FAQ</div>
+    <h2 class="section-h2" data-i18n="nodes.faq.h2">Câu hỏi <span class="ice">thường gặp.</span></h2>
+    <p class="section-sub" data-i18n="nodes.faq.sub">Những câu được hỏi nhiều nhất. FAQ đầy đủ có phần còn lại.</p>
+  </div>
+
+  <div class="faq-grid">
+    <a class="faq-tile" href="faq#basics_vi">
+      <div class="faq-q" data-i18n="nodes.faq.q1">Yêu cầu kỹ thuật để vận hành node?<span class="arr">→</span></div>
+      <p class="faq-a" data-i18n="nodes.faq.a1">Không cần GPU. Client chạy trên laptop hoặc VPS phổ thông. Node attest, đo lường, định tuyến và phục vụ truy vấn registry ở lớp giao thức — không cần inference.</p>
+    </a>
+    <a class="faq-tile" href="faq#basics_vi">
+      <div class="faq-q" data-i18n="nodes.faq.q2">Node được mint trên chain nào?<span class="arr">→</span></div>
+      <p class="faq-a" data-i18n="nodes.faq.a2">ERC-721 trên Arbitrum hoặc BNB Smart Chain — người mua chọn lúc thanh toán. $OPRN settle trên Arbitrum.</p>
+    </a>
+    <a class="faq-tile" href="faq#transfer_vi">
+      <div class="faq-q" data-i18n="nodes.faq.q3">Có thể bán node không?<span class="arr">→</span></div>
+      <p class="faq-a" data-i18n="nodes.faq.a3">Có — sau thời gian khóa chuyển nhượng 6 tháng kể từ lúc mua. Quyền nhận emission gắn với NFT, nên sẽ đi theo token khi chuyển nhượng cùng vOP đã tích lũy và các đợt vesting đang chạy.</p>
+    </a>
+    <a class="faq-tile" href="faq#earnings_vi">
+      <div class="faq-q" data-i18n="nodes.faq.q4">Phần thưởng được tạo ra như thế nào?<span class="arr">→</span></div>
+      <p class="faq-a" data-i18n="nodes.faq.a4">Bốn dòng: emission cơ bản hằng ngày trong 4 năm, thưởng hiệu suất hằng quý, phần chia từ phí sử dụng mạng lưới và attribution giới thiệu on-chain.</p>
+    </a>
+    <a class="faq-tile" href="faq#sale_vi">
+      <div class="faq-q" data-i18n="nodes.faq.q5">Khi nào sale kết thúc?<span class="arr">→</span></div>
+      <p class="faq-a" data-i18n="nodes.faq.a5">Sale mở không giới hạn thời gian; team tạm dừng trước TGE. Sau đó người nắm token bỏ phiếu quyết định tiếp tục sale hay đốt phần node chưa bán — phần đốt sẽ phân phối lại cho người sở hữu hiện tại.</p>
+    </a>
+    <a class="faq-tile" href="faq#earnings_vi">
+      <div class="faq-q" data-i18n="nodes.faq.q6">vOP là gì?<span class="arr">→</span></div>
+      <p class="faq-a" data-i18n="nodes.faq.a6">vOP là $OPRN ảo — tích lũy hằng ngày, có thể claim bất kỳ lúc nào. Khi claim, chọn một tier vesting (30 / 120 / 180 / 360 ngày) với mở khóa tuyến tính. Phần bị mất từ claim sớm sẽ tài trợ thưởng cho người vận hành kiên nhẫn.</p>
+    </a>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+  <h2 data-i18n="nodes.cta.h2">Sở hữu <span class="ice">hạ tầng.</span></h2>
+  <p data-i18n="nodes.cta.sub">100,000 node. Hard cap mãi mãi. Tham gia càng sớm, tier càng thấp.</p>
+  <div class="cta-row">
+    <a class="cta-blue" href="https://app.operon.network/sale" data-i18n="nodes.cta.primary">Mua một node<span class="arr">→</span></a>
+    <a class="btn-ghost" href="agents" data-i18n="nodes.cta.secondary">Xem các agent</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="brand">OPER<span class="on-ice">ON</span></div>
+      <p data-i18n="nodes.footer.disc">Giao thức agent mở. Điều phối, xác thực và phân phối cho nền kinh tế agent.</p>
+      <div class="footer-socials">
+        <a href="https://discord.gg/ywfxcMcb8c" target="_blank" rel="noopener noreferrer" aria-label="Discord">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.09.09 0 0 0-.07.03c-.18.33-.39.76-.53 1.09a16.09 16.09 0 0 0-4.8 0c-.14-.34-.35-.76-.54-1.09-.01-.02-.04-.03-.07-.03-1.5.26-2.93.71-4.27 1.33-.01 0-.02.01-.03.02-2.72 4.07-3.47 8.03-3.1 11.95 0 .02.01.04.03.05A18.7 18.7 0 0 0 6.7 19.7a.13.13 0 0 0 .14-.05c.36-.5.7-1.04.99-1.6.02-.04 0-.07-.04-.08-.55-.21-1.07-.46-1.58-.75-.04-.02-.04-.08 0-.11.1-.08.21-.16.31-.24a.09.09 0 0 1 .09-.01c3.31 1.51 6.88 1.51 10.16 0 .03-.01.06 0 .09.01.1.08.21.17.32.24.04.03.04.09 0 .11-.5.3-1.03.55-1.58.75-.04.01-.05.05-.04.08.3.56.63 1.1.99 1.6.02.02.05.03.08.02a18.69 18.69 0 0 0 5.95-3c.02-.01.03-.03.03-.05.43-4.53-.7-8.46-3.13-11.95-.01-.01-.02-.02-.03-.02zM8.52 14.47c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.91.95 1.89 2.12 0 1.17-.84 2.12-1.89 2.12zm6.97 0c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.91.95 1.89 2.12 0 1.17-.83 2.12-1.89 2.12z"/></svg>
+        </a>
+        <a href="https://t.me/OperonNetwork" target="_blank" rel="noopener noreferrer" aria-label="Telegram">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div>
+      <h4 data-i18n="nodes.footer.product_h">Sản phẩm</h4>
+      <a href="agents" data-i18n="nodes.footer.product_agents">Agent</a>
+      <a href="nodes" data-i18n="nodes.footer.product_nodes">Node</a>
+      <a href="#" data-i18n="nodes.footer.product_workflows">Workflow</a>
+      <a href="#" data-i18n="nodes.footer.product_attestations">Attestation</a>
+    </div>
+    <div>
+      <h4 data-i18n="nodes.footer.network_h">Mạng lưới</h4>
+      <a href="#" data-i18n="nodes.footer.network_mainnet">Mainnet</a>
+      <a href="#" data-i18n="nodes.footer.network_validators">Validator</a>
+      <a href="#" data-i18n="nodes.footer.network_chains">Chain</a>
+      <a href="#" data-i18n="nodes.footer.network_status">Trạng thái</a>
+    </div>
+    <div>
+      <h4 data-i18n="nodes.footer.resources_h">Tài nguyên</h4>
+      <a href="#" data-i18n="nodes.footer.resources_docs">Tài liệu</a>
+      <a href="faq" data-i18n="nodes.footer.resources_faq">FAQ</a>
+      <a href="#" data-i18n="nodes.footer.resources_pitch">Pitch deck</a>
+      <a href="#" data-i18n="nodes.footer.resources_press">Báo chí</a>
+    </div>
+  </div>
+  <div class="footer-bot">
+    <span data-i18n="nodes.footer.copyright">© 2026 OPERON · Giao thức agent mở</span>
+    <span data-i18n="nodes.footer.live_on">LIVE ON ARBITRUM · BNB · CHAINLINK · LAYERZERO · THE GRAPH</span>
+  </div>
+</footer>
+
+<script>
+  /* Tier bars: 40 bars from $500 to $3,354, linear scale */
+  (function() {
+    const wrap = document.getElementById('tierBars');
+    if (!wrap) return;
+    const tiers = 40;
+    const minP = 500, maxP = 3354;
+    let html = '';
+    for (let i = 1; i <= tiers; i++) {
+      const t = (i - 1) / (tiers - 1);
+      const price = Math.round(minP + (maxP - minP) * t);
+      const heightPct = 30 + t * 70;
+      const opacity = 0.55 + t * 0.45;
+      html += `<div class="tier-bar" style="height:${heightPct}%; opacity:${opacity.toFixed(2)};" data-label="Tier ${String(i).padStart(2,'0')} · $${price.toLocaleString()}"></div>`;
+    }
+    wrap.innerHTML = html;
+  })();
+
+  /* Emissions counter for reward card 1 */
+  (function() {
+    const numEl = document.getElementById('rcEmit');
+    const deltaEl = document.getElementById('rcEmitDelta');
+    if (!numEl) return;
+    let n = 142.0;
+    setInterval(() => {
+      const inc = Math.random() * 0.4 + 0.05;
+      n += inc;
+      numEl.textContent = n.toFixed(1);
+      deltaEl.textContent = '+' + inc.toFixed(2) + ' ' + __i18n('nodes.reward.just_now', 'just now');
+    }, 1800);
+  })();
+</script>
+<script src="/proto-o-i18n.js" defer></script>
+</body>
+</html>

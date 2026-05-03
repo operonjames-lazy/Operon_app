@@ -1,5 +1,5 @@
-// Post-build pass: localized FAQ files use lang-suffixed section IDs
-// (e.g. /ja/hero-prototype-O-faq.html has id="basics_ja", not id="basics").
+// Post-build pass: localized FAQ files use ISO-lang-suffixed section IDs
+// (e.g. /jp/faq.html has id="basics_ja", not id="basics").
 // Build-i18n.mjs copies EN FAQ tile anchors verbatim into every locale, so
 // this script rewrites those anchors to match the localized FAQ IDs.
 
@@ -10,32 +10,43 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const root = path.resolve(path.dirname(__filename), '..');
 
-const LANGS = ['zh-cn', 'zh-tw', 'ko', 'ja', 'th', 'vi'];
-const PAGES = ['hero-prototype-O.html', 'index.html', 'hero-prototype-O-nodes.html'];
+// URL slug → ISO lang code used as the FAQ id suffix.
+const SLUG_TO_ISO = {
+  cn: 'zh-cn',
+  tw: 'zh-tw',
+  kr: 'ko',
+  jp: 'ja',
+  th: 'th',
+  vn: 'vi',
+};
+
+const SLUGS = Object.keys(SLUG_TO_ISO);
+const PAGES = ['index.html', 'nodes.html'];
 const FAQ_ANCHORS = new Set(['basics', 'transfer', 'earnings', 'sale']);
 
-async function processFile(absPath, lang) {
+async function processFile(absPath, slug) {
   let html = await fs.readFile(absPath, 'utf8');
-  const suffix = '_' + lang.replace(/-/g, '_');
+  const iso = SLUG_TO_ISO[slug];
+  const suffix = '_' + iso.replace(/-/g, '_');
 
-  html = html.replace(/href="hero-prototype-O-faq\.html#([a-z]+)"/g, (match, base) => {
+  html = html.replace(/href="faq#([a-z]+)"/g, (match, base) => {
     if (!FAQ_ANCHORS.has(base)) return match;
-    return `href="hero-prototype-O-faq.html#${base}${suffix}"`;
+    return `href="faq#${base}${suffix}"`;
   });
 
   await fs.writeFile(absPath, html, 'utf8');
 }
 
 async function main() {
-  for (const lang of LANGS) {
+  for (const slug of SLUGS) {
     for (const page of PAGES) {
-      const file = path.join(root, lang, page);
+      const file = path.join(root, slug, page);
       try {
         await fs.access(file);
       } catch {
         continue;
       }
-      await processFile(file, lang);
+      await processFile(file, slug);
       console.log(`updated ${path.relative(root, file)}`);
     }
   }
