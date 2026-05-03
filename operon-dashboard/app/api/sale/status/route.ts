@@ -80,6 +80,19 @@ export async function GET(request: NextRequest) {
           .gt('expires_at', new Date().toISOString())
       : { data: [] as Array<{ tier: number; quantity: number }> };
 
+    const { data: callerActiveReservation } = activeTier && callerWallet
+      ? await supabase
+          .from('sale_reservations')
+          .select('chain, tier, quantity, token, unit_price_cents, discount_bps, code_used, expires_at')
+          .eq('buyer_wallet', callerWallet.toLowerCase())
+          .eq('tier', activeTier.tier)
+          .in('status', ['reserved', 'submitted'])
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
+
     const reservedByTier = new Map<number, number>();
     for (const row of activeReservations ?? []) {
       reservedByTier.set(row.tier, (reservedByTier.get(row.tier) ?? 0) + row.quantity);
@@ -108,6 +121,16 @@ export async function GET(request: NextRequest) {
       totalSupply,
       publicSaleDate: config.public_sale_date,
       usedReferralCode,
+      activeReservation: callerActiveReservation ? {
+        chain: callerActiveReservation.chain,
+        tier: callerActiveReservation.tier,
+        quantity: callerActiveReservation.quantity,
+        token: callerActiveReservation.token,
+        unitPriceCents: callerActiveReservation.unit_price_cents,
+        discountBps: callerActiveReservation.discount_bps,
+        codeUsed: callerActiveReservation.code_used,
+        expiresAt: callerActiveReservation.expires_at,
+      } : null,
       tiers: tiers.map(t => ({
         tier: t.tier,
         price: t.price_usd,
@@ -118,8 +141,12 @@ export async function GET(request: NextRequest) {
         reserved: tierReserved(t.tier),
       })),
     }, {
-      // Response varies per user (usedReferralCode), so don't allow shared caches.
-      headers: { 'Cache-Control': 'private, max-age=5' },
+      // R10 round 2: was `private, max-age=5`. Even private cache keys on URL
+      // alone, so a wallet switch reused the prior wallet's body for up to 5s
+      // — long enough to trigger the wallet-mismatch dispatch path on the next
+      // poll. `no-store` forces every poll to the server with the live cookie.
+      // staleTime in `useSaleStatus` already handles in-process dedup.
+      headers: { 'Cache-Control': 'private, no-store' },
     });
   } catch (err) {
     return Response.json(

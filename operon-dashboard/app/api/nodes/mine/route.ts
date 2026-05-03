@@ -207,7 +207,13 @@ export async function GET(request: NextRequest) {
         annualTotal: dailyTotal * 365,
       },
     }, {
-      headers: { 'Cache-Control': 'private, max-age=60' },
+      // R10 round 2: `private, max-age=60` let the browser serve a prior
+      // wallet's body for up to 60s after a wallet switch (same URL, different
+      // session cookie). That bled cross-wallet inventory into the new
+      // wallet's view and is what the tester observed as "/nodes recovers
+      // after ~1 min" in BUG_REPORT_R10 #R10-02. `no-store` forces every
+      // request through the server so the response is keyed to the live cookie.
+      headers: { 'Cache-Control': 'private, no-store' },
     });
   } catch {
     return Response.json(

@@ -59,6 +59,16 @@ export interface SaleStatus {
   totalSupply: number;
   publicSaleDate: string | null;
   usedReferralCode?: string | null;
+  activeReservation?: {
+    chain: Chain;
+    tier: number;
+    quantity: number;
+    token: PaymentToken;
+    unitPriceCents: number;
+    discountBps: number;
+    codeUsed: string | null;
+    expiresAt: string;
+  } | null;
   tiers?: SaleTier[];
 }
 

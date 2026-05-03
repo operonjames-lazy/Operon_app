@@ -21,7 +21,10 @@ import {
 // and the user would silently land on /sale with a generic editable
 // referral input + no path to recovery.
 async function fetchSaleStatus(expectedWallet: string | undefined): Promise<SaleStatus> {
-  const res = await authFetch(API_ROUTES.SALE_STATUS);
+  // R10 round 2: pair with the route's `Cache-Control: no-store` to guarantee
+  // every poll hits the server with the live cookie — closes the wallet-bleed
+  // window the cache header used to leave open.
+  const res = await authFetch(API_ROUTES.SALE_STATUS, { cache: 'no-store' });
   if (!res.ok) {
     const error: ApiError = await res.json();
     throw error;

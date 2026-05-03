@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, useChainId, useSwitchChain, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { formatUnits } from 'viem';
@@ -345,6 +345,27 @@ export default function SalePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sale?.usedReferralCode]);
 
+  // If the backend knows this wallet already owns an active reservation,
+  // align the selectors with that row so Reserve can use the RPC's exact
+  // idempotent reuse path after reconnect/F5.
+  useEffect(() => {
+    const active = sale?.activeReservation;
+    if (!active || reservation) return;
+    setSelectedChain(active.chain);
+    setQuantity(active.quantity);
+    setPaymentToken(active.token);
+    setDiscountBps(active.discountBps);
+    setCodeFromUrl(false);
+    setCodeToast('');
+    if (active.codeUsed) {
+      setReferralCode(active.codeUsed);
+      setCodeValid(true);
+    } else {
+      setReferralCode('');
+      setCodeValid(null);
+    }
+  }, [sale?.activeReservation, reservation]);
+
   // Re-validate the code once the user connects — self-referral can only be
   // detected by `/api/sale/validate-code` when the caller is authenticated,
   // so the pre-signin capture path returns valid for anything including the
@@ -477,6 +498,26 @@ export default function SalePage() {
     chainId: submittedChainId,
     confirmations: txConfirmations,
   });
+
+  const resetWalletScopedSaleState = useCallback(() => {
+    setStep('idle');
+    setErrorMsg('');
+    setPendingRecovery(null);
+    setTxSlow(false);
+    setSubmittedChainId(undefined);
+    setReservation(null);
+    resetApprove();
+    resetPurchase();
+    setReferralCode('');
+    setCodeValid(null);
+    setDiscountBps(0);
+    setCodeFromUrl(false);
+    setCodeToast('');
+    setPurchasedTier(null);
+    setPurchasedQuantity(null);
+    setTierReservedHintOpen(false);
+    try { localStorage.removeItem('operon_pending_tx'); } catch {}
+  }, [resetApprove, resetPurchase]);
 
   // Handle write errors (wallet rejection, contract revert)
   useEffect(() => {
@@ -672,16 +713,6 @@ export default function SalePage() {
     const current = address?.toLowerCase();
     const last = lastSeenAddressRef.current;
     if (current && last && last !== current) {
-      setStep('idle');
-      setErrorMsg('');
-      setPendingRecovery(null);
-      setTxSlow(false);
-      setSubmittedChainId(undefined);
-      // Voucher binds buyer wallet — wallet B can't sign for a voucher
-      // wallet A reserved against. Drop it so the new wallet starts fresh.
-      setReservation(null);
-      resetApprove();
-      resetPurchase();
       // R8 (2026-04-30) — Bug #3 + Bug #8: also reset referral / discount
       // / toast state on identity change. Without this, the previous
       // wallet's typed referral code, validation banner, and applied
@@ -692,20 +723,18 @@ export default function SalePage() {
       // `useSaleStatus` effect repopulates `referralCode` from the new
       // wallet's bound upline (`sale.usedReferralCode`) once the API
       // responds, so resetting here is non-destructive.
-      setReferralCode('');
-      setCodeValid(null);
-      setDiscountBps(0);
-      setCodeFromUrl(false);
-      setCodeToast('');
-      setPurchasedTier(null);
-      setPurchasedQuantity(null);
-      // Tidy: collapse the popover so the new wallet's first render
-      // doesn't auto-open it if `tierReserved > 0` immediately.
-      setTierReservedHintOpen(false);
-      try { localStorage.removeItem('operon_pending_tx'); } catch {}
+      resetWalletScopedSaleState();
     }
     if (current) lastSeenAddressRef.current = current;
-  }, [address, resetApprove, resetPurchase]);
+  }, [address, resetWalletScopedSaleState]);
+
+  useEffect(() => {
+    function onWalletChanged() {
+      resetWalletScopedSaleState();
+    }
+    window.addEventListener('operon:wallet-changed', onWalletChanged);
+    return () => window.removeEventListener('operon:wallet-changed', onWalletChanged);
+  }, [resetWalletScopedSaleState]);
 
   // Auto-reset to idle after a successful purchase (R4-08). Ship-readiness
   // R5 change: do NOT auto-reset while the tab is visible — a tester reading
@@ -925,6 +954,11 @@ export default function SalePage() {
       ...arbitrumGasFloor(targetChainId),
     });
   }
+
+  const canAttemptReservationRecovery =
+    !reservation &&
+    !!sale?.activeReservation &&
+    (sale?.tierRemaining ?? 0) === 0;
 
   if (isLoading) {
     return (
@@ -1297,7 +1331,7 @@ export default function SalePage() {
           <Button variant="primary" size="lg" className="w-full" disabled>{t('sale.stage.paused') || 'Sale paused'}</Button>
         ) : sale?.stage === 'closed' ? (
           <Button variant="primary" size="lg" className="w-full" disabled>{t('sale.stage.closed') || 'Sale closed'}</Button>
-        ) : !sale?.tierRemaining && !reservation ? (
+        ) : !sale?.tierRemaining && !reservation && !canAttemptReservationRecovery ? (
           // R8 ship-readiness regression fix: gate "tier sold out" on NOT
           // having an active reservation. After the Bug #5 fix made
           // tierRemaining subtract active reservations, the buyer who
