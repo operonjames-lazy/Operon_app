@@ -81,6 +81,27 @@ export async function GET(request: NextRequest) {
     const totalSold = allTiers?.reduce((sum, t) => sum + t.total_sold, 0) || 0;
     const totalSupply = allTiers?.reduce((sum, t) => sum + t.total_supply, 0) || 0;
 
+    // R10 round 2 — Phase 5: subtract active reservations from tierRemaining
+    // so this tile agrees with /api/sale/status. Without this, the home page
+    // can claim slots remain on the active tier while /sale shows "sold out"
+    // because reservations are holding the difference. Mirrors the formula
+    // at /api/sale/status route.ts (supply - sold - active_reservations).
+    // Counts both 'reserved' and 'submitted' rows because both still hold
+    // inventory (intentionally NOT the same filter as the per-user
+    // activeReservation surface, which is reserved-only).
+    const { data: activeReservations } = activeTier
+      ? await supabase
+          .from('sale_reservations')
+          .select('quantity')
+          .eq('tier', activeTier.tier)
+          .in('status', ['reserved', 'submitted'])
+          .gt('expires_at', new Date().toISOString())
+      : { data: [] as Array<{ quantity: number }> };
+    const tierReserved = (activeReservations ?? []).reduce(
+      (s, r) => s + r.quantity,
+      0,
+    );
+
     // Emission calculation (Year 1: 40% of 63B / 365 ~ 69.04 per node per day)
     const baseDaily = 69.04;
     const estDailyEmission = nodesOwned * baseDaily;
@@ -109,7 +130,9 @@ export async function GET(request: NextRequest) {
         discountPrice: user.is_epp && partner?.status === 'active' && activeTier
           ? activeTier.price_usd - Math.floor(activeTier.price_usd * (saleConfig?.epp_discount_bps ?? 1500) / 10000)
           : null,
-        tierRemaining: activeTier ? activeTier.total_supply - activeTier.total_sold : 0,
+        tierRemaining: activeTier
+          ? Math.max(0, activeTier.total_supply - activeTier.total_sold - tierReserved)
+          : 0,
         tierSupply: activeTier?.total_supply || 0,
         totalSold,
         totalSupply,
