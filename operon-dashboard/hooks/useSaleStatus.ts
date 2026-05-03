@@ -35,11 +35,15 @@ async function fetchSaleStatus(expectedWallet: string | undefined): Promise<Sale
     data.wallet &&
     data.wallet.toLowerCase() !== expectedWallet.toLowerCase()
   ) {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('operon:auth-expired', {
-        detail: { url: API_ROUTES.SALE_STATUS, reason: 'wallet_mismatch' },
-      }));
-    }
+    // R10 round 2 — Phase 3: treat wallet mismatch as a stale wallet-scoped
+    // response, NOT an auth-expired event. The auth hook already owns
+    // session teardown / re-SIWE during wallet switches; dispatching
+    // auth-expired here used to race that flow into a SIWE re-prompt loop
+    // (the same R10-02 pattern that was fixed in useNodes — present here
+    // for /sale and most likely to surface in multi-tab wallet-switch
+    // scenarios where one tab's wagmi state lags the cookie update).
+    // Phase 1's cache fix closes the same-tab path; this closes the
+    // cross-tab race.
     throw { code: 'UNAUTHORIZED', message: 'Wallet session mismatch. Please sign in again.' } satisfies ApiError;
   }
   return data;

@@ -348,9 +348,23 @@ export default function SalePage() {
   // If the backend knows this wallet already owns an active reservation,
   // align the selectors with that row so Reserve can use the RPC's exact
   // idempotent reuse path after reconnect/F5.
+  //
+  // R10 round 2 — Phase 3: poll-clobber guard. `useSaleStatus` polls every
+  // 10s and TanStack Query returns a fresh `activeReservation` object
+  // reference on every refetch — without dedup, this effect re-fires every
+  // tick and overwrites selectors the user may have just changed manually
+  // (chain, qty, token). Compare a stable signature of the row's locked
+  // fields and only run setters when it actually changed. The signature ref
+  // is cleared by `resetWalletScopedSaleState` so a B → A → B-with-same-row
+  // sequence re-applies the alignment instead of being deduped against the
+  // pre-disconnect signature.
+  const prevActiveResSigRef = useRef<string | null>(null);
   useEffect(() => {
     const active = sale?.activeReservation;
     if (!active || reservation) return;
+    const sig = `${active.chain}|${active.tier}|${active.quantity}|${active.token}|${active.discountBps}|${active.codeUsed ?? ''}|${active.expiresAt}`;
+    if (prevActiveResSigRef.current === sig) return;
+    prevActiveResSigRef.current = sig;
     setSelectedChain(active.chain);
     setQuantity(active.quantity);
     setPaymentToken(active.token);
@@ -516,6 +530,13 @@ export default function SalePage() {
     setPurchasedTier(null);
     setPurchasedQuantity(null);
     setTierReservedHintOpen(false);
+    // R10 round 2 — Phase 3 / C1: clear the activeReservation alignment
+    // signature so a B → disconnect → A → disconnect → B sequence re-runs
+    // the selector alignment when wallet B reconnects to the same row.
+    // Without this clear, the prev-sig dedup would skip the realignment
+    // and leave the buy-box at default selectors despite the row still
+    // existing on the server.
+    prevActiveResSigRef.current = null;
     try { localStorage.removeItem('operon_pending_tx'); } catch {}
   }, [resetApprove, resetPurchase]);
 
