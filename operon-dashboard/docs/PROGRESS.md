@@ -4,6 +4,75 @@ Append-only session log. One dated entry per coding session. Do not edit previou
 
 ---
 
+## 2026-05-03 — R10 fix-pass (rounds 1 + 2): cross-wallet bleed, reservation recovery, cache leak
+
+R10 testing surfaced 3 residual bugs after the R9 fix-pass landed (BUG_REPORT_R10): R10-01 buy-box ✓ + 10% discount UI bleed across Disconnect → Connect-different-wallet (Minor), R10-02 SIWE re-prompt loop on /nodes after wallet switch — auto-recovers ~1 min (Serious), R10-03 held reservation not surfaced after disconnect → reconnect-same-wallet, buy-box stuck on "tier sold out" with only DB-level workaround (Serious). All three address the wallet-identity transition surface; net-zero new BLOCKERs from the tester.
+
+This session shipped two rounds. Round 1 was the user's first-pass fixes (committed bundled into the round 2 Phase 1 commit per the patch-boundary cleanup). Round 2 was the methodology + CTO-review pass that surfaced the cache-header root cause for R10-02 and tightened three more spots.
+
+### Round 1 fixes (R10 patch v1)
+
+- **R10-01 (buy-box discount bleed).** New `operon:wallet-changed` listener on the sale page. The disconnect path was previously a hole because the wallet-change reset effect at `app/(app)/sale/page.tsx` required `current && last && last !== current` — when `address` transitioned through `undefined`, `current` was falsy and the reset never fired. The new listener delegates to the existing `resetWalletScopedSaleState` callback, which clears `referralCode`, `codeValid`, `discountBps`, `reservation`, and the local-only flow state.
+- **R10-03 (held reservation not surfaced).** `/api/sale/status` now queries the caller's own active reservation (not just the global tier count) and returns it as `activeReservation` (chain, tier, quantity, token, unitPriceCents, discountBps, codeUsed, expiresAt). The sale page consumes it via a new effect that aligns the chain / qty / token / discount selectors. `canAttemptReservationRecovery` now hangs off `sale?.activeReservation` rather than a tierReserved heuristic, and the button gate at `app/(app)/sale/page.tsx` falls through to "Reserve at $X" — clicking it hits mig 038's idempotent reuse path (returns `reused: true` with the existing reservation_id, signing a fresh voucher off the locked row).
+- **R10-02 (partial — /nodes SIWE loop).** Removed the wallet-mismatch `operon:auth-expired` dispatch from `useNodes.ts` and added `retry: false`. The dispatch was racing `useAuth`'s wallet-switch teardown into a SIWE re-prompt loop. **The dispatch removal alone does not close R10-02 fully** — see Round 2 Phase 1 for the actual root-cause fix.
+- **types/api.ts** added `activeReservation` shape.
+
+### Round 2 fixes (R10 patch v2 — methodology / CTO review pass)
+
+CTO review of round 1 caught that R10-02's "auto-recovers after ~1 min" pattern is the *signature* of an HTTP cache leak, not a SIWE-flow race: `/api/nodes/mine` returned `Cache-Control: private, max-age=60` and `/api/sale/status` returned `private, max-age=5`. Browser private cache keys on URL alone, so a wallet switch reused the prior wallet's body for up to N seconds → wallet-mismatch dispatch fired on every refetch until the cache TTL expired → 60s-wait pattern explained. Round 1's dispatch removal was treating the symptom; the cache header was the cause.
+
+**Phase 1 — cache leak (root cause of R10-02).**
+- `app/api/sale/status/route.ts` and `app/api/nodes/mine/route.ts`: response `Cache-Control` flipped from `private, max-age=N` → `private, no-store`.
+- Belt-and-suspenders: `hooks/useNodes.ts` and `hooks/useSaleStatus.ts` pass `cache: 'no-store'` in the RequestInit so neither HTTP cache nor any intermediate can reinterpret. Verified `authFetch` at `lib/api/fetch.ts:34-35` passes RequestInit through.
+- TanStack Query's wallet-keyed `queryKey` already handles in-process dedup; the HTTP cache was load-bearing for nothing useful.
+
+**Phase 2b — `activeReservation` surfaces `'reserved'` rows only.**
+- Was `.in('status', ['reserved', 'submitted'])`, now `.eq('status', 'reserved')`. A `'submitted'` row means the buyer has already broadcast `purchaseWithVoucher`; surfacing it as recoverable would let the page prompt Approve/Buy a SECOND time (contract `usedReservations[id]=true` rejects the duplicate but the user wastes gas). Long inline comment in the route documents: why submitted is excluded, where pending-tx surfaces today (`localStorage('operon_pending_tx')` → `pendingRecovery`), the cross-device gap (no server-backed pending-tx surface yet — owed work), and a pre-existing edge case (if `/api/sale/reservations/submit` POST silently fails after the user broadcasts the tx, the row stays `'reserved'` even though it's in flight; bounded by 12-min TTL).
+- The global `tierReserved` count above (lines 73-81) **deliberately keeps `'submitted'` in scope** because those slots still hold inventory against `total_supply` — opposite intent on purpose.
+
+**Phase 3 — useSaleStatus dispatch removal + sale-page polling-clobber guard.**
+- `hooks/useSaleStatus.ts` drops the wallet-mismatch `operon:auth-expired` dispatch (parallels the round-1 useNodes change). The throw is preserved. The cache fix in Phase 1 closes the same-tab path; this closes the cross-tab race where one tab's wagmi state lags the cookie update.
+- `app/(app)/sale/page.tsx` activeReservation alignment effect: TanStack Query returns a fresh object reference on every 10s poll, which was re-firing the effect and clobbering chain/qty/token edits the user made manually. Added a stable signature ref (chain|tier|qty|token|discountBps|codeUsed|expiresAt); only run setters on signature change. CTO C1: clear the ref inside `resetWalletScopedSaleState` so a B → disconnect → A → disconnect → B sequence re-applies the alignment for the same row instead of being deduped against the pre-disconnect signature.
+- Locked-row authority preserved: `setCodeValid(true)` for the held row's `codeUsed` without re-validating against current state. Re-validating would mismatch the row's `discount_bps` / `code_hash` and break the RPC reuse path. Phase 4 (deferred) is the proper recovery refactor that pulls voucher fields directly from the locked row.
+
+**Phase 5 — `/api/home/summary` reservation-aware tierRemaining.**
+- Was `tierRemaining = supply - sold`, now `Math.max(0, supply - sold - tierReserved)` — same formula `/api/sale/status` uses. Counts both `'reserved'` and `'submitted'` rows because both still hold inventory against `total_supply` (intentionally NOT the same filter as Phase 2b's per-user surface).
+- Closes the home-tile vs `/sale` divergence where the home tile claimed slots remained while `/sale` showed sold-out / reserved.
+
+### Migration 039 (committed earlier in `b92b9e5`)
+
+`reserve_node_purchase` existing-reservation filter dropped `chain = p_chain`; `chain` is now part of the exact-match comparison instead. Closes the cross-chain hoarding hole the R9 security audit flagged (one wallet × 2 chains × N tiers worth of reservation slots, multiplied across throwaway wallets created via `/api/auth/wallet`). The `sale_tiers FOR UPDATE` lock serializes concurrent attempts so the existing-reservation SELECT doesn't race. **Live DB must apply 039**: `node scripts/apply-migration.mjs supabase/migrations/039_reservation_one_per_wallet_per_tier.sql`.
+
+### Deferred (filed as future tickets, NOT in this round)
+
+- **Phase 2a** — drop `.eq('tier', activeTier.tier)` from the caller-reservation lookup. Today, if a user holds a reservation on tier N and tier N has since auto-promoted to N+1, their reservation isn't surfaced. Voucher remains chain-redeemable, but the UI gate locks them out until 12-min expiry. Defer per CTO until Phase 4 ships.
+- **Phase 4** — locked-row reservation recovery. `/api/sale/reserve` runs `validateReferralCode` BEFORE the RPC; if the upline partner was suspended / code revoked / EPP tier shifted between Reserve and reconnect, current state mismatches the locked row's `discount_bps` and the RPC returns 409. Replace with a "rehydrate from row" code path that pulls voucher fields directly from `sale_reservations` and bypasses revalidation when `reused: true`. Needs focused tests covering reuse / revoke-during-TTL / submitted exclusion.
+- **Server-backed pending-tx surface** — replaces `localStorage('operon_pending_tx')` for the `'submitted'` recovery case so users on a cross-device or cleared-storage path can still see "purchase pending" instead of "tier sold out".
+- **Effect-race resolution at `app/(app)/sale/page.tsx`** — the `usedReferralCode` effect (line 338) and `activeReservation` alignment effect (line 351) both write `referralCode` / `codeValid` / `discountBps`. Order makes alignment win the synchronous setter race, but the async `validateCode` from line 338 lands later and overrides `codeValid` + `discountBps` while `referralCode` stays cleared. Pre-existing; UI shows discount UI while Reserve sends `code: undefined`. Functional (matches locked row) but UX-confusing. Should land alongside Phase 4.
+- **Fail-closed on `tierReserved` query error** — both `/api/sale/status` and `/api/home/summary` `await supabase` then `(data ?? []).reduce(...)` — if the query errors, `tierReserved=0` silently and `tierRemaining` over-reports. Bounded blast radius (next poll recovers; no money path), but worth logging or returning 503 instead of fail-open.
+
+### Verification
+
+- `tsc --noEmit` clean across all 4 commits.
+- `next build` green — all routes compile.
+- Self-review against the 6-pass methodology (data flow / adversarial input / failure consequences / state & lifecycle / deletion test / time & scale): 0 blocking, 0 required, 3 advisory (all pre-existing patterns, none introduced this round).
+
+### Operator-owed before testnet handoff
+
+- Apply mig 039 to live testnet Supabase: `node scripts/apply-migration.mjs supabase/migrations/039_reservation_one_per_wallet_per_tier.sql`.
+- Smoke checklist for the next testnet round (CTO C3 — not optional):
+  1. **R10 Test 4** (close-browser-and-reopen with held reservation) — buy box should show Reserve at correct price, NOT "tier sold out".
+  2. **R10 Test 8 Step A** (disconnect → reconnect-same-wallet with held reservation) — same expectation.
+  3. **Multi-tab probe** — open `/sale` in tab A and `/nodes` in tab B with Wallet B; switch to Wallet A in MetaMask. Both tabs should settle on Wallet A's data within 10s without infinite SIWE prompts.
+  4. **Polling clobber probe** — reconnect to a held reservation, manually change qty, wait 15s — qty should NOT snap back.
+  5. **Home/sale parity** — when active reservations hold the last slots of a tier, both home tile and `/sale` should report the same `remaining` count.
+
+### Tester package
+
+`scripts/prepare-tester-package.sh` produces `operon-tester-2026-05-03.zip` at the parent directory. The script's exclude list strips `.env.local`, `node_modules`, `CLAUDE.md`, `REVIEW_ADDENDUM.md`, `review-log.md`, and prior tester zips, with a post-stage `find` sweep that aborts loudly if any forbidden path leaked through.
+
+---
+
 ## 2026-05-02 — R9 verification fix-pass: close blocking findings, livenet-ready
 
 R9 testing surfaced 13 entries against the cycle-3 build. Of those, 7 had real code/data fixes worth shipping; 3 were misobservations or by-design fallbacks; 1 (Bug #11 cancel-Buy intermittent re-Approve) is left as a known-minor follow-up because it did not deterministically reproduce. Build green, typecheck clean, 66/66 Hardhat tests pass, lint 0 errors.
