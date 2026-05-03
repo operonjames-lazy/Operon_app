@@ -1,9 +1,17 @@
 import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
   try {
+    // Mirror /api/referrals/summary (30/min/IP). The route walks
+    // referral_purchases ⨝ purchases per request and TanStack's
+    // refetchOnWindowFocus already produces tab-churn traffic; without
+    // a cap an authenticated client can flood unbounded.
+    const rateLimited = await rateLimit(request, 'referrals-activity', 30);
+    if (rateLimited) return rateLimited;
+
     const userId = await verifyToken(request);
     if (!userId) {
       return Response.json({ code: 'UNAUTHORIZED', message: 'Not authenticated' }, { status: 401 });

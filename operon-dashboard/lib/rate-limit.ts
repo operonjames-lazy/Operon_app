@@ -19,7 +19,9 @@ const FAIL_CLOSED_SENTINEL = {
   limit: async () => ({ success: false }),
 };
 
-async function getRatelimit(prefix: string, maxRequests: number) {
+type Window = '1 m' | '10 m' | '1 h' | '1 d';
+
+async function getRatelimit(prefix: string, maxRequests: number, window: Window) {
   if (_ratelimitInstances[prefix]) return _ratelimitInstances[prefix];
 
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
@@ -36,7 +38,7 @@ async function getRatelimit(prefix: string, maxRequests: number) {
 
   const instance = new Ratelimit({
     redis: Redis.fromEnv(),
-    limiter: Ratelimit.slidingWindow(maxRequests, '1 m'),
+    limiter: Ratelimit.slidingWindow(maxRequests, window),
     prefix: `rl:${prefix}`,
   });
 
@@ -47,9 +49,10 @@ async function getRatelimit(prefix: string, maxRequests: number) {
 export async function rateLimit(
   request: NextRequest,
   prefix: string,
-  maxPerMinute: number
+  maxRequests: number,
+  window: Window = '1 m'
 ): Promise<Response | null> {
-  const rl = await getRatelimit(prefix, maxPerMinute);
+  const rl = await getRatelimit(prefix, maxRequests, window);
   if (!rl) return null; // No rate limiting in dev
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';

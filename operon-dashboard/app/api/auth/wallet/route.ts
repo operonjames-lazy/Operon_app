@@ -320,6 +320,18 @@ export async function POST(request: NextRequest) {
 
     let isFirstSignup = false;
     if (!user) {
+      // Per-IP cap on new-account creation. The auth_wallet 10/min cap above
+      // protects against credential-stuffing-style hammering, but it does not
+      // stop a fleet attacker from creating thousands of throwaway wallets
+      // per hour from a residential proxy pool. Each fresh user is then
+      // capable of holding a 12-min reservation slot in `sale_reservations`,
+      // turning into an inventory-DoS at sellout boundaries (R9 Bug #12
+      // root cause). Cap user inserts at 5/hour/IP — high enough that an
+      // event venue / shared NAT can still onboard a handful of legitimate
+      // buyers, low enough to make a wallet-fleet attack uneconomical.
+      const signupRl = await rateLimit(request, 'auth_wallet_signup', 5, '1 h');
+      if (signupRl) return signupRl;
+
       const { data: newUser, error } = await supabase
         .from('users')
         .insert({ primary_wallet: walletLower })
