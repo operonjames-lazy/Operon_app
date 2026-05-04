@@ -3,6 +3,8 @@ import { createServerSupabase } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rate-limit';
 import { verifyToken } from '@/lib/auth';
 
+const NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store' } as const;
+
 export async function GET(request: NextRequest) {
   try {
     const rateLimited = await rateLimit(request, 'sale-status', 60);
@@ -36,7 +38,10 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (configError || !config) {
-      return Response.json({ code: 'CONFIG_ERROR', message: String(configError), config }, { status: 500 });
+      return Response.json(
+        { code: 'CONFIG_ERROR', message: String(configError), config },
+        { status: 500, headers: NO_STORE_HEADERS },
+      );
     }
 
     // Get ALL tiers (no tier_max filter — show all configured tiers)
@@ -46,11 +51,17 @@ export async function GET(request: NextRequest) {
       .order('tier', { ascending: true });
 
     if (tierError) {
-      return Response.json({ code: 'TIER_ERROR', message: String(tierError) }, { status: 500 });
+      return Response.json(
+        { code: 'TIER_ERROR', message: String(tierError) },
+        { status: 500, headers: NO_STORE_HEADERS },
+      );
     }
 
     if (!tiers || tiers.length === 0) {
-      return Response.json({ code: 'NOT_FOUND', message: 'No sale tiers found' }, { status: 404 });
+      return Response.json(
+        { code: 'NOT_FOUND', message: 'No sale tiers found' },
+        { status: 404, headers: NO_STORE_HEADERS },
+      );
     }
 
     // R8 (2026-04-30) — Bug #5: pull active reservations so the displayed
@@ -174,12 +185,12 @@ export async function GET(request: NextRequest) {
       // — long enough to trigger the wallet-mismatch dispatch path on the next
       // poll. `no-store` forces every poll to the server with the live cookie.
       // staleTime in `useSaleStatus` already handles in-process dedup.
-      headers: { 'Cache-Control': 'private, no-store' },
+      headers: NO_STORE_HEADERS,
     });
   } catch (err) {
     return Response.json(
       { code: 'INTERNAL_ERROR', message: String(err) },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS }
     );
   }
 }

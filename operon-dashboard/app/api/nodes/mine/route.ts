@@ -9,6 +9,7 @@ import type { Chain } from '@/types/api';
 
 // Emission per node per day (Year 1: 40% of 63B / 100K nodes / 365 days)
 const BASE_DAILY_EMISSION = 69.04;
+const NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store' } as const;
 
 // Minimal OperonNode ABI for ownership enumeration. ERC721Enumerable's
 // `tokenOfOwnerByIndex` returns tokens in the order they were minted to
@@ -72,7 +73,10 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await verifyToken(request);
     if (!userId) {
-      return Response.json({ code: 'UNAUTHORIZED', message: 'Not authenticated' }, { status: 401 });
+      return Response.json(
+        { code: 'UNAUTHORIZED', message: 'Not authenticated' },
+        { status: 401, headers: NO_STORE_HEADERS },
+      );
     }
 
     const supabase = createServerSupabase();
@@ -92,20 +96,23 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: true }); // ASC so on-chain order lines up
 
     if (!purchases || purchases.length === 0) {
-      return Response.json({
-        wallet,
-        nodes: [],
-        totalOwned: 0,
-        totalInvested: 0,
-        chains: [],
-        emission: {
-          dailyOwn: 0,
-          dailyReferralPool: 0,
-          dailyTotal: 0,
-          monthlyTotal: 0,
-          annualTotal: 0,
+      return Response.json(
+        {
+          wallet,
+          nodes: [],
+          totalOwned: 0,
+          totalInvested: 0,
+          chains: [],
+          emission: {
+            dailyOwn: 0,
+            dailyReferralPool: 0,
+            dailyTotal: 0,
+            monthlyTotal: 0,
+            annualTotal: 0,
+          },
         },
-      });
+        { headers: NO_STORE_HEADERS },
+      );
     }
 
     const chainsWithPurchases: Chain[] = Array.from(
@@ -213,12 +220,12 @@ export async function GET(request: NextRequest) {
       // wallet's view and is what the tester observed as "/nodes recovers
       // after ~1 min" in BUG_REPORT_R10 #R10-02. `no-store` forces every
       // request through the server so the response is keyed to the live cookie.
-      headers: { 'Cache-Control': 'private, no-store' },
+      headers: NO_STORE_HEADERS,
     });
   } catch {
     return Response.json(
       { code: 'INTERNAL_ERROR', message: 'Failed to fetch nodes' },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS }
     );
   }
 }
