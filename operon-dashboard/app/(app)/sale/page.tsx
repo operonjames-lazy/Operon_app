@@ -1058,8 +1058,8 @@ export default function SalePage() {
             <span className="font-mono text-xs tracking-[0.08em] text-green uppercase font-medium">{t('sale.saleLive')}</span>
           </div>
         )}
-        <div className="text-sm text-t2 font-medium">{t('home.currentTier')}</div>
-        <div className="font-display text-[46px] font-extrabold text-t1 leading-none tracking-[-0.02em]">
+        <div className="mb-2 text-sm text-t2 font-medium">{t('home.currentTier')}</div>
+        <div className="font-display text-[46px] font-extrabold text-t1 leading-[1.05] tracking-normal">
           {formatUsdShort(discountedPrice)}
         </div>
         {discountBps > 0 && (
