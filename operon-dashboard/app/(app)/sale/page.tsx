@@ -143,8 +143,19 @@ function reserveErrorMessage(
         : 12;
       return t('sale.existingActiveReservation', { minutes });
     }
-    case 'invalid_code':
+    case 'invalid_code': {
+      // The reserve route packs sub-reasons into `details.reason`. The
+      // attribution helper (see ensureCheckoutCodeAttribution) raises
+      // `referrer_locked` when the submitted code disagrees with the
+      // buyer's bound referrer, and `referrer_bind_failed` when a DB
+      // error prevented binding — both are 409 invalid_code envelopes
+      // but mean very different things to the buyer than "this code
+      // doesn't exist", so map them to dedicated strings.
+      const reason = typeof details?.reason === 'string' ? details.reason : null;
+      if (reason === 'referrer_locked') return t('sale.codeReferrerLocked');
+      if (reason === 'referrer_bind_failed') return t('sale.codeBindFailed');
       return t('sale.codeInvalidBadge');
+    }
     case 'unauthorized':
       return t('sale.signInFirst');
     case 'sale_paused':
@@ -830,9 +841,16 @@ export default function SalePage() {
       if (!data.valid && data.reason === 'self_referral') {
         setCodeToastVariant('error');
         setCodeToast(t('sale.selfReferralBlocked'));
+      } else if (!data.valid && data.reason === 'referrer_locked') {
+        // R11-03 follow-up: validate-code now mirrors the strict (referrer,
+        // code) match Reserve enforces. Surface the dedicated message here
+        // so the green ✓ never lies — the badge stays red and the user sees
+        // why before they click Reserve.
+        setCodeToastVariant('error');
+        setCodeToast(t('sale.codeReferrerLocked'));
       } else if (codeToastVariant === 'error') {
-        // Same wallet edits a self-ref code into a valid one (or any
-        // non-self-ref outcome): clear the stale red banner so the new
+        // Same wallet edits a self-ref / locked code into a valid one (or
+        // any other valid outcome): clear the stale red banner so the new
         // green discount badge isn't paired with the old error toast.
         // Wallet-switch resets are handled by the [address] effect above.
         setCodeToast('');

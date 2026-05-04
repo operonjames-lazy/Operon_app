@@ -15,7 +15,17 @@ import { validateReferralCode } from '@/lib/referrals/validate';
  *
  * Response shape stays compatible with the existing frontend consumer:
  *   { valid: boolean, discountBps: number, codeType: 'epp'|'community'|null,
- *     reason?: 'self_referral'|'invalid_format'|'unknown_code'|'partner_inactive' }
+ *     reason?: 'self_referral'|'invalid_format'|'unknown_code'|'partner_inactive'
+ *           | 'referrer_locked' }
+ *
+ * R11-03 follow-up: when the caller is authenticated AND has a bound
+ * referrer, this preview now mirrors the strict (referrer_id, code_used)
+ * match enforced by /api/sale/reserve's ensureCheckoutCodeAttribution. A
+ * code that resolves to the wrong owner — or to the right owner but a
+ * different code — flips `valid: false` with `reason: 'referrer_locked'`,
+ * so the buy-box never shows a green ✓ badge for a code Reserve will
+ * then 409 on. Previously the badge could lie about a code that was
+ * "valid in isolation" but would be rejected at the next click.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -40,19 +50,45 @@ export async function POST(request: NextRequest) {
 
     const result = await validateReferralCode(supabase, code, callerUserId);
 
-    if (result.ok) {
+    if (!result.ok) {
       return Response.json({
-        valid: true,
-        discountBps: result.discountBps,
-        codeType: result.codeType,
+        valid: false,
+        discountBps: 0,
+        codeType: null,
+        reason: result.reason,
       });
     }
 
+    // Authenticated caller with a bound referrer: preview the same strict
+    // (referrer_id, code_used) match that ensureCheckoutCodeAttribution
+    // enforces. We deliberately do NOT bind here — preview is read-only;
+    // the INSERT only happens at Reserve time so a curious user typing
+    // codes in the input doesn't leak attribution.
+    if (callerUserId) {
+      const { data: existing } = await supabase
+        .from('referrals')
+        .select('referrer_id, code_used')
+        .eq('referred_id', callerUserId)
+        .maybeSingle();
+
+      if (
+        existing &&
+        (existing.referrer_id !== result.ownerUserId ||
+         existing.code_used !== result.normalizedCode)
+      ) {
+        return Response.json({
+          valid: false,
+          discountBps: 0,
+          codeType: null,
+          reason: 'referrer_locked',
+        });
+      }
+    }
+
     return Response.json({
-      valid: false,
-      discountBps: 0,
-      codeType: null,
-      reason: result.reason,
+      valid: true,
+      discountBps: result.discountBps,
+      codeType: result.codeType,
     });
   } catch {
     return Response.json(
