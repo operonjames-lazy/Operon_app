@@ -54,10 +54,15 @@ The UI hides the input field for bound users (locked badge), so the security bou
 - **`maybeAttachReferrer` still gated on `isFirstSignup`** in `app/api/auth/wallet/route.ts`. UX gap, not correctness: a wallet that signed up without `?ref=` and later visits a `?ref=URL` doesn't get the referrer auto-bound at auth time, so `sale.usedReferralCode` stays null and the buy-box shows an editable input instead of the locked badge. The reserve-side helper now captures attribution if the user manually types, so the original R11-03 commission-leak is closed regardless. The auth-side prefill is owed work — the cleanest fix would mirror the helper's NULL-bind upgrade in `maybeAttachReferrer` so the URL-capture path also works for existing-NULL wallets.
 - **No automated test added for the helper.** Pass 5 deletion test: removing the helper call → R11-03 reproduces; nothing in CI catches it. Owed: integration test for the four cases (NULL, match, mismatch, race) + unit test asserting `Cache-Control: private, no-store` on every return path of the 6 wallet-scoped routes.
 
-### Owed before R11 → tester handoff
+### Auth-side `maybeAttachReferrer` NULL-upgrade (landed 2026-05-05)
 
-- **Auth-side `maybeAttachReferrer` NULL-upgrade** for the prefill UX gap (not load-bearing for correctness).
-- **Helper integration tests** for the four R11-03 paths.
+`app/api/auth/wallet/route.ts` no longer gates `maybeAttachReferrer` on `isFirstSignup`. The function is called on every SIWE login that carries a `referralCode` body field; immutability is preserved by the existing-row early return inside the function. Closes the prefill UX gap: a wallet that connected before it had a `?ref=` URL now binds the captured code on the next signin instead of dropping it silently. The reserve-side R11-03 helper still catches the manual-typed-at-checkout path as a safety net.
+
+### Helper smoke test (landed 2026-05-05)
+
+- Extracted `ensureCheckoutCodeAttribution` from `app/api/sale/reserve/route.ts` to `lib/referrals/checkout-attribution.ts`. Same behaviour, importable from a smoke script + ready for `/api/sale/validate-code` to consume the same lookup logic in a future DRY pass.
+- New `scripts/smoke-test-checkout-attribution.mjs` exercises the SQL contract the helper relies on across all five cases (NULL → bind / match / referrer mismatch / code mismatch / 23505 race) inside BEGIN/ROLLBACK so nothing persists. Wired as `pnpm test:checkout-attribution`. First run against the test DB: 12/12 pass.
+- **What this script does NOT test:** the helper's TypeScript branching logic directly. The script asserts the SQL invariants the helper relies on (UNIQUE on `referred_id`, INSERT/SELECT shapes, exact 23505 error code) — a change that preserves SQL behaviour but skips a JS branch would not be caught here. Backfilling a true JS unit test needs a test framework (vitest/jest/node:test); none currently exists in the repo. Owed as a follow-up alongside the broader unit-test infrastructure decision.
 
 (R11-01 visual pass closed in-line above; see "Visual verification (2026-05-05)".)
 
