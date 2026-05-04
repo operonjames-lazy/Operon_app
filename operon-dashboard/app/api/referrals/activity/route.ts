@@ -3,6 +3,12 @@ import { createServerSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 
+// Wallet-scoped response — see /api/sale/status / /api/nodes/mine for the
+// R10-02 cache-bleed reasoning. Browser private cache keys on URL alone, so
+// without `no-store` a wallet switch could reuse the prior wallet's body
+// (here: the prior wallet's commission events).
+const NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store' } as const;
+
 export async function GET(request: NextRequest) {
   try {
     // Mirror /api/referrals/summary (30/min/IP). The route walks
@@ -14,7 +20,10 @@ export async function GET(request: NextRequest) {
 
     const userId = await verifyToken(request);
     if (!userId) {
-      return Response.json({ code: 'UNAUTHORIZED', message: 'Not authenticated' }, { status: 401 });
+      return Response.json(
+        { code: 'UNAUTHORIZED', message: 'Not authenticated' },
+        { status: 401, headers: NO_STORE_HEADERS },
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -44,7 +53,10 @@ export async function GET(request: NextRequest) {
     if (cursor) {
       const cursorDate = new Date(cursor);
       if (isNaN(cursorDate.getTime())) {
-        return Response.json({ code: 'INVALID_CURSOR', message: 'Invalid cursor format' }, { status: 400 });
+        return Response.json(
+          { code: 'INVALID_CURSOR', message: 'Invalid cursor format' },
+          { status: 400, headers: NO_STORE_HEADERS },
+        );
       }
       query = query.lt('created_at', cursorDate.toISOString());
     }
@@ -52,7 +64,7 @@ export async function GET(request: NextRequest) {
     const { data: events } = await query;
 
     if (!events) {
-      return Response.json({ events: [], nextCursor: null });
+      return Response.json({ events: [], nextCursor: null }, { headers: NO_STORE_HEADERS });
     }
 
     const hasMore = events.length > limit;
@@ -72,11 +84,11 @@ export async function GET(request: NextRequest) {
         };
       }),
       nextCursor: hasMore ? items[items.length - 1].created_at : null,
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch {
     return Response.json(
       { code: 'INTERNAL_ERROR', message: 'Failed to fetch activity' },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS },
     );
   }
 }

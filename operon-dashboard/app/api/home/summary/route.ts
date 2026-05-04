@@ -2,11 +2,19 @@ import { NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 
+// Wallet-scoped response — see /api/sale/status / /api/nodes/mine for the
+// R10-02 cache-bleed reasoning. Browser private cache keys on URL alone, so
+// without `no-store` a wallet switch could reuse the prior wallet's body.
+const NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store' } as const;
+
 export async function GET(request: NextRequest) {
   try {
     const userId = await verifyToken(request);
     if (!userId) {
-      return Response.json({ code: 'UNAUTHORIZED', message: 'Not authenticated' }, { status: 401 });
+      return Response.json(
+        { code: 'UNAUTHORIZED', message: 'Not authenticated' },
+        { status: 401, headers: NO_STORE_HEADERS },
+      );
     }
 
     const supabase = createServerSupabase();
@@ -19,7 +27,10 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (!user) {
-      return Response.json({ code: 'NOT_FOUND', message: 'User not found' }, { status: 404 });
+      return Response.json(
+        { code: 'NOT_FOUND', message: 'User not found' },
+        { status: 404, headers: NO_STORE_HEADERS },
+      );
     }
 
     // Get EPP partner info if applicable
@@ -139,11 +150,11 @@ export async function GET(request: NextRequest) {
         publicSaleDate: null,
         usedReferralCode,
       },
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch {
     return Response.json(
       { code: 'INTERNAL_ERROR', message: 'Failed to fetch dashboard summary' },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS },
     );
   }
 }

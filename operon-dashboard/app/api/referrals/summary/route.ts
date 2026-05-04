@@ -4,6 +4,12 @@ import { verifyToken } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { TIER_THRESHOLDS, TIER_ORDER, MILESTONES } from '@/lib/commission';
 
+// Wallet-scoped response — see /api/sale/status / /api/nodes/mine for the
+// R10-02 cache-bleed reasoning. Browser private cache keys on URL alone, so
+// without `no-store` a wallet switch could reuse the prior wallet's body
+// (here: the prior wallet's commission ledger and downline counts).
+const NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store' } as const;
+
 export async function GET(request: NextRequest) {
   try {
     // R8 ship-readiness re-review: cap to 30 req/min/IP. The route fans
@@ -18,7 +24,10 @@ export async function GET(request: NextRequest) {
 
     const userId = await verifyToken(request);
     if (!userId) {
-      return Response.json({ code: 'UNAUTHORIZED', message: 'Not authenticated' }, { status: 401 });
+      return Response.json(
+        { code: 'UNAUTHORIZED', message: 'Not authenticated' },
+        { status: 401, headers: NO_STORE_HEADERS },
+      );
     }
 
     const supabase = createServerSupabase();
@@ -101,7 +110,7 @@ export async function GET(request: NextRequest) {
     if (rpcError || !rpcData) {
       return Response.json(
         { code: 'INTERNAL_ERROR', message: 'Failed to fetch referral summary' },
-        { status: 500 },
+        { status: 500, headers: NO_STORE_HEADERS },
       );
     }
 
@@ -126,7 +135,7 @@ export async function GET(request: NextRequest) {
       if (!(key in summary)) {
         return Response.json(
           { code: 'INTERNAL_ERROR', message: `referrals_user_summary returned malformed shape (missing ${key})` },
-          { status: 500 },
+          { status: 500, headers: NO_STORE_HEADERS },
         );
       }
     }
@@ -191,11 +200,11 @@ export async function GET(request: NextRequest) {
       network,
       nextTier,
       nextMilestone: nextMilestoneData,
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch {
     return Response.json(
       { code: 'INTERNAL_ERROR', message: 'Failed to fetch referral summary' },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS },
     );
   }
 }
