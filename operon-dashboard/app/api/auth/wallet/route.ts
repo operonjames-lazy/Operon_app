@@ -47,13 +47,27 @@ async function ensurePersonalCode(
 }
 
 /**
- * If the user is new AND a referral code was supplied at signup, attach them
- * to the owning user via the `referrals` table. This is the ONLY moment a
- * referrer can be set — per product rules, referrer is immutable after signup.
+ * Attach the supplied referral code to the calling user via the `referrals`
+ * table when no binding already exists.
+ *
+ * Called on every SIWE login that carries a `referralCode` in the body — both
+ * first-signup (the original case) and existing-NULL-bound users who later
+ * arrive via a `?ref=URL` after the `<ReferralCapture/>` provider stashes the
+ * code. Pre-R11 this was gated to first-signup only, which silently dropped
+ * the URL-capture path for any wallet that had previously connected without
+ * `?ref=` — buyers had to re-type the code at checkout (R11-03 reserve-side
+ * helper now catches that, but the auth-side bind keeps the buy-box prefilling
+ * via `sale.usedReferralCode`).
+ *
+ * Immutability rule (DECISIONS D02 / REVIEW_ADDENDUM D-P3) is preserved by
+ * the existing-row early return below: once a referrer is bound, no
+ * subsequent call can overwrite it. NULL → bound is an upgrade, not a
+ * violation; bound → different is rejected.
  *
  * Rejects:
  *   - unknown codes (silently ignored, referrer stays null)
  *   - self-referral (same wallet owns the code) → silently ignored, logged
+ *   - existing referrer (bound row already present) → no-op, immutability
  */
 async function maybeAttachReferrer(
   supabase: ReturnType<typeof createServerSupabase>,
@@ -359,10 +373,12 @@ export async function POST(request: NextRequest) {
       user!.referral_code = personalCode;
     }
 
-    // On first signup, attach the referrer if one was supplied.
-    if (isFirstSignup) {
-      await maybeAttachReferrer(supabase, user!.id, walletLower, referralCode);
-    }
+    // Attach the supplied referrer code if one is in this body. The function
+    // self-gates on existing rows, so re-calling on every login is safe and
+    // closes the URL-capture path for users who connected before they had a
+    // `?ref=`. Immutability is preserved by the early return inside the
+    // function (see the docblock above maybeAttachReferrer).
+    await maybeAttachReferrer(supabase, user!.id, walletLower, referralCode);
 
     // Optional EPP partner creation (used by /epp/onboard). Idempotent —
     // if the user already has an epp_partners row, returns success without
