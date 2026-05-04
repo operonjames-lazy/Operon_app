@@ -136,11 +136,18 @@ Project-specific review checks for the global `/review` skill.
 **Check:** Any edit to migration 010's CTE must preserve both conditions.
 **Severity:** Blocking.
 
-### A-P5. Referrer is immutable after first signup
-**What:** `maybeAttachReferrer()` only inserts into `referrals` on first signup. Subsequent `/api/auth/wallet` calls with a `referralCode` field are silently ignored.
-**Why:** Prevents fraud by code-swapping between purchases (D08).
-**Check:** Verify the "existing referral row" check happens before the insert. Verify `referrals.referred_id` is UNIQUE in the schema.
+### A-P5. Referrer is immutable once bound; NULL → bound is allowed (refined 2026-05-05, R11)
+**What:** `maybeAttachReferrer()` is called on every SIWE login that carries a `referralCode` body field. The function's `if (existing) return` early-out guarantees that a bound referrer is never overwritten. NULL → bound is treated as an upgrade (D36 refines D08).
+**Why:** Original fraud surface is code-swapping between purchases — that requires *changing* a bound referrer, still blocked by both the function and the `referrals.referred_id` UNIQUE constraint. NULL → bound is the absence of attribution being filled in, not a swap, and was previously silently dropped — leaving buyers with no way to attribute their referrer after a first connect-without-`?ref=`.
+**Check:** Verify (1) `maybeAttachReferrer` is called unconditionally (no `isFirstSignup` gate), (2) the `if (existing) return` early-out exists before the INSERT, (3) `referrals.referred_id` is UNIQUE in the schema. Any code path that updates an existing `referrals` row is a violation.
 **Severity:** Blocking.
+
+### A-P7. Voucher (referrer_id, code_used) must match the bound referrals row exactly
+**What:** Every successful `/api/sale/reserve` call must run `ensureCheckoutCodeAttribution()` from `lib/referrals/checkout-attribution.ts` after `validateReferralCode()` returns ok. The helper enforces strict (`referrer_id` AND `code_used`) match against the buyer's bound row before the voucher is signed; mismatches return 409 `referrer_locked`.
+**Why:** R11-03 surfaced the divergence: `discountBps` and `code_used` signed into the voucher come from the request body, but commission walks `referrals` at settlement. Without the helper, a buyer with NULL referrer who types a valid code at checkout receives the discount while the project absorbs it with no commission attribution. Worse, the strict code match (not just owner match) closes the same-owner-different-code attack: a buyer bound via Alice's 10% community code cannot direct-POST Alice's 15% EPP code to upgrade their voucher rate. EPP codes appear on the partner's `/referrals` page and are 4 chars from a 31-char alphabet (~923K combinations), so distributed brute force or a single screenshot is sufficient. The UI hides the input field for bound users, but the security boundary is the API.
+**Check:** Verify `ensureCheckoutCodeAttribution` is called in `/api/sale/reserve` AFTER `validateReferralCode` succeeds and BEFORE the RPC reservation insert. Verify match is on BOTH `referrer_id` and `code_used`, not just `referrer_id`. Verify the 23505 race-recovery path also re-reads and verifies the same exact match. `/api/sale/validate-code` must mirror the same lookup so the green ✓ badge doesn't lie to a buyer about a code Reserve will reject.
+**Severity:** Blocking.
+**Source:** D36, BUG_REPORT_R11 #R11-03.
 
 ---
 

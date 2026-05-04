@@ -603,6 +603,8 @@ Run this on testnet before any mainnet deploy. Every item must pass.
 ### Referrals
 - [ ] Land on `/?ref=EXISTING-CODE` with a fresh wallet → code captured into sessionStorage
 - [ ] Complete signin → `referrals` table has a new row with the correct `referrer_id`
+- [ ] **Existing-NULL upgrade** (D36 / R11): connect a wallet without `?ref=` first (signin once → no `referrals` row), then visit `/?ref=EXISTING-CODE` and reconnect → `referrals` row appears, `sale.usedReferralCode` populates, buy-box flips to locked badge.
+- [ ] **Voucher↔attribution invariant** (A-P7 / R11-03): run `pnpm test:checkout-attribution` against the testnet DB → 12/12 assertions pass. The script asserts the SQL contract for the five cases (NULL → bind / match / referrer mismatch / code mismatch / 23505 race) the helper relies on; needs `SUPABASE_DB_URL` + `pg` (same pattern as `pnpm smoke:commission`).
 - [ ] Same-wallet self-referral rejected silently with a log entry
 - [ ] Personal `OPR-XXXXXX` code visible on `/referrals` for a non-EPP user
 

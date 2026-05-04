@@ -459,6 +459,20 @@ This collapses the entire "two pricing engines drift apart" failure class. The c
 
 ---
 
+## D36 — Referrer immutability refined: NULL → bound is an upgrade, not a violation of D08
+
+**Date:** 2026-05-05 (R11 fix-pass).
+
+**Why:** D08 stated "referrer is immutable after first signup" and was implemented by gating `maybeAttachReferrer()` behind `isFirstSignup`. R11 testing surfaced the consequence: a wallet that first connected without `?ref=` had its `referrals.referrer_id` left NULL, and any subsequent visit to a `?ref=URL` was silently dropped at the auth layer. The buy-box stayed in editable-input mode forever; if the user typed a code at checkout the project absorbed the discount with no commission attribution (R11-03). The reserve-side fix (D36's sibling — `ensureCheckoutCodeAttribution`) closes the commission leak, but the auth-side prefill UX gap remained until the gate was removed.
+
+**Refinement:** The immutability rule applies to *bound* referrers — once `referrals.referrer_id` is non-NULL, it never changes. A NULL referrer is the absence of attribution, not a deliberate "no referrer" state, so binding it to a code presented on a later signin is an upgrade, not a violation. The fraud surface D08 originally guarded against (code-swap between purchases) requires *changing* a bound referrer; that path stays closed by the function's `if (existing) return` early-out and the `referrals.referred_id` UNIQUE constraint.
+
+**Decision:** `maybeAttachReferrer()` now runs on every SIWE login that carries a `referralCode` body field, not only on first signup. Function self-gates on existing rows (immutability) and on self-referral (D09). Re-calling on every login is safe, idempotent, and bounded — the SELECT is on an indexed column and the function bails immediately when the row exists.
+
+**Affects:** `app/api/auth/wallet/route.ts` (gate removed), `app/api/sale/reserve/route.ts` + `lib/referrals/checkout-attribution.ts` (sibling reserve-side enforcement of voucher↔attribution match), `app/api/sale/validate-code/route.ts` (preview parity for the new `referrer_locked` reason), REVIEW_ADDENDUM A-P5 (updated check), `lib/i18n/translations.ts` (`sale.codeReferrerLocked` + `sale.codeBindFailed` in 6 languages). Also: any future "EPP-upgrade" UX that lets a referee switch from a community code to the same referrer's EPP code must mutate the bound row through an explicit admin or self-serve flow — implicit upgrade via direct-POST is rejected at the API by the strict `(referrer_id, code_used)` match.
+
+---
+
 # Phase 2 Reserved (D21–D40)
 
 Placeholder entries for Phase 2 decisions. Fill in as they come up.
