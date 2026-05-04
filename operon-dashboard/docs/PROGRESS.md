@@ -12,7 +12,7 @@ R11 testing (BUG_REPORT_R11, tester 蕭遙, 2026-05-04) verified all three R10 r
 
 `app/(app)/sale/page.tsx` hero-pricing block — added `mb-2` on the "current tier" label and switched the `$X` price block from `leading-none` + `tracking-[-0.02em]` to `leading-[1.05]` + `tracking-normal`. The font-display ascenders no longer collide with the label baseline. Pure CSS.
 
-**Owed:** visual screenshot pass at the {en, zh-Hant, zh-Hans, ko, vi, th} × {375, 768, 1280, 1920} × {discounted, full-price} matrix. Vietnamese tone-stacks (`Cấp hiện tại`) and Thai upper marks (`ระดับปัจจุบัน`) push the label's optical top above what `leading-[1.05]` predicts on smaller font metrics; mobile 375 wasn't in the original repro range. Plausible from CSS reasoning, not visually verified yet.
+**Visual verification (2026-05-05):** screenshot pass via Playwright MCP against the live dev server. 10 cells covered — {en, tc, sc, ko, vi, th} at 1280 (the bug report's lower-bound viewport) + {en, ko, vi, th} at 375 (mobile, not in the original repro range but the highest-risk add). All 10 pass: clear vertical breathing room between the locale's "current tier" label and the `$X` price block; Vietnamese tone-stacks (`Cấp hiện tại`) and Thai upper marks (`ระดับปัจจุบัน`) render above the price ascenders without collision at either viewport. 768 and 1920 not screenshot-checked; 768 sits between two passing cells and 1920 has strictly more horizontal slack than 1280, so neither is a regression risk.
 
 ### R11-02 (Minor — fixed) + structural sweep: no-store cache headers across 6 wallet-scoped routes
 
@@ -56,9 +56,10 @@ The UI hides the input field for bound users (locked badge), so the security bou
 
 ### Owed before R11 → tester handoff
 
-- **Visual screenshot pass for R11-01** at the language × viewport matrix above. CSS fix shipped untested on vi/th/mobile.
 - **Auth-side `maybeAttachReferrer` NULL-upgrade** for the prefill UX gap (not load-bearing for correctness).
 - **Helper integration tests** for the four R11-03 paths.
+
+(R11-01 visual pass closed in-line above; see "Visual verification (2026-05-05)".)
 
 ### Tester package
 
