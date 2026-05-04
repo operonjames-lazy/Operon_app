@@ -4,6 +4,68 @@ Append-only session log. One dated entry per coding session. Do not edit previou
 
 ---
 
+## 2026-05-05 — R11 fix-pass: voucher↔referral attribution, cache-header sweep, sale-page hero polish
+
+R11 testing (BUG_REPORT_R11, tester 蕭遙, 2026-05-04) verified all three R10 residuals (R10-01/02/03) and mig 039 cross-chain reservation single-hold as FIXED. Three new findings surfaced — one Serious (#R11-03), two Minor (#R11-01, #R11-02). Severity distribution: 0 BLOCKER / 1 Serious / 2 Minor. All three closed in this pass plus a structural sweep of the R11-02 fix class to four sister routes the tester didn't poke at but which carry the same risk.
+
+### R11-01 (Minor — fixed): sale-page tier-price label/price overlap, all 5 langs
+
+`app/(app)/sale/page.tsx` hero-pricing block — added `mb-2` on the "current tier" label and switched the `$X` price block from `leading-none` + `tracking-[-0.02em]` to `leading-[1.05]` + `tracking-normal`. The font-display ascenders no longer collide with the label baseline. Pure CSS.
+
+**Owed:** visual screenshot pass at the {en, zh-Hant, zh-Hans, ko, vi, th} × {375, 768, 1280, 1920} × {discounted, full-price} matrix. Vietnamese tone-stacks (`Cấp hiện tại`) and Thai upper marks (`ระดับปัจจุบัน`) push the label's optical top above what `leading-[1.05]` predicts on smaller font metrics; mobile 375 wasn't in the original repro range. Plausible from CSS reasoning, not visually verified yet.
+
+### R11-02 (Minor — fixed) + structural sweep: no-store cache headers across 6 wallet-scoped routes
+
+The R10 round-2 fix flipped `Cache-Control` to `private, no-store` on the with-data success path of `/api/sale/status` and `/api/nodes/mine` but left the early-return paths (401/empty-inventory/CONFIG_ERROR/TIER_ERROR/NOT_FOUND/catch-500) returning bodies with no cache header. Browser private cache keys on URL alone, so those uncovered paths preserved the same wallet-bleed risk the round-2 fix was meant to close.
+
+R11-02 closure: hoisted `NO_STORE_HEADERS` as a module-level const in each route + applied to every `Response.json` call site.
+
+**Sweep:** the same shape was open on four sister wallet-scoped routes the tester didn't file against — `/api/home/summary`, `/api/referrals/summary`, `/api/referrals/activity`, `/api/referrals/payouts`. All four call `verifyToken` and return per-user state (commission ledger, downline counts, payout history). `/referrals/*` are the most sensitive because they expose commission and downline structure. Same `NO_STORE_HEADERS` const pattern applied to every return path on each. Six routes total now consistent.
+
+### R11-03 (Serious — fixed): voucher discount diverged from referral attribution
+
+Root cause: `app/api/auth/wallet/route.ts` `maybeAttachReferrer()` is gated by `isFirstSignup` (immutable-after-signup product rule), but `app/api/sale/reserve/route.ts` `validateReferralCode()` only checks code legitimacy without consulting or updating `referrals`. A buyer with NULL `referrers.referrer_id` who typed a valid code at checkout received the discount while commission walked the (empty) referrals chain. Project absorbed the discount, no upline earned attribution.
+
+Fix: new `ensureCheckoutCodeAttribution(supabase, buyerUserId, referrerUserId, normalizedCode)` helper at `app/api/sale/reserve/route.ts`, called after `validateReferralCode` succeeds.
+
+Cases:
+- **No existing referrals row** → INSERT bind to the submitted code's owner. Closes the original NULL-referrer leak.
+- **Existing row** → require BOTH `referrer_id` AND `code_used` to match the submitted code exactly. Returns 409 `referrer_locked` otherwise.
+- **INSERT race** (23505 unique violation on `referred_id`) → re-read the row that won and verify the same exact-match against OUR submitted referrer + code; refuse to sign a voucher that disagrees with the now-bound upline.
+
+**Strict code match (not just owner match) is load-bearing.** A single referrer can own multiple codes at different rates — Alice has community OPR-... at 10% and EPP OPRN-... at 15%. Matching only by `referrer_id` would let a buyer bound via Alice's community code direct-POST Alice's EPP code at checkout: guard passes (same owner), voucher signs at 15%, bound row still records the 10% code. EPP codes appear on the partner's `/referrals` page and are 4 chars from a 31-char alphabet (~923K combinations); distributed brute-force or a single screenshot is sufficient. Strict code match closes the gap. Helper comment block documents this and notes any future "EPP-upgrade" UX should land as an explicit admin/self-serve flow that mutates the bound row, NOT as implicit upgrade-via-direct-POST (audit trail + buyer awareness).
+
+The UI hides the input field for bound users (locked badge), so the security boundary is the API not the UI.
+
+**Translations + UX surface for new reasons:**
+- New i18n keys `sale.codeReferrerLocked` and `sale.codeBindFailed` in all 6 languages (en, tc, sc, ko, vi, th).
+- `app/(app)/sale/page.tsx` `reserveErrorMessage` switched on `details.reason` for `invalid_code` 409s — `referrer_locked` and `referrer_bind_failed` now map to dedicated strings instead of the generic "Invalid code" toast.
+- `validateCode()` toast handling extended to flip the red banner on `referrer_locked` (mirrors the existing `self_referral` branch).
+
+**Validate-code preview parity:** `app/api/sale/validate-code/route.ts` now mirrors the strict (referrer_id, code_used) match for authenticated callers with a bound referrer. A code that resolves to the wrong owner — or to the right owner but a different code — flips `valid: false` with `reason: 'referrer_locked'`, so the buy-box never shows a green ✓ for a code Reserve will then 409 on. Preview is read-only — no INSERT — so a curious user typing codes doesn't leak attribution.
+
+### Verification
+
+- `tsc --noEmit` clean across all commits.
+- Helper logic walked against each case in head + comment block in code documents WHY each branch exists. R11-03's NULL-bind, mismatched-existing, and 23505-race paths all close the same defect class (voucher↔referrals divergence) at the API boundary regardless of UI state.
+
+### What was NOT changed (and why)
+
+- **`maybeAttachReferrer` still gated on `isFirstSignup`** in `app/api/auth/wallet/route.ts`. UX gap, not correctness: a wallet that signed up without `?ref=` and later visits a `?ref=URL` doesn't get the referrer auto-bound at auth time, so `sale.usedReferralCode` stays null and the buy-box shows an editable input instead of the locked badge. The reserve-side helper now captures attribution if the user manually types, so the original R11-03 commission-leak is closed regardless. The auth-side prefill is owed work — the cleanest fix would mirror the helper's NULL-bind upgrade in `maybeAttachReferrer` so the URL-capture path also works for existing-NULL wallets.
+- **No automated test added for the helper.** Pass 5 deletion test: removing the helper call → R11-03 reproduces; nothing in CI catches it. Owed: integration test for the four cases (NULL, match, mismatch, race) + unit test asserting `Cache-Control: private, no-store` on every return path of the 6 wallet-scoped routes.
+
+### Owed before R11 → tester handoff
+
+- **Visual screenshot pass for R11-01** at the language × viewport matrix above. CSS fix shipped untested on vi/th/mobile.
+- **Auth-side `maybeAttachReferrer` NULL-upgrade** for the prefill UX gap (not load-bearing for correctness).
+- **Helper integration tests** for the four R11-03 paths.
+
+### Tester package
+
+Not regenerated this session. Prior package was `operon-tester-2026-05-03.zip`; if the next testnet round runs against R11, regenerate via `scripts/prepare-tester-package.sh`.
+
+---
+
 ## 2026-05-03 — R10 fix-pass (rounds 1 + 2): cross-wallet bleed, reservation recovery, cache leak
 
 R10 testing surfaced 3 residual bugs after the R9 fix-pass landed (BUG_REPORT_R10): R10-01 buy-box ✓ + 10% discount UI bleed across Disconnect → Connect-different-wallet (Minor), R10-02 SIWE re-prompt loop on /nodes after wallet switch — auto-recovers ~1 min (Serious), R10-03 held reservation not surfaced after disconnect → reconnect-same-wallet, buy-box stuck on "tier sold out" with only DB-level workaround (Serious). All three address the wallet-identity transition surface; net-zero new BLOCKERs from the tester.
