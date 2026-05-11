@@ -410,6 +410,32 @@ Decisions are numbered `D01, D02…` and **never renumbered**. Deleted decisions
 
 ---
 
+## D-pending — 14-day commission hold enforced by operator policy, not runtime
+
+**Context:** The public FAQ (`operon-website-2026-04-26/hero-prototype-O-faq.html` — *When and how am I paid for pre-TGE referrals?*) and Master Context v3.4 §265 commit to a 14-day hold on commissions before biweekly USDC payout. The hold protects against chargebacks, sanctions screening hits, and chain reorgs that would force a clawback after USDC has left the treasury. No runtime field on `commissions` enforces this — `admin_unpaid_grouped` returns every unpaid row regardless of age.
+
+**Decision (current):** Operator-enforced. The payout policy in `OPERATIONS.md §4` (subsection under *Mark commissions as paid*) instructs the operator to exclude commissions with `created_at < NOW() - INTERVAL '14 days'` from each batch. Since the backend never sends USDC (D16), human discretion is already in the loop — formalising the rule in the runbook is enough to make the FAQ truthful.
+
+**When to upgrade to runtime enforcement:** If the operator burden grows (hundreds of batches, multiple operators, audit pressure) or if a hold-period violation slips through, add `commissions.hold_until TIMESTAMPTZ DEFAULT created_at + interval '14 days'` plus a `WHERE hold_until <= NOW()` filter in `payouts_pending_view`. Half-day build. The runbook entry serves as the spec for that future migration.
+
+**Affects:** `docs/OPERATIONS.md §4 Payout policy`, FAQ pre-TGE referral Q, FAQ payout-timing Q.
+
+---
+
+## D-pending — Sanctions screening enforced by policy + operator check, not runtime
+
+**Context:** The public FAQ (jurisdictions Q and KYC Q) states that wallets on the OFAC/SDN list "are not eligible to participate" and that "Operon reserves the right to refuse service, pause accounts, or withhold payouts for any wallet identified as sanctioned." The smart contract has no blocklist; the voucher RPC does no screening; no Chainalysis/TRM integration exists.
+
+**Decision (current):** Policy-only posture. The FAQ wording is deliberately a policy claim, not a technical claim — defensible without runtime enforcement. The OPERATIONS payout policy instructs the operator to look up payout wallets against the OFAC SDN list (free public tool) before sending USDC. Discovered post-mint sanctions hits are handled by sale-pause + manual refund.
+
+**Why this is right:** Active screening at voucher issuance (Chainalysis at ~$0.005–$0.05/call) costs and adds a vendor dependency. Industry-peer projects (verified at audit-time) ship the same policy-only stance. Compliance counsel signs the ToS + admin-pause power as adequate.
+
+**When to upgrade:** If counsel asks for active enforcement, if a sanctions hit slips through, or if regulatory pressure escalates. Two upgrade paths exist: (a) static OFAC SDN list lookup wired into `reserve_node_purchase` — ~1 day, free, US-only; (b) full vendor integration (Chainalysis/TRM) — ~3 days, ongoing cost, multi-jurisdiction coverage.
+
+**Affects:** `docs/OPERATIONS.md §4 Payout policy`, FAQ jurisdictions Q, FAQ KYC Q, ToS (if/when published).
+
+---
+
 ## D-pending — Mainnet contract ownership via Gnosis Safe
 **Context:** Per D06, testnet admin pause/unpause uses `ADMIN_PRIVATE_KEY` in Vercel env. This is explicitly testnet-only. Mainnet needs a multi-sig for contract ownership.
 **Concern:** If mainnet launches with a hot key, a Vercel env compromise = sale can be paused or drained (to the extent the contract allows). Gnosis Safe adds infra complexity but removes single-key risk.

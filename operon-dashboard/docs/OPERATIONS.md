@@ -330,6 +330,16 @@ Writes `paid_at`, `payout_tx`, `paid_from_wallet` to the listed rows. Refuses:
 
 **The backend does not send USDC.** You send manually from the payout wallet, then call this endpoint with the resulting tx hash.
 
+##### Payout policy — apply at every batch
+
+Two checks the operator runs *before* sending USDC. Neither is enforced in code; both are commitments in the public FAQ that depend on the operator following them at each payout cycle.
+
+**1. 14-day commission hold.** Exclude any commission row with `created_at` newer than 14 days from the current payout batch. Rationale: protects against chargebacks, sanctions screening hits, and chain reorgs that would otherwise force a clawback after USDC has already left the treasury. The unpaid-grouped endpoint returns `created_at` per row and `oldest` per batch — sort by age and drop anything < 14 days old.
+
+**2. Sanctions check.** Before sending to a payout wallet, look it up against the OFAC SDN list (free at <https://sanctionssearch.ofac.treas.gov/> or via Chainalysis Public Address Lookup). If flagged, do **not** include in the batch; escalate the row to legal/compliance for case-by-case review. Reflects the FAQ policy stance ("Operon reserves the right to refuse service, pause accounts, or withhold payouts for any wallet identified as sanctioned"). Same policy applies to purchases discovered post-mint — pause the sale, refund, and refuse subsequent commissions accruing to the sanctioned wallet's referral graph.
+
+Both policies should be applied to *every* payout batch without exception. If either is skipped, the FAQ becomes a misrepresentation. If the volume of holds or sanctions hits grows enough to be operationally painful, revisit whether to build runtime enforcement (DECISIONS would track the upgrade).
+
 #### Generate EPP invites
 
 ```bash
