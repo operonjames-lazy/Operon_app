@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>คำถามพบบ่อย | Operon</title>
+<meta name="description" content="คำถามที่พบบ่อยเกี่ยวกับ Operon — การขายโหนด ข้อกำหนดทางเทคนิค รางวัล การกำกับดูแล และอื่น ๆ">
+<link rel="canonical" href="https://operon.network/th/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="en" href="https://operon.network/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="zh-cn" href="https://operon.network/zh-cn/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="zh-tw" href="https://operon.network/zh-tw/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="ko" href="https://operon.network/ko/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="ja" href="https://operon.network/ja/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="th" href="https://operon.network/th/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="vi" href="https://operon.network/vi/hero-prototype-O-faq.html" />
+<link rel="alternate" hreflang="x-default" href="https://operon.network/hero-prototype-O-faq.html" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@300;700;800&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Sans+Thai:wght@300;400;500;700&family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --t1:#f6f8ff;
+    --t2:rgba(220,232,252,0.78);
+    --t3:rgba(170,188,220,0.55);
+    --t4:rgba(170,188,220,0.55);
+    --bg-deep:#02050d;
+    --ice:#93C5FD;
+    --glow:#3B82F6;
+    --accent:#5ba4f5;
+    --blue-dim:#1f3a8a;
+    --gold:#d4a853;
+    --gold-dim:#8a6b30;
+    --border:rgba(147,197,253,0.10);
+    --border-strong:rgba(147,197,253,0.18);
+    --surface:rgba(255,255,255,0.03);
+    --surface-2:rgba(255,255,255,0.05);
+    --card-fill-top:rgba(12,18,36,0.65);
+    --card-fill-bot:rgba(6,12,22,0.78);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'Inter','Noto Sans SC','Noto Sans TC','Noto Sans KR','Noto Sans JP','Noto Sans Thai','Noto Sans',sans-serif;background:linear-gradient(180deg,#03060f 0%,#02050d 60%,#010308 100%);color:var(--t1);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;letter-spacing:-0.005em;min-height:100vh;}
+
+  nav.site-nav{position:sticky;top:0;z-index:100;background:rgba(3,6,15,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 40px;min-height:64px;}
+  .brand{font-family:'Unbounded',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.02em;color:#fff;line-height:1;text-decoration:none;}
+  .brand .on-ice{color:var(--glow);}
+  .nav-mid{display:flex;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:100px;padding:4px;justify-self:center;}
+  .nav-mid a{padding:8px 18px;font-size:13.5px;font-weight:500;color:rgba(220,230,250,0.65);text-decoration:none;border-radius:100px;transition:all 0.25s;white-space:nowrap;}
+  .nav-mid a:hover{color:var(--t1);}
+  .nav-mid a.active{color:var(--t1);background:rgba(255,255,255,0.06);}
+  .nav-mid a.nav-node{color:var(--gold);font-weight:600;}
+  .nav-mid a.nav-node:hover{color:#f3cc78;}
+  .nav-mid a.nav-node.active{color:#f3cc78;background:rgba(212,168,83,0.08);}
+  .nav-right{justify-self:end;display:flex;align-items:center;gap:10px;}
+  .header-tag{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.10em;color:var(--t3);border:1px solid var(--border);padding:5px 12px;border-radius:20px;background:var(--surface);white-space:nowrap;}
+  .lang-switcher{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.06em;color:var(--t2);border:1px solid var(--border);padding:5px 8px 5px 12px;border-radius:20px;background:var(--surface);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2393C5FD'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;min-width:78px;}
+  .lang-switcher option{background:#0a0f1c;color:var(--t1);}
+  .lang-switcher:hover{border-color:rgba(147,197,253,0.32);color:var(--ice);}
+  .lang-switcher:focus{border-color:var(--ice);box-shadow:0 0 0 2px rgba(59,130,246,0.18);}
+
+  .hero{background:radial-gradient(ellipse 60% 80% at 80% 50%,rgba(59,130,246,0.16) 0%,transparent 70%),radial-gradient(ellipse 40% 60% at 15% 80%,rgba(74,58,204,0.14) 0%,transparent 65%),linear-gradient(180deg,#040814 0%,#030611 100%);padding:96px 48px 80px;position:relative;overflow:hidden;border-bottom:1px solid var(--border);}
+  .hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(147,197,253,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(147,197,253,0.05) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 30%,transparent 80%);-webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 30%,transparent 80%);}
+  .hero-inner{position:relative;max-width:820px;}
+  .hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--ice);margin-bottom:24px;display:flex;align-items:center;gap:10px;}
+  .hero-eyebrow::before{content:'';display:block;width:32px;height:1px;background:var(--ice);box-shadow:0 0 6px rgba(147,197,253,0.6);}
+  .hero h1{font-family:'Unbounded',sans-serif;font-weight:700;font-size:clamp(34px,5vw,58px);line-height:1.15;letter-spacing:0.005em;color:#fff;margin-bottom:24px;}
+  .hero h1 em{font-style:normal;color:var(--ice);}
+  .hero-sub{font-size:16px;color:var(--t2);max-width:560px;line-height:1.8;margin-bottom:40px;}
+  .hero-stats{display:flex;gap:40px;flex-wrap:wrap;}
+  .stat{display:flex;flex-direction:column;gap:4px;}
+  .stat-val{font-family:'Unbounded',sans-serif;font-weight:700;font-size:22px;color:#fff;letter-spacing:0.005em;}
+  .stat-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--t3);}
+  .stat-divider{width:1px;height:40px;background:var(--border);align-self:center;}
+
+  .nav-strip{background:rgba(8,12,24,0.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:0 48px;overflow-x:auto;scrollbar-width:none;position:sticky;top:64px;z-index:50;}
+  .nav-strip::-webkit-scrollbar{display:none;}
+  .nav-pills{display:flex;gap:0;white-space:nowrap;}
+  .nav-pill{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--t3);text-decoration:none;padding:14px 18px;border-bottom:2px solid transparent;transition:color 0.2s,border-color 0.2s;cursor:pointer;}
+  .nav-pill:hover{color:var(--t1);}
+  .nav-pill.active{color:var(--ice);border-bottom-color:var(--ice);}
+
+  .main{max-width:1100px;margin:0 auto;padding:80px 48px 40px;}
+  .faq-section{margin-bottom:80px;scroll-margin-top:130px;}
+  .section-header{display:flex;align-items:center;gap:16px;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid var(--border-strong);}
+  .section-icon{width:36px;height:36px;background:linear-gradient(180deg,rgba(59,130,246,0.18) 0%,rgba(59,130,246,0.06) 100%);border:1px solid var(--border-strong);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ice);font-size:17px;}
+  .section-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:20px;color:var(--t1);letter-spacing:0.005em;}
+  .section-count{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:var(--t3);}
+
+  .faq-item{
+    border:1px solid var(--border);
+    border-radius:14px;
+    margin-bottom:10px;
+    overflow:hidden;
+    transition:box-shadow 0.25s,border-color 0.25s,background 0.25s;
+    background:linear-gradient(180deg,var(--card-fill-top) 0%,var(--card-fill-bot) 100%);
+  }
+  .faq-item:hover{border-color:rgba(147,197,253,0.30);box-shadow:0 4px 22px -8px rgba(59,130,246,0.18);}
+  .faq-item.open{border-color:rgba(147,197,253,0.45);box-shadow:0 8px 32px -10px rgba(59,130,246,0.30),0 0 0 1px rgba(147,197,253,0.10) inset;}
+  .faq-q{display:flex;align-items:flex-start;gap:16px;padding:20px 24px;cursor:pointer;user-select:none;list-style:none;}
+  .faq-q::-webkit-details-marker{display:none;}
+  .faq-q-text{font-family:'Inter',sans-serif;font-weight:500;font-size:15px;color:var(--t1);flex:1;line-height:1.6;padding-top:1px;}
+  .faq-arrow{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:background 0.2s,border-color 0.2s,transform 0.25s,color 0.2s;color:var(--t3);font-size:11px;}
+  details[open] .faq-arrow{background:var(--glow);border-color:var(--glow);color:#fff;transform:rotate(180deg);box-shadow:0 0 12px rgba(59,130,246,0.5);}
+  .faq-a{padding:0 24px 24px 62px;}
+  .faq-a p{font-size:15px;color:var(--t2);line-height:1.8;margin-bottom:12px;}
+  .faq-a p:last-child{margin-bottom:0;}
+
+  .callout{border-left:3px solid var(--ice);background:rgba(59,130,246,0.08);border-radius:0 8px 8px 0;padding:14px 18px;margin:16px 0 12px;font-size:14px;color:var(--t1);line-height:1.75;}
+  .callout-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;color:var(--ice);margin-bottom:6px;}
+  .callout.gold{border-left-color:var(--gold);background:rgba(212,168,83,0.08);}
+  .callout.gold .callout-label{color:var(--gold);}
+
+  .data-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;margin:16px 0 8px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+  .data-table th{background:rgba(59,130,246,0.10);font-family:'Inter',sans-serif;font-weight:700;font-size:12px;color:var(--ice);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:0.04em;text-transform:uppercase;}
+  .data-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--t2);vertical-align:top;line-height:1.6;}
+  .data-table tr:last-child td{border-bottom:none;}
+  .data-table tr:nth-child(even) td{background:rgba(255,255,255,0.015);}
+  .data-table .total td{background:rgba(59,130,246,0.10);font-weight:700;color:var(--t1);}
+  .data-table td.mono,.data-table th.mono{font-family:'JetBrains Mono',monospace;font-size:13px;}
+
+  .hl{font-family:'JetBrains Mono',monospace;font-size:13px;background:rgba(59,130,246,0.14);color:var(--ice);padding:1px 6px;border-radius:4px;white-space:nowrap;}
+
+  .example-box{background:linear-gradient(180deg,rgba(8,12,24,0.85) 0%,rgba(4,8,18,0.95) 100%);border:1px solid var(--border-strong);border-radius:10px;padding:20px 22px;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);line-height:2.1;}
+  .example-box .ex-title{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ice);margin-bottom:10px;font-family:'Unbounded',sans-serif;font-weight:700;}
+  .example-box .ex-row{display:flex;justify-content:space-between;}
+  .example-box .ex-row span:last-child{color:#fff;font-weight:500;}
+  .example-box .ex-divider{border:none;border-top:1px solid var(--border);margin:8px 0;}
+  .example-box .ex-total{color:var(--ice)!important;font-weight:700!important;}
+
+  .search-wrap{max-width:540px;margin:0 0 48px;position:relative;}
+  .search-input{width:100%;padding:14px 20px 14px 46px;border:1px solid var(--border-strong);border-radius:12px;font-family:'Inter',sans-serif;font-size:14px;color:var(--t1);background:var(--surface);outline:none;transition:border-color 0.2s,box-shadow 0.2s,background 0.2s;}
+  .search-input:focus{border-color:var(--ice);background:var(--surface-2);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+  .search-input::placeholder{color:var(--t3);}
+  .search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:16px;pointer-events:none;}
+  .no-results{display:none;text-align:center;padding:48px 0;color:var(--t3);font-size:15px;}
+
+  .site-footer{background:linear-gradient(180deg,#02050d 0%,#010308 100%);border-top:1px solid var(--border);padding:48px;text-align:center;}
+  .footer-logo{font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px;color:#fff;letter-spacing:0.02em;margin-bottom:8px;}
+  .footer-logo span{color:var(--glow);}
+  .footer-url{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3);margin-bottom:24px;}
+  .footer-disc{font-size:12px;color:var(--t4);max-width:640px;margin:0 auto;line-height:1.8;}
+
+  .home-btn{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.08em;color:var(--ice);border:1px solid var(--border-strong);background:var(--surface);padding:5px 14px;border-radius:20px;text-decoration:none;transition:all 0.2s;white-space:nowrap;}
+  .home-btn:hover{background:rgba(59,130,246,0.14);border-color:rgba(147,197,253,0.32);color:#fff;}
+  .home-btn svg{width:12px;height:12px;vertical-align:-1px;margin-right:4px;}
+
+  .lang-content{display:none;}
+  .lang-content.active{display:block;}
+
+  .cta-banner{text-align:center;padding:0 24px 64px;background:transparent;}
+  .cta-banner a{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:16px 36px;
+    background:linear-gradient(135deg,#4a3acc 0%,#2d2496 50%,#161a5e 100%);
+    border:1px solid rgba(120,100,220,0.32);
+    color:#fff;
+    font-family:'Inter','Noto Sans SC','Noto Sans TC',sans-serif;
+    font-size:15px;font-weight:600;
+    border-radius:100px;
+    text-decoration:none;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.16),
+      inset 0 -1px 1px rgba(6,4,24,0.55),
+      0 4px 14px -2px rgba(45,36,150,0.55),
+      0 0 18px -4px rgba(74,58,204,0.28);
+    transition:transform 0.2s ease,box-shadow 0.2s ease,background 0.2s ease;
+  }
+  .cta-banner a:hover{
+    transform:translateY(-1px);
+    background:linear-gradient(135deg,#5a4ae0 0%,#3a31ad 50%,#1e236f 100%);
+    border-color:rgba(140,120,235,0.42);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      0 6px 20px -2px rgba(45,36,150,0.65),
+      0 0 24px -2px rgba(74,58,204,0.40);
+  }
+  .cta-banner a svg{width:18px;height:18px;}
+
+  @media(max-width:700px){
+    nav.site-nav,.nav-strip,.main,.hero{padding-left:20px;padding-right:20px;}
+    nav.site-nav{padding-left:16px;padding-right:16px;grid-template-columns:auto auto;gap:8px;min-height:auto;padding-top:10px;padding-bottom:10px;}
+    nav.site-nav .nav-mid{order:3;grid-column:1 / -1;width:100%;justify-content:center;overflow-x:auto;}
+    .header-tag{display:none;}
+    .hero{padding-top:64px;padding-bottom:56px;}
+    .hero-stats{gap:20px;}
+    .stat-divider{display:none;}
+    .faq-a{padding-left:24px;}
+    .header-right{gap:8px;}
+    .lang-switcher{min-width:70px;font-size:10px;padding:3px 6px 3px 10px;padding-right:22px;background-position:right 7px center;}
+  }
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+  .faq-section{animation:fadeUp 0.4s ease both;}
+  .faq-section:nth-child(1){animation-delay:0.05s;}.faq-section:nth-child(2){animation-delay:0.10s;}.faq-section:nth-child(3){animation-delay:0.15s;}.faq-section:nth-child(4){animation-delay:0.20s;}.faq-section:nth-child(5){animation-delay:0.25s;}.faq-section:nth-child(6){animation-delay:0.30s;}.faq-section:nth-child(7){animation-delay:0.35s;}.faq-section:nth-child(8){animation-delay:0.40s;}.faq-section:nth-child(9){animation-delay:0.45s;}.faq-section:nth-child(10){animation-delay:0.50s;}.faq-section:nth-child(11){animation-delay:0.55s;}
+  .zh .section-title,.zh .faq-q-text{font-family:'Noto Sans TC','Inter',sans-serif;}
+  .ko .section-title,.ko .faq-q-text{font-family:'Noto Sans KR','Inter',sans-serif;}
+
+/* === a11y: keyboard focus === */
+:focus-visible {
+  outline: 2px solid var(--ice, #93C5FD);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.lang-switcher:focus-visible,
+.lang-switcher:focus {
+  outline: 2px solid var(--ice, #93C5FD);
+  outline-offset: 3px;
+}
+/* Dead-link disable: any anchor still pointing at "#" is a placeholder
+   that scrolls-to-top in production. Visually demote it and stop the
+   click. The footer "Read the deck" CTA, footer link columns, etc. all
+   read as disabled instead of broken. */
+a[href="#"], a[href=""] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+a[href="#"]::after, a[href=""]::after { content: ''; }
+/* === a11y: prefers-reduced-motion === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .radial-grid .hex,
+  .feed-label::before,
+  .status-pill .status-dot,
+  .hero-pill .dot,
+  .caret {
+    animation: none !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a class="brand" href="hero-prototype-O.html">OPER<span class="on-ice">ON</span></a>
+  <div class="nav-mid">
+    <a href="hero-prototype-O.html">Operon</a>
+    <a href="hero-prototype-O-agents.html">Agents</a>
+    <a href="hero-prototype-O-nodes.html" class="nav-node">Nodes</a>
+    <a href="hero-prototype-O-affiliates.html">Affiliates</a>
+    <a href="hero-prototype-O-faq.html" class="active">FAQ</a>
+  </div>
+  <div class="nav-right">
+    <span class="header-tag">Genesis Node Sale &middot; FAQ</span>
+    <select class="lang-switcher" id="langSwitcher" aria-label="Language" data-default="th">
+      <option value="en">EN</option>
+      <option value="zh-cn">简</option>
+      <option value="zh-tw">繁</option>
+      <option value="ko">KR</option>
+      <option value="ja">JP</option>
+      <option value="th">TH</option>
+      <option value="vi">VN</option>
+    </select>
+  </div>
+</nav>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- HEADER -->
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Frequently Asked Questions</div>
+    <h1>เครือข่าย Operon, <em>อธิบายครบถ้วน</em></h1>
+    <p class="hero-sub">เอกสารนี้ครอบคลุมสถาปัตยกรรมเครือข่าย โครงสร้างการขายโหนด tokenomics กลไกการแนะนำ กรอบรายได้ และแผนงานหลัง TGE</p>
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-val">100,000</span>
+        <span class="stat-label">โหนดทั้งหมด · Hard Cap</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-val">$500</span>
+        <span class="stat-label">ราคาเริ่มต้น Tier 1</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-val">40</span>
+        <span class="stat-label">ระดับราคา</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-val">42 พันล้าน</span>
+        <span class="stat-label">อุปทานคงที่ $OPRN</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-val">25%</span>
+        <span class="stat-label">จัดสรรให้ผู้ดำเนินการโหนด</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NAV PILLS -->
+<nav class="nav-strip">
+  <div class="nav-pills">
+    <a class="nav-pill active" href="#about_th">เกี่ยวกับ Operon</a>
+    <a class="nav-pill" href="#how_th">วิธีการทำงาน</a>
+    <a class="nav-pill" href="#basics_th">พื้นฐานโหนด</a>
+    <a class="nav-pill" href="#sale_th">โครงสร้างการขาย</a>
+    <a class="nav-pill" href="#unsold_th">โหนดที่ยังไม่ขาย & กลไกเผา</a>
+    <a class="nav-pill" href="#earnings_th">รายได้โหนด</a>
+    <a class="nav-pill" href="#transfer_th">การโอน</a>
+    <a class="nav-pill" href="#referral_th">เครือข่ายแนะนำ</a>
+    <a class="nav-pill" href="#token_th">โทเค็น & การกำกับดูแล</a>
+    <a class="nav-pill" href="#nodefn_th">ฟังก์ชันโหนด</a>
+    <a class="nav-pill" href="#risk_th">ความเสี่ยง & กฎระเบียบ</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- SEARCH -->
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="search-input" type="text" placeholder="ค้นหาคำถาม…" id="searchInput_th" autocomplete="off">
+  </div>
+  <div class="no-results" id="noResults_th">ไม่พบคำถามที่ตรงกัน</div>
+
+  <!-- ── 1. พื้นฐานโหนด ─────────────────────────────────────── -->
+    <section class="faq-section" id="about_th"><div class="section-header"><div class="section-icon">◈</div><span class="section-title">เกี่ยวกับ Operon</span><span class="section-count">3 คำถาม</span></div>
+    <details class="faq-item" open><summary class="faq-q"><span class="faq-q-text">Operon คืออะไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon คือเครือข่ายแบบกระจายศูนย์ที่ขับเคลื่อนด้วยโหนด ออกแบบมาเฉพาะสำหรับเศรษฐกิจ AI agent โดยให้ความสามารถสามประการที่ไม่มีโปรโตคอลอื่นใดมีพร้อมกัน:</p>
+      <p><strong>โครงสร้างพื้นฐานการประสานงานบนเชน</strong> — AI agent ลงทะเบียนบนเชน ได้รับตัวระบุเฉพาะ สามารถค้นพบได้ผ่านระบบจัดทำดัชนีของเครือข่าย และทำธุรกรรมพร้อมการระบุที่มาที่ตรวจสอบได้ งานถูกกำหนดเส้นทาง ผลลัพธ์ถูกบันทึก และประสิทธิภาพถูกติดตามตาม epoch ทั้งหมดอยู่บนเชน</p>
+      <p><strong>เศรษฐกิจรางวัลตามกิจกรรม</strong> — ผู้ดำเนินการโหนดได้รับ <span class="hl">$OPRN</span> จากการดำเนินงานโครงสร้างพื้นฐานที่ขับเคลื่อนเครือข่าย รางวัลมาจากสามแหล่ง: การปล่อยพื้นฐาน (คงที่ คาดเดาได้) โบนัสประสิทธิภาพ (ขึ้นกับ uptime) และ Activity Pool ที่ได้รับเงินจากค่าธรรมเนียมการใช้งานจริงของ AI agent ที่ทำงานบนเครือข่าย รายได้ของผู้ดำเนินการเติบโตตามการนำ AI agent มาใช้</p>
+      <p><strong>กลไกกระจายระดับโปรโตคอล</strong> — ลำดับการแนะนำ 5 ระดับ บังคับใช้โดย smart contract เปลี่ยนผู้ถือโหนดทุกรายให้เป็นพันธมิตรกระจาย ไม่ใช่ส่วนเสริมการตลาด แต่เป็นองค์ประกอบหลักของโปรโตคอลที่ได้รับทุนจาก pool โทเค็นเฉพาะ <span class="hl">10%</span> ออกแบบมาให้การขยายเครือข่ายเป็นทางเลือกที่สมเหตุสมผลทางเศรษฐกิจสำหรับผู้เข้าร่วม</p>
+      <p>เครือข่ายขับเคลื่อนด้วย <span class="hl">100,000</span> โหนด (hard cap ไม่เพิ่มเด็ดขาด) โดย <span class="hl">$OPRN</span> เป็นโทเค็นหลักที่มีอุปทานคงที่ถาวร <span class="hl">42,000,000,000</span></p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon แตกต่างจากโปรเจกต์ AI แบบกระจายศูนย์อื่นอย่างไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>ปัจจุบันมีโปรเจกต์ AI แบบกระจายศูนย์หลายประเภท แต่ละประเภทแก้ปัญหาส่วนที่แตกต่างกัน:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>ประเภท</th><th>สิ่งที่ทำ</th><th>สิ่งที่ไม่ครอบคลุม</th></tr></thead><tbody>
+        <tr><td>เครือข่ายประมวลผล GPU</td><td>ให้พลังการประมวลผลดิบสำหรับงาน AI</td><td>ไม่มีการประสานงาน การค้นพบ หรือชั้นความไว้วางใจสำหรับ AI agent</td></tr>
+        <tr><td>โปรโตคอลโทเค็นไนซ์ AI agent</td><td>สร้างโทเค็นที่ซื้อขายได้สำหรับ AI agent แต่ละตัว</td><td>ไม่มีโครงสร้างพื้นฐานการทำงานหรือระบบชื่อเสียง</td></tr>
+        <tr><td>โปรเจกต์เฟรมเวิร์ก AI agent</td><td>ให้เครื่องมือนักพัฒนาและโมเดลร่วมเป็นเจ้าของ</td><td>ไม่มีการกระจายในตัว — AI agent ไม่มีทางเข้าถึงผู้ใช้</td></tr>
+        <tr><td>จัดเก็บข้อมูลแบบกระจายศูนย์</td><td>ให้โครงสร้างพื้นฐานจัดเก็บข้อมูล</td><td>ไม่มีการดำเนินงานลอจิก AI agent การประสานงาน หรือตลาด</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">Operon ครอบครองชั้นที่ไม่มีโปรเจกต์ใดข้างต้นครอบคลุม: โครงสร้างพื้นฐานการประสานงาน การตรวจสอบ และการกระจาย ระหว่าง AI agent กับตลาดเปิด เป็นความสัมพันธ์เสริม — Operon อยู่ระหว่าง AI agent กับผู้ใช้ ไม่แข่งขันกับผู้ให้บริการประมวลผลหรือจัดเก็บข้อมูล</p>
+      <div style="margin:24px 0 20px; overflow-x:auto;">
+        <svg viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" style="max-width:640px; width:100%; display:block; margin:0 auto;">
+          <defs><linearGradient id="gBt" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1A56DB" stop-opacity="0.12"/><stop offset="100%" stop-color="#3B82F6" stop-opacity="0.04"/></linearGradient><linearGradient id="gGt" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#D97706" stop-opacity="0.14"/><stop offset="100%" stop-color="#F59E0B" stop-opacity="0.05"/></linearGradient></defs>
+          <rect x="20" y="16" width="640" height="64" rx="12" fill="url(#gBt)" stroke="#1A56DB" stroke-opacity="0.25"/>
+          <text x="340" y="40" text-anchor="middle" fill="#1A56DB" font-family="Syne,sans-serif" font-size="11" font-weight="600" letter-spacing="2">AI AGENT</text>
+          <text x="340" y="60" text-anchor="middle" fill="#1A56DB" font-family="Inter,sans-serif" font-size="10" opacity="0.55">เทรด · วิจัย · คอนเทนต์ · ซัพพอร์ต · เครื่องมือ Dev · กำหนดเอง</text>
+          <rect x="60" y="100" width="560" height="130" rx="12" fill="none" stroke="#EF4444" stroke-dasharray="6,4" stroke-opacity="0.35"/>
+          <text x="340" y="124" text-anchor="middle" fill="#EF4444" font-family="DM Mono,monospace" font-size="9" letter-spacing="3" opacity="0.7">ช่องว่าง</text>
+          <text x="340" y="142" text-anchor="middle" fill="#EF4444" font-family="Inter,sans-serif" font-size="10.5" opacity="0.45">ไม่มีการประสาน · ไม่มีการค้นพบ · ไม่มีการตรวจสอบ · ไม่มีการกระจาย</text>
+          <rect x="90" y="152" width="500" height="60" rx="10" fill="url(#gGt)" stroke="#D97706" stroke-opacity="0.5"/>
+          <text x="340" y="176" text-anchor="middle" fill="#B45309" font-family="Syne,sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">OPERON</text>
+          <text x="340" y="198" text-anchor="middle" fill="#B45309" font-family="Inter,sans-serif" font-size="10" opacity="0.7">ประสานงาน · ตรวจสอบ · กระจาย · ชื่อเสียง</text>
+          <rect x="20" y="254" width="640" height="64" rx="12" fill="url(#gBt)" stroke="#1A56DB" stroke-opacity="0.25"/>
+          <text x="340" y="278" text-anchor="middle" fill="#1A56DB" font-family="Inter,sans-serif" font-size="11" font-weight="600" letter-spacing="2">ผู้ใช้ · ผู้สร้าง · องค์กร</text>
+          <text x="340" y="298" text-anchor="middle" fill="#1A56DB" font-family="Inter,sans-serif" font-size="10" opacity="0.55">ค้นพบ agent · สร้าง workflow · ตรวจสอบผลลัพธ์ · สร้างบนเชน</text>
+          <line x1="200" y1="80" x2="200" y2="100" stroke="#1A56DB" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3,3"/><line x1="340" y1="80" x2="340" y2="100" stroke="#1A56DB" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3,3"/><line x1="480" y1="80" x2="480" y2="100" stroke="#1A56DB" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3,3"/>
+          <line x1="200" y1="230" x2="200" y2="254" stroke="#D97706" stroke-opacity="0.5" stroke-width="1.5"/><line x1="340" y1="230" x2="340" y2="254" stroke="#D97706" stroke-opacity="0.5" stroke-width="1.5"/><line x1="480" y1="230" x2="480" y2="254" stroke="#D97706" stroke-opacity="0.5" stroke-width="1.5"/>
+          <text x="340" y="335" text-anchor="middle" fill="#8090A8" font-family="Inter,sans-serif" font-size="10" letter-spacing="0.5" opacity="0.6">ชั้นระหว่าง AI agent กับผู้ใช้</text>
+        </svg>
+      </div>
+      <div class="callout"><div class="callout-label">จุดแตกต่างเชิงโครงสร้าง 3 ประการ</div>การกระจายคือองค์ประกอบหลักของโปรโตคอล ไม่ใช่ชั้นการตลาด พื้นผิวสำหรับผู้ใช้ (ตลาด Forge, Agent Reputation Directory) ใช้งานได้ตั้งแต่ TGE ไม่ใช่รายการในแผนงาน อุปทานโหนดจำกัดคงที่พร้อมกลไกเผาอัตโนมัติสร้างความขาดแคลนเชิงโครงสร้าง</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">แผนงานเป็นอย่างไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>แผนงานแบ่งเป็น 5 เฟส ไม่ผูกมัดวันที่เฉพาะ — ลำดับคือสิ่งที่ผูกมัด</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>เฟส</th><th>ชื่อ</th><th>เนื้อหา</th></tr></thead><tbody>
+        <tr><td class="mono">1</td><td>Genesis Node Sale</td><td>100,000 โหนดขายใน 40 ระดับราคา Node NFT ถูกสร้างบน Arbitrum หรือ BNB Chain AI agent โครงสร้างพื้นฐานหลักเปิดใช้งาน</td></tr>
+        <tr><td class="mono">2</td><td>TGE & เปิดใช้งานเครือข่าย</td><td>โทเค็น $OPRN เปิดตัว การปล่อยเริ่มต้น ตลาด Operon Forge, Agent Reputation Directory และ Portal เปิดใช้ AI agent ระบบนิเวศทั้งหมดพร้อมให้สมาชิกใช้งาน</td></tr>
+        <tr><td class="mono">3</td><td>Builder SDK & Agent Registry</td><td>นักพัฒนาภายนอกสามารถลงทะเบียน AI agent ของตนบนเชนได้ พอร์ทัลเอกสาร builder เปิดตัว Registry กลายเป็นตลาดสาธารณะของ AI agent ที่ตรวจสอบได้</td></tr>
+        <tr><td class="mono">4</td><td>ตลาด AI Agent & ขยาย</td><td>ตลาด AI agent ที่ปกครองโดยชุมชน ผู้ดำเนินการโหนดเสนอบริการเฉพาะทางเพื่อสร้างรายได้เพิ่มเติม</td></tr>
+        <tr><td class="mono">5</td><td>การกำกับดูแล & โปรโตคอลเต็มรูปแบบ</td><td>ผู้ถือ $OPRN ได้รับสิทธิ์กำกับดูแลตารางการปล่อย มาตรฐาน registry และการจัดสรรคลัง โปรโตคอลเปลี่ยนผ่านสู่การกำกับดูแลโดยชุมชน</td></tr>
+      </tbody></table>
+    </div></details>
+  </section>
+
+    <section class="faq-section" id="how_th"><div class="section-header"><div class="section-icon">⬡</div><span class="section-title">การทำงาน</span><span class="section-count">4 คำถาม</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">เครือข่าย Operon ทำงานอย่างไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>เครือข่ายมีโครงสร้าง 3 ชั้นการทำงาน:</p>
+      <p><strong>ชั้นประสานงาน</strong> AI agent ลงทะเบียนบนเชนและได้รับตัวระบุเฉพาะ ดัชนีการค้นพบให้คะแนนและจัดอันดับ AI agent ทุกตัวที่ลงทะเบียนตาม uptime การมีส่วนร่วม และปริมาณการใช้งาน คำของานถูกกำหนดเส้นทางผ่านเครือข่าย ผลลัพธ์ถูกบันทึก และระบบติดตามการมีส่วนร่วมตาม epoch ทั้งหมดบนเชนและตรวจสอบได้</p>
+      <p><strong>ชั้นตรวจสอบ</strong> กลไกตรวจสอบอิสระสร้างการรับรองบนเชน 3 ระดับสำหรับผลลัพธ์ AI agent: <span class="hl">ยืนยันแล้ว</span>, <span class="hl">ตรงกันบางส่วน</span> หรือ <span class="hl">ไม่สามารถตรวจสอบได้</span> การรับรองเหล่านี้ไหลเข้าสู่ Agent Reputation Directory — registry บนเชนที่สาธารณะสามารถสอบถามได้ ความไว้วางใจสะสมตามเวลา: AI agent ที่มีการรับรอง "ยืนยันแล้ว" 6 เดือนมีความน่าเชื่อถือที่ไม่มีการอ้างทางการตลาดใดจำลองได้</p>
+      <p><strong>ชั้นกระจาย</strong> AI agent ที่ลงทะเบียนทุกตัวถูกกระจายอัตโนมัติไปยังกว่า 400 ช่องทาง ลำดับการแนะนำ — โครงสร้างค่าคอมมิชชัน 5 ระดับที่ฝังอยู่ในโปรโตคอล — เปลี่ยนผู้ถือโหนดทุกรายเป็นพันธมิตรกระจาย ได้รับทุนจาก pool โทเค็นเฉพาะและบังคับใช้โดย smart contract</p>
+      <p>AI agent สื่อสารผ่านมาตรฐานการส่งข้อความร่วมสำหรับการส่งต่องานระหว่าง agent ผู้ใช้สามารถประกอบ workflow หลาย agent ผ่านเป้าหมายเป็นภาษาธรรมชาติ — เลือก AI agent ยืนยันกราฟงาน และรับใบเสร็จบนเชนสำหรับงานที่เสร็จสิ้น</p>
+      <p>เมื่อเปิดตัว เครือข่ายประกอบด้วย AI agent ที่ทีม Operon สร้างใน 2 ชุด: AI agent โครงสร้างพื้นฐาน 6 ตัวที่<em>เป็น</em>ชั้นประสานงานและกระจาย (ผู้ดำเนินการโหนดเป็นโฮสต์และได้รับรางวัล) และ AI agent บริการระบบนิเวศ 6 ตัวที่ให้บริการโดยตรงแก่ builder และผู้ใช้ เหล่านี้คือประชากรเริ่มต้นของ registry — สร้างเพื่อพิสูจน์ว่าโครงสร้างพื้นฐานทำงานก่อนเปิดให้นักพัฒนาภายนอกในเฟส 3 รายละเอียดแต่ละ AI agent ดูที่หน้า <strong>Agent Network</strong> บน operon.network</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon ตรวจสอบผลลัพธ์ AI agent อย่างไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>กลไกตรวจสอบของ Operon สร้างการรับรองอิสระบนเชนสำหรับผลลัพธ์ AI agent ทุกการรับรองอยู่ในหนึ่งใน 3 ระดับ:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>ระดับ</th><th>ความหมาย</th></tr></thead><tbody>
+        <tr><td><span class="hl">ยืนยันแล้ว</span></td><td>ผลลัพธ์ถูกตรวจสอบอิสระว่าถูกต้องและสมบูรณ์</td></tr>
+        <tr><td><span class="hl">ตรงกันบางส่วน</span></td><td>ผลลัพธ์ถูกตรวจสอบบางส่วน — บางองค์ประกอบยืนยันแล้ว บางส่วนไม่สามารถตรวจสอบอิสระได้</td></tr>
+        <tr><td><span class="hl">ไม่สามารถตรวจสอบได้</span></td><td>ไม่สามารถตรวจสอบผลลัพธ์ได้อย่างอิสระ</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">แต่ละการรับรองมี timestamp ลายเซ็นเข้ารหัส และบันทึกถาวรบนเชน ผู้ใช้หรือแอปพลิเคชันใดก็ได้สามารถค้นหา hash ผลลัพธ์ผ่าน URL สาธารณะเพื่อดูสถานะการตรวจสอบ — ไม่ต้องมีบัญชี ผลลัพธ์สามารถแชร์เป็นลิงก์ถาวร</p>
+      <p>การรับรองเหล่านี้รวมเข้าสู่ <strong>Agent Reputation Directory</strong> — registry บนเชนที่สามารถสอบถามสาธารณะ รวบรวมข้อมูลประสิทธิภาพที่ตรวจสอบได้ของทุก AI agent บนเครือข่าย: อัตราสำเร็จของงาน คะแนนผู้ใช้ ประวัติ uptime ปริมาณการใช้งาน และบันทึกข้อพิพาท บันทึกเป็นแบบถาวรและสามารถประกอบได้ — แอปพลิเคชันใดก็ได้สามารถสอบถาม directory โดยไม่ต้องพึ่งพาการรายงานด้วยตนเอง</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">อะไรเปิดตัวเมื่อ TGE?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>รายการต่อไปนี้เปิดใช้งานพร้อมกันเมื่อ TGE:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>พื้นผิว</th><th>หน้าที่</th></tr></thead><tbody>
+        <tr><td><strong>Operon Forge</strong></td><td>ตลาด AI agent คัดสรร 6 หมวด: เทรด & DeFi Automation, วิจัย & วิเคราะห์ข้อมูล, สร้างเนื้อหา & เขียน, บริการลูกค้า & สนับสนุน, เกม & บันเทิง, เครื่องมือนักพัฒนา ค่าใช้งานไหลเข้า Activity Pool ของผู้ดำเนินการโหนด</td></tr>
+        <tr><td><strong>Agent Reputation Directory</strong></td><td>Registry บนเชน สอบถามสาธารณะได้ ข้อมูลประสิทธิภาพ AI agent ที่ตรวจสอบได้ ถาวรและประกอบได้</td></tr>
+        <tr><td><strong>Operon Portal</strong></td><td>อินเทอร์เฟซเว็บจัดการโหนด ($OPRN ที่ได้รับ ยอดเรียกร้องได้ แสดงภาพเครือข่ายแนะนำ) เข้าถึงสมัคร AI agent และค้นพบ AI agent</td></tr>
+        <tr><td><strong>การปล่อย $OPRN</strong></td><td>ผู้ดำเนินการโหนดทั้งหมดเริ่มรับรายได้จาก epoch การปล่อยแรก การปล่อยพื้นฐานกระจายรายวัน</td></tr>
+        <tr><td><strong>Staking $OPRN</strong></td><td>เปิดตัวเมื่อ TGE พร้อมรางวัลโทเค็นพันธมิตร</td></tr>
+        <tr><td><strong>ลำดับการปล่อยแนะนำ</strong></td><td>รางวัลแนะนำหลัง TGE เปิดใช้งาน จ่ายเป็น $OPRN จาก Pool แนะนำ & กระจาย</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">ผู้เข้าร่วมแคมเปญ quest (Galxe และ Layer3) รับการจัดสรร TGE จาก Pool แนะนำ & กระจายในช่วงนี้ อุปทานหมุนเวียนเริ่มต้นเมื่อ TGE ประมาณ <span class="hl">3%</span> ของอุปทานทั้งหมด</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon ทำงานบน blockchain ไหน?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon ใช้งานบน <strong>Arbitrum</strong> — เครือข่าย Ethereum Layer 2 ชั้นนำที่ให้ค่าธรรมเนียมต่ำ throughput สูง และการเชื่อมต่อลึกกับระบบนิเวศ EVM สัญญาโหนด registry AI agent การติดตามแนะนำ การจัดสรรรางวัล และการกำกับดูแล ทั้งหมดทำงานบน Arbitrum</p>
+      <p>การขายโหนดรับ USDC และ USDT บนทั้ง Arbitrum และ BNB Chain โหนดถูกสร้างบน chain ที่ผู้ซื้อชำระเงิน</p>
+    </div></details>
+  </section>
+
+  <section class="faq-section" id="basics_th"><div class="section-header"><div class="section-icon">⬢</div><span class="section-title">พื้นฐานโหนด</span><span class="section-count">3 คำถาม</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon Node คืออะไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Operon Node คือ <span class="hl">ใบอนุญาต NFT ERC-721</span> ถาวรที่ออกบน Arbitrum มอบสิทธิ์การกระจายในระบบนิเวศ Operon: การปล่อย <span class="hl">$OPRN</span> พื้นฐาน โบนัสประสิทธิภาพ ส่วนแบ่ง Activity Pool และสิทธิ์เข้าร่วมเครือข่ายแนะนำชุมชน เมื่อโปรโตคอลเติบโตขึ้น ใบอนุญาตยังมอบสิทธิ์ลงคะแนนกำกับดูแล</p>
+      <p>ตามแผนงานระยะยาว Operon Node ออกแบบให้พัฒนาเป็น validator node — ทำ<em>การตรวจสอบการประสานงานแบบเบา</em>: ยืนยันการทำงาน AI agent สำเร็จ รับรองตัวชี้วัดคุณภาพบริการ ตรวจสอบ uptime และความสอดคล้องของผลลัพธ์ และให้คะแนนสำหรับ Agent Reputation Directory บทบาทนี้เป็นส่วนเสริมและไม่ต้องการฮาร์ดแวร์ใหม่</p>
+      <div class="callout"><div class="callout-label">Hard Cap</div>อุปทานคงที่ถาวรที่ 100,000 ไม่มีการสร้างโหนดเพิ่มเติมในกรณีใดๆ</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">ต้องใช้ฮาร์ดแวร์อะไรในการรันโหนด?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>ไม่ต้องใช้ GPU ชั้นวางเซิร์ฟเวอร์ หรือฮาร์ดแวร์ระดับองค์กร Operon Node เป็นหน่วยการมีส่วนร่วมและประสานงานเบา ไม่ใช่ฟาร์มประมวลผล Node client ออกแบบให้ทำงานบนฮาร์ดแวร์ผู้บริโภค — แล็ปท็อปหรือ VPS ทั่วไปเพียงพอ</p>
+      <p>สำหรับผู้ถือที่ต้องการให้จัดการเต็มรูปแบบ ผู้ให้บริการ Node-as-a-Service (NaaS) เปิดตัวพร้อม TGE</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">โหนดเป็น NFT หรือไม่? การเป็นเจ้าของหมายความว่าอะไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>ใช่ Operon Node แต่ละตัวออกเป็น <span class="hl">ERC-721</span> NFT บน Arbitrum หรือ BNB Chain NFT <em>คือ</em>ใบอนุญาต — สิทธิ์การปล่อย รายได้การกระจาย ส่วนแบ่งกำกับดูแล และสิทธิ์เป็น validator ในอนาคต ล้วนผูกกับโทเค็นนี้</p>
+      <p>การซื้อโหนดคือการเป็นเจ้าของ NFT การรัน node client (หรือมอบหมายให้ NaaS) เปิดใช้งานฟังก์ชันหารายได้และเข้าร่วม</p>
+    </div></details>
+  </section>
+
+  <!-- ── 2. โครงสร้างการขาย ─────────────────────────────────────── -->
+  <section class="faq-section" id="sale_th"><div class="section-header"><div class="section-icon">◎</div><span class="section-title">โครงสร้างการขาย</span><span class="section-count">5 คำถาม</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">การกำหนดราคาโหนดทำงานอย่างไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Genesis Node Sale แบ่งเป็น <span class="hl">40 ระดับ</span> ระดับละ <span class="hl">2,500 โหนด</span> แต่ละระดับมีราคาสูงกว่าระดับก่อนหน้า <span class="hl">5%</span> เริ่มจาก <span class="hl">$500.00</span> ที่ระดับ 1 ถึงประมาณ <span class="hl">$3,354</span> ที่ระดับ 40 เมื่อระดับขายหมด ระดับถัดไปเปิดอัตโนมัติผ่าน smart contract — ไม่ต้องแทรกแซงด้วยตนเอง</p>
+      <p>ยอดระดมทุนรวมเมื่อขายหมดประมาณ <strong>151 ล้านดอลลาร์</strong> การขายสิ้นสุดเมื่อโหนดทั้ง 100,000 ขายได้หรือถึงกำหนดเวลาที่ประกาศ</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">รับสกุลเงินชำระอะไรบ้าง?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>สกุลเงิน</th><th>Chain</th><th>หมายเหตุ</th></tr></thead><tbody>
+
+        <tr><td><span class="hl">USDC / USDT</span></td><td>Arbitrum + BNB Chain</td><td>ชำระตามมูลค่าหน้าตั๋ว ไม่ต้องแปลงอัตรา</td></tr>
+      </tbody></table>
+      <p>ทุกราคากำหนดเป็น USD USDC และ USDT รับตามมูลค่าหน้าบัตรบนทั้ง Arbitrum และ BNB Chain ไม่ต้องแปลงอัตรา</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">มีขีดจำกัดการซื้อต่อกระเป๋าเงินไหม?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>เฉพาะระดับต้น <span class="hl">ระดับ 1–5</span> มีขีดจำกัดต่อกระเป๋าเงินเพื่อปกป้องการกระจายอำนาจ <span class="hl">ระดับ 6–40</span> ไม่มีขีดจำกัด ขีดจำกัดเฉพาะจะประกาศในเงื่อนไขการขายอย่างเป็นทางการที่ operon.network</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Whitelist คืออะไร และจะได้สิทธิ์อย่างไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>ระดับ 1–5 แต่ละระดับสำรอง <strong>50% ของโหนด</strong> (1,250 ต่อระดับ รวม 6,250) สำหรับ 5 ประเภท whitelist:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>ประเภท</th><th>คำอธิบาย</th></tr></thead><tbody>
+        <tr><td>ชุมชน OG</td><td>สมาชิก Discord / Telegram ผู้ลงทะเบียนล่วงหน้า ผู้เข้าร่วม testnet</td></tr>
+        <tr><td>DAO พันธมิตรเชิงกลยุทธ์</td><td>ชุมชน DAO Web3 และ AI แต่ละชุมชนมีการจัดสรรคงที่</td></tr>
+        <tr><td>KOL & แอมบาสเดอร์</td><td>นักสร้างเนื้อหามีผู้ชม 50,000+ ทำเนื้อหาอย่างน้อย 2 ชิ้นก่อนเปิดขาย</td></tr>
+        <tr><td>VC & สถาบัน</td><td>นักลงทุนระยะเริ่มต้นและผู้เข้าร่วมสถาบัน</td></tr>
+        <tr><td>ผู้ชนะ Quest & แคมเปญ</td><td>ผู้เข้าร่วมมีกิจกรรม on-chain ตรวจสอบได้จาก Galxe และ Layer3</td></tr>
+      </tbody></table>
+      <p style="margin-top:12px;">50% ที่เหลือของระดับ 1–5 และทั้งหมดของระดับ 6–40 เปิดสู่สาธารณะตามลำดับก่อนหลัง ลงทะเบียนล่วงหน้าที่ <strong>operon.network</strong> คือเส้นทางหลักสู่การพิจารณา whitelist OG</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">เกิดอะไรขึ้นเมื่อระดับหนึ่งขายหมด?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>เมื่อ 2,500 โหนดของระดับขายได้ ระดับนั้นปิดอัตโนมัติผ่าน smart contract และระดับถัดไปเปิดทันทีด้วยราคาใหม่ ผู้ซื้อจะซื้อในราคาระดับที่เปิดอยู่เสมอ</p>
+      <p>หากระดับปิดขณะธุรกรรมกำลังดำเนินการ smart contract จะเสร็จสิ้นการซื้อที่ราคาระดับถัดไปหากอยู่ในพารามิเตอร์ที่อนุมัติ หรือคืนเงิน</p>
+    </div></details>
+  </section>
+
+  <!-- ── 3. โหนดที่ยังไม่ขาย & การเผา ───────────────────────────────── -->
+  <section class="faq-section" id="unsold_th"><div class="section-header"><div class="section-icon">⊘</div><span class="section-title">โหนดที่ยังไม่ขาย & กลไกเผา</span><span class="section-count">2 คำถาม</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">โหนดที่ยังไม่ขายจะเป็นอย่างไรหลังจบการขาย?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>ใบอนุญาตโหนดที่ยังไม่ขายทั้งหมดจะถูก<strong>เผาถาวร</strong> การจัดสรรการปล่อย $OPRN ที่กำหนดให้โหนดเหล่านั้นจะถูก<strong>กระจายใหม่ตามสัดส่วนให้ผู้ถือโหนดที่ซื้อแล้ว</strong> — เสร็จสิ้นก่อน TGE</p>
+      <div class="callout gold"><div class="callout-label">โหนดที่ยังไม่ขายถูกเผา → การจัดสรรต่อผู้ซื้อเพิ่มขึ้น</div>Pool การปล่อยทั้งหมดไม่เคยเปลี่ยน เพียงจำนวนโหนดที่แบ่งปันลดลง การขายบางส่วนไม่เป็นอันตรายต่อผู้ซื้อ แต่ให้รางวัล</div>
+      <table class="data-table"><thead><tr><th>อัตราขาย</th><th>โหนดขายได้</th><th>โหนดเผา</th><th class="mono">$OPRN พื้นฐาน / โหนด</th></tr></thead><tbody>
+        <tr><td>100%</td><td>100,000</td><td>0</td><td class="mono">63,000 $OPRN</td></tr>
+        <tr><td>80%</td><td>80,000</td><td>20,000</td><td class="mono">78,750 $OPRN</td></tr>
+        <tr><td>60%</td><td>60,000</td><td>40,000</td><td class="mono">105,000 $OPRN</td></tr>
+        <tr><td>50%</td><td>50,000</td><td>50,000</td><td class="mono">126,000 $OPRN</td></tr>
+        <tr class="total"><td>สูตร</td><td colspan="2">6.3 พันล้าน ÷ โหนดขายได้</td><td class="mono">= $OPRN / โหนด</td></tr>
+      </tbody></table>
+      <p>การเผาถูกกระตุ้นอัตโนมัติโดย smart contract เมื่อปิดการขาย</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">การปล่อยเริ่มเมื่อไหร่? ทุกโหนดเริ่มรับรายได้พร้อมกันหรือไม่?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>ใช่ — ทุกโหนด<strong>เริ่มรับรายได้พร้อมกันเมื่อ TGE</strong> ไม่ว่าจะซื้อระดับหรือวันไหน การขายสิ้นสุดก่อน TGE เปิด</p>
+      <p>TGE เกิดขึ้นภายใน <span class="hl">อย่างน้อย 4 สัปดาห์ อย่างมาก 12 สัปดาห์</span> หลังปิดการขาย ช่วงนี้ใช้เผาและกระจายใหม่ เตรียม listing ตลาด และแคมเปญ quest ชุมชน</p>
+    </div></details>
+  </section>
+
+  <!-- ── 4. รายได้ & ผลตอบแทน ──────────────────────────────────── -->
+  <section class="faq-section" id="earnings_th"><div class="section-header"><div class="section-icon">⊕</div><span class="section-title">รายได้โหนด</span><span class="section-count">4 คำถาม</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">แต่ละโหนดได้รับ $OPRN กี่โทเค็นต่อปี?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>Pool การปล่อยพื้นฐานคือ <span class="hl">6,300,000,000 $OPRN</span> กระจายให้ผู้ดำเนินการโหนดตลอด 4 ปีในตารางลดหลั่นแบบถ่วงน้ำหนักช่วงแรก เมื่อขายหมด (100,000 โหนด) สิทธิ์ของแต่ละโหนดคือ <strong>63,000 $OPRN</strong> — ตัวเลขนี้เพิ่มตามสัดส่วนหากมีโหนดที่ไม่ได้ขายถูกเผา</p>
+      <table class="data-table"><thead><tr><th>ปี</th><th>% Pool พื้นฐาน</th><th class="mono">โทเค็น / โหนด*</th><th class="mono">โหนด / วัน*</th><th>สะสม*</th></tr></thead><tbody>
+        <tr><td><strong>ปีที่ 1</strong></td><td>40%</td><td class="mono">25,200 $OPRN</td><td class="mono">~69.04 / วัน</td><td>25,200</td></tr>
+        <tr><td><strong>ปีที่ 2</strong></td><td>30%</td><td class="mono">18,900 $OPRN</td><td class="mono">~51.78 / วัน</td><td>44,100</td></tr>
+        <tr><td><strong>ปีที่ 3</strong></td><td>20%</td><td class="mono">12,600 $OPRN</td><td class="mono">~34.52 / วัน</td><td>56,700</td></tr>
+        <tr><td><strong>ปีที่ 4</strong></td><td>10%</td><td class="mono">6,300 $OPRN</td><td class="mono">~17.26 / วัน</td><td>63,000</td></tr>
+        <tr class="total"><td><strong>รวม</strong></td><td>100%</td><td class="mono"><strong>63,000 $OPRN</strong></td><td class="mono">—</td><td><strong>63,000</strong></td></tr>
+      </tbody></table>
+      <p style="font-size:13px;color:var(--mid);margin-top:8px;">* คำนวณเมื่อขายหมด (100,000 โหนด) ขาย 80%: 78,750 $OPRN / โหนด; ขาย 50%: 126,000 $OPRN / โหนด</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Performance Pool และ Activity Pool คืออะไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p><strong>Performance Pool</strong> — Pool ที่จัดสรรไว้ล่วงหน้า <span class="hl">4,200,000,000 $OPRN</span> ทำหน้าที่สามอย่าง: (1) โบนัส uptime รายไตรมาสสำหรับโหนดที่มี uptime <span class="hl">99%+</span> ตั้งแต่ Q5 เป็นต้นไป, (2) เป็นแหล่งทุนสำหรับโบนัส +15% และ +25% ของ Extended และ Long Commitment vesting claims, และ (3) ตัวคูณประสิทธิภาพตามกิจกรรม Pool ได้รับการเติมจากส่วนที่ถูกริบจาก Accelerated claims Q1–Q4 หลัง TGE เป็นช่วงผ่อนผัน — ทุกโหนด active มีสิทธิ์รับโบนัส uptime เมื่อขายหมด: ประมาณ <strong>3,500 $OPRN ต่อโหนดที่มีคุณสมบัติต่อไตรมาส</strong> จากส่วน uptime เพียงอย่างเดียว</p>
+      <p><strong>Activity Pool</strong> — Pool แปรผันที่ได้รับทุนจากค่าธรรมเนียมการใช้งานจริงจาก Operon Forge และกิจกรรมโปรโตคอลทั้งหมด กระจายรายวันตามสัดส่วน uptime ที่ตรวจสอบแล้วของแต่ละโหนดใน epoch 24 ชั่วโมง Activity Pool ออกแบบให้เติบโตเป็นตัวขับเคลื่อนหลักของรายได้ผู้ดำเนินการเมื่อการนำ AI agent ไปใช้เติบโต</p>
+      <div class="callout"><div class="callout-label">สามแหล่งรายได้</div>การปล่อยพื้นฐาน (คงที่ คาดเดาได้) + โบนัสประสิทธิภาพ (ขึ้นกับ uptime) + Activity Pool (แปรผัน ขยายตามการใช้งาน) สามแหล่งรวมกันให้รายได้พื้นฐานที่คาดเดาได้และรายได้เพิ่มที่ผูกกับการเติบโตของเครือข่าย</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">ตัวเลือกการถอนรางวัลมีอะไรบ้าง?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>ผู้ดำเนินการโหนดได้รับรางวัลรายวันเป็นโทเค็น <span class="hl">vOP</span> — $OPRN เสมือนที่สะสมในแดชบอร์ด vOP เป็น off-chain และไม่สามารถโอนได้ เมื่อ claim คุณเลือกหนึ่งในสี่ระดับ vesting:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>ระดับ</th><th>ระยะ Vesting</th><th>ได้รับ</th><th>การจัดการ</th></tr></thead><tbody>
+        <tr><td><strong>Accelerated</strong></td><td>30 วัน</td><td class="mono">50%</td><td>50% ถูกริบเข้า Performance Pool</td></tr>
+        <tr><td><strong>Standard</strong></td><td>120 วัน</td><td class="mono">100%</td><td>ไม่มีบทลงโทษ</td></tr>
+        <tr><td><strong>Extended</strong></td><td>180 วัน</td><td class="mono">115%</td><td>โบนัส +15% จาก Performance Pool</td></tr>
+        <tr><td><strong>Long Commitment</strong></td><td>360 วัน</td><td class="mono">125%</td><td>โบนัส +25% จาก Performance Pool</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">Vesting เป็น<strong>แบบเส้นตรง</strong> — $OPRN ปลดล็อกทีละน้อยตลอดระยะเวลา ไม่ใช่จ่ายก้อนเดียวตอนสิ้นสุด แต่ละ claim เป็นอิสระ คุณสามารถรัน claim หลายรายการในระดับต่างกันพร้อมกัน Claim ขั้นต่ำ: <span class="hl">100 vOP</span> Claim ไม่สามารถยกเลิกได้เมื่อส่งแล้ว ไม่ต้อง KYC</p>
+      <p>โทเค็นที่ถูกริบจาก Accelerated claims ไหลเข้า Performance Pool — เป็นแหล่งทุนโบนัส +15% และ +25% สำหรับผู้ดำเนินการที่อดทนและรางวัลตามกิจกรรม ผู้ใจร้อนสนับสนุนโบนัสของผู้อดทน</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">ตัวอย่างจุดคุ้มทุนโหนดระดับ 1 เป็นอย่างไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <div class="example-box">
+        <div class="ex-title">โหนดระดับ 1 — ขายหมดทั้งหมด (ตัวอย่างประกอบ)</div>
+        <div class="ex-row"><span>ราคาซื้อ</span><span>$500.00</span></div>
+        <div class="ex-row"><span>สิทธิ์การปล่อยพื้นฐาน (4 ปี)</span><span>63,000 $OPRN</span></div>
+        <div class="ex-row"><span>สิทธิ์โบนัสประสิทธิภาพ (ประมาณ)</span><span>~42,000 $OPRN</span></div>
+        <hr class="ex-divider">
+        <div class="ex-row"><span>ราคาโทเค็นจุดคุ้มทุน (เฉพาะพื้นฐาน)</span><span>$500 ÷ 63,000 ≈ $0.008</span></div>
+        <hr class="ex-divider">
+        <div class="ex-row ex-total"><span>การกระจาย Activity Pool</span><span>รายได้เพิ่มเติม</span></div>
+      </div>
+      <p style="font-size:13px;color:var(--mid);">เมื่อขาย 80% (20,000 โหนดถูกเผา) ผู้ซื้อระดับ 1 เดียวกันจะได้รับ 78,750 $OPRN พื้นฐาน ลดราคาโทเค็นจุดคุ้มทุนลงอีก กรอบนี้เป็นเพียงการคำนวณจำนวนโทเค็น — ไม่ใช่การคาดการณ์ราคาตลาด $OPRN ผลตอบแทนจริงขึ้นอยู่กับการนำเครือข่ายไปใช้ สภาพตลาดโทเค็น และ uptime ของผู้ดำเนินการ</p>
+    </div></details>
+  </section>
+
+  <!-- ── 5. ความสามารถในการโอน ────────────────────────────────────── -->
+  <section class="faq-section" id="transfer_th"><div class="section-header"><div class="section-icon">⇄</div><span class="section-title">การโอน & สิทธิ์การปล่อย</span><span class="section-count">2 คำถาม</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">ซื้อแล้วสามารถโอนหรือขายโหนดได้ไหม?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>โหนด<span class="hl">ไม่สามารถโอนได้ใน 6 เดือนแรก</span>หลังซื้อ หลังหมดช่วงล็อก 6 เดือน โหนดสามารถโอนได้อิสระในตลาดรอง</p>
+      <p>สำคัญ: <strong>สิทธิ์การปล่อยผูกกับ NFT โหนด</strong> ไม่ใช่กระเป๋าเงินที่ซื้อเดิม</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>เมื่อโอน</th><th>ผู้ถือใหม่ได้รับอะไร</th></tr></thead><tbody>
+        <tr><td>การสะสม vOP ในอนาคต</td><td>การปล่อยทั้งหมดตั้งแต่วันที่โอน</td></tr>
+        <tr><td>ยอด vOP ที่สะสมไว้</td><td>vOP ที่ยังไม่ได้เคลมจะโอนไปกับ NFT</td></tr>
+        <tr><td>รายการ vesting ที่กำลังดำเนินอยู่</td><td>เคลมที่กำลังดำเนินอยู่ (พร้อมเวลานับถอยหลังที่เหลือ) โอนไปกับ NFT</td></tr>
+        <tr><td>$OPRN ที่ถอนแล้ว</td><td>อยู่ในกระเป๋าเงินผู้ขาย — ERC-20 มาตรฐาน ไม่ได้รับผลกระทบจากการโอน NFT</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">NFT เป็นแพ็คเกจครบถ้วน: ใบอนุญาต ยอดสะสม และ vesting ที่กำลังดำเนินอยู่ สิ่งเดียวที่ไม่โอนคือ $OPRN ที่อยู่ในกระเป๋าเงินแล้ว</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">การปล่อยคงที่หรือเปลี่ยนแปลงได้?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>อุปทานรวม $OPRN <strong>คงที่ถาวรที่ 42,000,000,000 โทเค็น</strong> ไม่มีโทเค็นใหม่เกินขีดจำกัดนี้ถูกสร้าง</p>
+      <p>อย่างไรก็ตาม กลไกการจัดสรร อาจปรับในอนาคตผ่านการกำกับดูแล on-chain การเปลี่ยนแปลงต้องได้รับอนุมัติ on-chain และจะแจ้งล่วงหน้าแก่ผู้ถือโหนดทุกราย</p>
+    </div></details>
+  </section>
+
+  <!-- ── 6. เครือข่ายการแนะนำชุมชน ─────────────────────────────────── -->
+  <section class="faq-section" id="referral_th"><div class="section-header"><div class="section-icon">⊙</div><span class="section-title">เครือข่ายแนะนำชุมชน</span><span class="section-count">4 คำถาม</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">โครงสร้างแนะนำก่อน TGE ทำงานอย่างไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>การซื้อโหนดทุกครั้งเปิดใช้รหัสแนะนำอัตโนมัติ — <strong>ที่อยู่กระเป๋าเงินของคุณคือรหัสแนะนำ</strong> ไม่ต้องสมัคร ไม่ต้องลงทะเบียน</p>
+      <div class="callout" style="margin-bottom:16px;"><div class="callout-label">ส่วนลดผู้ซื้อ</div>ทุกการซื้อผ่านรหัสแนะนำได้ <strong>ลด 10%</strong> จากราคาระดับ บังคับใช้โดย smart contract ส่วนลดนี้แยกจากคอมมิชชันผู้แนะนำ</div>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>ระดับ</th><th>ใครคือพวกเขา</th><th class="mono">คุณได้รับ</th></tr></thead><tbody>
+        <tr><td>L1 — แนะนำตรง</td><td>ผู้ซื้อด้วยรหัสแนะนำของคุณ</td><td class="mono">10% ของราคาซื้อ</td></tr>
+        <tr><td>L2 — แนะนำโดย L1</td><td>ผู้ที่ L1 แนะนำ</td><td class="mono">3% ของราคาซื้อ</td></tr>
+        <tr><td>L3 — แนะนำโดย L2</td><td>ผู้ที่ L2 แนะนำ</td><td class="mono">2% ของราคาซื้อ</td></tr>
+        <tr><td>L4 — แนะนำโดย L3</td><td>ผู้ที่ L3 แนะนำ</td><td class="mono">1% ของราคาซื้อ</td></tr>
+        <tr><td>L5 — แนะนำโดย L4</td><td>ผู้ที่ L4 แนะนำ</td><td class="mono">1% ของราคาซื้อ</td></tr>
+        <tr class="total"><td><strong>สูงสุดต่อการขาย</strong></td><td>—</td><td class="mono"><strong>17%</strong></td></tr>
+      </tbody></table>
+      <p style="margin-top:12px;">ทั้ง 5 ระดับจ่ายเป็น USDC โอนตรงไปยังกระเป๋าทุกสองสัปดาห์ L2–L5 ต้องถือโหนด Operon ≥1 active แนะนำตัวเองถูกบล็อกที่ระดับ contract</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">ทำไม Operon กระจาย 27% ของรายได้ขายให้ผู้เข้าร่วม?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>เป็นทางเลือกเชิงโครงสร้างโดยตั้งใจ ไม่ใช่โปรโมชัน โปรเจกต์ซอฟต์แวร์หรือคริปโตแบบดั้งเดิมใช้จ่ายสัดส่วนเท่ากันหรือมากกว่าสำหรับการตลาดแบบรวมศูนย์ Operon เปลี่ยนทิศทางการใช้จ่ายนั้นให้กับสมาชิกชุมชนโดยตรง</p>
+      <div class="callout"><div class="callout-label">27% ต้นทุนการหาลูกค้าถูกกระจายใหม่</div>ต่อ $100 ล้านระดมทุน: ส่วนลดผู้ซื้อ $10 ล้าน · คอมมิชชัน L1 $10 ล้าน · โบนัส L2 $3 ล้าน · L3 $2 ล้าน · L4 $1 ล้าน · L5 $1 ล้าน $73 ล้านเข้าคลังสำหรับพัฒนา ทุน และดำเนินงาน</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">รางวัลแนะนำการปล่อยหลัง TGE ทำงานอย่างไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>หลัง TGE คอมมิชชันแนะนำเปลี่ยนจากการจ่ายครั้งเดียวตามราคาซื้อ (USDC) เป็นรางวัล pass-through ต่อเนื่องตามการปล่อย (จ่ายเป็น $OPRN) โครงสร้าง 5 ระดับเดิมใช้ เมื่อโหนดในเครือข่ายแนะนำรับรางวัลพื้นฐาน <strong>คุณได้รับโบนัสเพิ่มตามเปอร์เซ็นต์รายได้</strong> — จ่ายจาก Pool แนะนำ & กระจาย ไม่หักจากรางวัลโหนดนั้น</p>
+      <div class="example-box" style="margin:16px 0;">
+        <div class="ex-title">ตัวอย่าง — โหนดในเครือข่ายคุณรับ 100 $OPRN</div>
+        <div class="ex-row"><span>L1 (แนะนำตรง)</span><span>+10 $OPRN</span></div>
+        <div class="ex-row"><span>L2 (แนะนำโดย L1)</span><span>+3 $OPRN</span></div>
+        <div class="ex-row"><span>L3</span><span>+2 $OPRN</span></div>
+        <div class="ex-row"><span>L4</span><span>+1 $OPRN</span></div>
+        <div class="ex-row"><span>L5</span><span>+1 $OPRN</span></div>
+        <hr class="ex-divider">
+        <div class="ex-row"><span>โหนดนั้นเก็บ</span><span class="ex-total">100 $OPRN เต็ม — โบนัสคุณแยกต่างหาก</span></div>
+      </div>
+      <p>Cascade เปิดจาก TGE ไตรมาส 1–4 เป็นช่วงผ่อนผัน ตั้งแต่ Q5 โหนดที่ถูกแนะนำต้องรักษา <span class="hl">>99% uptime</span> Pool แนะนำ & กระจายถือ <span class="hl">4,200,000,000 $OPRN</span> (10% ของอุปทานทั้งหมด)</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">โปรแกรมพันธมิตรระดับสูงคืออะไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>โปรแกรมส่วนตัว เฉพาะผู้รับเชิญ สำหรับองค์กร กองทุน และครีเอเตอร์ที่นำชุมชน ทุน หรือความสามารถมาสู่ Operon</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>สิทธิประโยชน์</th><th>ผู้ซื้อทั่วไป</th><th>พันธมิตรระดับสูง</th></tr></thead><tbody>
+        <tr><td>เงินคืนผู้ซื้อ</td><td>10% เมื่อชำระ</td><td>เพิ่มขึ้น (ตามเงื่อนไขเชิญ)</td></tr>
+        <tr><td>คอมมิชชัน L1</td><td>10%</td><td>อัตราเพิ่มขึ้นเกิน 10%</td></tr>
+        <tr><td>Co-Marketing</td><td>—</td><td>สิทธิ์ co-branding เต็มรูปแบบ</td></tr>
+        <tr><td>Whitelist</td><td>จัดสรรมาตรฐาน</td><td>เข้าถึงก่อนทุกการเปิดตัวในอนาคต</td></tr>
+        <tr><td>บทบาทในระบบนิเวศ</td><td>สมาชิกชุมชน</td><td>ที่นั่งที่ปรึกษา เข้าถึงทีมหลักโดยตรง</td></tr>
+      </tbody></table>
+      <div class="callout gold" style="margin-top:14px;"><div class="callout-label">ส่วนตัว · เฉพาะผู้รับเชิญ</div>โปรแกรมไม่ได้ลิสต์สาธารณะและไม่รับใบสมัครทั่วไป องค์กรที่มีคุณสมบัติติดต่อผ่านช่องทางทางการของ Operon</div>
+    </div></details>
+  </section>
+
+  <!-- ── 7. โทเค็น & คลัง ──────────────────────────────────── -->
+  <section class="faq-section" id="token_th"><div class="section-header"><div class="section-icon">◉</div><span class="section-title">โทเค็น & การกำกับดูแล</span><span class="section-count">4 คำถาม</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">$OPRN คืออะไร และเปิดตัวเมื่อไหร่?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>$OPRN คือโทเค็นโปรโตคอลหลักของ Operon Network ใช้งานเป็น <span class="hl">ERC-20</span> บน Arbitrum อุปทานคงที่: <span class="hl">42,000,000,000 โทเค็น</span> — ไม่มีเงินเฟ้อ เปิดตัวเมื่อ TGE 4–12 สัปดาห์หลังขายโหนดเสร็จ อุปทานหมุนเวียนเริ่มต้นประมาณ <strong>3%</strong> ของอุปทานทั้งหมด</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">73% ของรายได้ขายโหนดไปที่ไหน?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>ทุก 1 ดอลลาร์ 27% คืนผู้เข้าร่วมผ่านส่วนลดและคอมมิชชันแนะนำ <strong>73% ที่เหลือเข้าคลังโปรโตคอล</strong>:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>วัตถุประสงค์</th><th>รายละเอียด</th></tr></thead><tbody>
+        <tr><td>พัฒนาโปรโตคอล</td><td>วิศวกรรม โครงสร้างพื้นฐาน smart contract</td></tr>
+        <tr><td>ตรวจสอบความปลอดภัย</td><td>ตรวจสอบอิสระหลายครั้งก่อน TGE โปรแกรม bug bounty</td></tr>
+        <tr><td>ทุนระบบนิเวศ</td><td>แรงจูงใจการเงินสำหรับนักพัฒนาที่สร้างบน Operon</td></tr>
+        <tr><td>พันธมิตรเชิงกลยุทธ์</td><td>พันธมิตรด้านการรวมและการเติบโต</td></tr>
+        <tr><td>Listing ตลาด & สภาพคล่อง</td><td>Listing CEX ระดับ 2 และ DEX เมื่อ TGE</td></tr>
+      </tbody></table>
+      <p style="margin-top:10px;">การจัดสรรคลังนอกเหนือการ deploy สภาพคล่องเริ่มต้นจะอยู่ภายใต้การกำกับดูแล DAO ตั้งแต่เฟส 5</p>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">การจัดสรรโทเค็นทั้งหมดเป็นอย่างไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <table class="data-table"><thead><tr><th>การจัดสรร</th><th class="mono">%</th><th class="mono">จำนวนโทเค็น</th><th>Vesting / หมายเหตุ</th></tr></thead><tbody>
+        <tr><td>รางวัลพื้นฐานโหนด</td><td class="mono">15%</td><td class="mono">6,300,000,000</td><td>การปล่อยลดลง 4 ปี</td></tr>
+        <tr><td>โบนัสประสิทธิภาพ</td><td class="mono">10%</td><td class="mono">4,200,000,000</td><td>รายไตรมาส · >99% uptime จาก Q5</td></tr>
+        <tr><td>Pool แนะนำ & กระจาย</td><td class="mono">10%</td><td class="mono">4,200,000,000</td><td>Cascade แนะนำ, cascade พันธมิตร, quest TGE & กระจายกิจกรรม</td></tr>
+        <tr><td>ทุนระบบนิเวศ & Dev</td><td class="mono">15%</td><td class="mono">6,300,000,000</td><td>50% เมื่อ 3 เดือนหลัง TGE; 50% เชิงเส้น 24 เดือน</td></tr>
+        <tr><td>ทีมหลัก</td><td class="mono">24%</td><td class="mono">10,080,000,000</td><td>Cliff 12 เดือน · เชิงเส้น 36 เดือน</td></tr>
+        <tr><td>นักลงทุนรายแรก</td><td class="mono">5%</td><td class="mono">2,100,000,000</td><td>Cliff 12 เดือน · เชิงเส้น 36 เดือน</td></tr>
+        <tr><td>คลัง / สภาพคล่อง</td><td class="mono">7%</td><td class="mono">2,940,000,000</td><td>2% สภาพคล่องตลาดเมื่อ TGE · DAO ควบคุมที่เหลือ</td></tr>
+        <tr><td>พันธมิตรเชิงกลยุทธ์</td><td class="mono">5%</td><td class="mono">2,100,000,000</td><td>Cliff 12 เดือน · เชิงเส้น 36 เดือน</td></tr>
+        <tr><td>ที่ปรึกษา</td><td class="mono">4%</td><td class="mono">1,680,000,000</td><td>Cliff 12 เดือน · เชิงเส้น 36 เดือน</td></tr>
+        <tr><td>สำรอง</td><td class="mono">5%</td><td class="mono">2,100,000,000</td><td>DAO ควบคุม · ล็อกขั้นต่ำ 24 เดือน</td></tr>
+        <tr class="total"><td><strong>รวม</strong></td><td class="mono">100%</td><td class="mono">42,000,000,000</td><td>คงที่ ไม่มีเงินเฟ้อ</td></tr>
+      </tbody></table>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">ผู้ถือ $OPRN มีสิทธิ์กำกับดูแลอะไร?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>ตั้งแต่เฟส 5 ผู้ถือ $OPRN ได้รับสิทธิ์กำกับดูแล on-chain:</p>
+      <table class="data-table" style="margin-top:12px;"><thead><tr><th>ด้านกำกับดูแล</th><th>สิ่งที่ผู้ถือลงคะแนนได้</th></tr></thead><tbody>
+        <tr><td>ตารางการปล่อย</td><td>ปรับโครงสร้างรางวัลและการกระจายระหว่าง pool</td></tr>
+        <tr><td>โมเดลการระบุที่มา</td><td>กำหนดค่าลอจิกติดตามการมีส่วนร่วมและจัดสรรรางวัล</td></tr>
+        <tr><td>มาตรฐาน Registry</td><td>ข้อกำหนดและเกณฑ์คุณภาพสำหรับ AI agent ที่ลงทะเบียน</td></tr>
+        <tr><td>การจัดสรรคลัง</td><td>วิธีใช้ทุนคลังที่ DAO ควบคุม</td></tr>
+      </tbody></table>
+      <p style="margin-top:14px;">ข้อเสนอกำกับดูแลถูกยื่นและตัดสินบน on-chain ก่อนเฟส 5 โปรโตคอลทำงานตามพารามิเตอร์ที่กำหนดเมื่อเปิดตัว</p>
+    </div></details>
+  </section>
+
+  <!-- ── 8. ฟังก์ชันโหนด & ความปลอดภัย ─────────────────────── -->
+  <section class="faq-section" id="nodefn_th">
+    <div class="section-header">
+      <div class="section-icon">⚙</div>
+      <span class="section-title">ฟังก์ชันโหนด & ความปลอดภัย</span>
+      <span class="section-count">4 คำถาม</span>
+    </div>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">โหนดของฉันทำอะไรกันแน่?</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>โหนดของคุณคือชั้นประมวลผลของ<em>โปรโตคอล</em> Operon ไม่ใช่ตัวรัน AI agent โดยตรง AI agent ทำงานบนโครงสร้างพื้นฐานที่ผู้ดำเนินการแต่ละรายเลือกใช้ โหนดของคุณให้บริการโครงสร้างพื้นฐานด้านการประสานงาน การตรวจสอบ และการกระจายที่ AI agent ทำงานผ่าน สี่ฟังก์ชันหลัก:</p>
+        <p><strong>การรับรองความสอดคล้องกับโปรโตคอล</strong> โหนดของคุณอาจถูกสุ่มเลือกเพื่อรับรองว่าธุรกรรมของ AI agent เป็นไปตามกฎโปรโตคอล ทั้ง schema ที่ถูกต้อง ส่งมอบตรงเวลา และอยู่ในขอบเขตที่ประกาศไว้ นี่คือการตรวจสอบเชิงกำหนด ไม่ใช่การประเมินคุณภาพตามความเห็น</p>
+        <p><strong>การวัดปริมาณและการบัญชี</strong> โหนดของคุณนับธุรกรรม Forge และจำนวนค่าธรรมเนียมในแต่ละ epoch อย่างอิสระ หลายโหนดได้ผลลัพธ์เดียวกัน ทำให้การกระจาย Activity Pool สามารถตรวจสอบได้</p>
+        <p><strong>Registry และ Discovery</strong> โหนดของคุณเก็บสำเนา agent registry ที่ซิงค์กันอยู่เสมอ เมื่อผู้ใช้ค้นหา AI agent คำค้นจะถูกประมวลผลโดยเครือข่ายโหนด ซึ่งเป็น distributed index ที่แข็งแกร่งขึ้นเมื่อมีโหนดออนไลน์มากขึ้น</p>
+        <p><strong>Message Routing</strong> ในเวิร์กโฟลว์แบบหลาย agent ข้อความจะถูกส่งผ่านเครือข่ายโหนด โหนดของคุณตรวจสอบความสอดคล้องของ schema และความสมบูรณ์ของข้อความในแต่ละ hop</p>
+        <p>ไม่ต้องใช้ GPU ใช้แค่แล็ปท็อปทั่วไปหรือ VPS ราคา $5/เดือนก็พอ</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">โหนดทำอะไรในวันแรก?</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>Operon ใช้<strong>โมเดลเปิดใช้งานแบบค่อยเป็นค่อยไป</strong> เมื่อ TGE เริ่มต้น node client เริ่มต้นจะลงทะเบียน NFT ของคุณเข้าสู่เครือข่ายและรักษา uptime ทำให้คุณมีสิทธิ์รับ base emission ตั้งแต่วันแรก เมื่อกิจกรรมบน Forge เพิ่มขึ้น ฟังก์ชันเต็มรูปแบบ (การรับรอง, การวัดปริมาณ, registry, routing) จะถูกเปิดใช้งานทีละขั้น มีแผนเปิดให้ทดสอบบน testnet ก่อน TGE เพื่อให้คุณทำความคุ้นเคยกับ client ได้ล่วงหน้า</p>
+        <p>เมื่อเข้าสู่ Phase 3 AI agent จากภายนอกเริ่มลงทะเบียน และปริมาณงานของโหนดจะขยายตามการใช้งานจริง คุณได้รับรายได้ตั้งแต่ TGE งานที่โหนดรับผิดชอบจะลึกซึ้งขึ้นเมื่อเครือข่ายเติบโต</p>
+        <div class="callout"><div class="callout-label">มาตรฐานอุตสาหกรรม</div>ทุกโครงการขายโหนดรายใหญ่ล้วนใช้การเปิดใช้งานแบบค่อยเป็นค่อยไป Aethir จ่ายรางวัลเต็มจำนวน 15 วันก่อนที่โหนดจะเริ่มทำงานตรวจสอบ Guardian node ของ Sophon ยังคงทำงานภายใต้ sequencer ที่บริหารโดยมูลนิธิ ผู้ดำเนินการได้รับรายได้ขณะที่เครือข่ายที่พวกเขามีส่วนร่วมสร้างกำลังเปิดตัว</div>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">รางวัลของฉันเก็บไว้ที่ไหน? ตรวจสอบได้ไหม?</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>โทเค็นรางวัลโหนดทั้งหมดถูกเก็บไว้ใน smart contract สองตัวบน Arbitrum ที่ได้รับการเติมเงินล่วงหน้า โดยฝากเข้าก่อนการปล่อยครั้งแรก:</p>
+        <table class="data-table" style="margin-top:12px;">
+          <thead><tr><th>Contract</th><th class="mono">ยอดคงเหลือ</th><th>วัตถุประสงค์</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Base Reward Contract</strong></td><td class="mono">6,300,000,000 $OPRN</td><td>การปล่อยพื้นฐานรายวัน ลดลงตลอด 4 ปี</td></tr>
+            <tr><td><strong>Performance Pool Contract</strong></td><td class="mono">4,200,000,000 $OPRN</td><td>โบนัส uptime, โบนัสระดับ vesting, รางวัลกิจกรรม</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:14px;">ที่อยู่ contract ทั้งสองจะเปิดเผยเมื่อ TGE ยอดคงเหลือสามารถตรวจสอบได้แบบสาธารณะบน Arbiscan ตลอดเวลา โทเค็นไม่ได้ถูก mint ตามคำสั่ง ทุกโทเค็นที่คุณได้รับถูกฝากเข้าก่อนการเคลมครั้งแรกของคุณแล้ว Performance Pool ยังได้รับเงินไหลเข้าต่อเนื่องจากส่วนที่ถูกริบจากการเคลมแบบเร่ง</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">Operon มั่นใจได้อย่างไรว่า AI agent บน Forge น่าเชื่อถือ?</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>Operon ดำเนินงานด้วย<strong>ระบบ trust gradient</strong> (ระดับความน่าเชื่อถือแบบลำดับขั้น) เครือข่ายโหนดรับรองทุกธุรกรรมว่าสอดคล้องกับโปรโตคอล ทั้งเวลาตอบสนอง ความถูกต้องของ schema การส่งมอบ และความสมบูรณ์ของข้อความ ทั้งหมดเป็นการรับประกันแบบ deterministic บนเชน</p>
+        <p>ไม่มีโปรโตคอลใดสามารถมองเห็นภายในสภาพแวดล้อมการทำงานของ AI agent ได้ Operon แก้ปัญหานี้ด้วยความน่าเชื่อถือแบบหลายชั้น:</p>
+        <p><strong>ณ TGE:</strong> ผู้ดำเนินการ AI agent ทุกรายลงทะเบียนประกาศบนเชน ระบุโมเดลที่ใช้ นโยบายจัดการข้อมูล และเขตอำนาจศาลของโครงสร้างพื้นฐาน ข้อมูลเหล่านี้เป็นสาธารณะ ไม่สามารถเปลี่ยนแปลง และตรวจสอบได้ การละเมิดจะลดคะแนนชื่อเสียงอย่างถาวร การละเมิดซ้ำจะถูก smart contract ถอดออกจาก Forge โดยอัตโนมัติ</p>
+        <p><strong>หลัง TGE:</strong> การตรวจสอบโมเดลเชิงความน่าจะเป็น ใช้ canary query ตรวจจับการแจ้งข้อมูลโมเดลเท็จในเชิงสถิติ</p>
+        <p><strong>Phase 3 เป็นต้นไป:</strong> สภาพแวดล้อม sandbox execution ที่เลือกใช้ได้ และการเข้ารหัสที่ผ่านการรับรองความเป็นส่วนตัว สำหรับ AI agent ที่จัดการข้อมูลอ่อนไหว</p>
+        <div class="callout"><div class="callout-label">หลักการ</div>Operon ให้ข้อมูลที่คุณต้องการเพื่อตัดสินว่า AI agent ใดน่าเชื่อถือ ความน่าเชื่อถือเป็นสิ่งที่ต้องสร้างบนเชน ไม่ใช่สิ่งที่ให้มาโดยอัตโนมัติ</div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ── 9. ความเสี่ยง & กฎระเบียบ ───────────────────────────────────── -->
+  <section class="faq-section" id="risk_th"><div class="section-header"><div class="section-icon">⚑</div><span class="section-title">ความเสี่ยง & กฎระเบียบ</span><span class="section-count">2 คำถาม</span></div>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">การถือโหนดรับประกันกำไรหรือไม่?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p><strong>ไม่</strong> รางวัลโหนดขึ้นอยู่กับการเติบโตของเครือข่าย การนำ AI agent มาใช้ สภาพตลาดโทเค็น และเมตริกประสิทธิภาพของผู้ดำเนินการ ตารางการปล่อยกำหนดไว้ล่วงหน้า แต่มูลค่า $OPRN ถูกกำหนดโดยตลาด Activity Pool เติบโตเฉพาะเมื่อ Forge และโปรโตคอลถูกใช้มากขึ้น</p>
+      <div class="callout gold"><div class="callout-label">ข้อจำกัดความรับผิดชอบ</div>การเข้าร่วมขายโหนด Operon มีความเสี่ยงทางการเงินและไม่รับประกันผลตอบแทน เอกสารนี้เป็นข้อมูลเพื่อการอ้างอิงเท่านั้น ไม่เป็นคำแนะนำการลงทุน ผู้เข้าร่วมควรดำเนินการตรวจสอบสถานะด้วยตนเอง</div>
+    </div></details>
+    <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon ใช้งานได้ในสหรัฐอเมริกาหรือไม่?</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
+      <p>บุคคลสหรัฐฯ ถูกแยกออกจากส่วนโทเค็นของการขายเนื่องจากข้อพิจารณาด้านกฎระเบียบ ข้อจำกัดทางภูมิศาสตร์จะประกาศในเงื่อนไขการขายอย่างเป็นทางการที่ <strong>operon.network</strong> ก่อนเปิดตัว การซื้อ NFT โหนดอาจแตกต่างตามเขตอำนาจศาล ผู้ซื้อรับผิดชอบในการตรวจสอบสิทธิ์ตามกฎหมายท้องถิ่น</p>
+    </div></details>
+  </section>
+
+</main>
+
+<div class="cta-banner"><a href="hero-prototype-O.html">กลับหน้าหลัก<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a></div>
+
+<footer class="site-footer">
+  <div class="footer-logo">OPER<span>ON</span></div>
+  <div class="footer-url">operon.network</div>
+  <p class="footer-disc">เอกสารนี้เป็นข้อมูลเพื่อการอ้างอิงเท่านั้น ไม่เป็นการเสนอขาย ชักชวน หรือคำแนะนำการลงทุน เงื่อนไขการขายสุดท้าย tokenomics และพารามิเตอร์การขายโหนดจะประกาศที่ operon.network ก่อนเปิดขาย Operon เป็นโปรโตคอลที่พัฒนาอย่างต่อเนื่อง — พารามิเตอร์อาจปรับเปลี่ยนได้ การอัปเดตทั้งหมดจะสื่อสารต่อสาธารณะก่อนเปิดขาย</p>
+</footer>
+
+
+
+
+<script>
+// FAQ-local interactions: details toggle, search filter, scroll-spy section observer.
+// Language switching is handled by proto-o-i18n.js via URL navigation (no in-place swap).
+(function () {
+  document.querySelectorAll('details').forEach(function (d) {
+    d.addEventListener('toggle', function () { d.classList.toggle('open', d.open); });
+  });
+
+  document.querySelectorAll('.search-input').forEach(function (input) {
+    input.addEventListener('input', function () {
+      var scope = input.closest('.lang-content') || document;
+      var q = input.value.trim().toLowerCase();
+      var anyVisible = false;
+      scope.querySelectorAll('.faq-item').forEach(function (item) {
+        var show = !q || item.innerText.toLowerCase().includes(q);
+        item.style.display = show ? '' : 'none';
+        if (show) anyVisible = true;
+      });
+      scope.querySelectorAll('.faq-section').forEach(function (section) {
+        var items = section.querySelectorAll('.faq-item');
+        var hasVisible = false;
+        items.forEach(function (i) { if (i.style.display !== 'none') hasVisible = true; });
+        section.style.display = hasVisible ? '' : 'none';
+      });
+      var noResults = scope.querySelector('.no-results');
+      if (noResults) noResults.style.display = anyVisible ? 'none' : 'block';
+    });
+  });
+
+  // Scroll-spy: highlight the nav-pill matching the currently visible section.
+  var scope = document.querySelector('.lang-content.active') || document;
+  var sections = scope.querySelectorAll('.faq-section');
+  var pills = scope.querySelectorAll('.nav-pill');
+  if (sections.length && pills.length && 'IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          pills.forEach(function (p) { p.classList.remove('active'); });
+          var target = scope.querySelector('.nav-pill[href="#' + e.target.id + '"]');
+          if (target) target.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+    sections.forEach(function (s) { observer.observe(s); });
+  }
+})();
+</script>
+<script src="/proto-o-i18n.js" defer></script>
+</body>
+</html>
