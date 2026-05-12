@@ -19,8 +19,9 @@ node_modules/
 operon-tester-*.zip
 operon-website-*.zip
 
-# Loose design / verification screenshots at the repo root.
+# Design / verification screenshots. Drop new ones in /ss/, not at root.
 # Operon-dashboard's own public/ assets are scoped under its package.
+/ss/
 /*.png
 /*.jpeg
 /*.jpg
