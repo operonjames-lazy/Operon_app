@@ -1597,3 +1597,48 @@ Migration 028 only revoked from the named voucher RPC subset; the broader admin_
 
 Migrations 028 and 029 sat in the repo after the fix-pack landed and before the verification probe ran. Same drift pattern as F66/F66.1 caught last session. The codified fix in PROGRESS session 42 ("make `verify-pending-migrations.mjs` a pre-commit check") was not implemented this session and is now codified again here. Worth wiring as a real `pre-push` git hook before the next migration lands.
 
+---
+
+## 2026-05-12 — Marketing site cutover to prototype-O canonical tree + FAQ + cascade fix
+
+Operon marketing site moved off `apps/website/` (Vite/i18n-build pipeline) onto `operon-website-2026-04-26/` — flat-file, pre-translated, hero-prototype-O-*.html naming. The new tree is now git-managed; `apps/website/` is removed; `pnpm-workspace.yaml` drops the `apps/*` packages entry. Vercel project for operon.network points elsewhere (user confirmed during cutover), so the deploy gap is non-blocking.
+
+### What got done
+
+- **FAQ rewrite, all 7 langs.** `operon-website-2026-04-26/hero-prototype-O-faq.html` is the single canonical multi-language artifact (~3.6k lines, EN at 305–669, then zh-cn/zh-tw/ko/ja/vi/th sections each at ~700-line offsets).
+  - **Sale Structure: +4 Qs** — How to buy, supported wallets, KYC, wrong-chain recovery
+  - **Community Referral: +2 Qs** — When commissions are paid, how to track them. The "wallet address is your code" wording was a fabrication — replaced with the actual product behaviour: a short auto-issued code (example `OPR-K7VM23`) generated when the wallet first connects to the Portal.
+  - **Risk: +1 Q** — What happens if Operon Labs sunsets (contract is owner-paused but the rest is on-chain).
+  - **Section header counts updated** — Sale 5→9, Earnings 4→3, Referral 4→6, Risk 2→3.
+  - **Factual cut** — L2–L5 active-node requirement was wrong (ALGORITHMS.md §1 gate is just "has a referral code"; activity gates are post-TGE emissions, not cascade attribution). Removed from all 7 languages.
+- **Cascade percentages corrected on marketing pages.** `hero-prototype-O.html` (Stream 03 / `.cascade`) and `hero-prototype-O-nodes.html` previously showed 10% / 5% / 3% / 2% / 1% (= 21%). True rates per ALGORITHMS.md §1 are **10% / 3% / 2% / 1% / 1% (= 17%)**. Both files fixed; a `<!-- Rates per ALGORITHMS.md §1 -->` comment was added at the cascade block so the next editor doesn't drift.
+- **Affiliates page ported into the canonical tree.** Was a 2-week-old artefact in `apps/website/` only; now lives at `operon-website-2026-04-26/hero-prototype-O-affiliates.html` + all 6 lang subdirs. Lang switcher rewritten from `cn/tw/kr/jp/vn` → `zh-cn/zh-tw/ko/ja/vi`. Nav patched on all 35 existing prototype-O pages (5 page types × 7 langs) to include the Affiliates link.
+- **OPERATIONS.md §4 — payout policy.** Codified the FAQ's two new promises that have no runtime enforcement yet: **14-day commission hold** between purchase block confirmation and mark-paid eligibility, and **OFAC/SDN screening** before each biweekly USDC batch. Both are operator-runbook entries today; a queries-side gate is a follow-up.
+- **DECISIONS.md — 2 new D-pending entries** capturing the rationale (FAQ commits us publicly; runtime gate is owed). D-pending status because the policy ships in copy before the code does — operator-enforced is acceptable for genesis sale velocity, but the gate matures into an RPC filter once volume warrants.
+
+### Repo / git hygiene
+
+- **`.gitignore`** — dropped the `operon-website-2026-*/` exclusion line. Without this all of the above work would have been on-disk-only.
+- **`pnpm-workspace.yaml`** — removed `apps/*` (no remaining workspace packages there).
+- **`apps/website/` tree removed.** 62 files: HTML pages (5 × 7 langs), `i18n/*.json` dicts, `scripts/build-i18n.mjs` + sister build helpers, `public/{faq,quill,zenith}/`, `proto-o-i18n.js` (older 134-line version vs. the canonical 92-line in 2026-04-26 tree).
+
+### Commits pushed (3e17031..fef4d4d)
+
+- `543ae26` — site: track prototype-O as canonical multi-language source (50 files added)
+- `775a812` — docs(ops): payout policy + sanctions screening procedures
+- `fef4d4d` — site: remove superseded apps/website tree (62 files deleted)
+
+### Verification
+
+- Cascade rates grep-confirmed in all three places (`hero-prototype-O.html`, `hero-prototype-O-nodes.html`, FAQ across 7 langs): 10/3/2/1/1, never 10/5/3/2/1.
+- `OPR-K7VM23` short-code example present in all 7 lang FAQ sections (grep, 7 matches).
+- `git log origin/main..HEAD` empty post-push — main and origin/main agree at `fef4d4d`.
+- **Not verified this session:** visual render of FAQ pages in browser. Pure copy + structural edits; design tokens unchanged. Worth a one-pass `pnpm dev` smoke before the next external audience hits the page.
+
+### Open / next session
+
+- **Vercel project for marketing site needs the Root Directory flipped** to `operon-website-2026-04-26/` (or wherever operon.network is actually served from now). Outside this repo's reach — operator action.
+- **Empty `apps/` dir on disk** — git is clean, but the filesystem held a lock on `apps/website/` so `rm -rf apps` was denied during cutover. Harmless (untracked, no contents). User can `Remove-Item apps -Recurse` whenever.
+- **Per-wallet caps gap.** FAQ commits to T1–3 having per-wallet purchase caps. Spec doc says 5/10/20. Contract has no caps; backend RPC supports them but seed defaults to 0. Either seed real values pre-mainnet or rewrite the FAQ wording before launch.
+- **Runtime enforcement of the 14-day hold + sanctions screen.** Currently policy-only. Acceptable for genesis-sale operator-paced payouts; flag if/when batch frequency rises or auto-payout becomes a feature ask.
+
