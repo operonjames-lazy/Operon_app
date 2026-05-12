@@ -258,17 +258,6 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
   </div>
 </nav>
 
-
-
-
-
-
-
-
-
-
-
-
 <!-- HEADER -->
 <!-- HERO -->
 <section class="hero">
@@ -417,8 +406,8 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
       <p style="margin-top:14px;">クエストキャンペーン参加者（Galxe・Layer3）はリファラル & ディストリビューションプールから TGE 配分を受け取ります。TGE 時の初期流通供給量は約 <span class="hl">3%</span> です。</p>
     </div></details>
     <details class="faq-item"><summary class="faq-q"><span class="faq-q-text">Operon はどのブロックチェーン上で動作しますか？</span><span class="faq-arrow">▾</span></summary><div class="faq-a">
-      <p>Operon は <strong>Arbitrum</strong> 上にデプロイされています — 低い取引手数料、高いスループット、幅広い EVM エコシステムとの接続性を備えた主要な Ethereum Layer 2 ネットワークです。</p>
-      <p>ノードセールでは USDC と USDT を Arbitrum および BNB Smart Chain の両方で受け付けます。ノードは購入者が支払いを行ったチェーン上で鋳造されます。</p>
+      <p>Operon の主要デプロイは <strong>Arbitrum</strong> 上にあります — 低い取引手数料、高いスループット、幅広い EVM エコシステムとの接続性を備えた主要な Ethereum Layer 2 ネットワークです。AI エージェントレジストリ、リファラル追跡、報酬配分、$OPRN トークン、ガバナンスはすべて Arbitrum 上で動作します。</p>
+      <p>ノードセール自体は 2 つのチェーンで運用されます：<strong>Arbitrum</strong> と <strong>BNB Smart Chain</strong>。ノード NFT は購入者が支払いを行ったチェーンで鋳造され、USDC または USDT を額面で受け付けます。</p>
     </div></details>
   </section>
 
@@ -472,8 +461,45 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
     <div class="section-header">
       <div class="section-icon">◎</div>
       <span class="section-title">セール構造</span>
-      <span class="section-count">5つの質問</span>
+      <span class="section-count">9つの質問</span>
     </div>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">ノードはどのように購入しますか？</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>5 つのステップ：</p>
+        <ol style="padding-left:22px;margin:8px 0;line-height:1.65;">
+          <li><strong>operon.network/nodes</strong> にアクセスし <strong>Buy a node</strong> をクリック — または直接 <strong>app.operon.network/sale</strong> にアクセスします。</li>
+          <li>ウォレットを接続します — MetaMask、Coinbase Wallet、Rabby、または WalletConnect で接続できる任意のウォレット（Ledger などのハードウェアウォレット対応）。</li>
+          <li><strong>Arbitrum</strong> または <strong>BNB Smart Chain</strong> を選択します。ノードは支払いを行ったチェーンで鋳造されます。選択したチェーンで USDC または USDT を保有していることを確認してください — 保有していない場合は、まずブリッジしてください（<a href="https://ethereum.org/en/bridges/" target="_blank" rel="noopener" style="color:var(--ice);text-decoration:underline;">ethereum.org のブリッジ概要参照</a>）。</li>
+          <li>USDC または USDT の使用を承認し、購入を確定します。コントラクトが現在開いているティアの価格を自動的に設定します。</li>
+          <li>取引が確認されると、ノード NFT がウォレットに到着し、Portal で請求可能残高と紹介コードと共に表示されます。</li>
+        </ol>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">どのウォレットがサポートされていますか？ハードウェアウォレットは使用できますか？</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>セールは <strong>MetaMask</strong>、<strong>Coinbase Wallet</strong>、<strong>Rabby</strong>、および <strong>WalletConnect</strong> で接続できる任意のウォレットをサポートしています — Ledger、Trezor、ほとんどのモバイルウォレットを含みます。ハードウェアウォレットユーザーは、購入中ずっと鍵をオフラインに保つため、WalletConnect または MetaMask のハードウェア統合経由で接続してください。</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">KYC を完了する必要がありますか？</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>いいえ。セール期間中のノード購入に KYC は不要であり、TGE 後の報酬請求や $OPRN の引き出しにも不要です。資格は管轄区域および制裁ポリシーによって決定されます — OFAC/SDN リスト（または同等の国別制裁リスト）にあるウォレットは参加できません。</p>
+      </div>
+    </details>
 
     <details class="faq-item">
       <summary class="faq-q">
@@ -500,6 +526,17 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
           </tbody>
         </table>
         <p>すべての価格は米ドル建てです。USDC と USDT は Arbitrum および BNB Smart Chain の両方で額面で受け付けます。レート変換は不要です。</p>
+        <p>他のチェーンでステーブルコインを保有している場合（Ethereum メインネット、Base、Solana など）、ウォレットを接続する前に Arbitrum または BNB Smart Chain にブリッジしてください — Operon は内蔵ブリッジを運用していません。</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">間違ったチェーンや間違った通貨で送金した場合どうなりますか？</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>セールコントラクトは <strong>Arbitrum</strong> または <strong>BNB Smart Chain</strong> 上の <strong>USDC</strong> または <strong>USDT</strong> のみを受け付けます。他のトークンを送信したり、他のチェーンでコントラクトに資金を送信したりしても、購入として記録されません。承認前に、ウォレットが正しいネットワーク上にあり、正しいステーブルコインが選択されていることを確認してください — クロスチェーンの誤りはコントラクトで元に戻すことができません。</p>
       </div>
     </details>
 
@@ -509,8 +546,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
         <span class="faq-arrow">▾</span>
       </summary>
       <div class="faq-a">
-        <p>早期ティアのみに制限があります。<span class="hl">ティア1〜5</span>には、分散化を保護し最低価格ティアへの広範なコミュニティアクセスを確保するためのウォレットごとの購入上限があります。</p>
-        <p><span class="hl">ティア6〜40</span>にはウォレットごとの上限がありません。早期ティアの具体的なウォレットごとの制限は、セール開始前にoperon.networkの公式セール条件で公開されます。</p>
+        <p>早期ティアのみに制限があります。<span class="hl">ティア1〜3</span>には、分散化を保護し最低価格ティアへの広範なコミュニティアクセスを確保するためのウォレットごとの購入上限があります。<span class="hl">ティア4〜40</span>にはウォレットごとの上限がありません。ティアごとの具体的な上限は、セール開始前に operon.network の公式セール条件で公開されます。</p>
       </div>
     </details>
 
@@ -522,16 +558,16 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
       <div class="faq-a">
         <p>ティア1〜5はそれぞれ、5つのカテゴリのホワイトリスト参加者のために正確に<strong>ノードの50%</strong>（ティアあたり1,250個、合計6,250個）を予約します：</p>
         <table class="data-table" style="margin-top:12px;">
-          <thead><tr><th>カテゴリ</th><th>説明</th></tr></thead>
+          <thead><tr><th>カテゴリ</th><th>説明</th><th>申請方法</th></tr></thead>
           <tbody>
-            <tr><td>OGコミュニティ</td><td>Discord / Telegramメンバー、ウェイトリスト事前登録者、テストネット参加者</td></tr>
-            <tr><td>戦略的パートナーDAO</td><td>Web3およびAIネイティブDAOコミュニティ、それぞれ固定配分</td></tr>
-            <tr><td>KOL & アンバサダー</td><td>50,000人以上の文書化されたリーチを持つクリエイター；セール開始前に最低2つのコンテンツ納品</td></tr>
-            <tr><td>VC & 機関</td><td>早期段階の投資家および戦略的機関参加者</td></tr>
-            <tr><td>クエスト & キャンペーン当選者</td><td>GalxeおよびLayer3クエストキャンペーンで検証可能なオンチェーン活動を持つ参加者</td></tr>
+            <tr><td>OGコミュニティ</td><td>Discord / Telegramメンバー、ウェイトリスト事前登録者、テストネット参加者</td><td><strong>operon.network</strong> で事前登録</td></tr>
+            <tr><td>戦略的パートナーDAO</td><td>Web3およびAIネイティブDAOコミュニティ、それぞれ固定配分</td><td><strong>contact@operon.network</strong> · 件名 <em>DAO Partnership</em></td></tr>
+            <tr><td>KOL & アンバサダー</td><td>50,000人以上の文書化されたリーチを持つクリエイター；セール開始前に最低2つのコンテンツ納品</td><td><strong>contact@operon.network</strong> · 件名 <em>KOL Programme</em></td></tr>
+            <tr><td>VC & 機関</td><td>早期段階の投資家および戦略的機関参加者</td><td><strong>contact@operon.network</strong> · 件名 <em>VC Allocation</em></td></tr>
+            <tr><td>クエスト & キャンペーン当選者</td><td>GalxeおよびLayer3クエストキャンペーンで検証可能なオンチェーン活動を持つ参加者</td><td>アクティブなキャンペーン一覧は <strong>operon.network</strong></td></tr>
           </tbody>
         </table>
-        <p style="margin-top:12px;">ティア1〜5の残り50%とティア6〜40のすべてのノードは先着順で一般公開されます。<strong>operon.network</strong>での事前登録がOGホワイトリスト検討への主要な経路です。</p>
+        <p style="margin-top:12px;">ティア1〜5の残り50%とティア6〜40のすべてのノードは先着順で一般公開されます。</p>
       </div>
     </details>
 
@@ -597,7 +633,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
     <div class="section-header">
       <div class="section-icon">⊕</div>
       <span class="section-title">ノード収益</span>
-      <span class="section-count">4 問</span>
+      <span class="section-count">3 問</span>
     </div>
     <details class="faq-item">
       <summary class="faq-q"><span class="faq-q-text">各ノードは年間何$OPRNトークンを獲得しますか？</span><span class="faq-arrow">▾</span></summary>
@@ -636,22 +672,6 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
         </tbody></table>
         <p style="margin-top:14px;">べスティングは<strong>リニア</strong>です——$OPRN は期間を通じて徐々にアンロックされ、期末に一括で解放されるのではありません。各クレームは独立しており、異なるティアで複数のクレームを同時に実行できます。最低クレーム額：<span class="hl">100 vOP</span>。クレームは提出後取り消し不可。KYC不要。</p>
         <p>Accelerated クレームからの没収トークンはパフォーマンスプールに流入し、忍耐強いオペレーターへの +15% および +25% ボーナスとアクティビティベースの報酬の資金源となります。急ぐオペレーターが忍耐強いオペレーターのボーナスを支えます。</p>
-      </div>
-    </details>
-    <details class="faq-item">
-      <summary class="faq-q"><span class="faq-q-text">ティア1ノードの損益分岐点の例はどのようなものですか？</span><span class="faq-arrow">▾</span></summary>
-      <div class="faq-a">
-        <div class="example-box">
-          <div class="ex-title">ティア1ノード — 完全売り切れシナリオ（説明用）</div>
-          <div class="ex-row"><span>購入価格</span><span>$500.00</span></div>
-          <div class="ex-row"><span>基本排出権利（4年）</span><span>63,000 $OPRN</span></div>
-          <div class="ex-row"><span>パフォーマンスボーナス権利（推定）</span><span>~42,000 $OPRN</span></div>
-          <hr class="ex-divider">
-          <div class="ex-row"><span>損益分岐トークン価格（基本排出のみ）</span><span>$500 ÷ 63,000 ≈ $0.008</span></div>
-          <hr class="ex-divider">
-          <div class="ex-row ex-total"><span>アクティビティプール配分</span><span>追加収益</span></div>
-        </div>
-        <p style="font-size:13px;color:var(--mid);">80%販売時（20,000ノードがバーン）、同じティア1の買い手は78,750のベース $OPRN を受け取り、損益分岐トークン価格がさらに低下します。本フレームワークはトークン数量の計算にすぎず、$OPRN の市場価格の予測を構成するものではありません。実際のリターンは、ネットワーク採用率、トークン市場環境、およびオペレーターの稼働時間によって異なります。</p>
       </div>
     </details>
   </section>
@@ -694,7 +714,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
     <div class="section-header">
       <div class="section-icon">⊙</div>
       <span class="section-title">コミュニティ紹介ネットワーク</span>
-      <span class="section-count">4つの質問</span>
+      <span class="section-count">6つの質問</span>
     </div>
 
     <details class="faq-item">
@@ -703,7 +723,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
         <span class="faq-arrow">▾</span>
       </summary>
       <div class="faq-a">
-        <p>すべてのノード購入は紹介コードを自動的に有効化します — <strong>あなたのウォレットアドレスがあなたの紹介コードです</strong>。申請不要、登録不要、ティア要件なし。紹介エンジンはすべての購入者にデフォルトでオンになっています。</p>
+        <p>Operon Portal に接続するすべてのウォレットには短い紹介コード（例：<span class="hl">OPR-K7VM23</span>）が自動的に発行されます。申請、登録、購入なしで生成されます。</p>
         <div class="callout" style="margin-bottom:16px;"><div class="callout-label">購入者割引</div>紹介コードを使用した全購入は、チェックアウト時に公示ティア価格から<strong>10%割引</strong>を自動適用します。この割引は紹介者のコミッションとは独立しており、紹介者の収入を減らしません。</div>
         <p>あなたの紹介ネットワーク内の誰かがノードを購入すると、<strong>最大5レベルの深さまでコミッションを受け取れます</strong>：</p>
         <table class="data-table" style="margin-top:12px;">
@@ -717,7 +737,30 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
             <tr class="total"><td><strong>1件あたり最大合計</strong></td><td>—</td><td class="mono"><strong>17%</strong></td></tr>
           </tbody>
         </table>
-        <p style="margin-top:12px;">全5レベルのコミッションは USDC で直接ウォレットに隔週で支払われます。L2〜L5の資格にはアクティブOperonノードが1つ以上必要です。自己紹介はコントラクトレベルでブロックされます。</p>
+        <p style="margin-top:12px;">接続済みウォレットを持つ誰もが紹介できます — TGE 前の購入における L1〜L5 コミッションにはノード保有要件はありません。自己紹介はコントラクトレベルでブロックされます。支払いタイミングについては下記の<em>TGE 前の紹介コミッションはいつ、どのように支払われますか？</em>を参照してください。</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">TGE 前の紹介コミッションはいつ、どのように支払われますか？</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>コミッションは決済された各購入で即座に蓄積され、その後<strong>14 日間の保留期間</strong>を経てリリースされます。保留期間は、チャージバック、制裁スクリーニングのヒット、チェーン再編成など、すでに支払われたコミッションをプロトコルが返還する必要のある事態から保護します。</p>
+        <p>保留期間後、コミッションは紹介者の支払いウォレットに<strong>隔週で USDC</strong>として直接支払われます。Portal の <strong>Referrals</strong> ページで各コミッションのステータスを追跡 — 保留中の行はリリース日が表示され、対象となる行は次回の隔週バッチに入ります。TGE 後は、同じ隔週周期が排出紹介に適用され、同じウォレットに $OPRN で支払われます。</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">紹介リンクをどこで取得し、収益をどこで追跡しますか？</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>紹介コードとリンクは Portal の <strong>Referrals</strong> ページにあります。リンク形式は：</p>
+        <p style="font-family:'DM Mono',monospace;font-size:14px;color:var(--ice);background:rgba(0,0,0,0.30);padding:10px 14px;border-radius:8px;border:1px solid rgba(147,197,253,0.10);overflow-wrap:break-word;"><span class="hl">app.operon.network/sale?ref=&lt;あなたのコード&gt;</span></p>
+        <p>コードのコピー、リンクの直接コピー、または共有ボタンの使用。同じページに 5 レベル全ネットワークが表示されます — ダウンラインのウォレット、レベルごとのコミッション、支払い履歴、マイルストーンの進捗。</p>
       </div>
     </details>
 
@@ -776,7 +819,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
         </table>
         <div class="callout gold" style="margin-top:14px;">
           <div class="callout-label">非公開 · 招待制</div>
-          このプログラムは公開リストになく、一般申請を受け付けていません。資格のある組織は Operon 公式チャンネルを通じて連絡します。
+          このプログラムは公開リストに掲載されていません。重要なコミュニティ、資本、またはケイパビリティをもたらす組織は、件名 <em>Elite Partner Programme Application</em> で <strong>contact@operon.network</strong> までご連絡ください。ケースバイケースで審査します。このチャンネル以外からの申請は審査対象外です。
         </div>
       </div>
     </details>
@@ -811,7 +854,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
           <thead><tr><th>用途</th><th>詳細</th></tr></thead>
           <tbody>
             <tr><td>プロトコル開発</td><td>エンジニアリング、インフラ、スマートコントラクト開発</td></tr>
-            <tr><td>セキュリティ監査</td><td>TGE前の複数回の独立監査、バグバウンティプログラム</td></tr>
+            <tr><td>独立監査 & バグバウンティ</td><td>TGE 前の独立機関によるスマートコントラクト監査、および継続的に運営されるバグバウンティプログラム</td></tr>
             <tr><td>エコシステム助成金</td><td>Operonで開発する開発者への財政的インセンティブ</td></tr>
             <tr><td>戦略的パートナーシップ</td><td>統合と成長のパートナーシップ</td></tr>
             <tr><td>取引所上場 & 流動性</td><td>TGE時にティア2 CEXおよびDEXに上場</td></tr>
@@ -934,7 +977,7 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
     <div class="section-header">
       <div class="section-icon">⚑</div>
       <span class="section-title">リスク & 規制</span>
-      <span class="section-count">2つの質問</span>
+      <span class="section-count">3つの質問</span>
     </div>
 
     <details class="faq-item">
@@ -953,11 +996,26 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
 
     <details class="faq-item">
       <summary class="faq-q">
-        <span class="faq-q-text">Operonは米国で利用できますか？</span>
+        <span class="faq-q-text">Operon Labs が企業として運営を停止した場合、私のノードはどうなりますか？</span>
         <span class="faq-arrow">▾</span>
       </summary>
       <div class="faq-a">
-        <p>規制上の考慮から、米国人はセールのトークン部分から除外されます。具体的な地理的制限は、立ち上げ前に<strong>operon.network</strong>の公式セール条件で公開されます。ノードNFTの購入は管轄区域によって異なる場合があります；購入者は適用される地域法の下で自分の資格を判断する責任があります。</p>
+        <p>あなたのノード NFT、事前資金調達済み報酬コントラクト、AI エージェント評判ディレクトリは、すべて Arbitrum と BNB Smart Chain に存在します — ドメイン、サーバー、会社から独立しています。</p>
+        <p><strong>TGE 後。</strong>ベース報酬コントラクト（<span class="hl">6,300,000,000 $OPRN</span>）とパフォーマンスプールコントラクト（<span class="hl">4,200,000,000 $OPRN</span>）は、Operon Labs の署名なしでスケジュール通りに引き落とされ続けます。あなたのノード NFT は 6 ヶ月のロックアップ期間終了後、任意の ERC-721 マーケットプレイスで自由に譲渡可能です。AI エージェント評判ディレクトリのオンチェーン証明は引き続き照会可能です。Forge マーケットプレイス UI、Operon Portal、直接サポートは中央集権的な製品サーフェスであり停止しますが — 基盤プロトコルは引き続き動作します。</p>
+        <p><strong>TGE 前。</strong>現段階は Operon Labs の継続運営により依存しています — バーンと再配分、$OPRN トークンの立ち上げ、報酬コントラクトの事前資金調達は、すべてオペレーターのアクションが必要です。セール収益はマルチシグ財務に保管されており、単一の鍵で資金が制御されることはありませんが、立ち上げのタイムラインはチームの実行に依存します。プロトコルの自律性が最も低い TGE 前の期間において、購入者はこの依存性を考慮すべきです。</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">
+        <span class="faq-q-text">誰がノードを購入し、紹介コミッションを獲得できますか？</span>
+        <span class="faq-arrow">▾</span>
+      </summary>
+      <div class="faq-a">
+        <p>Operon は 2 つの制限の下で世界中に開かれています：</p>
+        <p><strong>管轄区域。</strong>規制上の考慮から、米国人はセールのトークン部分から除外されます — TGE 後に獲得した $OPRN は米国人に帰属できません。ノード NFT の購入は管轄区域によって異なる場合があり、購入者は適用される地域法の下で自身の資格を判断する責任があります。具体的な国別の制限は、セール立ち上げ前に <strong>operon.network</strong> の公式セール条件で公開されます。</p>
+        <p><strong>制裁スクリーニング。</strong>OFAC/SDN リスト（または同等の国別制裁リスト）のウォレットは参加資格を有しません — ノード購入と紹介コミッション支払いの両方について。Operon は、制裁対象として特定されたウォレットに対して、サービスの拒否、アカウントの一時停止、または支払いの保留を行う権利を留保します。</p>
+        <p>制限管轄区域外に居住し、ウォレットが制裁対象でない場合、セールと紹介プログラムの両方に参加できます。</p>
       </div>
     </details>
   </section>
@@ -971,11 +1029,6 @@ a[href="#"]::after, a[href=""]::after { content: ''; }
   <div class="footer-url">operon.network</div>
   <p class="footer-disc">本ドキュメントは情報提供のみを目的としており、募集、勧誘、投資助言を構成するものではありません。最終的なセール条件、トークノミクス、ノードセールパラメーターはセール開始前にoperon.networkにて公開されます。Operonは進化するプロトコルです — パラメーターが調整される場合があり、すべてのアップデートはセール開始前に公開的に伝達されます。</p>
 </footer>
-
-
-
-
-
 
 <script>
 // FAQ-local interactions: details toggle, search filter, scroll-spy section observer.
