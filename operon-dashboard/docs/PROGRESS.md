@@ -1642,3 +1642,41 @@ Operon marketing site moved off `apps/website/` (Vite/i18n-build pipeline) onto 
 - **Per-wallet caps gap.** FAQ commits to T1–3 having per-wallet purchase caps. Spec doc says 5/10/20. Contract has no caps; backend RPC supports them but seed defaults to 0. Either seed real values pre-mainnet or rewrite the FAQ wording before launch.
 - **Runtime enforcement of the 14-day hold + sanctions screen.** Currently policy-only. Acceptable for genesis-sale operator-paced payouts; flag if/when batch frequency rises or auto-payout becomes a feature ask.
 
+---
+
+## 2026-05-13 — Marketing-site FAQ subdir resync + architectural cleanup
+
+Late-session follow-up to the 2026-05-12 prototype-O cutover. Two issues surfaced during partner-share prep that the prior session missed.
+
+### What I missed in the 2026-05-12 entry
+
+I called `hero-prototype-O-faq.html` (root) "the single canonical multi-language artifact" and only edited it. I did NOT verify the per-language subdir files (`<lang>/hero-prototype-O-faq.html`). They were separate standalone single-lang files, ~700–1000 lines each, **already in the tree** from a prior session, and never updated by the FAQ-pass commits. Production proto-o-i18n.js redirects non-EN visitors to `/<lang>/hero-prototype-O-faq.html` — so every non-English user would have hit stale FAQ content after deploy (no OPR-K7VM23, no new Sale/Referral/Risk Qs, wrong L2-L5 active-node line still present). Caught only when user opened the multi-lang root file via `file://` and saw all 7 langs stacked because their renderer wasn't applying the inline `.lang-content { display:none; }` rule.
+
+### Fix (commit b8d8cc5)
+
+- **Regenerated all 6 subdir FAQ files** (`zh-cn`, `zh-tw`, `ko`, `ja`, `vi`, `th`) from the corresponding lang-content section of the root file, preserving each subdir's existing head/canonical/alternate/lang-switcher-default. All 6 now match the EN edits: 43 Qs per lang, OPR-K7VM23 short code present, 10/3/2/1/1 cascade.
+- **Stripped root FAQ to EN-only standalone.** Root file went 3865 → 743 lines. No more multi-lang inline blocks. Now matches the architecture of every other root-level `hero-prototype-O-*.html` (single-lang at root, per-lang siblings under subdirs).
+- **Memory updated** (`reference_i18n_pipeline.md`) to remove the "FAQ is the one exception with all 7 langs inline" rule. New rule: every HTML file is single-language standalone; copy changes must touch all 7 files (EN at root + 6 subdirs).
+
+### Architectural rule going forward
+
+There is NO canonical multi-lang artifact for the marketing site. Every `hero-prototype-O-*.html` (whether at root or under `<lang>/`) holds one language only. A copy change to FAQ means editing 7 files. Future sessions: do not introduce multi-lang-inline as a "convenience" — it hides staleness in the per-lang serving path.
+
+### Other housekeeping
+
+- **Screenshot folder convention.** 71 root-level `*.png`/`*.jpg` verification artifacts (~16 MB) cleaned up. Created `/ss/` and added it to `.gitignore`; future Playwright/verification captures go there (commit `8de49f8`). Memory `feedback_screenshot_location.md` records the rule.
+- **Standalone partner-share artifact.** `Operon-FAQ-KO-2026-05-12.html` (88 KB, single file at repo root, untracked by design) is a stripped-nav Korean-only FAQ for sending to partners over chat/email. Renders cleanly via `file://` double-click.
+
+### Verification
+
+- Local HTTP server probe (Python `http.server` against `operon-website-2026-04-26/`) confirmed:
+  - Root file renders only EN (43 Qs, no Korean/other-lang body content).
+  - `/ko/hero-prototype-O-faq.html` renders only KO (43 Qs, Korean h1, has the new "When are commissions paid" Q via `지급` keyword).
+  - All 6 subdirs grep clean for `OPR-K7VM23` (1 ref each) and the corrected cascade rates.
+- Fresh zip rebuilt: `operon-website-2026-05-12.zip` is now 1.05 MB / 49 files (was 1.14 MB with the bloated root file). Copied to `~/Downloads/` for staff hand-off.
+
+### Open / next session
+
+- **No new open items.** All carry-overs from the 2026-05-12 entry remain (Vercel root flip, empty `apps/` dir cleanup, per-wallet caps gap, 14-day-hold runtime gate).
+- **Implicit cleanup deferred.** The root `hero-prototype-O-faq.html` was the place where pre-edit copy lived inline for all 7 langs in a single text-search-friendly file. That convenience is gone now. If FAQ rewrites at scale ever need a side-by-side view again, build a *temporary* merged file from the 7 sources — don't commit the merge to the deploy tree.
+
